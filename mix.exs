@@ -19,7 +19,7 @@ defmodule BlueJet.Mixfile do
   def application do
     [mod: {BlueJet, []},
      applications: [:phoenix, :phoenix_pubsub, :cowboy, :logger, :gettext,
-                    :phoenix_ecto, :postgrex]]
+                    :phoenix_ecto, :postgrex, :trans]]
   end
 
   # Specifies which paths to compile per environment.
@@ -37,7 +37,9 @@ defmodule BlueJet.Mixfile do
      {:gettext, "~> 0.11"},
      {:cowboy, "~> 1.0"},
      {:ja_serializer, "~> 0.12.0"},
-     {:inflex, "~> 1.7.0"}]
+     {:inflex, "~> 1.7.0"},
+     {:faker, "~> 0.7"},
+     {:trans, "~> 1.1"}]
   end
 
   # Aliases are shortcuts or tasks specific to the current project.

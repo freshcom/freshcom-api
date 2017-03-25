@@ -20,6 +20,8 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       add :specification, :text
       add :storage_description, :text
 
+      add :translations, :map, null: false, default: "{}"
+
       timestamps()
     end
 

@@ -12,7 +12,7 @@ defmodule BlueJet.SkuController do
   end
 
   def create(conn, %{"data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
-    changeset = Sku.changeset(%Sku{}, Params.to_attributes(data))
+    changeset = Sku.changeset(%Sku{}, conn.assigns[:locale], Params.to_attributes(data))
 
     case Repo.insert(changeset) do
       {:ok, sku} ->
@@ -34,7 +34,7 @@ defmodule BlueJet.SkuController do
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
     sku = Repo.get!(Sku, id)
-    changeset = Sku.changeset(sku, Params.to_attributes(data))
+    changeset = Sku.changeset(sku, conn.assigns[:locale], Params.to_attributes(data))
 
     case Repo.update(changeset) do
       {:ok, sku} ->
@@ -54,17 +54,6 @@ defmodule BlueJet.SkuController do
     Repo.delete!(sku)
 
     send_resp(conn, :no_content, "")
-  end
-
-  def options(conn, _params) do
-    text allow_cors(conn), ""
-  end
-
-  defp allow_cors(conn) do
-    conn
-    |> put_resp_header("Access-Control-Allow-Origin", "*")
-    |> put_resp_header("Access-Control-Allow-Methods", "POST, PUT, PATCH, DELETE, GET, OPTIONS")
-    |> put_resp_header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Authorization")
   end
 
 end

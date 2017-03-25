@@ -1,11 +1,10 @@
 defmodule BlueJet.Router do
   use BlueJet.Web, :router
 
-  def verify_content_type(%Plug.Conn{method: "OPTIONS"} = conn, _o), do: conn
-
   pipeline :api do
     plug :accepts, ["json-api"]
-    plug BlueJet.CORS
+    plug BlueJet.Plugs.CORS
+    plug BlueJet.Plugs.Locale, "zh-CN"
     plug JaSerializer.ContentTypeNegotiation
     plug JaSerializer.Deserializer
   end

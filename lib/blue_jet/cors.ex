@@ -1,4 +1,4 @@
-defmodule BlueJet.CORS do
+defmodule BlueJet.Plugs.CORS do
   import Plug.Conn
 
   def defaults do
