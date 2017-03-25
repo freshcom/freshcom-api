@@ -44,7 +44,6 @@ defmodule BlueJet.Sku do
   end
 
   def set_translations(changeset, params, old_translations, translatable_fields, locale) when locale !== "en" do
-
     t_fields = Enum.map_every(translatable_fields, 1, fn(item) -> Atom.to_string(item) end)
     nl_translations = old_translations
                     |> Map.get(locale, %{})
@@ -54,7 +53,6 @@ defmodule BlueJet.Sku do
 
     changeset = Enum.reduce(translatable_fields, changeset, fn(field_name, acc) -> Ecto.Changeset.delete_change(acc, field_name) end)
     Ecto.Changeset.put_change(changeset, :translations, new_translations)
-
   end
   def set_translations(changeset, _params, _old_translations, _translatable_fields, _locale), do: changeset
 end

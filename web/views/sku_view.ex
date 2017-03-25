@@ -19,5 +19,4 @@ defmodule BlueJet.SkuView do
     :inserted_at,
     :updated_at
   ]
-
 end

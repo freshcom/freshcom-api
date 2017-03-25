@@ -28,7 +28,10 @@ defmodule BlueJet.SkuController do
   end
 
   def show(conn, %{"id" => id}) do
-    sku = Repo.get!(Sku, id)
+    sku = Sku
+          |> Repo.get!(id)
+          |> translate(conn.assigns[:locale])
+
     render(conn, "show.json-api", data: sku)
   end
 
@@ -55,5 +58,11 @@ defmodule BlueJet.SkuController do
 
     send_resp(conn, :no_content, "")
   end
+
+  defp translate(struct, locale) when locale !== "en" do
+    t_attributes = Map.new(struct.translations[locale], fn({k, v}) -> { String.to_atom(k), v } end)
+    Map.merge(struct, t_attributes)
+  end
+  defp translate(struct, locale), do: struct
 
 end
