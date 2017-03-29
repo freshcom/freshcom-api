@@ -12,7 +12,7 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       add :variable_weight, :boolean, null: false, default: false
 
       add :storage_type, :string
-      add :storage_size, :integer
+      add :storage_size, :integer, null: false, default: 0
       add :stackable, :boolean, null: false, default: false
 
       add :caption, :string

@@ -17,6 +17,12 @@ defmodule BlueJet.SkuView do
     :specification,
     :storage_description,
     :inserted_at,
-    :updated_at
+    :updated_at,
+    :locale
   ]
+
+  def locale(_sku, conn) do
+    conn.assigns[:locale]
+  end
+
 end

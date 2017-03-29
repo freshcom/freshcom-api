@@ -39,6 +39,16 @@ defmodule BlueJet.Web do
 
       import BlueJet.Router.Helpers
       import BlueJet.Gettext
+
+      import BlueJet.Controller.Helpers
+      # def paginate(query, %{ number: number, size: size }) do
+      #   limit = size
+      #   offset = size * (number - 1)
+
+      #   query
+      #   |> limit(^limit)
+      #   |> offset(^offset)
+      # end
     end
   end
 

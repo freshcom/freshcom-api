@@ -7,8 +7,19 @@ defmodule BlueJet.SkuController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn, _params) do
-    skus = Repo.all(Sku)
-    render(conn, "index.json-api", data: skus)
+    query = Sku
+            |> paginate(size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+    skus = Repo.all(query)
+
+    total_count = Repo.aggregate(Sku, :count, :id)
+    result_count = Repo.aggregate(Sku, :count, :id)
+
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    render(conn, "index.json-api", data: skus, opts: [meta: meta])
   end
 
   def create(conn, %{"data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
@@ -41,6 +52,7 @@ defmodule BlueJet.SkuController do
 
     case Repo.update(changeset) do
       {:ok, sku} ->
+        sku = translate(sku, conn.assigns[:locale])
         render(conn, "show.json-api", data: sku)
       {:error, changeset} ->
         conn
@@ -60,9 +72,9 @@ defmodule BlueJet.SkuController do
   end
 
   defp translate(struct, locale) when locale !== "en" do
-    t_attributes = Map.new(struct.translations[locale], fn({k, v}) -> { String.to_atom(k), v } end)
+    t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
     Map.merge(struct, t_attributes)
   end
-  defp translate(struct, locale), do: struct
+  defp translate(struct, _locale), do: struct
 
 end

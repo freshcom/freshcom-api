@@ -5,6 +5,7 @@ defmodule BlueJet.Router do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
     plug BlueJet.Plugs.Locale, "zh-CN"
+    plug BlueJet.Plugs.Pagination
     plug JaSerializer.ContentTypeNegotiation
     plug JaSerializer.Deserializer
   end
