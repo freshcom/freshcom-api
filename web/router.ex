@@ -4,7 +4,7 @@ defmodule BlueJet.Router do
   pipeline :api do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
-    plug BlueJet.Plugs.Locale, "zh-CN"
+    plug BlueJet.Plugs.Locale, "en"
     plug BlueJet.Plugs.Pagination
     plug JaSerializer.ContentTypeNegotiation
     plug JaSerializer.Deserializer

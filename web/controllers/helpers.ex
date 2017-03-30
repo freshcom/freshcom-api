@@ -9,4 +9,19 @@ defmodule BlueJet.Controller.Helpers do
     |> limit(^limit)
     |> offset(^offset)
   end
+
+  def search(model, column_name, keyword, locale) when keyword == nil or keyword == "" do
+    model
+  end
+
+  def search(model, column_name, keyword, locale) when locale == "en" do
+    keyword = "%#{keyword}%"
+    from m in model, where: ilike(field(m, ^column_name), ^keyword)
+  end
+
+  def search(model, column_name, keyword, locale) do
+    keyword = "%#{keyword}%"
+    column_name = Atom.to_string(column_name)
+    from m in model, where: ilike(fragment("?->?->>?", m.translations, ^locale, ^column_name), ^keyword)
+  end
 end
