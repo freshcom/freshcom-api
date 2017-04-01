@@ -25,6 +25,9 @@ defmodule BlueJet.Sku do
     field :translations, :map, default: %{}
 
     timestamps()
+
+    belongs_to :avatar, BlueJet.S3File
+    has_many :s3_file_sets, BlueJet.S3FileSet
   end
 
   def translatable_fields do

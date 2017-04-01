@@ -11,8 +11,6 @@ defmodule BlueJet.SkuController do
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(Sku, :count, :id)
 
-    IO.inspect conn.assigns[:page_size]
-    IO.inspect conn.assigns[:page_number]
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     skus = Repo.all(query)
 
@@ -43,8 +41,9 @@ defmodule BlueJet.SkuController do
   def show(conn, %{"id" => id}) do
     sku = Sku
           |> Repo.get!(id)
+          |> Repo.preload(:s3_file_sets)
           |> translate(conn.assigns[:locale])
-
+    IO.inspect sku
     render(conn, "show.json-api", data: sku)
   end
 

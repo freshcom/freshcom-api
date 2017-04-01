@@ -10,7 +10,7 @@ defmodule BlueJet.Controller.Helpers do
     |> offset(^offset)
   end
 
-  def search(model, column_name, keyword, locale) when keyword == nil or keyword == "" do
+  def search(model, _column_name, keyword, _locale) when keyword == nil or keyword == "" do
     model
   end
 

@@ -18,6 +18,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     ensure_started(Repo, [])
 
+    ########################
+    # 李锦记熊猫蚝油
+    ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
       "number" => "100504",
       "status" => "active",
@@ -38,7 +41,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     Repo.update!(changeset)
 
-
+    ########################
+    # 老干妈豆豉辣椒油
+    ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
       "number" => "100502",
       "status" => "active",
@@ -56,6 +61,29 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "老干妈豆豉辣椒油",
       "specification" => "每瓶280克。",
       "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
+    })
+    Repo.update!(changeset)
+
+    ########################
+    # 李锦记蒸鱼豉油
+    ########################
+    changeset = Sku.changeset(%Sku{}, "en", %{
+      "number" => "100503",
+      "status" => "active",
+      "name" => "Seasoned Soy Sauce",
+      "print_name" => "SEASONED SOY SAUCE",
+      "unit_of_measure" => "bottle",
+      "stackable" => false,
+      "storage_type" => "room",
+      "specification" => "410ml per bottle",
+      "storage_description" => "Store in room temperature, avoid direct sun light."
+    })
+    sku = Repo.insert!(changeset)
+
+    changeset = Sku.changeset(sku, "zh-CN", %{
+      "name" => "李锦记蒸鱼豉油",
+      "specification" => "每瓶410毫升。",
+      "storage_description" => "常温保存，避免爆嗮。"
     })
     Repo.update!(changeset)
 
