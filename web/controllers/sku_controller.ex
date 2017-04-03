@@ -13,13 +13,14 @@ defmodule BlueJet.SkuController do
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     skus = Repo.all(query)
+          |> Repo.preload(:s3_file_sets)
 
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: skus, opts: [meta: meta])
+    render(conn, "index.json-api", data: skus, opts: [meta: meta, fields: conn.query_params["fields"]])
   end
 
   def create(conn, %{"data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
@@ -47,7 +48,7 @@ defmodule BlueJet.SkuController do
     render(conn, "show.json-api", data: sku)
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
+  def update(conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     sku = Repo.get!(Sku, id)
     changeset = Sku.changeset(sku, conn.assigns[:locale], Params.to_attributes(data))
 
