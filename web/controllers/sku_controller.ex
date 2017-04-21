@@ -14,7 +14,7 @@ defmodule BlueJet.SkuController do
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     skus = Repo.all(query)
           |> Repo.preload(:s3_file_sets)
-
+          |> translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -72,6 +72,11 @@ defmodule BlueJet.SkuController do
 
     send_resp(conn, :no_content, "")
   end
+
+  defp translate_collection(collection, locale) when locale !== "en" do
+    Enum.map(collection, fn(item) -> translate(item, locale) end)
+  end
+  defp translate_collection(collection, locale), do: collection
 
   defp translate(struct, locale) when locale !== "en" do
     t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)

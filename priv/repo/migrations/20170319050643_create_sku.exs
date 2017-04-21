@@ -5,7 +5,7 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
     create table(:skus, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :avatar_id, references(:s3_files, type: :binary_id, on_delete: :nilify_all)
-      add :number, :string
+      add :code, :string
       add :status, :string, null: false
       add :name, :string, null: false
       add :print_name, :string, null: false
@@ -26,7 +26,7 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       timestamps()
     end
 
-    create unique_index(:skus, :number)
+    create unique_index(:skus, :code)
     create unique_index(:skus, :print_name)
     create index(:skus, :name)
     create index(:skus, :status)

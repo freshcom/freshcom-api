@@ -3,7 +3,7 @@ defmodule BlueJet.SkuView do
   use JaSerializer.PhoenixView
 
   attributes [
-    :number,
+    :code,
     :status,
     :name,
     :print_name,

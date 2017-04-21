@@ -22,7 +22,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 李锦记熊猫蚝油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
-      "number" => "100504",
+      "code" => "100504",
       "status" => "active",
       "name" => "Oyster Flavoured Sauce",
       "print_name" => "OYSTER FLAVOURED SAUCE",
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 老干妈豆豉辣椒油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
-      "number" => "100502",
+      "code" => "100502",
       "status" => "active",
       "name" => "Chili Oil with Black Bean",
       "print_name" => "CHILI OIL BLACK BEAN",
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 李锦记蒸鱼豉油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
-      "number" => "100503",
+      "code" => "100503",
       "status" => "active",
       "name" => "Seasoned Soy Sauce",
       "print_name" => "SEASONED SOY SAUCE",

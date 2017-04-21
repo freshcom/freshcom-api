@@ -6,7 +6,7 @@ defmodule BlueJet.Sku do
     translates: @translatable_fields
 
   schema "skus" do
-    field :number, :string
+    field :code, :string
     field :status, :string
     field :name, :string
     field :print_name, :string
@@ -39,7 +39,7 @@ defmodule BlueJet.Sku do
   """
   def changeset(struct, locale, params \\ %{}) do
     struct
-    |> cast(params, [:number, :status, :name, :print_name, :unit_of_measure,
+    |> cast(params, [:code, :status, :name, :print_name, :unit_of_measure,
                      :variable_weight, :stackable, :storage_type, :storage_size,
                      :caption, :description, :specification, :storage_description])
     |> validate_required([:status, :name, :print_name, :unit_of_measure])
