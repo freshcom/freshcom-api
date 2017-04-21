@@ -6,6 +6,10 @@ defmodule BlueJet.S3FileSetController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
+  def add_files do
+
+  end
+
   def index(conn, _params) do
     s3_file_sets = Repo.all(S3FileSet)
     render(conn, "index.json-api", data: s3_file_sets)
