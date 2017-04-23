@@ -1,10 +1,10 @@
-defmodule BlueJet.S3FileSet do
+defmodule BlueJet.ExternalFileCollection do
   use BlueJet.Web, :model
 
-  schema "s3_file_sets" do
+  schema "external_file_collections" do
     field :name, :string
     field :label, :string
-    field :s3_file_ids, {:array, :binary}
+    field :external_file_ids, {:array, :binary}
     field :translations, :map
 
     timestamps()

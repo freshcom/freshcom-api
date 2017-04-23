@@ -1,10 +1,10 @@
-defmodule BlueJet.S3FileSetView do
+defmodule BlueJet.ExternalFileSetView do
   use BlueJet.Web, :view
   use JaSerializer.PhoenixView
 
   attributes [:name, :label, :inserted_at, :updated_at]
 
-  def type(_s3_file_set, _conn) do
-    "S3FileSet"
+  def type(_external_file_collection, _conn) do
+    "ExternalFileCollection"
   end
 end

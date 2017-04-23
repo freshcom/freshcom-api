@@ -1,7 +1,7 @@
-defmodule BlueJet.S3File do
+defmodule BlueJet.ExternalFile do
   use BlueJet.Web, :model
 
-  schema "s3_files" do
+  schema "external_files" do
     field :name, :string
     field :status, :string, default: "pending"
     field :content_type, :string
@@ -29,7 +29,7 @@ defmodule BlueJet.S3File do
     id = struct.id
     name = struct.name
 
-    "#{prefix}/S3File/#{id}/#{name}"
+    "#{prefix}/ExternalFile/#{id}/#{name}"
   end
 
   def put_url(struct, opts \\ []) do

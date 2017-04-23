@@ -26,8 +26,8 @@ defmodule BlueJet.Sku do
 
     timestamps()
 
-    belongs_to :avatar, BlueJet.S3File
-    has_many :s3_file_sets, BlueJet.S3FileSet
+    belongs_to :avatar, BlueJet.ExternalFile
+    has_many :external_file_collection, BlueJet.ExternalFileCollection
   end
 
   def translatable_fields do

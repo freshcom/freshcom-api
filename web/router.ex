@@ -17,11 +17,11 @@ defmodule BlueJet.Router do
 
     resources "/products", ProductController, except: [:new, :edit]
     resources "/skus", SkuController, except: [:new, :edit]
-    resources "/s3_files", S3FileController, except: [:new, :edit]
+    resources "/external_files", ExternalFileController, except: [:new, :edit]
 
-    resources "/s3_file_sets", S3FileSetController, except: [:new, :edit] do
-      post "/relationships/files", S3FileSetController, :add_files
-      patch "/relationships/files", S3FileSetController, :replace_files
+    resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit] do
+      post "/relationships/files", ExternalFileCollectionController, :add_files
+      patch "/relationships/files", ExternalFileCollectionController, :replace_files
     end
   end
 end

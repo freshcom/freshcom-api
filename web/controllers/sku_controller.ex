@@ -13,7 +13,7 @@ defmodule BlueJet.SkuController do
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     skus = Repo.all(query)
-          |> Repo.preload(:s3_file_sets)
+          |> Repo.preload(:external_file_collection)
           |> translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
@@ -43,7 +43,7 @@ defmodule BlueJet.SkuController do
     sku = Sku
           |> Repo.get!(id)
           |> Repo.preload(:avatar)
-          |> Repo.preload(:s3_file_sets)
+          |> Repo.preload(:external_file_collection)
           |> translate(conn.assigns[:locale])
 
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])

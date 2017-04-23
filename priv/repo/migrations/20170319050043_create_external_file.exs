@@ -1,8 +1,8 @@
-defmodule BlueJet.Repo.Migrations.CreateS3File do
+defmodule BlueJet.Repo.Migrations.CreateExternalFile do
   use Ecto.Migration
 
   def change do
-    create table(:s3_files, primary_key: false) do
+    create table(:external_files, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :name, :string, null: false
       add :status, :string, null: false, default: "pending"
@@ -12,13 +12,13 @@ defmodule BlueJet.Repo.Migrations.CreateS3File do
       add :version_name, :string
       add :version_label, :string
       add :system_tag, :string
-      add :original_id, references(:s3_files, type: :binary_id, on_delete: :delete_all)
+      add :original_id, references(:external_files, type: :binary_id, on_delete: :delete_all)
 
       timestamps()
     end
 
-    create index(:s3_files, :status)
-    create index(:s3_files, :system_tag)
-    create index(:s3_files, :version_label)
+    create index(:external_files, :status)
+    create index(:external_files, :system_tag)
+    create index(:external_files, :version_label)
   end
 end
