@@ -41,7 +41,8 @@ defmodule BlueJet.Sku do
     struct
     |> cast(params, [:code, :status, :name, :print_name, :unit_of_measure,
                      :variable_weight, :stackable, :storage_type, :storage_size,
-                     :caption, :description, :specification, :storage_description])
+                     :caption, :description, :specification, :storage_description,
+                     :avatar_id])
     |> validate_required([:status, :name, :print_name, :unit_of_measure])
     |> set_translations(params, struct.translations, @translatable_fields, locale)
     |> translate_errors

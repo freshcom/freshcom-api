@@ -21,7 +21,8 @@ defmodule BlueJet.SkuView do
     :locale
   ]
 
-  has_many :s3_file_sets, serializer: BlueJet.S3FileSetView, include: false, identifiers: :always
+  has_one :avatar, serializer: BlueJet.S3FileView, identifiers: :when_included
+  has_many :s3_file_sets, serializer: BlueJet.S3FileSetView, identifiers: :when_included
 
   def locale(_sku, conn) do
     conn.assigns[:locale]

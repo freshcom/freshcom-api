@@ -10,7 +10,7 @@ defmodule BlueJet.S3File do
     field :version_name, :string
     field :system_tag, :string
     field :original_id, Ecto.UUID
-    field :presigned_url, :string, virtual: true
+    field :url, :string, virtual: true
 
     timestamps()
   end
@@ -32,17 +32,21 @@ defmodule BlueJet.S3File do
     "#{prefix}/S3File/#{id}/#{name}"
   end
 
-  def put_presigned_url(struct, opts \\ []) do
-    s3_key = key(struct)
-    config = ExAws.Config.new(:s3, %{ region: System.get_env("AWS_S3_REGION") })
+  def put_url(struct, opts \\ []) do
+    %{ struct | url: url(struct, opts) }
+  end
 
-    case struct.status do
-      "pending" -> method = :put
-      "uploaded" -> method = :get
+  def url(struct, opts \\ []) do
+    s3_key = key(struct)
+    config = ExAws.Config.new(:s3)
+
+    method = case struct.status do
+      "pending" -> :put
+      "uploaded" -> :get
     end
 
-    {:ok, presigned_url} = ExAws.S3.presigned_url(config, method, System.get_env("AWS_S3_BUCKET_NAME"), s3_key, opts)
+    {:ok, url} = ExAws.S3.presigned_url(config, method, System.get_env("AWS_S3_BUCKET_NAME"), s3_key, opts)
 
-    %{ struct | presigned_url: presigned_url }
+    url
   end
 end

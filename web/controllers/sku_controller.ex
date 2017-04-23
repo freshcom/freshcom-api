@@ -23,7 +23,7 @@ defmodule BlueJet.SkuController do
     render(conn, "index.json-api", data: skus, opts: [meta: meta, fields: conn.query_params["fields"]])
   end
 
-  def create(conn, %{"data" => data = %{"type" => "sku", "attributes" => _sku_params}}) do
+  def create(conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     changeset = Sku.changeset(%Sku{}, conn.assigns[:locale], Params.to_attributes(data))
 
     case Repo.insert(changeset) do
@@ -42,10 +42,11 @@ defmodule BlueJet.SkuController do
   def show(conn, %{"id" => id}) do
     sku = Sku
           |> Repo.get!(id)
+          |> Repo.preload(:avatar)
           |> Repo.preload(:s3_file_sets)
           |> translate(conn.assigns[:locale])
-    IO.inspect sku
-    render(conn, "show.json-api", data: sku)
+
+    render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
@@ -76,7 +77,7 @@ defmodule BlueJet.SkuController do
   defp translate_collection(collection, locale) when locale !== "en" do
     Enum.map(collection, fn(item) -> translate(item, locale) end)
   end
-  defp translate_collection(collection, locale), do: collection
+  defp translate_collection(collection, _locale), do: collection
 
   defp translate(struct, locale) when locale !== "en" do
     t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)

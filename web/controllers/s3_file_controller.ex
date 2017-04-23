@@ -16,8 +16,7 @@ defmodule BlueJet.S3FileController do
 
     case Repo.insert(changeset) do
       {:ok, s3_file} ->
-        IO.inspect s3_file
-        s3_file = S3File.put_presigned_url(s3_file)
+        s3_file = S3File.put_url(s3_file)
 
         conn
         |> put_status(:created)
@@ -41,7 +40,7 @@ defmodule BlueJet.S3FileController do
 
     case Repo.update(changeset) do
       {:ok, s3_file} ->
-        s3_file = S3File.put_presigned_url(s3_file)
+        s3_file = S3File.put_url(s3_file)
 
         render(conn, "show.json-api", data: s3_file)
       {:error, changeset} ->
