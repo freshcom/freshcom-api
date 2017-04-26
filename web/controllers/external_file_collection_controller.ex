@@ -11,11 +11,15 @@ defmodule BlueJet.ExternalFileCollectionController do
   end
 
   def index(conn, _params) do
-    external_file_collections = Repo.all(ExternalFileCollection)
+    query = Repo.all(ExternalFileCollection)
+    result_count = Repo.aggregate(query, :count, :id)
+    total_count = Repo.aggregate(ExternalFileCollection, :count, :id)
+
+    external_file_collections = query
     render(conn, "index.json-api", data: external_file_collections)
   end
 
-  def create(conn, %{"data" => data = %{"type" => "external_file_collection", "attributes" => _external_file_collection_params}}) do
+  def create(conn, %{"data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
     changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, Params.to_attributes(data))
 
     case Repo.insert(changeset) do
@@ -36,7 +40,7 @@ defmodule BlueJet.ExternalFileCollectionController do
     render(conn, "show.json-api", data: external_file_collection)
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "external_file_collection", "attributes" => _external_file_collection_params}}) do
+  def update(conn, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
     external_file_collection = Repo.get!(ExternalFileCollection, id)
     changeset = ExternalFileCollection.changeset(external_file_collection, Params.to_attributes(data))
 

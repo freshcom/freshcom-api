@@ -84,5 +84,4 @@ defmodule BlueJet.SkuController do
     Map.merge(struct, t_attributes)
   end
   defp translate(struct, _locale), do: struct
-
 end

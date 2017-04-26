@@ -6,9 +6,23 @@ defmodule BlueJet.ExternalFileController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    external_files = Repo.all(ExternalFile)
-    render(conn, "index.json-api", data: external_files)
+  def index(conn, params) do
+    query = ExternalFile |> search(:name, params["search"], conn.assigns[:locale])
+    result_count = Repo.aggregate(query, :count, :id)
+    total_count = Repo.aggregate(query, :count, :id)
+
+    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+    external_files = Repo.all(query)
+                    |> translate_collection(conn.assigns[:locale])
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    # TODO: underscore all query_params
+    # IO.inspect conn.assigns[:fields]
+    # fields = Macro.underscore(conn.query_params["fields"])
+    render(conn, "index.json-api", data: external_files, opts: [meta: meta])
   end
 
   def create(conn, %{"data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
@@ -60,4 +74,14 @@ defmodule BlueJet.ExternalFileController do
     send_resp(conn, :no_content, "")
   end
 
+  defp translate_collection(collection, locale) when locale !== "en" do
+    Enum.map(collection, fn(item) -> translate(item, locale) end)
+  end
+  defp translate_collection(collection, _locale), do: collection
+
+  defp translate(struct, locale) when locale !== "en" do
+    t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
+    Map.merge(struct, t_attributes)
+  end
+  defp translate(struct, _locale), do: struct
 end
