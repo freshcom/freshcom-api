@@ -67,9 +67,9 @@ defmodule BlueJet.ExternalFileController do
   def delete(conn, %{"id" => id}) do
     external_file = Repo.get!(ExternalFile, id)
 
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
-    Repo.delete!(external_file)
+    external_file
+    |> ExternalFile.delete_object
+    |> Repo.delete!
 
     send_resp(conn, :no_content, "")
   end

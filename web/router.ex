@@ -6,9 +6,9 @@ defmodule BlueJet.Router do
     plug BlueJet.Plugs.CORS
     plug BlueJet.Plugs.Locale, "en"
     plug BlueJet.Plugs.Pagination
+    plug BlueJet.Plugs.Fields
     plug JaSerializer.ContentTypeNegotiation
     plug JaSerializer.Deserializer
-    plug BlueJet.Plugs.Fields
   end
 
   scope "/", BlueJet do

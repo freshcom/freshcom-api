@@ -7,7 +7,7 @@ defmodule BlueJet.SkuController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn, params) do
-    query = Sku |> search(:name, params["search"], conn.assigns[:locale])
+    query = Sku |> search([:name, :id], params["search"], conn.assigns[:locale])
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(Sku, :count, :id)
 

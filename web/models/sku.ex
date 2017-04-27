@@ -1,9 +1,9 @@
 defmodule BlueJet.Sku do
-  @translatable_fields [:name, :caption, :description, :specification, :storage_description]
+  @translatable_columns [:name, :caption, :description, :specification, :storage_description]
 
   use BlueJet.Web, :model
   use Trans, defaults: [container: :translations],
-    translates: @translatable_fields
+    translates: @translatable_columns
 
   schema "skus" do
     field :code, :string
@@ -24,14 +24,16 @@ defmodule BlueJet.Sku do
 
     field :translations, :map, default: %{}
 
+    field :translatable_columns, {:array, :atom}, default: @translatable_columns, virtual: true
+
     timestamps()
 
     belongs_to :avatar, BlueJet.ExternalFile
     has_many :external_file_collection, BlueJet.ExternalFileCollection
   end
 
-  def translatable_fields do
-    @translatable_fields
+  def translatable_columns do
+    @translatable_columns
   end
 
   @doc """
@@ -44,22 +46,22 @@ defmodule BlueJet.Sku do
                      :caption, :description, :specification, :storage_description,
                      :avatar_id])
     |> validate_required([:status, :name, :print_name, :unit_of_measure])
-    |> set_translations(params, struct.translations, @translatable_fields, locale)
+    |> set_translations(params, struct.translations, @translatable_columns, locale)
     |> translate_errors
   end
 
-  def set_translations(changeset, params, old_translations, translatable_fields, locale) when locale !== "en" do
-    t_fields = Enum.map_every(translatable_fields, 1, fn(item) -> Atom.to_string(item) end)
+  def set_translations(changeset, params, old_translations, translatable_columns, locale) when locale !== "en" do
+    t_fields = Enum.map_every(translatable_columns, 1, fn(item) -> Atom.to_string(item) end)
     nl_translations = old_translations
                     |> Map.get(locale, %{})
                     |> Map.merge(Map.take(params, t_fields))
 
     new_translations = Map.merge(old_translations, %{ locale => nl_translations })
 
-    changeset = Enum.reduce(translatable_fields, changeset, fn(field_name, acc) -> Ecto.Changeset.delete_change(acc, field_name) end)
+    changeset = Enum.reduce(translatable_columns, changeset, fn(field_name, acc) -> Ecto.Changeset.delete_change(acc, field_name) end)
     Ecto.Changeset.put_change(changeset, :translations, new_translations)
   end
-  def set_translations(changeset, _params, _old_translations, _translatable_fields, _locale), do: changeset
+  def set_translations(changeset, _params, _old_translations, _translatable_columns, _locale), do: changeset
 
   def translate_errors(changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn { msg, opts } ->

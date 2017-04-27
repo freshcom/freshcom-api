@@ -10,18 +10,28 @@ defmodule BlueJet.Controller.Helpers do
     |> offset(^offset)
   end
 
-  def search(model, _column_name, keyword, _locale) when keyword == nil or keyword == "" do
+  def search(model, _columns, keyword, _locale) when keyword == nil or keyword == "" do
     model
   end
 
-  def search(model, column_name, keyword, locale) when locale == "en" do
+  def search(model, columns, keyword, locale) when locale == "en" do
     keyword = "%#{keyword}%"
-    from m in model, where: ilike(field(m, ^column_name), ^keyword)
+
+    Enum.reduce(columns, model, fn(column, query) ->
+      from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
+    end)
   end
 
-  def search(model, column_name, keyword, locale) do
+  def search(model, columns, keyword, locale) do
     keyword = "%#{keyword}%"
-    column_name = Atom.to_string(column_name)
-    from m in model, where: ilike(fragment("?->?->>?", m.translations, ^locale, ^column_name), ^keyword)
+
+    Enum.reduce(columns, model, fn(column, query) ->
+      if Enum.member?(model.translatable_columns, column) do
+        column = Atom.to_string(column)
+        from q in query, or_where: ilike(fragment("?->?->>?", q.translations, ^locale, ^column), ^keyword)
+      else
+        from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
+      end
+    end)
   end
 end
