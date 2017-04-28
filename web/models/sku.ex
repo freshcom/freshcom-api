@@ -29,7 +29,7 @@ defmodule BlueJet.Sku do
     timestamps()
 
     belongs_to :avatar, BlueJet.ExternalFile
-    has_many :external_file_collection, BlueJet.ExternalFileCollection
+    has_many :external_file_collections, BlueJet.ExternalFileCollection
   end
 
   def translatable_columns do

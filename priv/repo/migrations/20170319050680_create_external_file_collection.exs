@@ -7,7 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
       add :name, :string
       add :label, :string, null: false
       add :content_type, :string
-      add :external_file_ids, {:array, :binary_id}, null: false, default: []
+      add :file_ids, {:array, :binary_id}, null: false, default: []
       add :sku_id, references(:skus, type: :binary_id, on_delete: :delete_all)
 
       add :translations, :map

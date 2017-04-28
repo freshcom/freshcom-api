@@ -11,7 +11,7 @@ defmodule BlueJet.Router do
     plug JaSerializer.Deserializer
   end
 
-  scope "/", BlueJet do
+  scope "/v1/", BlueJet do
     pipe_through :api
 
     options "/*path", WelcomeController, :options

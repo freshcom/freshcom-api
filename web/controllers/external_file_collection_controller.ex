@@ -6,17 +6,20 @@ defmodule BlueJet.ExternalFileCollectionController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def add_files do
-
-  end
-
-  def index(conn, _params) do
-    query = Repo.all(ExternalFileCollection)
+  def index(conn, params) do
+    query = ExternalFileCollection |> search([:name, :label, :id], params["search"], conn.assigns[:locale])
     result_count = Repo.aggregate(query, :count, :id)
-    total_count = Repo.aggregate(ExternalFileCollection, :count, :id)
+    total_count = Repo.aggregate(query, :count, :id)
 
-    external_file_collections = query
-    render(conn, "index.json-api", data: external_file_collections)
+    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+    external_file_collections = Repo.all(query)
+                    |> translate_collection(conn.assigns[:locale])
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    render(conn, "index.json-api", data: external_file_collections, opts: [meta: meta])
   end
 
   def create(conn, %{"data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
@@ -36,8 +39,12 @@ defmodule BlueJet.ExternalFileCollectionController do
   end
 
   def show(conn, %{"id" => id}) do
-    external_file_collection = Repo.get!(ExternalFileCollection, id)
-    render(conn, "show.json-api", data: external_file_collection)
+    extrenal_file_collection = ExternalFileCollection
+          |> Repo.get!(id)
+          |> translate(conn.assigns[:locale])
+          |> ExternalFileCollection.put_files
+
+    render(conn, "show.json-api", data: extrenal_file_collection, opts: [include: conn.query_params["include"]])
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do

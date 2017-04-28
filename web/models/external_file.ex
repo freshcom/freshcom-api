@@ -42,7 +42,7 @@ defmodule BlueJet.ExternalFile do
 
     method = case struct.status do
       "pending" -> :put
-      "uploaded" -> :get
+      _ -> :get
     end
 
     {:ok, url} = ExAws.S3.presigned_url(config, method, System.get_env("AWS_S3_BUCKET_NAME"), s3_key, opts)

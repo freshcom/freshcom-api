@@ -37,7 +37,7 @@ defmodule BlueJet.Mixfile do
       {:postgrex, ">= 0.0.0"},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
-      {:ja_serializer, "~> 0.12.0"},
+      {:ja_serializer, github: "rbao/ja_serializer", branch: "master", },
       {:inflex, "~> 1.7.0"},
       {:faker, "~> 0.7"},
       {:trans, "~> 1.1"},
