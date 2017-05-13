@@ -16,3 +16,4 @@ erl_crash.dump
 /config/prod.secret.exs
 
 /.env
+/keys

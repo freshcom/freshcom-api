@@ -15,3 +15,5 @@ config :blue_jet, BlueJet.Repo,
   database: "blue_jet_test",
   hostname: "localhost",
   pool: Ecto.Adapters.SQL.Sandbox
+
+config :comeonin, :bcrypt_log_rounds, 4

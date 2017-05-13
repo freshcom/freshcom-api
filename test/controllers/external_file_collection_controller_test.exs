@@ -1,7 +1,7 @@
-defmodule BlueJet.S3FileSetControllerTest do
+defmodule BlueJet.ExternalFileCollectionControllerTest do
   use BlueJet.ConnCase
 
-  alias BlueJet.S3FileSet
+  alias BlueJet.ExternalFileCollection
   alias BlueJet.Repo
 
   @valid_attrs %{label: "some content", name: "some content", translations: %{}}
@@ -14,52 +14,52 @@ defmodule BlueJet.S3FileSetControllerTest do
 
     {:ok, conn: conn}
   end
-  
+
   defp relationships do
     %{}
   end
 
   test "lists all entries on index", %{conn: conn} do
-    conn = get conn, s3_file_set_path(conn, :index)
+    conn = get conn, external_file_collection_path(conn, :index)
     assert json_response(conn, 200)["data"] == []
   end
 
   test "shows chosen resource", %{conn: conn} do
-    s3_file_set = Repo.insert! %S3FileSet{}
-    conn = get conn, s3_file_set_path(conn, :show, s3_file_set)
+    external_file_collection = Repo.insert! %ExternalFileCollection{}
+    conn = get conn, external_file_collection_path(conn, :show, external_file_collection)
     data = json_response(conn, 200)["data"]
-    assert data["id"] == "#{s3_file_set.id}"
-    assert data["type"] == "s3_file_set"
-    assert data["attributes"]["name"] == s3_file_set.name
-    assert data["attributes"]["label"] == s3_file_set.label
-    assert data["attributes"]["translations"] == s3_file_set.translations
+    assert data["id"] == "#{external_file_collection.id}"
+    assert data["type"] == "external_file_collection"
+    assert data["attributes"]["name"] == external_file_collection.name
+    assert data["attributes"]["label"] == external_file_collection.label
+    assert data["attributes"]["translations"] == external_file_collection.translations
   end
 
   test "does not show resource and instead throw error when id is nonexistent", %{conn: conn} do
     assert_error_sent 404, fn ->
-      get conn, s3_file_set_path(conn, :show, "11111111-1111-1111-1111-111111111111")
+      get conn, external_file_collection_path(conn, :show, "11111111-1111-1111-1111-111111111111")
     end
   end
 
   test "creates and renders resource when data is valid", %{conn: conn} do
-    conn = post conn, s3_file_set_path(conn, :create), %{
+    conn = post conn, external_file_collection_path(conn, :create), %{
       "meta" => %{},
       "data" => %{
-        "type" => "s3_file_set",
+        "type" => "external_file_collection",
         "attributes" => @valid_attrs,
         "relationships" => relationships
       }
     }
 
     assert json_response(conn, 201)["data"]["id"]
-    assert Repo.get_by(S3FileSet, @valid_attrs)
+    assert Repo.get_by(ExternalFileCollection, @valid_attrs)
   end
 
   test "does not create resource and renders errors when data is invalid", %{conn: conn} do
-    conn = post conn, s3_file_set_path(conn, :create), %{
+    conn = post conn, external_file_collection_path(conn, :create), %{
       "meta" => %{},
       "data" => %{
-        "type" => "s3_file_set",
+        "type" => "external_file_collection",
         "attributes" => @invalid_attrs,
         "relationships" => relationships
       }
@@ -69,28 +69,28 @@ defmodule BlueJet.S3FileSetControllerTest do
   end
 
   test "updates and renders chosen resource when data is valid", %{conn: conn} do
-    s3_file_set = Repo.insert! %S3FileSet{}
-    conn = put conn, s3_file_set_path(conn, :update, s3_file_set), %{
+    external_file_collection = Repo.insert! %ExternalFileCollection{}
+    conn = put conn, external_file_collection_path(conn, :update, external_file_collection), %{
       "meta" => %{},
       "data" => %{
-        "type" => "s3_file_set",
-        "id" => s3_file_set.id,
+        "type" => "external_file_collection",
+        "id" => external_file_collection.id,
         "attributes" => @valid_attrs,
         "relationships" => relationships
       }
     }
 
     assert json_response(conn, 200)["data"]["id"]
-    assert Repo.get_by(S3FileSet, @valid_attrs)
+    assert Repo.get_by(ExternalFileCollection, @valid_attrs)
   end
 
   test "does not update chosen resource and renders errors when data is invalid", %{conn: conn} do
-    s3_file_set = Repo.insert! %S3FileSet{}
-    conn = put conn, s3_file_set_path(conn, :update, s3_file_set), %{
+    external_file_collection = Repo.insert! %ExternalFileCollection{}
+    conn = put conn, external_file_collection_path(conn, :update, external_file_collection), %{
       "meta" => %{},
       "data" => %{
-        "type" => "s3_file_set",
-        "id" => s3_file_set.id,
+        "type" => "external_file_collection",
+        "id" => external_file_collection.id,
         "attributes" => @invalid_attrs,
         "relationships" => relationships
       }
@@ -100,10 +100,10 @@ defmodule BlueJet.S3FileSetControllerTest do
   end
 
   test "deletes chosen resource", %{conn: conn} do
-    s3_file_set = Repo.insert! %S3FileSet{}
-    conn = delete conn, s3_file_set_path(conn, :delete, s3_file_set)
+    external_file_collection = Repo.insert! %ExternalFileCollection{}
+    conn = delete conn, external_file_collection_path(conn, :delete, external_file_collection)
     assert response(conn, 204)
-    refute Repo.get(S3FileSet, s3_file_set.id)
+    refute Repo.get(ExternalFileCollection, external_file_collection.id)
   end
 
 end

@@ -35,6 +35,46 @@ defmodule BlueJet.Controller.Helpers do
     end)
   end
 
+  def extract_errors(%Ecto.Changeset{ valid?: false, errors: errors }) do
+    Enum.reduce(errors, [], fn({ field, { msg, opts } }, acc) ->
+      msg = Enum.reduce(opts, msg, fn({ key, value }, acc) ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+
+      {code, meta} = Keyword.pop(opts, :validation)
+      error = %{ source: pointer_for(field), code: code || :taken, title: "#{humanize(field)} #{msg}" }
+
+      error =
+        case Enum.empty?(meta) do
+          true -> error
+          _ -> Map.put(error, :meta, Enum.into(meta, %{}))
+        end
+
+      acc ++ [error]
+    end)
+  end
+  def extract_errors(changeset), do: changeset
+
+  def humanize(atom) when is_atom(atom), do: humanize(Atom.to_string(atom))
+  def humanize(bin) when is_binary(bin) do
+    bin =
+      if String.ends_with?(bin, "_id") do
+        binary_part(bin, 0, byte_size(bin) - 3)
+      else
+        bin
+      end
+
+    bin |> String.replace("_", " ") |> String.capitalize
+  end
+
+
+  def pointer_for(field) do
+    case Regex.run(~r/(.*)_id$/, to_string(field)) do
+      nil      -> "/data/attributes/#{Inflex.camelize(field, :lower)}"
+      [_, rel] -> "/data/relationships/#{Inflex.camelize(rel, :lower)}"
+    end
+  end
+
   def translate_collection(collection, locale) when locale !== "en" do
     Enum.map(collection, fn(item) -> translate(item, locale) end)
   end

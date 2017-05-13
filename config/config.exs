@@ -33,6 +33,9 @@ config :mime, :types, %{
   "application/vnd.api+json" => ["json-api"]
 }
 
+config :blue_jet, BlueJet.Gettext,
+  default_locale: "en"
+
 defmodule JaKeyFormatter do
   def camelize(key) do
     Inflex.camelize(key, :lower)

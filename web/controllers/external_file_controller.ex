@@ -20,7 +20,7 @@ defmodule BlueJet.ExternalFileController do
     }
 
     # TODO: underscore all query_params
-    IO.inspect conn.assigns[:fields]
+    # IO.inspect conn.assigns[:fields]
     # fields = Macro.underscore(conn.query_params["fields"])
     render(conn, "index.json-api", data: external_files, opts: [meta: meta, fields: %{ "ExternalFile" => "name,content_type"}])
   end

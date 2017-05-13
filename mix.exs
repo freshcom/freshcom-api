@@ -19,7 +19,8 @@ defmodule BlueJet.Mixfile do
   def application do
     [mod: {BlueJet, []},
      applications: [:phoenix, :phoenix_pubsub, :cowboy, :logger, :gettext,
-                    :phoenix_ecto, :postgrex, :trans, :ex_aws, :hackney, :sweet_xml]]
+                    :phoenix_ecto, :postgrex, :trans, :ex_aws, :hackney, :sweet_xml,
+                    :comeonin, :faker, :jose]]
   end
 
   # Specifies which paths to compile per environment.
@@ -43,7 +44,9 @@ defmodule BlueJet.Mixfile do
       {:trans, "~> 1.1"},
       {:ex_aws, "~> 1.0"},
       {:hackney, "~> 1.6"},
-      {:sweet_xml, "~> 0.6"}
+      {:sweet_xml, "~> 0.6"},
+      {:comeonin, "~> 3.0"},
+      {:jose, "~> 1.8.3"}
     ]
   end
 

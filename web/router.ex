@@ -16,9 +16,13 @@ defmodule BlueJet.Router do
 
     options "/*path", WelcomeController, :options
 
+    resources "/accounts", AccountController, except: [:new, :edit]
+    resources "/members", AccountMemberController, except: [:new, :edit]
+    resources "/users", UserController, except: [:new, :edit]
     resources "/products", ProductController, except: [:new, :edit]
     resources "/skus", SkuController, except: [:new, :edit]
     resources "/external_files", ExternalFileController, except: [:new, :edit]
+    resources "/jwts", JwtController, only: [:create]
 
     resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit] do
       post "/relationships/files", ExternalFileCollectionController, :add_files

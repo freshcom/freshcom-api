@@ -18,6 +18,11 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     ensure_started(Repo, [])
 
+    BlueJet.Registration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
+
+    # changeset = BlueJet.User.changeset_for_create(%BlueJet.User{}, %{ "first_name" => "Roy", "last_name" => "Bao", "password" => "test1234", "email" => "test1@example.com" })
+    # Repo.insert!(changeset)
+
     ########################
     # 李锦记熊猫蚝油
     ########################

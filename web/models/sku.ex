@@ -45,9 +45,9 @@ defmodule BlueJet.Sku do
                      :variable_weight, :stackable, :storage_type, :storage_size,
                      :caption, :description, :specification, :storage_description,
                      :avatar_id])
+    |> validate_length(:print_name, min: 8)
     |> validate_required([:status, :name, :print_name, :unit_of_measure])
     |> set_translations(params, struct.translations, @translatable_columns, locale)
-    |> translate_errors
   end
 
   def set_translations(changeset, params, old_translations, translatable_columns, locale) when locale !== "en" do
@@ -62,15 +62,4 @@ defmodule BlueJet.Sku do
     Ecto.Changeset.put_change(changeset, :translations, new_translations)
   end
   def set_translations(changeset, _params, _old_translations, _translatable_columns, _locale), do: changeset
-
-  def translate_errors(changeset) do
-    errors = Ecto.Changeset.traverse_errors(changeset, fn { msg, opts } ->
-      msg = Gettext.dgettext(BlueJet.Gettext, "errors", msg, opts)
-      Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
-      end)
-    end)
-
-    %{ changeset | errors: errors }
-  end
 end
