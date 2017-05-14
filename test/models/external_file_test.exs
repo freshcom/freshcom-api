@@ -3,16 +3,24 @@ defmodule BlueJet.ExternalFileTest do
 
   alias BlueJet.ExternalFile
 
-  @valid_attrs %{content_type: "some content", name: "some content", original_id: "7488a646-e31f-11e4-aace-600308960662", public_readable: true, size_bytes: 42, status: "some content", system_tag: "some content", version_name: "some content"}
+  @valid_attrs %{
+    name: Faker.Lorem.word(),
+    status: "pending",
+    content_type: "image/png",
+    size_bytes: 42
+  }
   @invalid_attrs %{}
 
-  test "changeset with valid attributes" do
-    changeset = ExternalFile.changeset(%ExternalFile{}, @valid_attrs)
-    assert changeset.valid?
+  describe "changeset/1" do
+    test "with valid attributes" do
+      changeset = ExternalFile.changeset(%ExternalFile{}, @valid_attrs)
+      assert changeset.valid?
+    end
+
+    test "with invalid attributes" do
+      changeset = ExternalFile.changeset(%ExternalFile{}, @invalid_attrs)
+      refute changeset.valid?
+    end
   end
 
-  test "changeset with invalid attributes" do
-    changeset = ExternalFile.changeset(%ExternalFile{}, @invalid_attrs)
-    refute changeset.valid?
-  end
 end

@@ -1,6 +1,7 @@
 defmodule BlueJet.JwtControllerTest do
   use BlueJet.ConnCase
 
+  alias BlueJet.Registration
   alias BlueJet.Jwt
   alias BlueJet.Repo
 
@@ -15,96 +16,45 @@ defmodule BlueJet.JwtControllerTest do
     {:ok, conn: conn}
   end
 
-  defp relationships do
-    %{}
-  end
+  describe "POST /jwts" do
+    test "with valid attrs", %{conn: conn} do
+      valid_attrs = %{ "email" => "test1@example.com", "password" => "test1234" }
+      Registration.sign_up(%{
+        first_name: Faker.Name.first_name,
+        last_name: Faker.Name.last_name,
+        email: Map.get(valid_attrs, "email"),
+        password: Map.get(valid_attrs, "password"),
+        account_name: "Outersky"
+      })
 
-  test "lists all entries on index", %{conn: conn} do
-    conn = get conn, jwt_path(conn, :index)
-    assert json_response(conn, 200)["data"] == []
-  end
+      conn = post(conn, jwt_path(conn, :create), %{
+        "data" => %{
+          "type" => "Jwt",
+          "attributes" => valid_attrs
+        }
+      })
 
-  test "shows chosen resource", %{conn: conn} do
-    jwt = Repo.insert! %Jwt{}
-    conn = get conn, jwt_path(conn, :show, jwt)
-    data = json_response(conn, 200)["data"]
-    assert data["id"] == "#{jwt.id}"
-    assert data["type"] == "jwt"
-    assert data["attributes"]["value"] == jwt.value
-    assert data["attributes"]["name"] == jwt.name
-    assert data["attributes"]["system_tag"] == jwt.system_tag
-  end
+      assert json_response(conn, 201)["data"]["id"]
+    end
 
-  test "does not show resource and instead throw error when id is nonexistent", %{conn: conn} do
-    assert_error_sent 404, fn ->
-      get conn, jwt_path(conn, :show, "11111111-1111-1111-1111-111111111111")
+    test "with invalid attrs", %{conn: conn} do
+      valid_attrs = %{ email: "test1@example.com", password: "test1234" }
+      Registration.sign_up(%{
+        first_name: Faker.Name.first_name,
+        last_name: Faker.Name.last_name,
+        email: "test1@example.com",
+        password: "test1234",
+        account_name: "Outersky"
+      })
+
+      conn = post(conn, jwt_path(conn, :create), %{
+        "data" => %{
+          "type" => "Jwt",
+          "attributes" => %{ "email" => "invalid", "password" => "invalid" }
+        }
+      })
+
+      assert length(json_response(conn, 422)["errors"]) > 0
     end
   end
-
-  @tag :focus
-  test "creates and renders resource when data is valid", %{conn: conn} do
-    conn = post conn, jwt_path(conn, :create), %{
-      "meta" => %{},
-      "data" => %{
-        "type" => "jwt",
-        "attributes" => @valid_attrs,
-        "relationships" => relationships
-      }
-    }
-
-    assert json_response(conn, 201)["data"]["id"]
-    assert Repo.get_by(Jwt, @valid_attrs)
-  end
-
-  test "does not create resource and renders errors when data is invalid", %{conn: conn} do
-    conn = post conn, jwt_path(conn, :create), %{
-      "meta" => %{},
-      "data" => %{
-        "type" => "jwt",
-        "attributes" => @invalid_attrs,
-        "relationships" => relationships
-      }
-    }
-
-    assert json_response(conn, 422)["errors"] != %{}
-  end
-
-  test "updates and renders chosen resource when data is valid", %{conn: conn} do
-    jwt = Repo.insert! %Jwt{}
-    conn = put conn, jwt_path(conn, :update, jwt), %{
-      "meta" => %{},
-      "data" => %{
-        "type" => "jwt",
-        "id" => jwt.id,
-        "attributes" => @valid_attrs,
-        "relationships" => relationships
-      }
-    }
-
-    assert json_response(conn, 200)["data"]["id"]
-    assert Repo.get_by(Jwt, @valid_attrs)
-  end
-
-  test "does not update chosen resource and renders errors when data is invalid", %{conn: conn} do
-    jwt = Repo.insert! %Jwt{}
-    conn = put conn, jwt_path(conn, :update, jwt), %{
-      "meta" => %{},
-      "data" => %{
-        "type" => "jwt",
-        "id" => jwt.id,
-        "attributes" => @invalid_attrs,
-        "relationships" => relationships
-      }
-    }
-
-    assert json_response(conn, 422)["errors"] != %{}
-  end
-
-  test "deletes chosen resource", %{conn: conn} do
-    jwt = Repo.insert! %Jwt{}
-    conn = delete conn, jwt_path(conn, :delete, jwt)
-    assert response(conn, 204)
-    refute Repo.get(Jwt, jwt.id)
-  end
-
 end

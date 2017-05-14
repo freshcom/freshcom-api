@@ -23,16 +23,20 @@ defmodule BlueJet.JwtTest do
     end
   end
 
-  test "sign_token" do
-    signed_token = Jwt.sign_token(%{ jti: Ecto.UUID.generate() })
+  describe "sign_token/1" do
+    test "with valid claims" do
+      signed_token = Jwt.sign_token(%{ jti: Ecto.UUID.generate() })
 
-    assert signed_token
+      assert signed_token
+    end
   end
 
-  test "verify_token" do
-    signed_token = Jwt.sign_token(%{ jti: Ecto.UUID.generate() })
-    verified_token = Jwt.verify_token(signed_token)
+  describe "verify_token/1" do
+    test "with valid signed token" do
+      signed_token = Jwt.sign_token(%{ jti: Ecto.UUID.generate() })
+      verified_token = Jwt.verify_token(signed_token)
 
-    assert verified_token
+      assert verified_token
+    end
   end
 end

@@ -5,6 +5,8 @@ defmodule BlueJet.Sku do
   use Trans, defaults: [container: :translations],
     translates: @translatable_columns
 
+  alias BlueJet.Account
+
   schema "skus" do
     field :code, :string
     field :status, :string
@@ -29,6 +31,7 @@ defmodule BlueJet.Sku do
     timestamps()
 
     belongs_to :avatar, BlueJet.ExternalFile
+    belongs_to :account, Account
     has_many :external_file_collections, BlueJet.ExternalFileCollection
   end
 

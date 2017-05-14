@@ -4,9 +4,20 @@ defmodule BlueJet.AuthenticationTest do
   alias BlueJet.Authentication
   alias BlueJet.Registration
 
+  setup do
+    {_, user} = Registration.sign_up(%{
+      first_name: Faker.Name.first_name(),
+      last_name: Faker.Name.last_name(),
+      email: "test1@example.com",
+      password: "test1234",
+      account_name: Faker.Company.name()
+    })
+
+    %{ user: user }
+  end
+
   describe "get_jwt/1" do
     test "with valid credentials" do
-      Registration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
       {:ok, jwt} = Authentication.get_jwt(%{ email: "test1@example.com", password: "test1234" })
 
       assert jwt.value
@@ -17,7 +28,7 @@ defmodule BlueJet.AuthenticationTest do
     end
 
     test "with invalid credentials" do
-      {:error, _} = Authentication.get_jwt(%{ email: "test1@example.com", password: "test1234" })
+      {:error, _} = Authentication.get_jwt(%{ email: "invalid", password: "invalid" })
     end
   end
 end

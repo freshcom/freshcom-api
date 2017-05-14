@@ -3,16 +3,18 @@ defmodule BlueJet.ExternalFileCollectionTest do
 
   alias BlueJet.ExternalFileCollection
 
-  @valid_attrs %{label: "some content", name: "some content", translations: %{}}
+  @valid_attrs %{ label: Faker.Lorem.word(), name: Faker.Lorem.word() }
   @invalid_attrs %{}
 
-  test "changeset with valid attributes" do
-    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_attrs)
-    assert changeset.valid?
-  end
+  describe "changeset/1" do
+    test "with valid attributes" do
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_attrs)
+      assert changeset.valid?
+    end
 
-  test "changeset with invalid attributes" do
-    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_attrs)
-    refute changeset.valid?
+    test "with invalid attributes" do
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_attrs)
+      refute changeset.valid?
+    end
   end
 end

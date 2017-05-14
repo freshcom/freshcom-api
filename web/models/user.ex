@@ -15,31 +15,13 @@ defmodule BlueJet.User do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: :built } }, params) do
+  def changeset(struct, params) do
     struct
     |> cast(params, [:email, :password, :first_name, :last_name])
     |> validate_required([:email, :password, :first_name, :last_name])
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> unique_constraint(:email)
-    |> put_encrypted_password
-  end
-  def changeset(struct = %{ __meta__: %{ state: :loaded } }, params) do
-    struct
-    |> cast(params, [:email, :password, :first_name, :last_name])
-    |> validate_length(:password, min: 8)
-    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-    |> unique_constraint(:email)
-    |> put_encrypted_password
-  end
-
-
-  def changeset_for_create(struct, params \\ %{}) do
-    struct
-    |> cast(params, [:email, :password, :first_name, :last_name])
-    |> validate_required([:email, :password, :first_name, :last_name])
-    |> validate_length(:password, min: 8)
-    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> put_encrypted_password
   end
 

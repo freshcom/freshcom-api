@@ -4,7 +4,12 @@ defmodule BlueJet.ExternalFileControllerTest do
   alias BlueJet.ExternalFile
   alias BlueJet.Repo
 
-  @valid_attrs %{content_type: "some content", name: "some content", original_id: "7488a646-e31f-11e4-aace-600308960662", public_readable: true, size_bytes: 42, status: "some content", system_tag: "some content", version_name: "some content"}
+  @valid_attrs %{
+    name: Faker.Lorem.word(),
+    status: "pending",
+    content_type: "image/png",
+    size_bytes: 42
+  }
   @invalid_attrs %{}
 
   setup do
@@ -15,34 +20,34 @@ defmodule BlueJet.ExternalFileControllerTest do
     {:ok, conn: conn}
   end
 
-  defp relationships do
-    %{}
+  describe "GET /external_files" do
+    test "with existing external files", %{conn: conn} do
+      Repo.insert!(ExternalFile.changeset(%ExternalFile{}, @valid_attrs))
+
+      conn = get(conn, external_file_path(conn, :index))
+      assert length(json_response(conn, 200)["data"]) == 1
+    end
   end
 
-  test "lists all entries on index", %{conn: conn} do
-    conn = get conn, external_file_path(conn, :index)
-    assert json_response(conn, 200)["data"] == []
-  end
+  describe "GET /external_files/:id" do
+    test "with valid id", %{conn: conn} do
+      external_file = Repo.insert!(ExternalFile.changeset(%ExternalFile{}, @valid_attrs))
+      conn = get(conn, external_file_path(conn, :show, external_file))
 
-  test "shows chosen resource", %{conn: conn} do
-    external_file = Repo.insert! %ExternalFile{}
-    conn = get conn, external_file_path(conn, :show, external_file)
-    data = json_response(conn, 200)["data"]
-    assert data["id"] == "#{external_file.id}"
-    assert data["type"] == "external_file"
-    assert data["attributes"]["name"] == external_file.name
-    assert data["attributes"]["status"] == external_file.status
-    assert data["attributes"]["content_type"] == external_file.content_type
-    assert data["attributes"]["size_bytes"] == external_file.size_bytes
-    assert data["attributes"]["public_readable"] == external_file.public_readable
-    assert data["attributes"]["version_name"] == external_file.version_name
-    assert data["attributes"]["system_tag"] == external_file.system_tag
-    assert data["attributes"]["original_id"] == external_file.original_id
-  end
+      data = json_response(conn, 200)["data"]
+      assert data["id"] == "#{external_file.id}"
+      assert data["type"] == "ExternalFile"
+      assert data["attributes"]["name"] == external_file.name
+      assert data["attributes"]["status"] == external_file.status
+      assert data["attributes"]["contentType"] == external_file.content_type
+      assert data["attributes"]["sizeBytes"] == external_file.size_bytes
+      assert data["attributes"]["publicReadable"] == external_file.public_readable
+    end
 
-  test "does not show resource and instead throw error when id is nonexistent", %{conn: conn} do
-    assert_error_sent 404, fn ->
-      get conn, external_file_path(conn, :show, "11111111-1111-1111-1111-111111111111")
+    test "with invalid id", %{conn: conn} do
+      assert_error_sent(404, fn ->
+        get conn, external_file_path(conn, :show, "11111111-1111-1111-1111-111111111111")
+      end)
     end
   end
 

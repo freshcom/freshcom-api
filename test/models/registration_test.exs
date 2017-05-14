@@ -4,11 +4,11 @@ defmodule BlueJet.RegistrationTest do
   alias BlueJet.Registration
 
   @valid_attrs %{
-    first_name: Faker.Name.first_name,
-    last_name: Faker.Name.last_name,
+    first_name: Faker.Name.first_name(),
+    last_name: Faker.Name.last_name(),
     password: "test1234",
-    email: "test1@example.com",
-    account_name: "Outersky"
+    email: Faker.Internet.safe_email(),
+    account_name: Faker.Company.name()
   }
   describe "sign_up/1" do
     test "with valid params" do
