@@ -1,10 +1,8 @@
-defmodule BlueJet.JwtView do
+defmodule BlueJet.RefreshTokenView do
   use BlueJet.Web, :view
   use JaSerializer.PhoenixView
 
-  attributes [:value, :name]
-
   def type do
-    "Jwt"
+    "RefreshToken"
   end
 end

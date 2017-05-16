@@ -6,11 +6,17 @@ defmodule BlueJet.UserTest do
 
   describe "User.changeset/1" do
     test "with valid attributes" do
-      attrs = %{ email: Faker.Internet.safe_email(), password: "test1234", first_name: Faker.Name.first_name(), last_name: Faker.Name.last_name() }
+      attrs = %{
+        email: Faker.Internet.safe_email(),
+        password: "test1234",
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        default_account_id: Ecto.UUID.generate()
+      }
       changeset = User.changeset(%User{}, attrs)
 
-      assert changeset.changes.encrypted_password
       assert changeset.valid?
+      assert changeset.changes.encrypted_password
       assert Comeonin.Bcrypt.checkpw("test1234", changeset.changes.encrypted_password)
     end
 

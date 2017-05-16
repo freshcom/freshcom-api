@@ -3,7 +3,7 @@ defmodule BlueJet.Registration do
   alias BlueJet.User
   alias BlueJet.Account
   alias BlueJet.AccountMembership
-  alias BlueJet.Jwt
+  alias BlueJet.RefreshToken
 
   use BlueJet.Web, :model
 
@@ -26,10 +26,10 @@ defmodule BlueJet.Registration do
 
   def sign_up(%Ecto.Changeset{ changes: params }) do
     Repo.transaction(fn ->
-      with {:ok, user} <- User.changeset(%User{}, params) |> Repo.insert,
-           {:ok, account} <- Account.changeset(%Account{}, %{ name: Map.get(params, :account_name) }) |> Repo.insert,
-           {:ok, _jwt} <- Jwt.changeset(%Jwt{}, %{ user_id: user.id, account_id: account.id, system_tag: "default", name: "Default" }) |> Repo.insert,
-           {:ok, _jwt} <- Jwt.changeset(%Jwt{}, %{ account_id: account.id, system_tag: "public", name: "Public" }) |> Repo.insert,
+      with {:ok, account} <- Account.changeset(%Account{}, %{ name: Map.get(params, :account_name) }) |> Repo.insert,
+           {:ok, user} <- User.changeset(%User{}, Map.put(params, :default_account_id, account.id)) |> Repo.insert,
+           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ user_id: user.id, account_id: account.id }) |> Repo.insert,
+           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id }) |> Repo.insert,
            {:ok, _membership} <- AccountMembership.changeset(%AccountMembership{}, %{ role: "admin", account_id: account.id, user_id: user.id }) |> Repo.insert
       do
         user

@@ -8,6 +8,7 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       add :encrypted_password, :string
       add :first_name, :string
       add :last_name, :string
+      add :default_account_id, references(:accounts, type: :binary_id)
 
       timestamps()
     end

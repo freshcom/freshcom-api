@@ -1,18 +1,19 @@
-defmodule BlueJet.JwtController do
+defmodule BlueJet.RefreshTokenController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.Jwt
+  alias BlueJet.RefreshToken
   alias JaSerializer.Params
 
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn, _params) do
-    jwts = Repo.all(Jwt)
+    jwts = Repo.all(RefreshToken)
     render(conn, "index.json-api", data: jwts)
   end
 
-  def create(conn, %{"data" => data = %{"type" => "Jwt", "attributes" => _jwt_params}}) do
-    with {:ok, jwt} <- BlueJet.Authentication.get_jwt(Params.to_attributes(data)) do
+  def create(conn, params) do
+    # IO.inspect params
+    with {:ok, jwt} <- BlueJet.Authentication.get_token(params) do
       conn
       |> put_status(:created)
       |> render("show.json-api", data: jwt)
@@ -25,13 +26,13 @@ defmodule BlueJet.JwtController do
   end
 
   def show(conn, %{"id" => id}) do
-    jwt = Repo.get!(Jwt, id)
+    jwt = Repo.get!(RefreshToken, id)
     render(conn, "show.json-api", data: jwt)
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "jwt", "attributes" => _jwt_params}}) do
-    jwt = Repo.get!(Jwt, id)
-    changeset = Jwt.changeset(jwt, Params.to_attributes(data))
+    jwt = Repo.get!(RefreshToken, id)
+    changeset = RefreshToken.changeset(jwt, Params.to_attributes(data))
 
     case Repo.update(changeset) do
       {:ok, jwt} ->
@@ -44,7 +45,7 @@ defmodule BlueJet.JwtController do
   end
 
   def delete(conn, %{"id" => id}) do
-    jwt = Repo.get!(Jwt, id)
+    jwt = Repo.get!(RefreshToken, id)
 
     # Here we use delete! (with a bang) because we expect
     # it to always work (and if it does not, it will raise).

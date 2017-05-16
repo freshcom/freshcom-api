@@ -7,7 +7,7 @@ defmodule BlueJet.Router do
     plug BlueJet.Plugs.Locale, "en"
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
-    plug JaSerializer.ContentTypeNegotiation
+    plug BlueJet.Plugs.ContentTypeNegotiation
     plug JaSerializer.Deserializer
   end
 
@@ -22,7 +22,7 @@ defmodule BlueJet.Router do
     resources "/products", ProductController, except: [:new, :edit]
     resources "/skus", SkuController, except: [:new, :edit]
     resources "/external_files", ExternalFileController, except: [:new, :edit]
-    resources "/jwts", JwtController, only: [:create]
+    resources "/token", TokenController, only: [:create]
 
     resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit] do
       post "/relationships/files", ExternalFileCollectionController, :add_files

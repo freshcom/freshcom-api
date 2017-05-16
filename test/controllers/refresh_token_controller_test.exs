@@ -1,8 +1,8 @@
-defmodule BlueJet.JwtControllerTest do
+defmodule BlueJet.RefreshTokenControllerTest do
   use BlueJet.ConnCase
 
   alias BlueJet.Registration
-  alias BlueJet.Jwt
+  alias BlueJet.RefreshToken
   alias BlueJet.Repo
 
   @valid_attrs %{name: "some content", system_tag: "some content", value: "some content"}
@@ -29,7 +29,7 @@ defmodule BlueJet.JwtControllerTest do
 
       conn = post(conn, jwt_path(conn, :create), %{
         "data" => %{
-          "type" => "Jwt",
+          "type" => "RefreshToken",
           "attributes" => valid_attrs
         }
       })
@@ -49,7 +49,7 @@ defmodule BlueJet.JwtControllerTest do
 
       conn = post(conn, jwt_path(conn, :create), %{
         "data" => %{
-          "type" => "Jwt",
+          "type" => "RefreshToken",
           "attributes" => %{ "email" => "invalid", "password" => "invalid" }
         }
       })

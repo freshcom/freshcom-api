@@ -1,4 +1,4 @@
-# defmodule BlueJet.JwtText do
+# defmodule BlueJet.RefreshTokenText do
 #   use BlueJet.ModelCase
 #   import Joken
 

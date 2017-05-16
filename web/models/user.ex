@@ -10,6 +10,8 @@ defmodule BlueJet.User do
     field :password, :string, virtual: true
 
     timestamps()
+
+    belongs_to :default_account, Account
   end
 
   @doc """
@@ -17,8 +19,8 @@ defmodule BlueJet.User do
   """
   def changeset(struct, params) do
     struct
-    |> cast(params, [:email, :password, :first_name, :last_name])
-    |> validate_required([:email, :password, :first_name, :last_name])
+    |> cast(params, [:email, :password, :first_name, :last_name, :default_account_id])
+    |> validate_required([:email, :password, :first_name, :last_name, :default_account_id])
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> unique_constraint(:email)
