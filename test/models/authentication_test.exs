@@ -30,18 +30,19 @@ defmodule BlueJet.AuthenticationTest do
 
     %{ account1_rt: account1_rt.id,
        user1_rt: user1_rt.id,
-       account2_rt: account2_rt.id,
-       user2_rt: user2_rt.id }
+       account1_id: account1_id,
+       user1_id: user1_id
+    }
   end
 
   describe "get_token/2" do
-    test "with no username and password and no access_token" do
+    test "with no username and password and no vas" do
       {:error, %{ error: error }} = Authentication.get_token(%{}, nil)
 
       assert error == :invalid_request
     end
 
-    test "with username and password and no access_token" do
+    test "with username and password and no vas" do
       {:ok, token} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234"}, nil)
 
       assert token.access_token
@@ -50,24 +51,24 @@ defmodule BlueJet.AuthenticationTest do
       assert token.refresh_token
     end
 
-    test "with empty refresh_token and no access_token" do
+    test "with empty refresh_token and no vas" do
       {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: "" }, nil)
       assert error == :invalid_grant
     end
 
-    test "with invalid refresh_token and no access_token" do
+    test "with invalid refresh_token and no vas" do
       {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: "invalid" }, nil)
       assert error == :invalid_grant
     end
 
-    test "with invalid refresh_token and valid user access_token" do
+    test "with invalid refresh_token and valid user vas", %{ account1_id: account1_id, user1_id: user1_id } do
       {:ok, %{ access_token: access_token }} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234" }, nil)
-      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: "invalid" }, access_token)
+      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: "invalid" }, %{ account_id: account1_id, user_id: user1_id })
 
       assert error == :invalid_grant
     end
 
-    test "with valid account refresh_token and no access_token", %{ account1_rt: account1_rt } do
+    test "with valid account refresh_token and no vas", %{ account1_rt: account1_rt } do
       {:ok, token} = Authentication.get_token(%{ refresh_token: account1_rt }, nil)
 
       assert token.access_token
@@ -76,34 +77,21 @@ defmodule BlueJet.AuthenticationTest do
       assert token.refresh_token
     end
 
-    test "with valid account refresh_token and invalid access_token", %{ account1_rt: account1_rt } do
-      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: account1_rt }, "invalid")
+    test "with valid account refresh_token and user vas", %{ account1_rt: account1_rt, account1_id: account1_id, user1_id: user1_id } do
+      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: account1_rt }, %{ account_id: account1_id, user_id: user1_id })
 
       assert error == :invalid_client
     end
 
-    test "with valid account refresh_token and user access_token", %{ account1_rt: account1_rt } do
-      {:ok, %{ access_token: access_token }} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234" }, nil)
-      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: account1_rt }, access_token)
-
-      assert error == :invalid_client
-    end
-
-    test "with valid user refresh_token and no access_token", %{ user1_rt: user1_rt } do
+    test "with valid user refresh_token and no vas", %{ user1_rt: user1_rt } do
       {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: user1_rt }, nil)
 
       assert error == :invalid_client
     end
 
-    test "with valid user refresh_token and invalid access_token", %{ user1_rt: user1_rt } do
-      {:error, %{ error: error }} = Authentication.get_token(%{ refresh_token: user1_rt }, "invalid")
-
-      assert error == :invalid_client
-    end
-
-    test "with valid user refresh_token and valid user access_token", %{ user1_rt: user1_rt } do
+    test "with valid user refresh_token and valid user vas", %{ user1_rt: user1_rt, account1_id: account1_id, user1_id: user1_id } do
       {:ok, %{ access_token: access_token }} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234" }, nil)
-      {:ok, token} = Authentication.get_token(%{ refresh_token: user1_rt }, access_token)
+      {:ok, token} = Authentication.get_token(%{ refresh_token: user1_rt }, %{ account_id: account1_id, user_id: user1_id })
 
       assert token.access_token
       assert token.token_type
@@ -111,23 +99,4 @@ defmodule BlueJet.AuthenticationTest do
       assert token.refresh_token
     end
   end
-
-  # describe "get_jwt/1" do
-  #   test "with valid credentials" do
-  #     {:ok, token} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234" })
-
-  #     assert token.access_token
-  #     assert token.token_type
-  #     assert token.expires_in
-  #     assert token.refresh_token
-  #   end
-
-  #   test "with missing credentials" do
-  #     {:error, _} = Authentication.get_token(%{ password: "test1234" })
-  #   end
-
-  #   test "with invalid credentials" do
-  #     {:error, _} = Authentication.get_token(%{ username: "invalid", password: "invalid" })
-  #   end
-  # end
 end

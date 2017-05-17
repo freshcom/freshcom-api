@@ -4,11 +4,11 @@ defmodule BlueJet.Router do
   pipeline :api do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
+    plug BlueJet.Plugs.Authentication, ["/v1/token"]
     plug BlueJet.Plugs.Locale, "en"
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
     plug BlueJet.Plugs.ContentTypeNegotiation
-    plug BlueJet.Plugs.AccessToken
     plug JaSerializer.Deserializer
   end
 

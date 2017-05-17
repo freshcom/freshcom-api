@@ -3,6 +3,9 @@ defmodule BlueJet.ExternalFileControllerTest do
 
   alias BlueJet.ExternalFile
   alias BlueJet.Repo
+  alias BlueJet.User
+  alias BlueJet.Registration
+  alias BlueJet.Authentication
 
   @valid_attrs %{
     name: Faker.Lorem.word(),
@@ -13,15 +16,34 @@ defmodule BlueJet.ExternalFileControllerTest do
   @invalid_attrs %{}
 
   setup do
+    {_, %User{ default_account_id: account1_id, id: user1_id }} = Registration.sign_up(%{
+      first_name: Faker.Name.first_name(),
+      last_name: Faker.Name.last_name(),
+      email: "test1@example.com",
+      password: "test1234",
+      account_name: Faker.Company.name()
+    })
+    {:ok, %{ access_token: access_token }} = Authentication.get_token(%{ username: "test1@example.com", password: "test1234"}, nil)
+
     conn = build_conn()
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    {:ok, conn: conn}
+    {:ok, conn: conn, access_token: access_token}
+  end
+
+  defp relationships do
+    %{}
   end
 
   describe "GET /external_files" do
-    test "with existing external files", %{conn: conn} do
+    test "with no Access Token" do
+      conn = get(conn, external_file_path(conn, :index))
+      assert conn.status == 401
+    end
+
+    test "with existing external files", %{ conn: conn, access_token: access_token } do
+      conn = conn |> put_req_header("authorization", "Bearer #{access_token}")
       Repo.insert!(ExternalFile.changeset(%ExternalFile{}, @valid_attrs))
 
       conn = get(conn, external_file_path(conn, :index))

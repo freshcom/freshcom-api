@@ -11,7 +11,6 @@ defmodule BlueJet.RefreshTokenTest do
       changeset = RefreshToken.changeset(%RefreshToken{}, @valid_attrs)
 
       assert changeset.valid?
-      assert changeset.changes.value
     end
 
     test "with invalid attrs" do
