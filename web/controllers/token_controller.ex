@@ -2,7 +2,7 @@ defmodule BlueJet.TokenController do
   use BlueJet.Web, :controller
 
   def create(conn, params) do
-    with {:ok, token} <- BlueJet.Authentication.get_token(params) do
+    with {:ok, token} <- BlueJet.Authentication.get_token(params, conn.assigns[:access_token]) do
       conn
       |> put_status(:ok)
       |> json(token)

@@ -16,7 +16,7 @@ defmodule BlueJet.Authentication do
          refresh_token <- Repo.get_by!(RefreshToken, user_id: user.id, account_id: account_id)
     do
       access_token = generate_access_token(%{ user_id: user.id, account_id: user.default_account_id })
-      {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token }}
+      {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
       false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
       {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
@@ -68,10 +68,10 @@ defmodule BlueJet.Authentication do
   end
 
   def generate_access_token(%{ user_id: nil, account_id: account_id }) do
-    Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id })
+    Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id, typ: "account" })
   end
   def generate_access_token(%{ user_id: user_id, account_id: account_id }) do
-    Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id })
+    Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
   end
 
   def extract_account_id(nil, nil, %User{ default_account_id: account_id }) do
@@ -117,6 +117,4 @@ defmodule BlueJet.Authentication do
       {:error, :not_found}
     end
   end
-
-
 end

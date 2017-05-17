@@ -8,6 +8,7 @@ defmodule BlueJet.Router do
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
     plug BlueJet.Plugs.ContentTypeNegotiation
+    plug BlueJet.Plugs.AccessToken
     plug JaSerializer.Deserializer
   end
 
