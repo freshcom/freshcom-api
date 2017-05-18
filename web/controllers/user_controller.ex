@@ -2,7 +2,7 @@ defmodule BlueJet.UserController do
   use BlueJet.Web, :controller
 
   alias BlueJet.User
-  alias BlueJet.Registration
+  alias BlueJet.UserRegistration
   alias JaSerializer.Params
 
   plug :scrub_params, "data" when action in [:create, :update]
@@ -13,7 +13,7 @@ defmodule BlueJet.UserController do
   end
 
   def create(conn, %{"data" => data = %{"type" => "User", "attributes" => _user_params}}) do
-    with {:ok, user} <- Registration.sign_up(Params.to_attributes(data)) do
+    with {:ok, user} <- UserRegistration.sign_up(Params.to_attributes(data)) do
       conn
       |> put_status(:created)
       |> render("show.json-api", data: user)

@@ -59,6 +59,9 @@ defmodule BlueJet.Authentication do
   def generate_access_token(%{ user_id: user_id, account_id: account_id }) do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
   end
+  def generate_access_token(%{ customer_id: customer_id, account_id: account_id }) do
+    Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: customer_id, typ: "customer" })
+  end
 
   def extract_account_id(nil, nil, %User{ default_account_id: account_id }) do
     {:ok, account_id}

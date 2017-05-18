@@ -4,7 +4,7 @@ defmodule BlueJet.ExternalFileControllerTest do
   alias BlueJet.ExternalFile
   alias BlueJet.Repo
   alias BlueJet.User
-  alias BlueJet.Registration
+  alias BlueJet.UserRegistration
   alias BlueJet.Authentication
 
   @valid_attrs %{
@@ -16,7 +16,7 @@ defmodule BlueJet.ExternalFileControllerTest do
   @invalid_attrs %{}
 
   setup do
-    {_, %User{ default_account_id: account1_id, id: user1_id }} = Registration.sign_up(%{
+    {_, %User{ default_account_id: account1_id, id: user1_id }} = UserRegistration.sign_up(%{
       first_name: Faker.Name.first_name(),
       last_name: Faker.Name.last_name(),
       email: "test1@example.com",

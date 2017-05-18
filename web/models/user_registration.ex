@@ -1,4 +1,4 @@
-defmodule BlueJet.Registration do
+defmodule BlueJet.UserRegistration do
   alias BlueJet.Repo
   alias BlueJet.User
   alias BlueJet.Account
@@ -39,7 +39,7 @@ defmodule BlueJet.Registration do
     end)
   end
   def sign_up(params) do
-    with changeset = %Ecto.Changeset{ valid?: true } <- changeset(%BlueJet.Registration{}, params)
+    with changeset = %Ecto.Changeset{ valid?: true } <- changeset(%BlueJet.UserRegistration{}, params)
     do
       sign_up(changeset)
     else

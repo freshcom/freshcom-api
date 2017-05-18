@@ -2,7 +2,7 @@ defmodule BlueJet.UserTest do
   use BlueJet.ModelCase
 
   alias BlueJet.User
-  alias BlueJet.Registration
+  alias BlueJet.UserRegistration
 
   describe "User.changeset/1" do
     test "with valid attributes" do
@@ -28,7 +28,7 @@ defmodule BlueJet.UserTest do
     end
 
     test "with loaded user and only email" do
-      {:ok, user} = Registration.sign_up(%{
+      {:ok, user} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
         password: "test1234",

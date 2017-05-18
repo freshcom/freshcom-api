@@ -2,13 +2,13 @@ defmodule BlueJet.AuthenticationTest do
   use BlueJet.ModelCase
 
   alias BlueJet.Authentication
-  alias BlueJet.Registration
+  alias BlueJet.UserRegistration
   alias BlueJet.RefreshToken
   alias BlueJet.User
   alias BlueJet.Repo
 
   setup do
-    {_, %User{ default_account_id: account1_id, id: user1_id }} = Registration.sign_up(%{
+    {_, %User{ default_account_id: account1_id, id: user1_id }} = UserRegistration.sign_up(%{
       first_name: Faker.Name.first_name(),
       last_name: Faker.Name.last_name(),
       email: "test1@example.com",
@@ -18,7 +18,7 @@ defmodule BlueJet.AuthenticationTest do
     account1_rt = from(r in RefreshToken, where: r.account_id == ^account1_id and is_nil(r.user_id)) |> Repo.one()
     user1_rt = Repo.get_by(RefreshToken, account_id: account1_id, user_id: user1_id)
 
-    {_, %User{ default_account_id: account2_id, id: user2_id }} = Registration.sign_up(%{
+    {_, %User{ default_account_id: account2_id, id: user2_id }} = UserRegistration.sign_up(%{
       first_name: Faker.Name.first_name(),
       last_name: Faker.Name.last_name(),
       email: "test2@example.com",

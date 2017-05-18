@@ -1,7 +1,7 @@
 # defmodule BlueJet.RefreshTokenControllerTest do
 #   use BlueJet.ConnCase
 
-#   alias BlueJet.Registration
+#   alias BlueJet.UserRegistration
 #   alias BlueJet.RefreshToken
 #   alias BlueJet.Repo
 
@@ -19,7 +19,7 @@
 #   describe "POST /jwts" do
 #     test "with valid attrs", %{conn: conn} do
 #       valid_attrs = %{ "email" => "test1@example.com", "password" => "test1234" }
-#       Registration.sign_up(%{
+#       UserRegistration.sign_up(%{
 #         first_name: Faker.Name.first_name,
 #         last_name: Faker.Name.last_name,
 #         email: Map.get(valid_attrs, "email"),
@@ -39,7 +39,7 @@
 
 #     test "with invalid attrs", %{conn: conn} do
 #       valid_attrs = %{ email: "test1@example.com", password: "test1234" }
-#       Registration.sign_up(%{
+#       UserRegistration.sign_up(%{
 #         first_name: Faker.Name.first_name,
 #         last_name: Faker.Name.last_name,
 #         email: "test1@example.com",
