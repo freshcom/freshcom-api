@@ -3,7 +3,7 @@ defmodule BlueJet.CustomerTest do
 
   alias BlueJet.Customer
 
-  @valid_attrs %{display_name: "some content", email: "some content", encrypted_password: "some content", first_name: "some content", last_name: "some content"}
+  @valid_attrs %{email: "test1@example.com", password: "some content", first_name: "some content", last_name: "some content", account_id: "827ae785-1502-4489-8a97-609c4840168f"}
   @invalid_attrs %{}
 
   test "changeset with valid attributes" do

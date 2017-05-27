@@ -14,5 +14,6 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
       timestamps()
     end
 
+    create unique_index(:customers, [:email, :account_id])
   end
 end

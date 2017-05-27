@@ -15,10 +15,13 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     alias BlueJet.Repo
     alias BlueJet.Sku
+    alias BlueJet.UserRegistration
+    alias BlueJet.CustomerRegistration
 
     ensure_started(Repo, [])
 
-    {:ok, _user} = BlueJet.Registration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
+    {:ok, user} = UserRegistration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
+    {:ok, _customer} = CustomerRegistration.sign_up(%{ first_name: "Tiffany", last_name: "Wang", password: "test1234", email: "test1@example.com", account_id: user.default_account_id })
 
     # changeset = BlueJet.User.changeset_for_create(%BlueJet.User{}, %{ "first_name" => "Roy", "last_name" => "Bao", "password" => "test1234", "email" => "test1@example.com" })
     # Repo.insert!(changeset)

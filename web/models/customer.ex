@@ -8,15 +8,28 @@ defmodule BlueJet.Customer do
     field :encrypted_password, :string
     field :display_name, :string
 
+    field :password, :string, virtual: true
+
     timestamps()
+
+    belongs_to :account, Account
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
+  def changeset(struct, params) do
     struct
-    |> cast(params, [:first_name, :last_name, :email, :encrypted_password, :display_name])
-    |> validate_required([:first_name, :last_name, :email, :encrypted_password, :display_name])
+    |> cast(params, [:email, :password, :first_name, :last_name, :account_id])
+    |> validate_required([:email, :password, :first_name, :last_name, :account_id])
+    |> validate_length(:password, min: 8)
+    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
+    |> unique_constraint(:email)
+    |> put_encrypted_password
   end
+
+  defp put_encrypted_password(changeset = %Ecto.Changeset{ valid?: true, changes: %{ password: password } })  do
+    put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
+  end
+  defp put_encrypted_password(changeset), do: changeset
 end

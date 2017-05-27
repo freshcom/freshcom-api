@@ -2,6 +2,7 @@ defmodule BlueJet.RefreshToken do
   use BlueJet.Web, :model
 
   alias BlueJet.User
+  alias BlueJet.Customer
   alias BlueJet.Account
 
   schema "refresh_tokens" do
@@ -11,6 +12,7 @@ defmodule BlueJet.RefreshToken do
     timestamps()
 
     belongs_to :user, User
+    belongs_to :customer, Customer
     belongs_to :account, Account
   end
 
@@ -19,7 +21,7 @@ defmodule BlueJet.RefreshToken do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:account_id, :user_id])
+    |> cast(params, [:account_id, :user_id, :customer_id])
     |> validate_required([:account_id])
   end
 
