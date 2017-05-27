@@ -15,7 +15,7 @@ defmodule BlueJet.Authentication do
          true <- Comeonin.Bcrypt.checkpw(password, user.encrypted_password),
          refresh_token <- Repo.get_by!(RefreshToken, user_id: user.id, account_id: account_id)
     do
-      access_token = generate_access_token(%{ user_id: user.id, account_id: user.default_account_id })
+      access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
       false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
@@ -29,7 +29,7 @@ defmodule BlueJet.Authentication do
          true <- Comeonin.Bcrypt.checkpw(password, customer.encrypted_password),
          refresh_token <- Repo.get_by!(RefreshToken, customer_id: customer.id, account_id: account_id)
     do
-      access_token = generate_access_token(%{ customer_id: customer.id, account_id: account_id })
+      access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
       :error -> {:error, %{ error: :invalid_client, error_description: "Access Token is invalid"}}
@@ -43,10 +43,10 @@ defmodule BlueJet.Authentication do
   def get_token(%{ refresh_token: "" }, nil), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
   def get_token(%{ refresh_token: refresh_token }, vas) do
     with {:ok, _} <- Ecto.UUID.dump(refresh_token),
-         {:ok, %{ account_id: account_id, user_id: user_id } = refresh_token} <- get_refresh_token(refresh_token),
+         {:ok, refresh_token} <- get_refresh_token(refresh_token),
          true <- vas_matches_refresh_token?(vas, refresh_token)
     do
-      access_token = generate_access_token(%{ user_id: user_id, account_id: account_id })
+      access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token }}
     else
       :error -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
@@ -56,26 +56,29 @@ defmodule BlueJet.Authentication do
   end
   def get_token(_, _), do: {:error, %{ error: :invalid_request }}
 
-  def vas_matches_refresh_token?(nil, %{ user_id: nil }) do
+  def vas_matches_refresh_token?(nil, %{ user_id: nil, customer_id: nil }) do
     true
   end
   def vas_matches_refresh_token?(nil, _) do
     false
   end
-  def vas_matches_refresh_token?(%{ account_id: vas_aid, user_id: vas_uid }, %{ account_id: rt_aid, user_id: rt_uid }) do
+  def vas_matches_refresh_token?(%{ account_id: vas_aid, user_id: vas_uid }, %{ account_id: rt_aid, customer_id: nil, user_id: rt_uid }) do
     vas_aid == rt_aid && vas_uid == rt_uid
   end
-  def vas_matches_refresh_token?(%{ account_id: vas_aid }, %{ account_id: rt_aid, user_id: nil }) do
+  def vas_matches_refresh_token?(%{ account_id: vas_aid, customer_id: vas_cid }, %{ account_id: rt_aid, customer_id: rt_cid, user_id: nil }) do
+    vas_aid == rt_aid && vas_cid == rt_cid
+  end
+  def vas_matches_refresh_token?(%{ account_id: vas_aid }, %{ account_id: rt_aid, user_id: nil, customer_id: nil }) do
     vas_aid == rt_aid
   end
 
-  def generate_access_token(%{ user_id: nil, account_id: account_id }) do
+  def generate_access_token(%RefreshToken{ account_id: account_id, customer_id: nil, user_id: nil }) do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id, typ: "account" })
   end
-  def generate_access_token(%{ user_id: user_id, account_id: account_id }) do
+  def generate_access_token(%RefreshToken{ account_id: account_id, customer_id: nil, user_id: user_id }) do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
   end
-  def generate_access_token(%{ customer_id: customer_id, account_id: account_id }) do
+  def generate_access_token(%RefreshToken{ account_id: account_id, customer_id: customer_id, user_id: nil }) do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: customer_id, typ: "customer" })
   end
 
@@ -95,8 +98,8 @@ defmodule BlueJet.Authentication do
     end
   end
 
-  def get_refresh_token(refresh_token) do
-    refresh_token = Repo.get(RefreshToken, refresh_token)
+  def get_refresh_token(id) do
+    refresh_token = Repo.get(RefreshToken, id)
 
     if refresh_token do
       {:ok, refresh_token}

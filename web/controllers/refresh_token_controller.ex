@@ -12,7 +12,6 @@ defmodule BlueJet.RefreshTokenController do
   end
 
   def create(conn, params) do
-    # IO.inspect params
     with {:ok, jwt} <- BlueJet.Authentication.get_token(params) do
       conn
       |> put_status(:created)

@@ -33,7 +33,8 @@ defmodule BlueJet.AuthenticationTest do
        user1_rt: user1_rt.id,
        account1_id: account1_id,
        user1_id: user1_id,
-       customer1_rt: customer1_rt
+       customer1_rt: customer1_rt.id,
+       customer1_id: customer1_id
     }
   end
 
@@ -121,6 +122,15 @@ defmodule BlueJet.AuthenticationTest do
     test "with valid user refresh_token and valid user vas", %{ user1_rt: user1_rt, account1_id: account1_id, user1_id: user1_id } do
       {:ok, %{ access_token: _ }} = Authentication.get_token(%{ username: "user1@example.com", password: "test1234", scope: "user" }, nil)
       {:ok, token} = Authentication.get_token(%{ refresh_token: user1_rt }, %{ account_id: account1_id, user_id: user1_id })
+
+      assert token.access_token
+      assert token.token_type
+      assert token.expires_in
+      assert token.refresh_token
+    end
+
+    test "with customer refresh_token and valid customer vas", %{ account1_id: account1_id, customer1_id: customer1_id, customer1_rt: customer1_rt } do
+      {:ok, token} = Authentication.get_token(%{ refresh_token: customer1_rt }, %{ account_id: account1_id, customer_id: customer1_id })
 
       assert token.access_token
       assert token.token_type
