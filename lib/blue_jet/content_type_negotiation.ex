@@ -25,7 +25,11 @@ defmodule  BlueJet.Plugs.ContentTypeNegotiation do
   def verify_content_type(%Plug.Conn{ method: "GET" } = conn, _o), do: conn
   def verify_content_type(%Plug.Conn{ method: "DELETE" } = conn, _o), do: conn
   def verify_content_type(%Plug.Conn{ path_info: ["v1", "token"] } = conn, _o) do
-    if Enum.member?(get_req_header(conn, "content-type"), "application/x-www-form-urlencoded") do
+    allowed = ["application/x-www-form-urlencoded", "application/json"]
+    content_types = get_req_header(conn, "content-type")
+    matched = allowed -- content_types
+
+    if length(matched) == 1 do
       conn
     else
       halt send_resp(conn, 415, "")

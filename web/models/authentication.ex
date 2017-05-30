@@ -6,12 +6,13 @@ defmodule BlueJet.Authentication do
   alias BlueJet.RefreshToken
 
   # Get token using :username and :password
-  def get_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }, vas), do: get_token(%{ username: username, password: password, scope: scope }, vas)
+  def get_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
+  def get_token(%{ username: username, password: password, scope: "" <> _ = scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
   def get_token(%{ username: nil }, _), do: {:error, %{ error: :invalid_request, error_description: "Email can't be blank" }}
   def get_token(%{ password: nil }, _), do: {:error, %{ error: :invalid_request, error_description: "Password can't be blank" }}
-  def get_token(%{ username: username, password: password, scope: "user" = scope }, vas) do
+  def get_token(%{ username: username, password: password, scope: %{ "type" => "user" } = scope }) do
     with {:ok, user} <- get_user(username),
-         {:ok, account_id} <- extract_account_id(scope, vas, user),
+         {:ok, account_id} <- extract_account_id(scope, user),
          true <- Comeonin.Bcrypt.checkpw(password, user.encrypted_password),
          refresh_token <- Repo.get_by!(RefreshToken, user_id: user.id, account_id: account_id)
     do
@@ -20,10 +21,10 @@ defmodule BlueJet.Authentication do
     else
       false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
       {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_client, error_description: "Access Token is invalid" }}
+      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid" }}
     end
   end
-  def get_token(%{ username: username, password: password, scope: "customer" = scope }, %{ account_id: account_id }) do
+  def get_token(%{ username: username, password: password, scope: %{ "type" => "customer", "account_id" => account_id } }) do
     with {:ok, _} <- Ecto.UUID.dump(account_id),
          {:ok, customer} <- get_customer(account_id, username),
          true <- Comeonin.Bcrypt.checkpw(password, customer.encrypted_password),
@@ -32,45 +33,27 @@ defmodule BlueJet.Authentication do
       access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
-      :error -> {:error, %{ error: :invalid_client, error_description: "Access Token is invalid"}}
+      :error -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid"}}
       {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
       false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_client, error_description: "Access Token is invalid" }}
+      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid" }}
     end
   end
   # Get token using :refresh_token
-  def get_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }, vas), do: get_token(%{ refresh_token: refresh_token }, vas)
+  def get_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }), do: get_token(%{ refresh_token: refresh_token })
   def get_token(%{ refresh_token: "" }, nil), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
-  def get_token(%{ refresh_token: refresh_token }, vas) do
+  def get_token(%{ refresh_token: refresh_token }) do
     with {:ok, _} <- Ecto.UUID.dump(refresh_token),
-         {:ok, refresh_token} <- get_refresh_token(refresh_token),
-         true <- vas_matches_refresh_token?(vas, refresh_token)
+         {:ok, refresh_token} <- get_refresh_token(refresh_token)
     do
       access_token = generate_access_token(refresh_token)
-      {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token }}
+      {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
       :error -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
       {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
-      false -> {:error, %{ error: :invalid_client }}
     end
   end
-  def get_token(_, _), do: {:error, %{ error: :invalid_request }}
-
-  def vas_matches_refresh_token?(nil, %{ user_id: nil, customer_id: nil }) do
-    true
-  end
-  def vas_matches_refresh_token?(nil, _) do
-    false
-  end
-  def vas_matches_refresh_token?(%{ account_id: vas_aid, user_id: vas_uid }, %{ account_id: rt_aid, customer_id: nil, user_id: rt_uid }) do
-    vas_aid == rt_aid && vas_uid == rt_uid
-  end
-  def vas_matches_refresh_token?(%{ account_id: vas_aid, customer_id: vas_cid }, %{ account_id: rt_aid, customer_id: rt_cid, user_id: nil }) do
-    vas_aid == rt_aid && vas_cid == rt_cid
-  end
-  def vas_matches_refresh_token?(%{ account_id: vas_aid }, %{ account_id: rt_aid, user_id: nil, customer_id: nil }) do
-    vas_aid == rt_aid
-  end
+  def get_token(_), do: {:error, %{ error: :invalid_request }}
 
   def generate_access_token(%RefreshToken{ account_id: account_id, customer_id: nil, user_id: nil }) do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id, typ: "account" })
@@ -82,20 +65,22 @@ defmodule BlueJet.Authentication do
     Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: customer_id, typ: "customer" })
   end
 
-  def extract_account_id("user", nil, %User{ default_account_id: account_id }) do
+  def extract_account_id(%{ "account_id" => account_id }, _) do
     {:ok, account_id}
   end
-  def extract_account_id("user", %{ account_id: account_id }, _) do
+  def extract_account_id(_, %User{ default_account_id: account_id }) do
     {:ok, account_id}
   end
-  # TODO: support scope: "user,aid:gaeg-awgelk-gwlkejg-aega"
-  def extract_account_id(scope, _vas, _user) do
-    with ["aid", account_id] <- String.split(scope, ":")
-    do
-      {:ok, account_id}
-    else
-      _ -> {:error, :invalid_scope}
-    end
+
+  def deserialize_scope(scope_string) do
+    scopes = String.split(scope_string, ",")
+    Enum.reduce(scopes, %{}, fn(scope, acc) ->
+      with [key, value] <- String.split(scope, ":") do
+        Map.put(acc, key, value)
+      else
+        _ -> acc
+      end
+    end)
   end
 
   def get_refresh_token(id) do
