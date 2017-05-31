@@ -26,7 +26,7 @@ defmodule BlueJet.Controller.Helpers do
     keyword = "%#{keyword}%"
 
     Enum.reduce(columns, model, fn(column, query) ->
-      if Enum.member?(model.translatable_columns, column) do
+      if Enum.member?(model.translatable_fields(), column) do
         column = Atom.to_string(column)
         from q in query, or_where: ilike(fragment("?->?->>?", q.translations, ^locale, ^column), ^keyword)
       else

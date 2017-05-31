@@ -6,15 +6,19 @@ defmodule BlueJet.SkuController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, params) do
-    query = Sku |> search([:name, :id], params["search"], conn.assigns[:locale])
+  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+    query =
+      Sku
+      |> where([s], s.account_id == ^account_id)
+      |> search([:name, :id], params["search"], conn.assigns[:locale])
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(Sku, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    skus = Repo.all(query)
-          |> Repo.preload(:external_file_collections)
-          |> translate_collection(conn.assigns[:locale])
+    skus =
+      Repo.all(query)
+      |> Repo.preload(:external_file_collections)
+      |> translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -23,14 +27,14 @@ defmodule BlueJet.SkuController do
     render(conn, "index.json-api", data: skus, opts: [meta: meta, fields: conn.query_params["fields"]])
   end
 
-  def create(conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
-    changeset = Sku.changeset(%Sku{}, conn.assigns[:locale], Params.to_attributes(data))
+  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
+    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
+    changeset = Sku.changeset(%Sku{}, conn.assigns[:locale], params)
 
     case Repo.insert(changeset) do
       {:ok, sku} ->
         conn
         |> put_status(:created)
-        |> put_resp_header("location", sku_path(conn, :show, sku))
         |> render("show.json-api", data: sku)
       {:error, changeset} ->
         conn
@@ -39,18 +43,20 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    sku = Sku
-          |> Repo.get!(id)
-          |> Repo.preload(:avatar)
-          |> Repo.preload(:external_file_collections)
-          |> translate(conn.assigns[:locale])
+  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    sku =
+      Sku
+      |> Repo.get_by!(account_id: account_id, id: id)
+      |> Repo.preload(:avatar)
+      |> Repo.preload(:external_file_collections)
+      |> translate(conn.assigns[:locale])
 
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
-    sku = Repo.get!(Sku, id)
+  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
+    sku = Repo.get_by!(Sku, account_id: account_id, id: id)
+    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
     changeset = Sku.changeset(sku, conn.assigns[:locale], Params.to_attributes(data))
 
     case Repo.update(changeset) do
@@ -64,8 +70,8 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    sku = Repo.get!(Sku, id)
+  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    sku = Repo.get_by!(Sku, account_id: account_id, id: id)
 
     # Here we use delete! (with a bang) because we expect
     # it to always work (and if it does not, it will raise).

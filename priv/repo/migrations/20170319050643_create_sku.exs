@@ -4,7 +4,7 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
   def change do
     create table(:skus, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
+      add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :avatar_id, references(:external_files, type: :binary_id, on_delete: :nilify_all)
       add :code, :string
       add :status, :string, null: false
@@ -22,14 +22,15 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       add :specification, :text
       add :storage_description, :text
 
+      add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
       timestamps()
     end
 
-    create unique_index(:skus, :code)
-    create unique_index(:skus, :print_name)
-    create index(:skus, :name)
-    create index(:skus, :status)
+    create unique_index(:skus, [:account_id, :code])
+    create unique_index(:skus, [:account_id, :print_name])
+    create index(:skus, [:account_id, :name])
+    create index(:skus, [:account_id, :status])
   end
 end

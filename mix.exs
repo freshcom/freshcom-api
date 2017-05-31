@@ -41,7 +41,7 @@ defmodule BlueJet.Mixfile do
       {:ja_serializer, github: "rbao/ja_serializer", branch: "master", },
       {:inflex, "~> 1.7.0"},
       {:faker, "~> 0.7"},
-      {:trans, "~> 1.1"},
+      {:trans, "~> 2.0"},
       {:ex_aws, "~> 1.0"},
       {:hackney, "~> 1.6"},
       {:sweet_xml, "~> 0.6"},

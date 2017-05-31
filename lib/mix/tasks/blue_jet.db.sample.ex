@@ -20,7 +20,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     ensure_started(Repo, [])
 
-    {:ok, user} = UserRegistration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
+    {:ok, %{ default_account_id: account1_id } = user} = UserRegistration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
     {:ok, _customer} = CustomerRegistration.sign_up(%{ first_name: "Tiffany", last_name: "Wang", password: "test1234", email: "test1@example.com", account_id: user.default_account_id })
 
     # changeset = BlueJet.User.changeset_for_create(%BlueJet.User{}, %{ "first_name" => "Roy", "last_name" => "Bao", "password" => "test1234", "email" => "test1@example.com" })
@@ -30,6 +30,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 李锦记熊猫蚝油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
+      "account_id" => account1_id,
       "code" => "100504",
       "status" => "active",
       "name" => "Oyster Flavoured Sauce",
@@ -53,6 +54,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 老干妈豆豉辣椒油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
+      "account_id" => account1_id,
       "code" => "100502",
       "status" => "active",
       "name" => "Chili Oil with Black Bean",
@@ -76,6 +78,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     # 李锦记蒸鱼豉油
     ########################
     changeset = Sku.changeset(%Sku{}, "en", %{
+      "account_id" => account1_id,
       "code" => "100503",
       "status" => "active",
       "name" => "Seasoned Soy Sauce",

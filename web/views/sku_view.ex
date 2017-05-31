@@ -16,9 +16,10 @@ defmodule BlueJet.SkuView do
     :description,
     :specification,
     :storage_description,
+    :custom_data,
+    :locale,
     :inserted_at,
-    :updated_at,
-    :locale
+    :updated_at
   ]
 
   has_one :avatar, serializer: BlueJet.ExternalFileView, identifiers: :when_included
