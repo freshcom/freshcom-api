@@ -1,8 +1,9 @@
 defmodule BlueJet.SkuController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.Sku
   alias JaSerializer.Params
+  alias BlueJet.Sku
+  alias BlueJet.Translation
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -18,7 +19,7 @@ defmodule BlueJet.SkuController do
     skus =
       Repo.all(query)
       |> Repo.preload(:external_file_collections)
-      |> translate_collection(conn.assigns[:locale])
+      |> Translation.translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -49,7 +50,7 @@ defmodule BlueJet.SkuController do
       |> Repo.get_by!(account_id: account_id, id: id)
       |> Repo.preload(:avatar)
       |> Repo.preload(:external_file_collections)
-      |> translate(conn.assigns[:locale])
+      |> Translation.translate(conn.assigns[:locale])
 
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
@@ -57,11 +58,11 @@ defmodule BlueJet.SkuController do
   def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
     params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Sku.changeset(sku, conn.assigns[:locale], Params.to_attributes(data))
+    changeset = Sku.changeset(sku, conn.assigns[:locale], params)
 
     case Repo.update(changeset) do
       {:ok, sku} ->
-        sku = translate(sku, conn.assigns[:locale])
+        sku = Translation.translate(sku, conn.assigns[:locale])
         render(conn, "show.json-api", data: sku)
       {:error, changeset} ->
         conn
@@ -72,9 +73,6 @@ defmodule BlueJet.SkuController do
 
   def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
-
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
     Repo.delete!(sku)
 
     send_resp(conn, :no_content, "")

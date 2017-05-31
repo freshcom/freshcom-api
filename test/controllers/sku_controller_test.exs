@@ -22,7 +22,7 @@ defmodule BlueJet.SkuControllerTest do
   }
 
   setup do
-    {_, %User{ default_account_id: account1_id, id: user1_id }} = UserRegistration.sign_up(%{
+    {_, %User{ default_account_id: account1_id }} = UserRegistration.sign_up(%{
       first_name: Faker.Name.first_name(),
       last_name: Faker.Name.last_name(),
       email: "test1@example.com",
@@ -37,32 +37,6 @@ defmodule BlueJet.SkuControllerTest do
 
     %{ conn: conn, uat1: uat1, account1_id: account1_id }
   end
-
-  defp relationships do
-    %{}
-  end
-
-  # test "lists all entries on index", %{conn: conn} do
-  #   conn = get conn, sku_path(conn, :index)
-  #   assert json_response(conn, 200)["data"] == []
-  # end
-
-  # test "shows chosen resource", %{conn: conn} do
-  #   sku = Repo.insert! %Sku{ name: "test", print_name: "TEST" }
-  #   conn = get conn, sku_path(conn, :show, sku)
-  #   data = json_response(conn, 200)["data"]
-  #   assert data["id"] == "#{sku.id}"
-  #   assert data["type"] == "sku"
-  #   assert data["attributes"]["number"] == sku.number
-  #   assert data["attributes"]["name"] == sku.name
-  #   assert data["attributes"]["printName"] == sku.print_name
-  # end
-
-  # test "does not show resource and instead throw error when id is nonexistent", %{conn: conn} do
-  #   assert_error_sent 404, fn ->
-  #     get conn, sku_path(conn, :show, "11111111-1111-1111-1111-111111111111")
-  #   end
-  # end
 
   describe "POST /v1/skus" do
     test "with no access token", %{ conn: conn } do
@@ -140,7 +114,7 @@ defmodule BlueJet.SkuControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        conn = get(conn, sku_path(conn, :show, sku.id))
+        get(conn, sku_path(conn, :show, sku.id))
       end)
     end
 
@@ -200,7 +174,7 @@ defmodule BlueJet.SkuControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        conn = patch(conn, sku_path(conn, :update, sku.id), %{
+        patch(conn, sku_path(conn, :update, sku.id), %{
           "data" => %{
             "id" => sku.id,
             "type" => "Sku",
