@@ -6,8 +6,11 @@ defmodule BlueJet.ExternalFileController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, params) do
-    query = ExternalFile |> search([:name, :id], params["search"], conn.assigns[:locale])
+  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+    query =
+      ExternalFile
+      |> where([ef], ef.account_id == ^account_id)
+      |> search([:name, :id], params["search"], conn.assigns[:locale])
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(query, :count, :id)
 
@@ -25,8 +28,9 @@ defmodule BlueJet.ExternalFileController do
     render(conn, "index.json-api", data: external_files, opts: [meta: meta, fields: %{ "ExternalFile" => "name,content_type"}])
   end
 
-  def create(conn, %{"data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
-    changeset = ExternalFile.changeset(%ExternalFile{}, Params.to_attributes(data))
+  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
+    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
+    changeset = ExternalFile.changeset(%ExternalFile{}, params)
 
     case Repo.insert(changeset) do
       {:ok, external_file} ->
@@ -43,13 +47,13 @@ defmodule BlueJet.ExternalFileController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    external_file = Repo.get!(ExternalFile, id)
+  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
     render(conn, "show.json-api", data: external_file)
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
-    external_file = Repo.get!(ExternalFile, id)
+  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
+    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
     changeset = ExternalFile.changeset(external_file, Params.to_attributes(data))
 
     case Repo.update(changeset) do
@@ -64,8 +68,8 @@ defmodule BlueJet.ExternalFileController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    external_file = Repo.get!(ExternalFile, id)
+  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
 
     external_file
     |> ExternalFile.delete_object

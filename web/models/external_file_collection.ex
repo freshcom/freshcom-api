@@ -22,8 +22,8 @@ defmodule BlueJet.ExternalFileCollection do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:name, :label, :file_ids, :sku_id])
-    |> validate_required([:label])
+    |> cast(params, [:account_id, :name, :label, :file_ids, :sku_id])
+    |> validate_required([:account_id, :label])
   end
 
   def put_files(struct) do

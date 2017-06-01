@@ -24,8 +24,9 @@ defmodule BlueJet.ExternalFileCollectionController do
     render(conn, "index.json-api", data: external_file_collections, opts: [meta: meta])
   end
 
-  def create(conn, %{"data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
-    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, Params.to_attributes(data))
+  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
+    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
+    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, params)
 
     case Repo.insert(changeset) do
       {:ok, external_file_collection} ->
@@ -65,7 +66,7 @@ defmodule BlueJet.ExternalFileCollectionController do
   end
 
   def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    external_file_collection = Repo.get_by!(ExternalFileCollection, account_id: account_id, id: id)
+    external_file_collection = ExternalFileCollection |> Repo.get_by!(account_id: account_id, id: id)
     Repo.delete!(external_file_collection)
 
     send_resp(conn, :no_content, "")

@@ -112,6 +112,7 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
       conn = get(conn, external_file_collection_path(conn, :show, efc.id))
 
       assert json_response(conn, 200)["data"]["id"] == efc.id
+      assert json_response(conn, 200)["data"]["attributes"]
     end
   end
 
@@ -216,11 +217,11 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
         account_id: account2_id,
         label: "primary_images"
       })
-      efc = Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         label: "primary_images"
       })
-      efc = Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         label: "secondary_images"
       })
