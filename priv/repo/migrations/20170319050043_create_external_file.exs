@@ -15,10 +15,11 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
       add :system_tag, :string
       add :original_id, references(:external_files, type: :binary_id, on_delete: :delete_all)
 
+      add :custom_data, :map, null: false, default: "{}"
       timestamps()
     end
 
-    create index(:external_files, :status)
+    create index(:external_files, [:account_id, :status])
     create index(:external_files, :system_tag)
     create index(:external_files, :version_label)
   end

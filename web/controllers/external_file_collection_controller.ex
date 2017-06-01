@@ -6,14 +6,16 @@ defmodule BlueJet.ExternalFileCollectionController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, params) do
-    query = ExternalFileCollection |> search([:name, :label, :id], params["search"], conn.assigns[:locale])
+  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+    query =
+      ExternalFileCollection
+      |> where([efc], efc.account_id == ^account_id)
+      |> search([:name, :label, :id], params["search"], conn.assigns[:locale])
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(query, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    external_file_collections = Repo.all(query)
-                    |> translate_collection(conn.assigns[:locale])
+    external_file_collections = Repo.all(query) |> translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -38,17 +40,18 @@ defmodule BlueJet.ExternalFileCollectionController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    extrenal_file_collection = ExternalFileCollection
-          |> Repo.get!(id)
-          |> translate(conn.assigns[:locale])
-          |> ExternalFileCollection.put_files
+  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    extrenal_file_collection =
+      ExternalFileCollection
+      |> Repo.get_by!(account_id: account_id, id: id)
+      |> translate(conn.assigns[:locale])
+      |> ExternalFileCollection.put_files
 
     render(conn, "show.json-api", data: extrenal_file_collection, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
-    external_file_collection = Repo.get!(ExternalFileCollection, id)
+  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
+    external_file_collection = ExternalFileCollection |> Repo.get_by!(account_id: account_id, id: id)
     changeset = ExternalFileCollection.changeset(external_file_collection, Params.to_attributes(data))
 
     case Repo.update(changeset) do
@@ -61,11 +64,8 @@ defmodule BlueJet.ExternalFileCollectionController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    external_file_collection = Repo.get!(ExternalFileCollection, id)
-
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
+  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    external_file_collection = Repo.get_by!(ExternalFileCollection, account_id: account_id, id: id)
     Repo.delete!(external_file_collection)
 
     send_resp(conn, :no_content, "")

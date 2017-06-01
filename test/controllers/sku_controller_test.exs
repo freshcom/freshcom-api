@@ -18,7 +18,7 @@ defmodule BlueJet.SkuControllerTest do
     }
   }
   @invalid_attrs %{
-    "printName" => "s"
+    "name" => ""
   }
 
   setup do

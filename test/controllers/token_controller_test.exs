@@ -3,7 +3,6 @@ defmodule BlueJet.RefreshTokenControllerTest do
 
   alias BlueJet.UserRegistration
   alias BlueJet.CustomerRegistration
-  alias BlueJet.Authentication
   alias BlueJet.RefreshToken
 
   setup do

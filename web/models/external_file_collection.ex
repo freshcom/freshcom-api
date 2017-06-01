@@ -6,7 +6,7 @@ defmodule BlueJet.ExternalFileCollection do
   schema "external_file_collections" do
     field :name, :string
     field :label, :string
-    field :file_ids, {:array, Ecto.UUID}
+    field :file_ids, {:array, Ecto.UUID}, default: []
     field :translations, :map
 
     timestamps()
