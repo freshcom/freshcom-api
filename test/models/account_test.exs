@@ -1,19 +1,19 @@
 defmodule BlueJet.AccountTest do
-  use BlueJet.ModelCase
+  use BlueJet.ModelCase, async: true
 
   alias BlueJet.Account
 
-  @valid_attrs %{ name: Faker.Company.name() }
-  @invalid_attrs %{}
+  @valid_params %{ name: Faker.Company.name() }
+  @invalid_params %{}
 
   describe "changeset/1" do
     test "with valid attributes" do
-      changeset = Account.changeset(%Account{}, @valid_attrs)
+      changeset = Account.changeset(%Account{}, @valid_params)
       assert changeset.valid?
     end
 
     test "with invalid attributes" do
-      changeset = Account.changeset(%Account{}, @invalid_attrs)
+      changeset = Account.changeset(%Account{}, @invalid_params)
       refute changeset.valid?
     end
   end

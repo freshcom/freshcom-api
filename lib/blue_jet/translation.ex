@@ -2,12 +2,13 @@ defmodule BlueJet.Translation do
 
   def put_change(changeset, _, _, "en"), do: changeset
   def put_change(changeset, translatable_fields, old_translations, locale) do
-    t_fields = Enum.map_every(translatable_fields, 1, fn(item) -> Atom.to_string(item) end)
-    nl_translations = old_translations
-                    |> Map.get(locale, %{})
-                    |> Map.merge(Map.take(changeset.changes, t_fields))
+    old_locale_translations = old_translations |> Map.get(locale, %{})
+    new_locale_translations =
+      changeset.changes
+      |> Map.take(translatable_fields)
+      |> Map.new(fn({k, v}) -> { Atom.to_string(k), v } end)
 
-    new_translations = Map.merge(old_translations, %{ locale => nl_translations })
+    new_translations = Map.merge(old_translations, %{ locale => new_locale_translations })
 
     changeset = Enum.reduce(translatable_fields, changeset, fn(field_name, acc) -> Ecto.Changeset.delete_change(acc, field_name) end)
     Ecto.Changeset.put_change(changeset, :translations, new_translations)

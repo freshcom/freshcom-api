@@ -17,7 +17,7 @@ defmodule BlueJet.User do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params) do
+  def changeset(struct, params \\ %{}) do
     struct
     |> cast(params, [:email, :password, :first_name, :last_name, :default_account_id])
     |> validate_required([:email, :password, :first_name, :last_name, :default_account_id])

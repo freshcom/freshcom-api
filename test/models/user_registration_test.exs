@@ -3,7 +3,7 @@ defmodule BlueJet.UserRegistrationTest do
 
   alias BlueJet.UserRegistration
 
-  @valid_attrs %{
+  @valid_params %{
     first_name: Faker.Name.first_name(),
     last_name: Faker.Name.last_name(),
     password: "test1234",
@@ -12,11 +12,11 @@ defmodule BlueJet.UserRegistrationTest do
   }
   describe "sign_up/1" do
     test "with valid params" do
-      {:ok, user} = UserRegistration.sign_up(@valid_attrs)
+      {:ok, user} = UserRegistration.sign_up(@valid_params)
 
-      assert user.first_name == @valid_attrs.first_name
-      assert user.last_name == @valid_attrs.last_name
-      assert user.email == @valid_attrs.email
+      assert user.first_name == @valid_params.first_name
+      assert user.last_name == @valid_params.last_name
+      assert user.email == @valid_params.email
     end
 
     test "with invalid attrs" do
@@ -26,8 +26,8 @@ defmodule BlueJet.UserRegistrationTest do
     end
 
     test "with duplicate email" do
-      {:ok, _} = UserRegistration.sign_up(@valid_attrs)
-      {:error, _} = UserRegistration.sign_up(@valid_attrs)
+      {:ok, _} = UserRegistration.sign_up(@valid_params)
+      {:error, _} = UserRegistration.sign_up(@valid_params)
     end
   end
 end

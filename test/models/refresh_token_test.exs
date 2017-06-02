@@ -1,20 +1,23 @@
 defmodule BlueJet.RefreshTokenTest do
-  use BlueJet.ModelCase
+  use BlueJet.ModelCase, async: true
 
   alias BlueJet.RefreshToken
 
-  @valid_attrs %{ user_id: Ecto.UUID.generate(), account_id: Ecto.UUID.generate() }
-  @invalid_attrs %{}
+  @valid_params %{
+    user_id: Ecto.UUID.generate(),
+    account_id: Ecto.UUID.generate()
+  }
+  @invalid_params %{}
 
   describe "changeset/2" do
     test "with valid attrs" do
-      changeset = RefreshToken.changeset(%RefreshToken{}, @valid_attrs)
+      changeset = RefreshToken.changeset(%RefreshToken{}, @valid_params)
 
       assert changeset.valid?
     end
 
     test "with invalid attrs" do
-      changeset = RefreshToken.changeset(%RefreshToken{}, @invalid_attrs)
+      changeset = RefreshToken.changeset(%RefreshToken{}, @invalid_params)
 
       refute changeset.valid?
     end

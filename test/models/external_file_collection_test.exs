@@ -1,19 +1,23 @@
 defmodule BlueJet.ExternalFileCollectionTest do
-  use BlueJet.ModelCase
+  use BlueJet.ModelCase, async: true
 
   alias BlueJet.ExternalFileCollection
 
-  @valid_attrs %{ label: Faker.Lorem.word(), name: Faker.Lorem.word(), account_id: Ecto.UUID.generate() }
-  @invalid_attrs %{}
+  @valid_params %{
+    label: Faker.Lorem.word(),
+    name: Faker.Lorem.word(),
+    account_id: Ecto.UUID.generate()
+  }
+  @invalid_params %{}
 
   describe "changeset/1" do
     test "with valid attributes" do
-      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_attrs)
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_params)
       assert changeset.valid?
     end
 
     test "with invalid attributes" do
-      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_attrs)
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_params)
       refute changeset.valid?
     end
   end
