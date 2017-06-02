@@ -3,7 +3,7 @@ defmodule BlueJet.ExternalFileCollectionTest do
 
   alias BlueJet.ExternalFileCollection
 
-  @valid_attrs %{ label: Faker.Lorem.word(), name: Faker.Lorem.word() }
+  @valid_attrs %{ label: Faker.Lorem.word(), name: Faker.Lorem.word(), account_id: Ecto.UUID.generate() }
   @invalid_attrs %{}
 
   describe "changeset/1" do
