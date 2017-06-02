@@ -48,10 +48,6 @@ defmodule BlueJet.Sku do
     end
   end
 
-  def db_fields do
-    BlueJet.Sku.__schema__(:fields)
-  end
-
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """

@@ -1,5 +1,4 @@
 defmodule BlueJet.Jwt do
-
   def sign_token(claims) do
     {_, signed} = System.get_env("JWT_PRIVATE_KEY")
                  |> JOSE.JWK.from_pem
@@ -16,11 +15,4 @@ defmodule BlueJet.Jwt do
       {:error, _} -> {false, nil}
     end
   end
-
-  defp put_value(changeset = %Ecto.Changeset{ valid?: valid? }) when valid? do
-    signed_token = sign_token(%{ jti: Ecto.UUID.generate() })
-
-    put_change(changeset, :value, signed_token)
-  end
-  defp put_value(changeset), do: changeset
 end

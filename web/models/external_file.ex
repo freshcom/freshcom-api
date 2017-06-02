@@ -54,7 +54,7 @@ defmodule BlueJet.ExternalFile do
     url
   end
 
-  def delete_object(struct, opts \\ []) do
+  def delete_object(struct) do
     ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(struct))
 
     struct

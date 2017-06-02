@@ -46,7 +46,8 @@ defmodule BlueJet.Mixfile do
       {:hackney, "~> 1.6"},
       {:sweet_xml, "~> 0.6"},
       {:comeonin, "~> 3.0"},
-      {:jose, "~> 1.8.3"}
+      {:jose, "~> 1.8.3"},
+      {:ex_doc, "~> 0.16", only: :dev, runtime: false}
     ]
   end
 

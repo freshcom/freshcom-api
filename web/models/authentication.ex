@@ -8,8 +8,8 @@ defmodule BlueJet.Authentication do
   # Get token using :username and :password
   def get_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
   def get_token(%{ username: username, password: password, scope: "" <> _ = scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
-  def get_token(%{ username: nil }, _), do: {:error, %{ error: :invalid_request, error_description: "Email can't be blank" }}
-  def get_token(%{ password: nil }, _), do: {:error, %{ error: :invalid_request, error_description: "Password can't be blank" }}
+  def get_token(%{ username: nil }), do: {:error, %{ error: :invalid_request, error_description: "Email can't be blank" }}
+  def get_token(%{ password: nil }), do: {:error, %{ error: :invalid_request, error_description: "Password can't be blank" }}
   def get_token(%{ username: username, password: password, scope: %{ "type" => "user" } = scope }) do
     with {:ok, user} <- get_user(username),
          {:ok, account_id} <- extract_account_id(scope, user),
@@ -41,7 +41,7 @@ defmodule BlueJet.Authentication do
   end
   # Get token using :refresh_token
   def get_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }), do: get_token(%{ refresh_token: refresh_token })
-  def get_token(%{ refresh_token: "" }, nil), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
+  def get_token(%{ refresh_token: "" }), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
   def get_token(%{ refresh_token: refresh_token }) do
     with {:ok, _} <- Ecto.UUID.dump(refresh_token),
          {:ok, refresh_token} <- get_refresh_token(refresh_token)

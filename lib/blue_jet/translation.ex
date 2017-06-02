@@ -1,4 +1,7 @@
 defmodule BlueJet.Translation do
+  @moduledoc """
+  This is the Translation module.
+  """
 
   def put_change(changeset, _, _, "en"), do: changeset
   def put_change(changeset, translatable_fields, old_translations, locale) do
@@ -8,7 +11,8 @@ defmodule BlueJet.Translation do
       |> Map.take(translatable_fields)
       |> Map.new(fn({k, v}) -> { Atom.to_string(k), v } end)
 
-    new_translations = Map.merge(old_translations, %{ locale => new_locale_translations })
+    merged_new = Map.merge(old_locale_translations, new_locale_translations)
+    new_translations = Map.merge(old_translations, %{ locale => merged_new })
 
     changeset = Enum.reduce(translatable_fields, changeset, fn(field_name, acc) -> Ecto.Changeset.delete_change(acc, field_name) end)
     Ecto.Changeset.put_change(changeset, :translations, new_translations)
