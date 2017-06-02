@@ -57,8 +57,7 @@ defmodule BlueJet.SkuController do
 
   def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
-    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Sku.changeset(sku, params, conn.assigns[:locale])
+    changeset = Sku.changeset(sku, Params.to_attributes(data), conn.assigns[:locale])
 
     case Repo.update(changeset) do
       {:ok, sku} ->
