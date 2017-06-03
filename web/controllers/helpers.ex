@@ -67,7 +67,9 @@ defmodule BlueJet.Controller.Helpers do
     bin |> String.replace("_", " ") |> String.capitalize
   end
 
-
+  def pointer_for(:fields), do: "/data"
+  def pointer_for(:attributes), do: "/data/attributes"
+  def pointer_for(:relationships), do: "/data/relationships"
   def pointer_for(field) do
     case Regex.run(~r/(.*)_id$/, to_string(field)) do
       nil      -> "/data/attributes/#{Inflex.camelize(field, :lower)}"
