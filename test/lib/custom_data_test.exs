@@ -1,5 +1,5 @@
 defmodule BlueJet.CustomDataTest do
-  use BlueJet.ModelCase
+  use BlueJet.ModelCase, async: true
 
   alias Ecto.Changeset
   alias BlueJet.CustomData

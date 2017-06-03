@@ -20,7 +20,9 @@ defmodule BlueJet.Router do
     resources "/accounts", AccountController, except: [:new, :edit]
     resources "/members", AccountMemberController, except: [:new, :edit]
     resources "/users", UserController, except: [:new, :edit]
-    resources "/products", ProductController, except: [:new, :edit]
+    resources "/products", ProductController, except: [:new, :edit] do
+      resources "/items", ProductItemController, only: [:create]
+    end
     resources "/skus", SkuController, except: [:new, :edit]
     resources "/external_files", ExternalFileController, except: [:new, :edit]
     resources "/token", TokenController, only: [:create]
