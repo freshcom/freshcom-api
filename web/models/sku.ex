@@ -3,7 +3,6 @@ defmodule BlueJet.Sku do
   use Trans, translates: [:name, :print_name, :caption, :description, :specification, :storage_description, :custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Account
 
   schema "skus" do
     field :code, :string
@@ -27,9 +26,10 @@ defmodule BlueJet.Sku do
 
     timestamps()
 
+    belongs_to :account, BlueJet.Account
     belongs_to :avatar, BlueJet.ExternalFile
-    belongs_to :account, Account
     has_many :external_file_collections, BlueJet.ExternalFileCollection
+    has_many :product_items, BlueJet.ProductItem
   end
 
   def translatable_fields do

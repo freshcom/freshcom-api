@@ -1,19 +1,15 @@
 defmodule BlueJet.RefreshToken do
   use BlueJet.Web, :model
 
-  alias BlueJet.User
-  alias BlueJet.Customer
-  alias BlueJet.Account
-
   schema "refresh_tokens" do
     field :email, :string, virtual: true
     field :password, :string, virtual: true
 
     timestamps()
 
-    belongs_to :user, User
-    belongs_to :customer, Customer
-    belongs_to :account, Account
+    belongs_to :account, BlueJet.Account
+    belongs_to :customer, BlueJet.Customer
+    belongs_to :user, BlueJet.User
   end
 
   @doc """

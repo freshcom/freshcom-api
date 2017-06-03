@@ -12,7 +12,7 @@ defmodule BlueJet.Customer do
 
     timestamps()
 
-    belongs_to :account, Account
+    belongs_to :account, BlueJet.Account
   end
 
   @doc """

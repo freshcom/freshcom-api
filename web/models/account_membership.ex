@@ -1,16 +1,13 @@
 defmodule BlueJet.AccountMembership do
   use BlueJet.Web, :model
 
-  alias BlueJet.Account
-  alias BlueJet.User
-
   schema "account_memberships" do
     field :role, :string
 
     timestamps()
 
-    belongs_to :user, User
-    belongs_to :account, Account
+    belongs_to :account, BlueJet.Account
+    belongs_to :user, BlueJet.User
   end
 
   def castable_fields(state) do

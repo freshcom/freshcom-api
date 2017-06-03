@@ -1,8 +1,6 @@
 defmodule BlueJet.ExternalFile do
   use BlueJet.Web, :model
 
-  alias BlueJet.Account
-
   schema "external_files" do
     field :name, :string
     field :status, :string, default: "pending"
@@ -16,7 +14,7 @@ defmodule BlueJet.ExternalFile do
 
     timestamps()
 
-    belongs_to :account, Account
+    belongs_to :account, BlueJet.Account
   end
 
   @doc """

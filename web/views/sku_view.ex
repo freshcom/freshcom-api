@@ -32,5 +32,4 @@ defmodule BlueJet.SkuView do
   def type(_sku, _conn) do
     "Sku"
   end
-
 end

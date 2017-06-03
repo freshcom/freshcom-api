@@ -9,10 +9,12 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
       add :label, :string, null: false
       add :content_type, :string
       add :file_ids, {:array, :binary_id}, null: false, default: []
-      add :sku_id, references(:skus, type: :binary_id, on_delete: :delete_all)
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
+
+      add :sku_id, references(:skus, type: :binary_id, on_delete: :delete_all)
+      add :product_id, references(:products, type: :binary_id, on_delete: :delete_all)
 
       timestamps()
     end

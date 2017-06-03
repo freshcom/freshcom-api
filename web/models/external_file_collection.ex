@@ -1,8 +1,6 @@
 defmodule BlueJet.ExternalFileCollection do
   use BlueJet.Web, :model
 
-  alias BlueJet.Account
-
   schema "external_file_collections" do
     field :name, :string
     field :label, :string
@@ -11,9 +9,8 @@ defmodule BlueJet.ExternalFileCollection do
 
     timestamps()
 
+    belongs_to :account, BlueJet.Account
     belongs_to :sku, BlueJet.Sku
-    belongs_to :account, Account
-
     has_many :files, BlueJet.ExternalFile
   end
 

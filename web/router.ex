@@ -25,6 +25,8 @@ defmodule BlueJet.Router do
     resources "/external_files", ExternalFileController, except: [:new, :edit]
     resources "/token", TokenController, only: [:create]
     resources "/customers", CustomerController, except: [:new, :edit]
+    resources "/product_items", ProductItemController, except: [:new, :edit]
+    resources "/unlockables", UnlockableController, except: [:new, :edit]
 
     resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit] do
       post "/relationships/files", ExternalFileCollectionController, :add_files

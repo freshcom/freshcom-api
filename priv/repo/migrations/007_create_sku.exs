@@ -28,7 +28,7 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       timestamps()
     end
 
-    create unique_index(:skus, [:account_id, :code])
+    create unique_index(:skus, [:account_id, :code], where: "code IS NOT NULL")
     create unique_index(:skus, [:account_id, :print_name])
     create index(:skus, [:account_id, :name])
     create index(:skus, [:account_id, :status])
