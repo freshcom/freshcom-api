@@ -1,8 +1,8 @@
 defmodule BlueJet.ExternalFileController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.ExternalFile
   alias JaSerializer.Params
+  alias BlueJet.ExternalFile
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -16,7 +16,7 @@ defmodule BlueJet.ExternalFileController do
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     external_files = Repo.all(query)
-                    |> translate_collection(conn.assigns[:locale])
+                    |> Translation.translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count

@@ -6,13 +6,29 @@ defmodule BlueJet.ProductItemController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    product_items = Repo.all(ProductItem)
-    render(conn, "index.json-api", data: product_items)
+  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+    query =
+      ProductItem
+      |> where([s], s.account_id == ^account_id)
+      |> search([:short_name, :id], params["search"], conn.assigns[:locale])
+    result_count = Repo.aggregate(query, :count, :id)
+    total_count = Repo.aggregate(ProductItem, :count, :id)
+
+    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+    skus =
+      Repo.all(query)
+      |> Translation.translate_collection(conn.assigns[:locale])
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    render(conn, "index.json-api", data: skus, opts: [meta: meta, fields: conn.query_params["fields"]])
   end
 
-  def create(conn, %{"data" => data = %{"type" => "product_item", "attributes" => _product_item_params}}) do
-    changeset = ProductItem.changeset(%ProductItem{}, Params.to_attributes(data))
+  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"product_id" => product_id, "data" => data = %{"type" => "ProductItem", "attributes" => _product_item_params}}) do
+    fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id, "product_id" => product_id })
+    changeset = ProductItem.changeset(%ProductItem{}, fields)
 
     case Repo.insert(changeset) do
       {:ok, product_item} ->
@@ -27,17 +43,21 @@ defmodule BlueJet.ProductItemController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    product_item = Repo.get!(ProductItem, id)
-    render(conn, "show.json-api", data: product_item)
+  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    product_item =
+      ProductItem
+      |> Repo.get_by!(account_id: account_id, id: id)
+
+    render(conn, "show.json-api", data: product_item, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "product_item", "attributes" => _product_item_params}}) do
-    product_item = Repo.get!(ProductItem, id)
-    changeset = ProductItem.changeset(product_item, Params.to_attributes(data))
+  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "ProductItem", "attributes" => _product_item_params}}) do
+    product_item = Repo.get_by!(ProductItem, account_id: account_id, id: id)
+    changeset = ProductItem.changeset(product_item, Params.to_attributes(data), conn.assigns[:locale])
 
     case Repo.update(changeset) do
       {:ok, product_item} ->
+        product_item = Translation.translate(product_item, conn.assigns[:locale])
         render(conn, "show.json-api", data: product_item)
       {:error, changeset} ->
         conn
@@ -46,11 +66,8 @@ defmodule BlueJet.ProductItemController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    product_item = Repo.get!(ProductItem, id)
-
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
+  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    product_item = Repo.get_by!(ProductItem, account_id: account_id, id: id)
     Repo.delete!(product_item)
 
     send_resp(conn, :no_content, "")

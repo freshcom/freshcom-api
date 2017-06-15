@@ -11,6 +11,7 @@ defmodule BlueJet.ExternalFileCollection do
 
     belongs_to :account, BlueJet.Account
     belongs_to :sku, BlueJet.Sku
+    belongs_to :unlockable, BlueJet.Unlockable
     has_many :files, BlueJet.ExternalFile
   end
 

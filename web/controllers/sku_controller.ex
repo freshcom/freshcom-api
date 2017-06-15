@@ -3,7 +3,6 @@ defmodule BlueJet.SkuController do
 
   alias JaSerializer.Params
   alias BlueJet.Sku
-  alias BlueJet.Translation
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -29,8 +28,8 @@ defmodule BlueJet.SkuController do
   end
 
   def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
-    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Sku.changeset(%Sku{}, params, conn.assigns[:locale])
+    fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
+    changeset = Sku.changeset(%Sku{}, fields, conn.assigns[:locale])
 
     case Repo.insert(changeset) do
       {:ok, sku} ->

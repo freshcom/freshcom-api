@@ -3,7 +3,6 @@ defmodule BlueJet.ProductController do
 
   alias BlueJet.Product
   alias JaSerializer.Params
-  alias BlueJet.Translation
 
   plug :scrub_params, "data" when action in [:create, :update]
 

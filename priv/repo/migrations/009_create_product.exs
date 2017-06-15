@@ -6,8 +6,9 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string, null: false
-      add :item_mode, :string, null: false, default: "any"
       add :name, :string, null: false
+      add :print_name, :string
+      add :item_mode, :string, null: false, default: "any"
 
       add :caption, :string
       add :description, :string
@@ -21,5 +22,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
     end
 
     create index(:products, [:account_id, :name])
+    create index(:products, [:account_id, :status])
+    create unique_index(:products, [:account_id, :print_name])
   end
 end

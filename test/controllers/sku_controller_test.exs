@@ -80,7 +80,6 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["printName"] == @valid_attrs["printName"]
       assert json_response(conn, 201)["data"]["attributes"]["unitOfMeasure"] == @valid_attrs["unitOfMeasure"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
-      assert json_response(conn, 201)["data"]["attributes"]["customData"]["kind"] == @valid_attrs["customData"]["kind"]
     end
   end
 

@@ -6,7 +6,6 @@ defmodule BlueJet.ProductItemTest do
   @valid_params %{
     account_id: Ecto.UUID.generate(),
     status: "active",
-    print_name: "APPLE",
     custom_data: %{
       kind: "Gala"
     },
@@ -20,8 +19,8 @@ defmodule BlueJet.ProductItemTest do
       struct = %ProductItem{}
 
       assert struct.sort_index == 9999
-      assert struct.quantity == 1
-      assert struct.maximum_order_quantity == 9999
+      assert struct.source_quantity == 1
+      assert struct.maximum_public_order_quantity == 9999
       assert struct.primary == false
       assert struct.custom_data == %{}
       assert struct.translations == %{}
@@ -35,7 +34,6 @@ defmodule BlueJet.ProductItemTest do
       assert changeset.valid?
       assert changeset.changes.account_id
       assert changeset.changes.status
-      assert changeset.changes.print_name
     end
 
     test "with struct in :built state, valid params, zh-CN locale" do
@@ -45,7 +43,6 @@ defmodule BlueJet.ProductItemTest do
       assert changeset.changes.account_id
       assert changeset.changes.status
       assert changeset.changes.translations["zh-CN"]
-      refute Map.get(changeset.changes, :print_name)
       refute Map.get(changeset.changes, :custom_data)
     end
 
@@ -55,7 +52,6 @@ defmodule BlueJet.ProductItemTest do
 
       assert changeset.valid?
       assert changeset.changes.status
-      assert changeset.changes.print_name
       assert changeset.changes.custom_data
       refute Map.get(changeset.changes, :account_id)
     end
@@ -64,6 +60,9 @@ defmodule BlueJet.ProductItemTest do
       changeset = ProductItem.changeset(%ProductItem{}, @invalid_params)
 
       refute changeset.valid?
+      assert changeset.errors[:relationships]
+      assert changeset.errors[:status]
+      assert changeset.errors[:product_id]
     end
   end
 end

@@ -14,6 +14,7 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
       add :translations, :map, null: false, default: "{}"
 
       add :sku_id, references(:skus, type: :binary_id, on_delete: :delete_all)
+      add :unlockable_id, references(:unlockables, type: :binary_id, on_delete: :delete_all)
       add :product_id, references(:products, type: :binary_id, on_delete: :delete_all)
 
       timestamps()

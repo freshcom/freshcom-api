@@ -34,6 +34,8 @@ defmodule BlueJet.Web do
       use Phoenix.Controller
 
       alias BlueJet.Repo
+      alias BlueJet.Translation
+
       import Ecto
       import Ecto.Query
 

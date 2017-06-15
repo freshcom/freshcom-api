@@ -1,8 +1,8 @@
 defmodule BlueJet.ExternalFileCollectionController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.ExternalFileCollection
   alias JaSerializer.Params
+  alias BlueJet.ExternalFileCollection
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -15,7 +15,7 @@ defmodule BlueJet.ExternalFileCollectionController do
     total_count = Repo.aggregate(query, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    external_file_collections = Repo.all(query) |> translate_collection(conn.assigns[:locale])
+    external_file_collections = Repo.all(query) |> Translation.translate_collection(conn.assigns[:locale])
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -45,7 +45,7 @@ defmodule BlueJet.ExternalFileCollectionController do
     extrenal_file_collection =
       ExternalFileCollection
       |> Repo.get_by!(account_id: account_id, id: id)
-      |> translate(conn.assigns[:locale])
+      |> Translation.translate(conn.assigns[:locale])
       |> ExternalFileCollection.put_files
 
     render(conn, "show.json-api", data: extrenal_file_collection, opts: [include: conn.query_params["include"]])

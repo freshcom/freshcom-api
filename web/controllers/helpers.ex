@@ -77,15 +77,15 @@ defmodule BlueJet.Controller.Helpers do
     end
   end
 
-  def translate_collection(collection, locale) when locale !== "en" do
-    Enum.map(collection, fn(item) -> translate(item, locale) end)
-  end
-  def translate_collection(collection, _locale), do: collection
+  # def translate_collection(collection, "en"), do: collection
+  # def translate_collection(collection, locale) do
+  #   Enum.map(collection, fn(item) -> translate(item, locale) end)
+  # end
 
-  def translate(struct, locale) when locale !== "en" do
-    t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
-    Map.merge(struct, t_attributes)
-  end
-  def translate(struct, _locale), do: struct
+  # def translate(collection, "en"), do: collection
+  # def translate(struct, locale) do
+  #   t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
+  #   Map.merge(struct, t_attributes)
+  # end
 
 end
