@@ -6,10 +6,10 @@ defmodule BlueJet.SkuController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+  def index(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
     query =
       Sku
-      |> search([:name, :id], params["search"], conn.assigns[:locale])
+      |> search([:name, :id], params["search"], locale)
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(Sku, :count, :id)
@@ -19,7 +19,7 @@ defmodule BlueJet.SkuController do
     skus =
       Repo.all(query)
       |> Repo.preload(:external_file_collections)
-      |> Translation.translate_collection(conn.assigns[:locale])
+      |> Translation.translate_collection(locale)
     meta = %{
       totalCount: total_count,
       resultCount: result_count
