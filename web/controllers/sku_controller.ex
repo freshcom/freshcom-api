@@ -9,12 +9,13 @@ defmodule BlueJet.SkuController do
   def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
     query =
       Sku
-      |> where([s], s.account_id == ^account_id)
       |> search([:name, :id], params["search"], conn.assigns[:locale])
+      |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(Sku, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+
     skus =
       Repo.all(query)
       |> Repo.preload(:external_file_collections)
@@ -29,13 +30,13 @@ defmodule BlueJet.SkuController do
 
   def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Sku.changeset(%Sku{}, fields, conn.assigns[:locale])
+    changeset = Sku.changeset(%Sku{}, fields)
 
     case Repo.insert(changeset) do
       {:ok, sku} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: sku)
+        |> render("show.json-api", data: sku, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -43,25 +44,23 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+  def show(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
     sku =
       Sku
       |> Repo.get_by!(account_id: account_id, id: id)
-      |> Repo.preload(:avatar)
-      |> Repo.preload(:external_file_collections)
-      |> Translation.translate(conn.assigns[:locale])
+      |> Translation.translate(locale)
 
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
 
-  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
+  def update(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
-    changeset = Sku.changeset(sku, Params.to_attributes(data), conn.assigns[:locale])
+    changeset = Sku.changeset(sku, Params.to_attributes(data), locale)
 
     case Repo.update(changeset) do
       {:ok, sku} ->
-        sku = Translation.translate(sku, conn.assigns[:locale])
-        render(conn, "show.json-api", data: sku)
+        sku = Translation.translate(sku, locale)
+        render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
