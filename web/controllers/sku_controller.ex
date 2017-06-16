@@ -12,7 +12,9 @@ defmodule BlueJet.SkuController do
       |> search([:name, :id], params["search"], locale)
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
-    total_count = Repo.aggregate(Sku, :count, :id)
+
+    total_query = Sku |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
 
@@ -25,7 +27,7 @@ defmodule BlueJet.SkuController do
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: skus, opts: [meta: meta, fields: conn.query_params["fields"]])
+    render(conn, "index.json-api", data: skus, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
   end
 
   def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do

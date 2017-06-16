@@ -497,6 +497,8 @@ defmodule BlueJet.SkuControllerTest do
       conn = get(conn, sku_path(conn, :index))
 
       assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 2
     end
 
     test "with good access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -541,7 +543,75 @@ defmodule BlueJet.SkuControllerTest do
       conn = get(conn, sku_path(conn, :index, locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 3
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "橙子" end)) == 1
+    end
+
+    test "with good access token and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        avatar_id: avatar_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      Repo.insert!(%ExternalFileCollection{
+        account_id: account1_id,
+        sku_id: sku_id,
+        label: "primary_images"
+      })
+
+      Repo.insert!(%ExternalFileCollection{
+        account_id: account1_id,
+        sku_id: sku_id,
+        label: "secondary_images"
+      })
+
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE2",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections"))
+
+      assert length(json_response(conn, 200)["data"]) == 3
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
     end
 
     test "with good access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -581,6 +651,8 @@ defmodule BlueJet.SkuControllerTest do
       conn = get(conn, sku_path(conn, :index, %{ "page[number]" => 2, "page[size]" => 1 }))
 
       assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
 
     test "with good access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -620,6 +692,8 @@ defmodule BlueJet.SkuControllerTest do
       conn = get(conn, sku_path(conn, :index, search: "oran"))
 
       assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
   end
 
