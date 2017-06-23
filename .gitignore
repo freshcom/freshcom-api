@@ -18,3 +18,4 @@ erl_crash.dump
 /.env
 /keys
 /doc
+/cover
