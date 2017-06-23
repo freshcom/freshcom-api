@@ -1,0 +1,16 @@
+{
+  "skip_files": [
+    "test/support",
+    "lib/mix/tasks",
+    "web/channels",
+
+    "lib/blue_jet.ex",
+    "lib/blue_jet/repo.ex",
+    "lib/blue_jet/endpoint.ex",
+
+    "web/gettext.ex",
+    "web/router.ex",
+    "web/web.ex",
+    "view"
+  ]
+}
