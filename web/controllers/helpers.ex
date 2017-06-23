@@ -10,18 +10,15 @@ defmodule BlueJet.Controller.Helpers do
     |> offset(^offset)
   end
 
-  def search(model, _columns, keyword, _locale) when keyword == nil or keyword == "" do
-    model
-  end
-
-  def search(model, columns, keyword, locale) when locale == "en" do
+  def search(model, _, nil, _), do: model
+  def search(model, _, "", _), do: model
+  def search(model, columns, keyword, "en") do
     keyword = "%#{keyword}%"
 
     Enum.reduce(columns, model, fn(column, query) ->
       from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
     end)
   end
-
   def search(model, columns, keyword, locale) do
     keyword = "%#{keyword}%"
 

@@ -262,6 +262,85 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       assert length(json_response(conn, 200)["data"]) == 2
     end
+
+    test "with good access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, external_file_path(conn, :index, %{ "page[number]" => 2, "page[size]" => 1 }))
+
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
+
+    test "with good access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      Repo.insert!(%ExternalFile{
+        account_id: account2_id,
+        name: "Orange",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "Apple",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "Orange",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "ORANGE",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, external_file_path(conn, :index, search: "oran"))
+
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
   end
 
   describe "DELETE /v1/external_files/:id" do

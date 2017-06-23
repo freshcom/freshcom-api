@@ -9,14 +9,16 @@ defmodule BlueJet.ExternalFileController do
   def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
     query =
       ExternalFile
-      |> where([ef], ef.account_id == ^account_id)
       |> search([:name, :id], params["search"], conn.assigns[:locale])
+      |> where([ef], ef.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
-    total_count = Repo.aggregate(query, :count, :id)
+
+    total_query = ExternalFile |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
 
     query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
     external_files = Repo.all(query)
-                    |> Translation.translate_collection(conn.assigns[:locale])
+
     meta = %{
       totalCount: total_count,
       resultCount: result_count

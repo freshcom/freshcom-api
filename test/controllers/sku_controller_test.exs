@@ -656,6 +656,24 @@ defmodule BlueJet.SkuControllerTest do
     end
 
     test "with good access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      Repo.insert!(%Sku{
+        account_id: account2_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
       Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
