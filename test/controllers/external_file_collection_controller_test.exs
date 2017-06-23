@@ -6,6 +6,8 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
   alias BlueJet.Authentication
 
   alias BlueJet.ExternalFileCollection
+  alias BlueJet.ExternalFile
+  alias BlueJet.Sku
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -70,6 +72,69 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
 
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
+    end
+
+    test "with valid attrs and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      %ExternalFile{ id: file2_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = post(conn, external_file_collection_path(conn, :create, include: "sku,files"), %{
+        "data" => %{
+          "type" => "ExternalFileCollection",
+          "attributes" => @valid_attrs,
+          "relationships" => %{
+            "sku" => %{
+              "data" => %{
+                "type" => "Sku",
+                "id" => sku_id
+              }
+            },
+            "files" => %{
+              "data" => [
+                %{
+                  "type" => "ExternalFile",
+                  "id" => file1_id
+                },
+                %{
+                  "type" => "ExternalFile",
+                  "id" => file2_id
+                }
+              ]
+            }
+          }
+        }
+      })
+
+      assert json_response(conn, 201)["data"]["id"]
+      assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
+      assert json_response(conn, 201)["data"]["relationships"]["sku"]["data"]["id"]
+      assert length(json_response(conn, 201)["data"]["relationships"]["files"]["data"]) == 2
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "Sku" end)) == 1
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 2
     end
   end
 

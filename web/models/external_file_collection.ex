@@ -26,7 +26,12 @@ defmodule BlueJet.ExternalFileCollection do
 
   def put_files(struct) do
     file_ids = struct.file_ids
-    files = from(ef in BlueJet.ExternalFile, where: ef.id in ^file_ids) |> BlueJet.Repo.all
+    files = from(ef in BlueJet.ExternalFile, where: ef.id in ^file_ids) |> BlueJet.Repo.all()
     %{ struct | files: files }
+  end
+
+  def files(struct) do
+    file_ids = struct.file_ids
+    from(ef in BlueJet.ExternalFile, where: ef.id in ^file_ids) |> BlueJet.Repo.all()
   end
 end

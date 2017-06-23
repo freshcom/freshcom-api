@@ -33,7 +33,7 @@ defmodule BlueJet.ExternalFileCollectionController do
         conn
         |> put_status(:created)
         |> put_resp_header("location", external_file_collection_path(conn, :show, external_file_collection))
-        |> render("show.json-api", data: external_file_collection)
+        |> render("show.json-api", data: external_file_collection, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -46,7 +46,7 @@ defmodule BlueJet.ExternalFileCollectionController do
       ExternalFileCollection
       |> Repo.get_by!(account_id: account_id, id: id)
       |> Translation.translate(conn.assigns[:locale])
-      |> ExternalFileCollection.put_files
+      # |> ExternalFileCollection.put_files
 
     render(conn, "show.json-api", data: extrenal_file_collection, opts: [include: conn.query_params["include"]])
   end
