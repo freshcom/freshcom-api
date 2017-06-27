@@ -2,6 +2,8 @@ defmodule BlueJet.Unlockable do
   use BlueJet.Web, :model
   use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
+  alias BlueJet.Translation
+
   schema "unlockables" do
     field :code, :string
     field :status, :string
@@ -38,9 +40,10 @@ defmodule BlueJet.Unlockable do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
+  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, [:code, :status, :name, :print_name])
-    |> validate_required([:code, :status, :name, :print_name])
+    |> cast(params, castable_fields(state))
+    |> validate_required([:account_id, :status, :name, :print_name])
+    |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 end

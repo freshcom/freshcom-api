@@ -5,7 +5,7 @@ defmodule BlueJet.ExternalFileCollectionView do
   alias BlueJet.Repo
   alias BlueJet.ExternalFileCollection
 
-  attributes [:name, :label, :file_count, :inserted_at, :updated_at]
+  attributes [:name, :label, :file_count, :custom_data, :inserted_at, :updated_at]
 
   has_one :sku, serializer: BlueJet.SkuView, identifiers: :when_included
   has_one :unlockable, serializer: BlueJet.UnlockableView, identifiers: :when_included
