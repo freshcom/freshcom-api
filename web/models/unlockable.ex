@@ -43,6 +43,7 @@ defmodule BlueJet.Unlockable do
   def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(state))
+    |> validate_length(:print_name, min: 3)
     |> validate_required([:account_id, :status, :name, :print_name])
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
