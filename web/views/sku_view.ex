@@ -40,7 +40,7 @@ defmodule BlueJet.SkuView do
         |> Ecto.assoc(:avatar)
         |> Repo.one
       other -> other
-   end
+    end
   end
 
   def external_file_collections(struct, _) do
@@ -50,6 +50,6 @@ defmodule BlueJet.SkuView do
         |> Ecto.assoc(:external_file_collections)
         |> Repo.all
       other -> other
-   end
+    end
   end
 end

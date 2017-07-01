@@ -24,15 +24,15 @@ defmodule BlueJet.Router do
       resources "/items", ProductItemController, only: [:create]
     end
     resources "/skus", SkuController, except: [:new, :edit]
-    resources "/external_files", ExternalFileController, except: [:new, :edit]
     resources "/token", TokenController, only: [:create]
     resources "/customers", CustomerController, except: [:new, :edit]
     resources "/product_items", ProductItemController, except: [:new, :edit]
     resources "/unlockables", UnlockableController, except: [:new, :edit]
 
+    resources "/external_files", ExternalFileController, except: [:new, :edit]
     resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit] do
-      post "/relationships/files", ExternalFileCollectionController, :add_files
-      patch "/relationships/files", ExternalFileCollectionController, :replace_files
+      resources "/memberships", ExternalFileCollectionMembershipController, only: [:create, :index]
     end
+    resources "/external_file_collection_memberships", ExternalFileCollectionMembershipController, only: [:update, :delete]
   end
 end
