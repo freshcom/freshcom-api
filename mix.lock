@@ -18,7 +18,7 @@
   "hackney": {:hex, :hackney, "1.7.1", "e238c52c5df3c3b16ce613d3a51c7220a784d734879b1e231c9babd433ac1cb4", [:rebar3], [{:certifi, "1.0.0", [hex: :certifi, optional: false]}, {:idna, "4.0.0", [hex: :idna, optional: false]}, {:metrics, "1.0.1", [hex: :metrics, optional: false]}, {:mimerl, "1.0.2", [hex: :mimerl, optional: false]}, {:ssl_verify_fun, "1.1.1", [hex: :ssl_verify_fun, optional: false]}]},
   "idna": {:hex, :idna, "4.0.0", "10aaa9f79d0b12cf0def53038547855b91144f1bfcc0ec73494f38bb7b9c4961", [:rebar3], []},
   "inflex": {:hex, :inflex, "1.7.0", "4466a34b7d8e871d8164619ba0f3b8410ec782e900f0ae1d3d27a5875a29532e", [:mix], []},
-  "ja_serializer": {:git, "https://github.com/rbao/ja_serializer.git", "9e4aefa2437dbdc23137bd6683d36fa2ef08f7da", [branch: "master"]},
+  "ja_serializer": {:git, "https://github.com/rbao/ja_serializer.git", "20dee3d7e411d0cd02a59b58ecabdc5de7a01987", [branch: "master"]},
   "joken": {:hex, :joken, "1.4.1", "16b87dcbad59dfb1e75231b9d6e504d852ce11f849efb7150a41dcad29dba8e1", [:mix], [{:jose, "~> 1.8", [hex: :jose, optional: false]}, {:plug, "~> 1.0", [hex: :plug, optional: true]}, {:poison, "~> 1.5 or ~> 2.0 or ~> 3.0", [hex: :poison, optional: true]}]},
   "jose": {:hex, :jose, "1.8.3", "1285151e6f3b70aa8b60c27801aed6d20f7bb9e87116fd7d1e405ea450549aad", [:mix, :rebar3], [{:base64url, "~> 0.0.1", [hex: :base64url, optional: false]}]},
   "jsx": {:hex, :jsx, "2.8.2", "7acc7d785b5abe8a6e9adbde926a24e481f29956dd8b4df49e3e4e7bcc92a018", [:mix, :rebar3], []},
