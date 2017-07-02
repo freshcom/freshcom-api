@@ -20,8 +20,13 @@ defmodule BlueJet.ExternalFileCollectionMembership do
     BlueJet.Sku.__trans__(:fields)
   end
 
-  def castable_fields(_) do
-    [:account_id, :sort_index, :collection_id, :file_id]
+  def castable_fields(state) do
+    all = [:account_id, :sort_index, :collection_id, :file_id]
+
+    case state do
+      :built -> all
+      :loaded -> all -- [:account_id, :collection_id, :file_id]
+    end
   end
 
   @doc """

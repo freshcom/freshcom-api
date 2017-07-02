@@ -30,11 +30,19 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       label: "primary_images"
     })
 
+    %ExternalFile{ id: ef1_id } = Repo.insert!(%ExternalFile{
+      account_id: account1_id,
+      name: Faker.Lorem.word(),
+      status: "uploaded",
+      content_type: "image/png",
+      size_bytes: 42
+    })
+
     conn = build_conn()
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id }
+    %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id }
   end
 
   describe "POST /v1/external_file_collections/:efc_id/memberships" do
@@ -72,7 +80,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
         account_name: Faker.Company.name()
       })
 
-      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -90,7 +98,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
             "file": %{
               "data" => %{
                 "type" => "ExternalFile",
-                "id" => file1_id
+                "id" => ef2_id
               }
             }
           }
@@ -101,15 +109,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with valid relationship", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id } do
-      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
-        account_id: account1_id,
-        name: Faker.Lorem.word(),
-        status: "uploaded",
-        content_type: "image/png",
-        size_bytes: 42
-      })
-
+    test "with valid relationship", %{ conn: conn, uat1: uat1, efc1_id: efc1_id, ef1_id: ef1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
@@ -120,7 +120,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
             "file": %{
               "data" => %{
                 "type" => "ExternalFile",
-                "id" => file1_id
+                "id" => ef1_id
               }
             }
           }
@@ -130,18 +130,10 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["sortIndex"]
       assert json_response(conn, 201)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
-      assert json_response(conn, 201)["data"]["relationships"]["file"]["data"]["id"] == file1_id
+      assert json_response(conn, 201)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
     end
 
-    test "with valid relationship and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id } do
-      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
-        account_id: account1_id,
-        name: Faker.Lorem.word(),
-        status: "uploaded",
-        content_type: "image/png",
-        size_bytes: 42
-      })
-
+    test "with valid relationship and include", %{ conn: conn, uat1: uat1, efc1_id: efc1_id, ef1_id: ef1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships?include=file,collection", %{
@@ -152,7 +144,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
             "file": %{
               "data" => %{
                 "type" => "ExternalFile",
-                "id" => file1_id
+                "id" => ef1_id
               }
             }
           }
@@ -162,7 +154,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["sortIndex"]
       assert json_response(conn, 201)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
-      assert json_response(conn, 201)["data"]["relationships"]["file"]["data"]["id"] == file1_id
+      assert json_response(conn, 201)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
       assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
     end
@@ -181,7 +173,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert conn.status == 401
     end
 
-    test "with access token of a different account", %{ conn: conn, uat1: uat1, efc1_id: efc1_id } do
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -190,7 +182,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
         account_name: Faker.Company.name()
       })
 
-      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -198,28 +190,77 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc1_id } = Repo.insert!(%ExternalFileCollection{
+      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
         account_id: account2_id,
         label: "primary_images"
       })
 
-      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %ExternalFileCollectionMembership{ id: efcm2_id } = Repo.insert!(%ExternalFileCollectionMembership{
         account_id: account2_id,
-        collection_id: efc1_id,
-        file_id: file1_id
+        collection_id: efc2_id,
+        file_id: ef2_id
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}", %{
+        patch(conn, "/v1/external_file_collection_memberships/#{efcm2_id}", %{
           "data" => %{
-            "id" => efcm1_id,
+            "id" => efcm2_id,
             "type" => "ExternalFileCollectionMembership",
             "attributes" => @valid_attrs
           }
         })
       end)
+    end
+
+    test "with invalid relationship", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
+      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
+      })
+
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+        account_id: account1_id,
+        label: "primary_images"
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}", %{
+        "data" => %{
+          "type" => "ExternalFileCollectionMembership",
+          "attributes" => @valid_attrs,
+          "relationships" => %{
+            "file": %{
+              "data" => %{
+                "type" => "ExternalFile",
+                "id" => ef2_id
+              }
+            },
+            "collection": %{
+              "data" => %{
+                "type" => "ExternalFile",
+                "id" => efc2_id
+              }
+            }
+          }
+        }
+      })
+
+      assert json_response(conn, 200)["data"]["id"]
+      assert json_response(conn, 200)["data"]["attributes"]["sortIndex"]
+      assert json_response(conn, 200)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
+      assert json_response(conn, 200)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
     end
   end
 end
