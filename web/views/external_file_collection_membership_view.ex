@@ -12,12 +12,13 @@ defmodule BlueJet.ExternalFileCollectionMembershipView do
   has_one :collection, serializer: BlueJet.ExternalFileCollectionView
   has_one :file, serializer: BlueJet.ExternalFileView
 
-  def collection(struct, _) do
+  def collection(struct, %{ assigns: %{ locale: locale } }) do
     case struct.collection do
       %Ecto.Association.NotLoaded{} ->
         struct
         |> Ecto.assoc(:collection)
         |> Repo.one
+        |> Translation.translate(locale)
       other -> other
     end
   end

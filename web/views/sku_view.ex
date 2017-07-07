@@ -27,11 +27,11 @@ defmodule BlueJet.SkuView do
   has_one :avatar, serializer: BlueJet.ExternalFileView, identifiers: :when_included
   has_many :external_file_collections, serializer: BlueJet.ExternalFileCollectionView, identifiers: :when_included
 
-  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
-
   def type(_, _) do
     "Sku"
   end
+
+  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
   def avatar(struct, _) do
     case struct.avatar do
@@ -43,12 +43,13 @@ defmodule BlueJet.SkuView do
     end
   end
 
-  def external_file_collections(struct, _) do
+  def external_file_collections(struct, %{ assigns: %{ locale: locale } }) do
     case struct.external_file_collections do
       %Ecto.Association.NotLoaded{} ->
         struct
         |> Ecto.assoc(:external_file_collections)
         |> Repo.all
+        |> Translation.translate_collection(locale)
       other -> other
     end
   end

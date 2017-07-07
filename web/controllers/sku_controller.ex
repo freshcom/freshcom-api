@@ -6,7 +6,7 @@ defmodule BlueJet.SkuController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
+  def index(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, params) do
     query =
       Sku
       |> search([:name, :id], params["search"], locale)
@@ -20,7 +20,6 @@ defmodule BlueJet.SkuController do
 
     skus =
       Repo.all(query)
-      |> Repo.preload(:external_file_collections)
       |> Translation.translate_collection(locale)
     meta = %{
       totalCount: total_count,

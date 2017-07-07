@@ -1,10 +1,10 @@
 defmodule BlueJet.ExternalFileCollectionMembershipTest do
-  use BlueJet.ModelCase
+  # use BlueJet.ModelCase
 
-  alias BlueJet.ExternalFileCollectionMembership
+  # alias BlueJet.ExternalFileCollectionMembership
 
-  @valid_attrs %{}
-  @invalid_attrs %{}
+  # @valid_attrs %{}
+  # @invalid_attrs %{}
 
   # test "changeset with valid attributes" do
   #   changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, @valid_attrs)

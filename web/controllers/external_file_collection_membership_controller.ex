@@ -6,9 +6,25 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    external_file_collection_membership = Repo.all(ExternalFileCollectionMembership)
-    render(conn, "index.json-api", data: external_file_collection_membership)
+  def index(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, _params) do
+    query =
+      ExternalFileCollectionMembership
+      |> where([efcm], efcm.account_id == ^account_id)
+      |> filter(collection_id: conn.query_params["filter"]["collectionId"], file_id: conn.query_params["fileId"])
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = ExternalFileCollectionMembership |> where([efcm], efcm.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
+
+    memberships = Repo.all(query)
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    render(conn, "index.json-api", data: memberships, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
   end
 
   def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{ "external_file_collection_id" => collection_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
@@ -27,7 +43,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
     end
   end
 
-  def update(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollectionMembership"}}) do
+  def update(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollectionMembership"}}) do
     efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: account_id, id: id)
     changeset = ExternalFileCollectionMembership.changeset(efcm, Params.to_attributes(data))
 

@@ -32,6 +32,11 @@ defmodule BlueJet.Controller.Helpers do
     end)
   end
 
+  def filter(query, filter) do
+    filter = Enum.filter(filter, fn({key, value}) -> value end)
+    from q in query, where: ^filter
+  end
+
   def extract_errors(%Ecto.Changeset{ valid?: false, errors: errors }) do
     Enum.reduce(errors, [], fn({ field, { msg, opts } }, acc) ->
       msg = Enum.reduce(opts, msg, fn({ key, value }, acc) ->

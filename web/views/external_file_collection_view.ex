@@ -5,7 +5,7 @@ defmodule BlueJet.ExternalFileCollectionView do
   alias BlueJet.Repo
   alias BlueJet.ExternalFileCollection
 
-  attributes [:name, :label, :file_count, :custom_data, :inserted_at, :updated_at]
+  attributes [:name, :label, :file_count, :custom_data, :locale, :inserted_at, :updated_at]
 
   has_one :sku, serializer: BlueJet.SkuView, identifiers: :when_included
   has_one :unlockable, serializer: BlueJet.UnlockableView, identifiers: :when_included
@@ -14,6 +14,8 @@ defmodule BlueJet.ExternalFileCollectionView do
   def type(_external_file_collection, _conn) do
     "ExternalFileCollection"
   end
+
+  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
   def file_count(external_file_collection, _conn) do
     length(external_file_collection.file_ids)

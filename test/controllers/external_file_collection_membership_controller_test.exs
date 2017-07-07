@@ -27,7 +27,13 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
 
     %ExternalFileCollection{ id: efc1_id } = Repo.insert!(%ExternalFileCollection{
       account_id: account1_id,
-      label: "primary_images"
+      name: "Primary Images",
+      label: "primary_images",
+      translations: %{
+        "zh-CN" => %{
+          "name" => "主要图片"
+        }
+      }
     })
 
     %ExternalFile{ id: ef1_id } = Repo.insert!(%ExternalFile{
@@ -261,6 +267,114 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["sortIndex"]
       assert json_response(conn, 200)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
       assert json_response(conn, 200)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
+    end
+  end
+
+  describe "GET /v1/external_file_collection_memberships" do
+    test "with no access token", %{ conn: conn } do
+      conn = get(conn, sku_path(conn, :index))
+
+      assert conn.status == 401
+    end
+
+    test "with good access token", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+        account_id: account2_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+        account_id: account2_id,
+        label: "primary_images"
+      })
+
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account2_id,
+        collection_id: efc2_id,
+        file_id: ef2_id
+      })
+
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, external_file_collection_membership_path(conn, :index))
+
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 1
+      assert json_response(conn, 200)["meta"]["totalCount"] == 1
+    end
+
+    test "with good access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, external_file_collection_membership_path(conn, :index, include: "collection,file", locale: "zh-CN"))
+
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 1
+      assert json_response(conn, 200)["meta"]["totalCount"] == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
+    end
+
+    test "with good access token, locale, include and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+        account_id: account1_id,
+        label: "primary_images"
+      })
+
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc2_id,
+        file_id: ef2_id
+      })
+
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, external_file_collection_membership_path(conn, :index, filter: %{ "collectionId" => efc1_id }, include: "collection,file", locale: "zh-CN"))
+
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 1
+      assert json_response(conn, 200)["meta"]["totalCount"] == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
   end
 end

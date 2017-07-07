@@ -548,7 +548,7 @@ defmodule BlueJet.SkuControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "橙子" end)) == 1
     end
 
-    test "with good access token and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with good access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -583,13 +583,23 @@ defmodule BlueJet.SkuControllerTest do
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         sku_id: sku_id,
-        label: "primary_images"
+        label: "primary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "主要图片"
+          }
+        }
       })
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         sku_id: sku_id,
-        label: "secondary_images"
+        label: "secondary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "主要图片"
+          }
+        }
       })
 
       Repo.insert!(%Sku{
@@ -605,13 +615,14 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections"))
+      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections", locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 2
     end
 
     test "with good access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
