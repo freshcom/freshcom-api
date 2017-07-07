@@ -425,9 +425,123 @@ defmodule BlueJet.ProductItemControllerTest do
 
       assert length(json_response(conn, 200)["data"]) == 2
     end
+
+    @tag :focus
+    test "with good access token, locale, include and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      %Product{ id: product1_id } = Repo.insert!(%Product{
+        account_id: account1_id,
+        status: "active",
+        name: "Apple",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "苹果"
+          }
+        }
+      })
+      %Sku{ id: sku1_id } = Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Good Apple",
+        print_name: "APPLE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Gala"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "name" => "好的苹果"
+          }
+        }
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        product_id: product1_id,
+        sku_id: sku1_id,
+        short_name: "Fuji",
+        status: "active",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "short_name" => "红富士"
+          }
+        }
+      })
+
+      %Product{ id: product2_id } = Repo.insert!(%Product{
+        account_id: account1_id,
+        status: "active",
+        name: "Another Apple",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "又一个苹果"
+          }
+        }
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        product_id: product2_id,
+        sku_id: sku1_id,
+        short_name: "Gala",
+        status: "active",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "short_name" => "基那"
+          }
+        }
+      })
+
+      %Product{ id: product3_id } = Repo.insert!(%Product{
+        account_id: account1_id,
+        status: "active",
+        name: "Apple",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "苹果"
+          }
+        }
+      })
+      %Sku{ id: sku2_id } = Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Good Apple",
+        print_name: "APPLE2",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Gala"
+        }
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        product_id: product3_id,
+        sku_id: sku2_id,
+        short_name: "Fuji",
+        status: "active",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "short_name" => "红富士"
+          }
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, product_item_path(conn, :index, include: "product,sku", filter: %{ "skuId" => sku1_id }, locale: "zh-CN"))
+
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "Product" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "Sku" end)) == 1
+    end
   end
 
-  describe "DELETE /v1/skus/:id" do
+  describe "DELETE /v1/product_items/:id" do
     test "with no access token", %{ conn: conn } do
       conn = delete(conn, product_item_path(conn, :delete, "test"))
 

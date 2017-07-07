@@ -33,7 +33,7 @@ defmodule BlueJet.Controller.Helpers do
   end
 
   def filter(query, filter) do
-    filter = Enum.filter(filter, fn({key, value}) -> value end)
+    filter = Enum.filter(filter, fn({_, value}) -> value end)
     from q in query, where: ^filter
   end
 
