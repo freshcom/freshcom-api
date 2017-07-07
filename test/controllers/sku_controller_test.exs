@@ -130,7 +130,7 @@ defmodule BlueJet.SkuControllerTest do
       assert conn.status == 401
     end
 
-    test "with with access token of a different account", %{ conn: conn, uat1: uat1 } do
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),

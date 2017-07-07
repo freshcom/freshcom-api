@@ -21,6 +21,7 @@ defmodule BlueJet.Unlockable do
     belongs_to :account, BlueJet.Account
     belongs_to :avatar, BlueJet.ExternalFile
     has_many :external_file_collections, BlueJet.ExternalFileCollection
+    has_many :product_items, BlueJet.ProductItem
   end
 
   def translatable_fields do

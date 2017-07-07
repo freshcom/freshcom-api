@@ -473,7 +473,6 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
 
-    @tag :focus
     test "with good access token and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
