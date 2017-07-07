@@ -7,7 +7,6 @@ defmodule BlueJet.ExternalFileCollection do
   schema "external_file_collections" do
     field :name, :string
     field :label, :string
-    field :file_ids, {:array, Ecto.UUID}, default: []
 
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
@@ -17,7 +16,8 @@ defmodule BlueJet.ExternalFileCollection do
     belongs_to :account, BlueJet.Account
     belongs_to :sku, BlueJet.Sku
     belongs_to :unlockable, BlueJet.Unlockable
-    has_many :files, BlueJet.ExternalFile
+    has_many :file_memberships, BlueJet.ExternalFileCollectionMembership, foreign_key: :collection_id
+    has_many :files, through: [:file_memberships, :file]
   end
 
   def translatable_fields do
@@ -25,7 +25,7 @@ defmodule BlueJet.ExternalFileCollection do
   end
 
   def castable_fields(_) do
-    [:account_id, :name, :label, :file_ids, :sku_id, :custom_data]
+    [:account_id, :name, :label, :sku_id, :custom_data]
   end
 
   @doc """
@@ -36,14 +36,5 @@ defmodule BlueJet.ExternalFileCollection do
     |> cast(params, castable_fields(state))
     |> validate_required([:account_id, :label])
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
-  end
-
-  def put_files(struct) do
-    %{ struct | files: files(struct) }
-  end
-
-  def files(struct) do
-    file_ids = struct.file_ids
-    from(ef in BlueJet.ExternalFile, where: ef.id in ^file_ids) |> BlueJet.Repo.all()
   end
 end

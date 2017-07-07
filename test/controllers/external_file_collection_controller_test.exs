@@ -6,6 +6,7 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
   alias BlueJet.Authentication
 
   alias BlueJet.ExternalFileCollection
+  alias BlueJet.ExternalFileCollectionMembership
   alias BlueJet.ExternalFile
   alias BlueJet.Sku
   alias BlueJet.Repo
@@ -75,20 +76,6 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
     end
 
     test "with valid attrs and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
-        account_id: account1_id,
-        name: Faker.Lorem.word(),
-        status: "uploaded",
-        content_type: "image/png",
-        size_bytes: 42
-      })
-      %ExternalFile{ id: file2_id } = Repo.insert!(%ExternalFile{
-        account_id: account1_id,
-        name: Faker.Lorem.word(),
-        status: "uploaded",
-        content_type: "image/png",
-        size_bytes: 42
-      })
       %Sku{ id: sku_id } = Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
@@ -102,7 +89,7 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, external_file_collection_path(conn, :create, include: "sku,files"), %{
+      conn = post(conn, external_file_collection_path(conn, :create, include: "sku"), %{
         "data" => %{
           "type" => "ExternalFileCollection",
           "attributes" => @valid_attrs,
@@ -112,18 +99,6 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
                 "type" => "Sku",
                 "id" => sku_id
               }
-            },
-            "files" => %{
-              "data" => [
-                %{
-                  "type" => "ExternalFile",
-                  "id" => file1_id
-                },
-                %{
-                  "type" => "ExternalFile",
-                  "id" => file2_id
-                }
-              ]
             }
           }
         }
@@ -132,9 +107,7 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
       assert json_response(conn, 201)["data"]["relationships"]["sku"]["data"]["id"]
-      assert length(json_response(conn, 201)["data"]["relationships"]["files"]["data"]) == 2
       assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "Sku" end)) == 1
-      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 2
     end
   end
 
@@ -239,8 +212,17 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
         name: "Primary Image",
         account_id: account1_id,
         sku_id: sku_id,
-        file_ids: [file1_id, file2_id],
         label: "primary_images"
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file1_id
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file2_id
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
@@ -389,8 +371,17 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
         name: "Primary Image",
         account_id: account1_id,
         sku_id: sku_id,
-        file_ids: [file1_id, file2_id],
         label: "secondary_images"
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file1_id
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file2_id
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
@@ -482,6 +473,7 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
 
+    @tag :focus
     test "with good access token and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: file1_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
@@ -507,12 +499,21 @@ defmodule BlueJet.ExternalFileCollectionControllerTest do
           "kind" => "Blue Jay"
         }
       })
-      Repo.insert!(%ExternalFileCollection{
+      %ExternalFileCollection{ id: efc_id } = Repo.insert!(%ExternalFileCollection{
         name: "Primary Image",
         account_id: account1_id,
         sku_id: sku_id,
-        file_ids: [file1_id, file2_id],
         label: "secondary_images"
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file1_id
+      })
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc_id,
+        file_id: file2_id
       })
 
       Repo.insert!(%ExternalFileCollection{

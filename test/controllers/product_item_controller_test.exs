@@ -426,7 +426,6 @@ defmodule BlueJet.ProductItemControllerTest do
       assert length(json_response(conn, 200)["data"]) == 2
     end
 
-    @tag :focus
     test "with good access token, locale, include and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %Product{ id: product1_id } = Repo.insert!(%Product{
         account_id: account1_id,
