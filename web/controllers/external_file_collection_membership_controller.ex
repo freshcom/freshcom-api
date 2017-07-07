@@ -57,14 +57,10 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    external_file_collection_membership = Repo.get!(ExternalFileCollectionMembership, id)
-
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
-    Repo.delete!(external_file_collection_membership)
+  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+    efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: account_id, id: id)
+    Repo.delete!(efcm)
 
     send_resp(conn, :no_content, "")
   end
-
 end

@@ -377,4 +377,61 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
   end
+
+  describe "DELETE /v1/external_file_collection_memberships/:id" do
+    test "with no access token", %{ conn: conn } do
+      conn = delete(conn, external_file_collection_membership_path(conn, :delete, "test"))
+
+      assert conn.status == 401
+    end
+
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+        account_id: account2_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+        account_id: account2_id,
+        label: "primary_images"
+      })
+
+      %ExternalFileCollectionMembership{ id: efcm2_id } = Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account2_id,
+        collection_id: efc2_id,
+        file_id: ef2_id
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      assert_error_sent(404, fn ->
+        delete(conn, external_file_collection_membership_path(conn, :delete, efcm2_id))
+      end)
+    end
+
+    test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
+      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = delete(conn, external_file_collection_membership_path(conn, :delete, efcm1_id))
+
+      assert conn.status == 204
+    end
+  end
 end
