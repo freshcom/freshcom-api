@@ -29,7 +29,7 @@ defmodule BlueJet.SkuController do
     render(conn, "index.json-api", data: skus, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
+  def create(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, %{ "data" => data = %{ "type" => "Sku" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
     changeset = Sku.changeset(%Sku{}, fields)
 
@@ -45,7 +45,7 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def show(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+  def show(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, %{ "id" => id }) do
     sku =
       Sku
       |> Repo.get_by!(account_id: account_id, id: id)
@@ -54,7 +54,7 @@ defmodule BlueJet.SkuController do
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
 
-  def update(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Sku", "attributes" => _sku_params}}) do
+  def update(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, %{ "id" => id, "data" => data = %{ "type" => "Sku" } }) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
     changeset = Sku.changeset(sku, Params.to_attributes(data), locale)
 
@@ -69,7 +69,7 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
+  def delete(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, %{ "id" => id }) do
     sku = Repo.get_by!(Sku, account_id: account_id, id: id)
     Repo.delete!(sku)
 

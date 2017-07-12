@@ -42,7 +42,7 @@ defmodule BlueJet.SkuControllerTest do
 
   describe "POST /v1/skus" do
     test "with no access token", %{ conn: conn } do
-      conn = post(conn, sku_path(conn, :create), %{
+      conn = post(conn, "/v1/skus", %{
         "data" => %{
           "type" => "Sku",
           "attributes" => @valid_attrs
@@ -52,10 +52,10 @@ defmodule BlueJet.SkuControllerTest do
       assert conn.status == 401
     end
 
-    test "with invalid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, sku_path(conn, :create), %{
+      conn = post(conn, "/v1/skus", %{
         "data" => %{
           "type" => "Sku",
           "attributes" => @invalid_attrs
@@ -66,10 +66,10 @@ defmodule BlueJet.SkuControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with valid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, sku_path(conn, :create), %{
+      conn = post(conn, "/v1/skus", %{
         "data" => %{
           "type" => "Sku",
           "attributes" => @valid_attrs
@@ -86,7 +86,7 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 201)["data"]["relationships"]["externalFileCollections"] == %{}
     end
 
-    test "with valid attrs and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -97,7 +97,7 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, sku_path(conn, :create, include: "avatar"), %{
+      conn = post(conn, "/v1/skus?include=avatar", %{
         "data" => %{
           "type" => "Sku",
           "attributes" => @valid_attrs,
@@ -125,7 +125,7 @@ defmodule BlueJet.SkuControllerTest do
 
   describe "GET /v1/skus/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, sku_path(conn, :show, "test"))
+      conn = get(conn, "/v1/skus/test")
 
       assert conn.status == 401
     end
@@ -153,7 +153,7 @@ defmodule BlueJet.SkuControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        get(conn, sku_path(conn, :show, sku.id))
+        get(conn, "/v1/skus/#{sku.id}")
       end)
     end
 
@@ -171,7 +171,7 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :show, sku.id))
+      conn = get(conn, "/v1/skus/#{sku.id}")
 
       assert json_response(conn, 200)["data"]["id"] == sku.id
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "Orange"
@@ -199,7 +199,7 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :show, sku.id, locale: "zh-CN"))
+      conn = get(conn, "/v1/skus/#{sku.id}?locale=zh-CN")
 
       assert json_response(conn, 200)["data"]["id"] == sku.id
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "橙子"
@@ -217,7 +217,7 @@ defmodule BlueJet.SkuControllerTest do
         size_bytes: 42
       })
 
-      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+      sku = Repo.insert!(%Sku{
         account_id: account1_id,
         avatar_id: avatar_id,
         status: "active",
@@ -231,21 +231,21 @@ defmodule BlueJet.SkuControllerTest do
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
-        sku_id: sku_id,
+        sku_id: sku.id,
         label: "primary_images"
       })
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
-        sku_id: sku_id,
+        sku_id: sku.id,
         label: "secondary_images"
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :show, sku_id, include: "avatar,externalFileCollections"))
+      conn = get(conn, "/v1/skus/#{sku.id}?include=avatar,externalFileCollections&locale=zh-CN")
 
-      assert json_response(conn, 200)["data"]["id"] == sku_id
+      assert json_response(conn, 200)["data"]["id"] == sku.id
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "Orange"
       assert json_response(conn, 200)["data"]["attributes"]["customData"]["kind"] == "Blue Jay"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
@@ -257,7 +257,7 @@ defmodule BlueJet.SkuControllerTest do
 
   describe "PATCH /v1/skus/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = patch(conn, sku_path(conn, :update, "test"), %{
+      conn = patch(conn, "/v1/skus/test", %{
         "data" => %{
           "id" => "test",
           "type" => "Sku",
@@ -291,7 +291,7 @@ defmodule BlueJet.SkuControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, sku_path(conn, :update, sku.id), %{
+        patch(conn, "/v1/skus/#{sku.id}", %{
           "data" => %{
             "id" => sku.id,
             "type" => "Sku",
@@ -301,7 +301,7 @@ defmodule BlueJet.SkuControllerTest do
       end)
     end
 
-    test "with good access token but invalid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token, invalid attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       sku = Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
@@ -315,7 +315,7 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, sku_path(conn, :update, sku.id), %{
+      conn = patch(conn, "/v1/skus/#{sku.id}", %{
         "data" => %{
           "id" => sku.id,
           "type" => "Sku",
@@ -327,8 +327,8 @@ defmodule BlueJet.SkuControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with good access token and valid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+    test "with valid access token, attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      sku = Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
         name: "Orange",
@@ -341,9 +341,9 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, sku_path(conn, :update, sku_id), %{
+      conn = patch(conn, "/v1/skus/#{sku.id}", %{
         "data" => %{
-          "id" => sku_id,
+          "id" => sku.id,
           "type" => "Sku",
           "attributes" => @valid_attrs
         }
@@ -358,8 +358,8 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["locale"] == "en"
     end
 
-    test "with good access token, valid attrs and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+    test "with valid access token, attrs, rels and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      sku = Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
         name: "Orange",
@@ -372,9 +372,9 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, sku_path(conn, :update, sku_id, locale: "zh-CN"), %{
+      conn = patch(conn, "/v1/skus/#{sku.id}?locale=zh-CN", %{
         "data" => %{
-          "id" => sku_id,
+          "id" => sku.id,
           "type" => "Sku",
           "attributes" => %{
             "name" => "橙子"
@@ -388,7 +388,7 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["locale"] == "zh-CN"
     end
 
-    test "with good access token, valid attrs and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token, attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -397,7 +397,7 @@ defmodule BlueJet.SkuControllerTest do
         size_bytes: 42
       })
 
-      %Sku{ id: sku_id } = Repo.insert!(%Sku{
+      sku = Repo.insert!(%Sku{
         account_id: account1_id,
         avatar_id: avatar_id,
         status: "active",
@@ -411,21 +411,31 @@ defmodule BlueJet.SkuControllerTest do
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
-        sku_id: sku_id,
-        label: "primary_images"
+        sku_id: sku.id,
+        label: "primary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "图片"
+          }
+        }
       })
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
-        sku_id: sku_id,
-        label: "secondary_images"
+        sku_id: sku.id,
+        label: "secondary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "图片"
+          }
+        }
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, sku_path(conn, :update, sku_id, include: "avatar,externalFileCollections"), %{
+      conn = patch(conn, "/v1/skus/#{sku.id}?locale=zh-CN&include=avatar,externalFileCollections", %{
         "data" => %{
-          "id" => sku_id,
+          "id" => sku.id,
           "type" => "Sku",
           "attributes" => @valid_attrs
         }
@@ -437,11 +447,12 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["printName"] == @valid_attrs["printName"]
       assert json_response(conn, 200)["data"]["attributes"]["unitOfMeasure"] == @valid_attrs["unitOfMeasure"]
       assert json_response(conn, 200)["data"]["attributes"]["customData"]["kind"] == @valid_attrs["customData"]["kind"]
-      assert json_response(conn, 200)["data"]["attributes"]["locale"] == "en"
+      assert json_response(conn, 200)["data"]["attributes"]["locale"] == "zh-CN"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
       assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
     end
   end
 
@@ -452,7 +463,7 @@ defmodule BlueJet.SkuControllerTest do
       assert conn.status == 401
     end
 
-    test "with good access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -494,14 +505,55 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :index))
+      conn = get(conn, "/v1/skus")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
       assert json_response(conn, 200)["meta"]["totalCount"] == 2
     end
 
-    test "with good access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE2",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, "/v1/skus?page[number]=2&page[size]=1")
+
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
+
+    test "with valid access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       Repo.insert!(%Sku{
         account_id: account1_id,
         status: "active",
@@ -540,7 +592,7 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :index, locale: "zh-CN"))
+      conn = get(conn, "/v1/skus?locale=zh-CN")
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
@@ -548,7 +600,76 @@ defmodule BlueJet.SkuControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "橙子" end)) == 1
     end
 
-    test "with good access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token, locale and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      Repo.insert!(%Sku{
+        account_id: account2_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Apple",
+        print_name: "APPLE",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "name" => "橙子"
+          }
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE2",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        },
+        translations: %{
+          "zh-CN" => %{
+            "name" => "橙子"
+          }
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, "/v1/skus?search=橙&locale=zh-CN")
+
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
+
+    test "with valid access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -623,106 +744,6 @@ defmodule BlueJet.SkuControllerTest do
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 2
-    end
-
-    test "with good access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE1",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE2",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-
-      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
-
-      conn = get(conn, sku_path(conn, :index, %{ "page[number]" => 2, "page[size]" => 1 }))
-
-      assert length(json_response(conn, 200)["data"]) == 1
-      assert json_response(conn, 200)["meta"]["resultCount"] == 3
-      assert json_response(conn, 200)["meta"]["totalCount"] == 3
-    end
-
-    test "with good access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
-        first_name: Faker.Name.first_name(),
-        last_name: Faker.Name.last_name(),
-        email: "test2@example.com",
-        password: "test1234",
-        account_name: Faker.Company.name()
-      })
-
-      Repo.insert!(%Sku{
-        account_id: account2_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE1",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Apple",
-        print_name: "APPLE",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE1",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-      Repo.insert!(%Sku{
-        account_id: account1_id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE2",
-        unit_of_measure: "EA",
-        custom_data: %{
-          "kind" => "Blue Jay"
-        }
-      })
-
-      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
-
-      conn = get(conn, sku_path(conn, :index, search: "oran"))
-
-      assert length(json_response(conn, 200)["data"]) == 2
-      assert json_response(conn, 200)["meta"]["resultCount"] == 2
-      assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
   end
 
