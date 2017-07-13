@@ -12,10 +12,10 @@ defmodule BlueJet.Plugs.Pagination do
     Keyword.merge(defaults(), options)
   end
 
-  def call(%Plug.Conn{ params: params } = conn, options) do
-    params = params["page"] || %{}
-    page_number = params |> Map.get("number", options[:number]) |> to_int
-    page_size = params |> Map.get("size", options[:size]) |> to_int
+  def call(conn = %Plug.Conn{ query_params: query_params }, options) do
+    query_params = query_params["page"] || %{}
+    page_number = query_params |> Map.get("number", options[:number]) |> to_int
+    page_size = query_params |> Map.get("size", options[:size]) |> to_int
 
     conn
     |> assign(:page_number, page_number)

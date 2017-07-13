@@ -10,7 +10,7 @@ defmodule BlueJet.ProductItemController do
     query =
       ProductItem
       |> where([s], s.account_id == ^account_id)
-      |> filter(product_id: conn.query_params["filter"]["productId"], sku_id: conn.query_params["filter"]["skuId"], unlockable_id: conn.query_params["filter"]["unlockableId"])
+      |> filter_by(product_id: conn.query_params["filter"]["productId"], sku_id: conn.query_params["filter"]["skuId"], unlockable_id: conn.query_params["filter"]["unlockableId"])
       |> search([:short_name, :id], params["search"], locale)
     result_count = Repo.aggregate(query, :count, :id)
     total_count = Repo.aggregate(ProductItem, :count, :id)

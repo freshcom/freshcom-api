@@ -208,7 +208,7 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["data"]["relationships"]["avatar"] == %{}
     end
 
-    test "with valid access token, id and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token, id, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -232,13 +232,23 @@ defmodule BlueJet.SkuControllerTest do
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         sku_id: sku.id,
-        label: "primary_images"
+        label: "primary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "图片"
+          }
+        }
       })
 
       Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         sku_id: sku.id,
-        label: "secondary_images"
+        label: "secondary_images",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "图片"
+          }
+        }
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
@@ -252,6 +262,7 @@ defmodule BlueJet.SkuControllerTest do
       assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
     end
   end
 

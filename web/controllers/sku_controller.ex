@@ -9,7 +9,7 @@ defmodule BlueJet.SkuController do
   def index(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, params) do
     query =
       Sku
-      |> search([:name, :id], params["search"], locale)
+      |> search([:name, :print_name, :id], params["search"], locale)
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
@@ -21,6 +21,7 @@ defmodule BlueJet.SkuController do
     skus =
       Repo.all(query)
       |> Translation.translate_collection(locale)
+
     meta = %{
       totalCount: total_count,
       resultCount: result_count
@@ -45,7 +46,7 @@ defmodule BlueJet.SkuController do
     end
   end
 
-  def show(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } }, params = %{ "id" => id }) do
     sku =
       Sku
       |> Repo.get_by!(account_id: account_id, id: id)

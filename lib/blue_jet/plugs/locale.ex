@@ -3,7 +3,7 @@ defmodule BlueJet.Plugs.Locale do
 
   def init(default), do: default
 
-  def call(%Plug.Conn{ params: %{ "locale" => locale } } = conn, _default) do
+  def call(conn = %Plug.Conn{ query_params: %{ "locale" => locale } }, _default) do
     Gettext.put_locale(BlueJet.Gettext, "en")
     assign(conn, :locale, locale)
   end

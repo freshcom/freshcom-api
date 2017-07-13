@@ -6,11 +6,11 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, _params) do
+  def index(conn = %{ assigns: %{ filter: filter, vas: %{ account_id: account_id, user_id: _ } } }, _params) do
     query =
       ExternalFileCollectionMembership
+      |> filter_by(collection_id: filter["collection_id"], file_id: filter["file_id"])
       |> where([efcm], efcm.account_id == ^account_id)
-      |> filter(collection_id: conn.query_params["filter"]["collectionId"], file_id: conn.query_params["fileId"])
     result_count = Repo.aggregate(query, :count, :id)
 
     total_query = ExternalFileCollectionMembership |> where([efcm], efcm.account_id == ^account_id)
