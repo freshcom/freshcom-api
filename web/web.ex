@@ -16,6 +16,18 @@ defmodule BlueJet.Web do
   below.
   """
 
+  def context do
+    quote do
+      alias BlueJet.Repo
+      alias BlueJet.Translation
+
+      import Ecto
+      import Ecto.Query
+
+      import BlueJet.Context.Helpers
+    end
+  end
+
   def model do
     quote do
       use Ecto.Schema

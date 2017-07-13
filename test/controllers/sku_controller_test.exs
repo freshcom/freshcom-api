@@ -680,6 +680,7 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
 
+    @tag :focus
     test "with valid access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
