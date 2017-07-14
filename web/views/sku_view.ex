@@ -2,8 +2,6 @@ defmodule BlueJet.SkuView do
   use BlueJet.Web, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :code,
     :status,
@@ -33,24 +31,24 @@ defmodule BlueJet.SkuView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def avatar(struct, _) do
-    case struct.avatar do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:avatar)
-        |> Repo.one
-      other -> other
-    end
-  end
+  # def avatar(struct, _) do
+  #   case struct.avatar do
+  #     %Ecto.Association.NotLoaded{} ->
+  #       struct
+  #       |> Ecto.assoc(:avatar)
+  #       |> Repo.one
+  #     other -> other
+  #   end
+  # end
 
-  def external_file_collections(struct, %{ assigns: %{ locale: locale } }) do
-    case struct.external_file_collections do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:external_file_collections)
-        |> Repo.all
-        |> Translation.translate_collection(locale)
-      other -> other
-    end
-  end
+  # def external_file_collections(struct, %{ assigns: %{ locale: locale } }) do
+  #   case struct.external_file_collections do
+  #     %Ecto.Association.NotLoaded{} ->
+  #       struct
+  #       |> Ecto.assoc(:external_file_collections)
+  #       |> Repo.all
+  #       |> Translation.translate_collection(locale)
+  #     other -> other
+  #   end
+  # end
 end

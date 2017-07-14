@@ -36,4 +36,8 @@ defmodule BlueJet.Context.Helpers do
     filter = Enum.filter(filter, fn({_, value}) -> value end)
     from q in query, where: ^filter
   end
+
+  def intersect_list(list1, list2) do
+    list1 -- (list1 -- list2)
+  end
 end

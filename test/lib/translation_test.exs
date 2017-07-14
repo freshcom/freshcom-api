@@ -40,13 +40,18 @@ defmodule BlueJet.TranslationTest do
     end
 
     test "when locale is not en" do
-      struct = %{ name: "Apple", caption: "Good Apple", nt: "ok", translations: %{ "zh-CN" => %{ "name" => "苹果", "caption" => "好苹果" } } }
-      translated = Translation.translate(struct, "zh-CN")
+      sku = %BlueJet.Sku{
+        name: "Apple",
+        caption: "Good Apple",
+        translations: %{ "zh-CN" => %{ "name" => "苹果", "caption" => "好苹果" } },
+        external_file_collections: [%BlueJet.ExternalFileCollection{ name: "Primary Images", translations: %{ "zh-CN" => %{ "name" => "主要图片" } } }]
+      }
+      translated = Translation.translate(sku, "zh-CN")
 
-      assert translated != struct
+      assert translated != sku
       assert translated.name == "苹果"
       assert translated.caption == "好苹果"
-      assert translated.nt == "ok"
+      assert Enum.at(translated.external_file_collections, 0).name == "主要图片"
     end
   end
 end

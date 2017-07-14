@@ -3,13 +3,15 @@ defmodule BlueJet.Inventory do
 
   alias BlueJet.Sku
 
-  def list_skus(request = %{ account_id: account_id }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", include: [] }
+  def list_skus(request = %{ vas: vas }) do
+    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
     request = Map.merge(defaults, request)
+    account_id = vas[:account_id]
 
     query =
       Sku
       |> search([:name, :print_name, :id], request.search_keyword, request.locale)
+      |> filter_by(status: request.filter[:status])
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
@@ -20,7 +22,8 @@ defmodule BlueJet.Inventory do
 
     skus =
       Repo.all(query)
-      |> Translation.translate_collection(request.locale)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
 
     %{
       total_count: total_count,
@@ -29,16 +32,56 @@ defmodule BlueJet.Inventory do
     }
   end
 
-  def create_sku() do
+  def get_sku!(request = %{ vas: vas, sku_id: sku_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
 
+    sku =
+      Sku
+      |> Repo.get_by!(account_id: vas[:account_id], id: sku_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    sku
   end
 
-  def update_sku() do
+  def create_sku(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
 
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Sku.changeset(%Sku{}, fields)
+
+    with {:ok, sku} <- Repo.insert(changeset) do
+      sku = Repo.preload(sku, request.preloads)
+      {:ok, sku}
+    else
+      other -> other
+    end
   end
 
-  def delete_sku() do
+  def update_sku(request = %{ vas: vas, sku_id: sku_id }) do
+    defaults = %{ preloads: [], fields: %{}, locale: "en" }
+    request = Map.merge(defaults, request)
 
+    sku = Repo.get_by!(Sku, account_id: vas[:account_id], id: sku_id)
+    changeset = Sku.changeset(sku, request.fields, request.locale)
+
+    with {:ok, sku} <- Repo.update(changeset) do
+      sku =
+        sku
+        |> Repo.preload(request.preloads)
+        |> Translation.translate(request.locale)
+
+      {:ok, sku}
+    else
+      other -> other
+    end
+  end
+
+  def delete_sku!(%{ vas: vas, sku_id: sku_id }) do
+    sku = Repo.get_by!(Sku, account_id: vas[:account_id], id: sku_id)
+    Repo.delete!(sku)
   end
 
 end

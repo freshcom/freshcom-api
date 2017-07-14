@@ -5,7 +5,7 @@ defmodule BlueJet.PriceControllerTest do
   alias BlueJet.UserRegistration
   alias BlueJet.Authentication
 
-  alias BlueJet.Price
+  # alias BlueJet.Price
   alias BlueJet.ProductItem
   alias BlueJet.Product
   alias BlueJet.Unlockable

@@ -8,6 +8,7 @@ defmodule BlueJet.SkuControllerTest do
   alias BlueJet.Sku
   alias BlueJet.ExternalFile
   alias BlueJet.ExternalFileCollection
+  alias BlueJet.ExternalFileCollectionMembership
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -680,7 +681,6 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
 
-    @tag :focus
     test "with valid access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
         account_id: account1_id,
@@ -713,7 +713,15 @@ defmodule BlueJet.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      %ExternalFile{ id: ef1_id } = Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: Faker.Lorem.word(),
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      %ExternalFileCollection{ id: efc1_id } = Repo.insert!(%ExternalFileCollection{
         account_id: account1_id,
         sku_id: sku_id,
         label: "primary_images",
@@ -722,6 +730,12 @@ defmodule BlueJet.SkuControllerTest do
             "name" => "主要图片"
           }
         }
+      })
+
+      Repo.insert!(%ExternalFileCollectionMembership{
+        account_id: account1_id,
+        collection_id: efc1_id,
+        file_id: ef1_id
       })
 
       Repo.insert!(%ExternalFileCollection{
@@ -748,12 +762,12 @@ defmodule BlueJet.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections", locale: "zh-CN"))
+      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections.files", locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 2
     end
