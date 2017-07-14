@@ -1,39 +1,39 @@
 defmodule BlueJet.UnlockableController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.Unlockable
   alias JaSerializer.Params
+  alias BlueJet.Inventory
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
-    query =
-      Unlockable
-      |> search([:name, :id], params["search"], locale)
-      |> where([s], s.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } }, query_params: query_params }, params) do
+    request = %{
+      vas: assigns[:vas],
+      search_keyword: params["search"],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+    %{ unlockables: unlockables, total_count: total_count, result_count: result_count } = Inventory.list_unlockables(request)
 
-    total_query = Unlockable |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-
-    unlockables =
-      Repo.all(query)
-      |> Translation.translate_collection(locale)
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: unlockables, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
+    render(conn, "index.json-api", data: unlockables, opts: [meta: meta, include: query_params["include"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Unlockable", "attributes" => _unlockable_params}}) do
-    fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Unlockable.changeset(%Unlockable{}, fields)
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "Unlockable" } }) do
+    request = %{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
+    case Inventory.create_unlockable(request) do
       {:ok, unlockable} ->
         conn
         |> put_status(:created)
@@ -45,34 +45,45 @@ defmodule BlueJet.UnlockableController do
     end
   end
 
-  def show(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    unlockable =
-      Unlockable
-      |> Repo.get_by!(account_id: account_id, id: id)
-      |> Translation.translate(locale)
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => unlockable_id }) do
+    request = %{
+      vas: assigns[:vas],
+      unlockable_id: unlockable_id,
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    unlockable = Inventory.get_unlockable!(request)
     render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Unlockable", "attributes" => _unlockable_params}}) do
-    unlockable = Repo.get_by!(Unlockable, account_id: account_id, id: id)
-    changeset = Unlockable.changeset(unlockable, Params.to_attributes(data), locale)
+  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => unlockable_id, "data" => data = %{ "type" => "Unlockable" } }) do
+    request = %{
+      vas: assigns[:vas],
+      unlockable_id: unlockable_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
+    case Inventory.update_unlockable(request) do
       {:ok, unlockable} ->
-        unlockable = Translation.translate(unlockable, locale)
         render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    sku = Repo.get_by!(Unlockable, account_id: account_id, id: id)
-    Repo.delete!(sku)
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => unlockable_id }) do
+    request = %{
+      vas: assigns[:vas],
+      unlockable_id: unlockable_id
+    }
+
+    Inventory.delete_unlockable!(request)
 
     send_resp(conn, :no_content, "")
   end
-
 end

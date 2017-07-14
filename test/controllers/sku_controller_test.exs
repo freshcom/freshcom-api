@@ -565,6 +565,47 @@ defmodule BlueJet.SkuControllerTest do
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
 
+    test "with valid access token and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "disabled",
+        name: "Orange",
+        print_name: "ORANGE",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE1",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+      Repo.insert!(%Sku{
+        account_id: account1_id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE2",
+        unit_of_measure: "EA",
+        custom_data: %{
+          "kind" => "Blue Jay"
+        }
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, "/v1/skus?filter[status]=active")
+
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
+
     test "with valid access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       Repo.insert!(%Sku{
         account_id: account1_id,
