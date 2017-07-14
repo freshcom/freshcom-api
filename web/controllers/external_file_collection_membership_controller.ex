@@ -9,7 +9,7 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
   def index(conn = %{ assigns: %{ filter: filter, vas: %{ account_id: account_id, user_id: _ } } }, _params) do
     query =
       ExternalFileCollectionMembership
-      |> filter_by(collection_id: filter["collection_id"], file_id: filter["file_id"])
+      |> filter_by(collection_id: filter[:collection_id], file_id: filter[:file_id])
       |> where([efcm], efcm.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
