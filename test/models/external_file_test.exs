@@ -4,6 +4,8 @@ defmodule BlueJet.ExternalFileTest do
   alias BlueJet.ExternalFile
 
   @valid_params %{
+    account_id: Ecto.UUID.generate(),
+    user_id: Ecto.UUID.generate(),
     name: Faker.Lorem.word(),
     status: "pending",
     content_type: "image/png",

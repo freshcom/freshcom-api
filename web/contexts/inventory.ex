@@ -171,5 +171,4 @@ defmodule BlueJet.Inventory do
     unlockable = Repo.get_by!(Unlockable, account_id: vas[:account_id], id: unlockable_id)
     Repo.delete!(unlockable)
   end
-
 end

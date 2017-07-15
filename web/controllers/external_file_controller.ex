@@ -79,12 +79,13 @@ defmodule BlueJet.ExternalFileController do
     end
   end
 
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => ef_id }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_id: ef_id
+    }
 
-    external_file
-    |> ExternalFile.delete_object
-    |> Repo.delete!
+    FileStorage.delete_external_file!(request)
 
     send_resp(conn, :no_content, "")
   end

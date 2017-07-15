@@ -47,7 +47,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       assert conn.status == 401
     end
 
-    test "with invalid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/external_files", %{
@@ -61,7 +61,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with valid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/external_files", %{
@@ -81,12 +81,12 @@ defmodule BlueJet.ExternalFileControllerTest do
 
   describe "GET /v1/external_files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, external_file_path(conn, :show, "test"))
+      conn = get(conn, "/v1/external_files/test")
 
       assert conn.status == 401
     end
 
-    test "with with access token of a different account", %{ conn: conn, uat1: uat1 } do
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -106,7 +106,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        get(conn, external_file_path(conn, :show, ef.id))
+        get(conn, "/v1/external_files/#{ef.id}")
       end)
     end
 
@@ -121,7 +121,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_path(conn, :show, ef.id))
+      conn = get(conn, "/v1/external_files/#{ef.id}")
 
       assert json_response(conn, 200)["data"]["id"] == ef.id
       assert json_response(conn, 200)["data"]["attributes"]
@@ -130,7 +130,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
   describe "PATCH /v1/external_files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = patch(conn, external_file_path(conn, :update, "test"), %{
+      conn = patch(conn, "/v1/external_files/test", %{
         "data" => %{
           "id" => "test",
           "type" => "ExternalFile",
@@ -161,7 +161,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, external_file_path(conn, :update, ef.id), %{
+        patch(conn, "/v1/external_files/#{ef.id}", %{
           "data" => %{
             "id" => ef.id,
             "type" => "ExternalFile",
@@ -171,7 +171,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       end)
     end
 
-    test "with good access token but invalid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token, invalid attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       ef = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -182,7 +182,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, external_file_path(conn, :update, ef.id), %{
+      conn = patch(conn, "/v1/external_files/#{ef.id}", %{
         "data" => %{
           "id" => ef.id,
           "type" => "ExternalFile",
@@ -194,7 +194,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with good access token and valid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id } do
+    test "with valid access token, attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id } do
       ef = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -206,7 +206,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, external_file_path(conn, :update, ef.id), %{
+      conn = patch(conn, "/v1/external_files/#{ef.id}", %{
         "data" => %{
           "id" => ef.id,
           "type" => "ExternalFile",
@@ -221,12 +221,12 @@ defmodule BlueJet.ExternalFileControllerTest do
 
   describe "GET /v1/external_files" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, external_file_path(conn, :index))
+      conn = get(conn, "/v1/external_files")
 
       assert conn.status == 401
     end
 
-    test "with good access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -259,12 +259,12 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_path(conn, :index))
+      conn = get(conn, "/v1/external_files")
 
       assert length(json_response(conn, 200)["data"]) == 2
     end
 
-    test "with good access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
@@ -289,14 +289,61 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_path(conn, :index, %{ "page[number]" => 2, "page[size]" => 1 }))
+      conn = get(conn, "/v1/external_files?page[number]=2&page[size]=1")
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
     end
 
-    test "with good access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with valid access token and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
+        first_name: Faker.Name.first_name(),
+        last_name: Faker.Name.last_name(),
+        email: "test2@example.com",
+        password: "test1234",
+        account_name: Faker.Company.name()
+      })
+
+      Repo.insert!(%ExternalFile{
+        account_id: account2_id,
+        name: "Orange",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "Apple",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "Orange",
+        status: "pending",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+      Repo.insert!(%ExternalFile{
+        account_id: account1_id,
+        name: "ORANGE",
+        status: "uploaded",
+        content_type: "image/png",
+        size_bytes: 42
+      })
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+
+      conn = get(conn, "/v1/external_files?filter[status]=pending")
+
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
+
+    test "with valid access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -336,7 +383,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_path(conn, :index, search: "oran"))
+      conn = get(conn, "/v1/external_files?search=oran")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
@@ -346,12 +393,12 @@ defmodule BlueJet.ExternalFileControllerTest do
 
   describe "DELETE /v1/external_files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = delete(conn, external_file_path(conn, :delete, "test"))
+      conn = delete(conn, "/v1/external_files/test")
 
       assert conn.status == 401
     end
 
-    test "with with access token of a different account", %{ conn: conn, uat1: uat1 } do
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
       {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
         first_name: Faker.Name.first_name(),
         last_name: Faker.Name.last_name(),
@@ -371,7 +418,7 @@ defmodule BlueJet.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        delete(conn, external_file_path(conn, :delete, ef.id))
+        delete(conn, "/v1/external_files/#{ef.id}")
       end)
     end
 
@@ -386,7 +433,7 @@ defmodule BlueJet.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = delete(conn, external_file_path(conn, :delete, ef.id))
+      conn = delete(conn, "/v1/external_files/#{ef.id}")
 
       assert conn.status == 204
     end

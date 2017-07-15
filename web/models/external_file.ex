@@ -34,7 +34,7 @@ defmodule BlueJet.ExternalFile do
   end
 
   def required_fields do
-    [:name, :status, :content_type, :size_bytes]
+    [:account_id, :name, :status, :content_type, :size_bytes]
   end
 
   @doc """
