@@ -45,7 +45,7 @@ defmodule BlueJet.ProductControllerTest do
 
   describe "POST /v1/products" do
     test "with no access token", %{ conn: conn } do
-      conn = post(conn, product_path(conn, :create), %{
+      conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product",
           "attributes" => @valid_attrs
@@ -55,10 +55,10 @@ defmodule BlueJet.ProductControllerTest do
       assert conn.status == 401
     end
 
-    test "with invalid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, product_path(conn, :create), %{
+      conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product",
           "attributes" => @invalid_attrs
@@ -69,10 +69,10 @@ defmodule BlueJet.ProductControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with valid attrs", %{ conn: conn, uat1: uat1 } do
+    test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, product_path(conn, :create), %{
+      conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product",
           "attributes" => @valid_attrs

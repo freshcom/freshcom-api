@@ -3,6 +3,7 @@ defmodule BlueJet.ProductController do
 
   alias BlueJet.Product
   alias JaSerializer.Params
+  alias BlueJet.Storefront
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -26,15 +27,18 @@ defmodule BlueJet.ProductController do
     render(conn, "index.json-api", data: products, opts: [meta: meta, fields: conn.query_params["fields"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "Product", "attributes" => _product_params}}) do
-    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = Product.changeset(%Product{}, params, conn.assigns[:locale])
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "Product" } }) do
+    request = %{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
+    case Storefront.create_product(request) do
       {:ok, product} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: product)
+        |> render("show.json-api", data: product, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
