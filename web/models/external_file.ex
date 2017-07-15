@@ -1,6 +1,8 @@
 defmodule BlueJet.ExternalFile do
   use BlueJet.Web, :model
 
+  alias BlueJet.Validation
+
   schema "external_files" do
     field :name, :string
     field :status, :string, default: "pending"
@@ -12,18 +14,37 @@ defmodule BlueJet.ExternalFile do
     field :original_id, Ecto.UUID
     field :url, :string, virtual: true
 
+    field :custom_data, :map, default: %{}
+
     timestamps()
 
     belongs_to :account, BlueJet.Account
+    belongs_to :user, BlueJet.User
+    belongs_to :customer, BlueJet.Customer
+  end
+
+  def castable_fields(state) do
+    all = [:account_id, :name, :status, :content_type, :size_bytes, :public_readable,
+      :version_name, :system_tag, :original_id, :user_id, :customer_id]
+
+    case state do
+      :built -> all
+      :loaded -> all -- [:account_id, :user_id, :customer_id]
+    end
+  end
+
+  def required_fields do
+    [:name, :status, :content_type, :size_bytes]
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
+  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}) do
     struct
-    |> cast(params, [:name, :status, :content_type, :size_bytes, :public_readable, :version_name, :system_tag, :original_id])
-    |> validate_required([:name, :content_type, :size_bytes])
+    |> cast(params, castable_fields(state))
+    |> validate_required(required_fields())
+    |> Validation.validate_required_exactly_one([:user_id, :customer_id], :relationships)
   end
 
   def key(struct) do

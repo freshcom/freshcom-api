@@ -35,7 +35,7 @@ defmodule BlueJet.Translation do
     t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
     Map.merge(struct, t_attributes)
   end
-  def translate(struct, locale) when is_map(struct) do
+  def translate(struct, _) when is_map(struct) do
     struct
   end
   def translate(list, locale) when is_list(list) do

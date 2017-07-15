@@ -19,7 +19,7 @@ defmodule BlueJet.ExternalFileControllerTest do
   }
 
   setup do
-    {_, %User{ default_account_id: account1_id }} = UserRegistration.sign_up(%{
+    {_, %User{ default_account_id: account1_id, id: user1_id }} = UserRegistration.sign_up(%{
       first_name: Faker.Name.first_name(),
       last_name: Faker.Name.last_name(),
       email: "test1@example.com",
@@ -32,12 +32,12 @@ defmodule BlueJet.ExternalFileControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn, uat1: uat1, account1_id: account1_id }
+    %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id }
   end
 
   describe "POST /v1/external_files" do
     test "with no access token", %{ conn: conn } do
-      conn = post(conn, external_file_path(conn, :create), %{
+      conn = post(conn, "/v1/external_files", %{
         "data" => %{
           "type" => "ExternalFile",
           "attributes" => @valid_attrs
@@ -50,7 +50,7 @@ defmodule BlueJet.ExternalFileControllerTest do
     test "with invalid attrs", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, external_file_path(conn, :create), %{
+      conn = post(conn, "/v1/external_files", %{
         "data" => %{
           "type" => "ExternalFile",
           "attributes" => @invalid_attrs
@@ -64,7 +64,7 @@ defmodule BlueJet.ExternalFileControllerTest do
     test "with valid attrs", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, external_file_path(conn, :create), %{
+      conn = post(conn, "/v1/external_files", %{
         "data" => %{
           "type" => "ExternalFile",
           "attributes" => @valid_attrs
@@ -194,13 +194,14 @@ defmodule BlueJet.ExternalFileControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with good access token and valid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+    test "with good access token and valid attrs", %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id } do
       ef = Repo.insert!(%ExternalFile{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
         content_type: "image/png",
-        size_bytes: 42
+        size_bytes: 42,
+        user_id: user1_id
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")

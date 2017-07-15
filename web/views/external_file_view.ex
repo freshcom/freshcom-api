@@ -8,7 +8,8 @@ defmodule BlueJet.ExternalFileView do
     "ExternalFile"
   end
 
+  # Avoid conflicts with path helper url/1
   def url(external_file, _conn) do
-    BlueJet.ExternalFile.url(external_file)
+    external_file.url
   end
 end

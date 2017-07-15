@@ -2,71 +2,80 @@ defmodule BlueJet.ExternalFileController do
   use BlueJet.Web, :controller
 
   alias JaSerializer.Params
+  alias BlueJet.FileStorage
   alias BlueJet.ExternalFile
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
-    query =
-      ExternalFile
-      |> search([:name, :id], params["search"], conn.assigns[:locale])
-      |> where([ef], ef.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } }, query_params: query_params }, params) do
+    request = %{
+      vas: assigns[:vas],
+      search_keyword: params["search"],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    total_query = ExternalFile |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    external_files = Repo.all(query)
+    %{ external_files: external_files, total_count: total_count, result_count: result_count } = FileStorage.list_external_files(request)
 
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    # TODO: underscore all query_params
-    # IO.inspect conn.assigns[:fields]
-    # fields = Macro.underscore(conn.query_params["fields"])
-    render(conn, "index.json-api", data: external_files, opts: [meta: meta, fields: %{ "ExternalFile" => "name,content_type"}])
+    render(conn, "index.json-api", data: external_files, opts: [meta: meta, include: query_params["include"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
-    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = ExternalFile.changeset(%ExternalFile{}, params)
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) when map_size(vas) == 2 do
+    request = %{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
+    case FileStorage.create_external_file(request) do
       {:ok, external_file} ->
-        external_file = ExternalFile.put_url(external_file)
-
         conn
         |> put_status(:created)
-        |> put_resp_header("location", external_file_path(conn, :show, external_file))
-        |> render("show.json-api", data: external_file)
+        |> render("show.json-api", data: external_file, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
-  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => ef_id }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_id: ef_id,
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    external_file = FileStorage.get_external_file!(request)
+
     render(conn, "show.json-api", data: external_file)
   end
 
-  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "ExternalFile", "attributes" => _external_file_params}}) do
-    external_file = ExternalFile |> Repo.get_by!(account_id: account_id, id: id)
-    changeset = ExternalFile.changeset(external_file, Params.to_attributes(data))
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) when map_size(vas) == 2 do
+    request = %{
+      vas: assigns[:vas],
+      external_file_id: ef_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
+    case FileStorage.update_external_file(request) do
       {:ok, external_file} ->
-        external_file = ExternalFile.put_url(external_file)
-
-        render(conn, "show.json-api", data: external_file)
+        render(conn, "show.json-api", data: external_file, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
