@@ -19,7 +19,7 @@ defmodule BlueJet.Translation do
   end
 
   def translate(target, "en"), do: target
-  def translate(struct = %{ translations: _ }, locale) when is_map(struct) do
+  def translate(struct, locale) when is_map(struct) do
     # Translate each loaded association (recursively)
     assoc_fnames = struct.__struct__.__schema__(:associations)
     struct = Enum.reduce(assoc_fnames, struct, fn(field_name, acc) ->
@@ -32,11 +32,12 @@ defmodule BlueJet.Translation do
     end)
 
     # Translate each attributes
-    t_attributes = Map.new(Map.get(struct.translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
-    Map.merge(struct, t_attributes)
-  end
-  def translate(struct, _) when is_map(struct) do
-    struct
+    case Map.get(struct, :translations) do
+      nil -> struct
+      translations ->
+        t_attributes = Map.new(Map.get(translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
+        Map.merge(struct, t_attributes)
+    end
   end
   def translate(list, locale) when is_list(list) do
     Enum.map(list, fn(item) -> translate(item, locale) end)

@@ -1,41 +1,65 @@
 defmodule BlueJet.ExternalFileCollectionMembershipController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.ExternalFileCollectionMembership
   alias JaSerializer.Params
+  alias BlueJet.FileStorage
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: %{ filter: filter, vas: %{ account_id: account_id, user_id: _ } } }, _params) do
-    query =
-      ExternalFileCollectionMembership
-      |> filter_by(collection_id: filter[:collection_id], file_id: filter[:file_id])
-      |> where([efcm], efcm.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, _) do
+    request = %{
+      vas: assigns[:vas],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    total_query = ExternalFileCollectionMembership |> where([efcm], efcm.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    %{ external_file_collection_memberships: efcms,
+       total_count: total_count,
+       result_count: result_count } = FileStorage.list_external_file_collection_memberships(request)
 
-    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-
-    memberships = Repo.all(query)
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: memberships, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
+    render(conn, "index.json-api", data: efcms, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{ "external_file_collection_id" => collection_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
-    fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id, "collection_id" => collection_id })
-    changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, fields)
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "external_file_collection_id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
+    fields = Map.merge(Params.to_attributes(data), %{ "collection_id" => efc_id })
+    request = %{
+      vas: assigns[:vas],
+      fields: fields,
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
-      {:ok, external_file_collection_membership} ->
+    case FileStorage.create_external_file_collection_membership(request) do
+      {:ok, efcm} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: external_file_collection_membership, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: efcm, opts: [include: conn.query_params["include"]])
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(changeset))
+    end
+  end
+
+  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_collection_membership_id: efcm_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    case FileStorage.update_external_file_collection_membership(request) do
+      {:ok, efcm} ->
+        render(conn, "show.json-api", data: efcm, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -43,23 +67,13 @@ defmodule BlueJet.ExternalFileCollectionMembershipController do
     end
   end
 
-  def update(conn = %{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } }, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollectionMembership"}}) do
-    efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: account_id, id: id)
-    changeset = ExternalFileCollectionMembership.changeset(efcm, Params.to_attributes(data))
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_collection_membership_id: efcm_id
+    }
 
-    case Repo.update(changeset) do
-      {:ok, external_file_collection_membership} ->
-        render(conn, "show.json-api", data: external_file_collection_membership)
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
-    end
-  end
-
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: account_id, id: id)
-    Repo.delete!(efcm)
+    FileStorage.delete_external_file_collection_membership!(request)
 
     send_resp(conn, :no_content, "")
   end
