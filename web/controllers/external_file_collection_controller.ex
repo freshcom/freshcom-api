@@ -2,73 +2,90 @@ defmodule BlueJet.ExternalFileCollectionController do
   use BlueJet.Web, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.ExternalFileCollection
+  alias BlueJet.FileStorage
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, params) do
-    query =
-      ExternalFileCollection
-      |> search([:name, :label, :id], params["search"], locale)
-      |> where([efc], efc.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
+    request = %{
+      vas: assigns[:vas],
+      search_keyword: params["search"],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+    %{ external_file_collections: efcs,
+       total_count: total_count,
+       result_count: result_count } = FileStorage.list_external_file_collections(request)
 
-    total_query = ExternalFileCollection |> where([efc], efc.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    external_file_collections = Repo.all(query) |> Translation.translate_collection(locale)
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: external_file_collections, opts: [meta: meta, include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: efcs, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
-    params = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id })
-    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, params)
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+    request = %{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
-      {:ok, external_file_collection} ->
+    case FileStorage.create_external_file_collection(request) do
+      {:ok, efc} ->
         conn
         |> put_status(:created)
-        |> put_resp_header("location", external_file_collection_path(conn, :show, external_file_collection))
-        |> render("show.json-api", data: external_file_collection, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: efc, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
-  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    extrenal_file_collection =
-      ExternalFileCollection
-      |> Repo.get_by!(account_id: account_id, id: id)
-      |> Translation.translate(conn.assigns[:locale])
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => efc_id }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_collection_id: efc_id,
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    render(conn, "show.json-api", data: extrenal_file_collection, opts: [include: conn.query_params["include"]])
+    efc = FileStorage.get_external_file_collection!(request)
+
+    render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
   end
 
-  def update(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "ExternalFileCollection", "attributes" => _external_file_collection_params}}) do
-    external_file_collection = ExternalFileCollection |> Repo.get_by!(account_id: account_id, id: id)
-    changeset = ExternalFileCollection.changeset(external_file_collection, Params.to_attributes(data))
+  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_collection_id: efc_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
-      {:ok, external_file_collection} ->
-        render(conn, "show.json-api", data: external_file_collection, opts: [include: conn.query_params["include"]])
+    case FileStorage.update_external_file_collection(request) do
+      {:ok, efc} ->
+        render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    external_file_collection = ExternalFileCollection |> Repo.get_by!(account_id: account_id, id: id)
-    Repo.delete!(external_file_collection)
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efc_id }) do
+    request = %{
+      vas: assigns[:vas],
+      external_file_collection_id: efc_id
+    }
+
+    FileStorage.delete_external_file_collection!(request)
 
     send_resp(conn, :no_content, "")
   end

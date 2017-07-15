@@ -3,11 +3,10 @@ defmodule BlueJet.ExternalFileController do
 
   alias JaSerializer.Params
   alias BlueJet.FileStorage
-  alias BlueJet.ExternalFile
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } }, query_params: query_params }, params) do
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, params) do
     request = %{
       vas: assigns[:vas],
       search_keyword: params["search"],
@@ -25,7 +24,7 @@ defmodule BlueJet.ExternalFileController do
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: external_files, opts: [meta: meta, include: query_params["include"]])
+    render(conn, "index.json-api", data: external_files, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) when map_size(vas) == 2 do

@@ -6,7 +6,7 @@ defmodule BlueJet.UnlockableController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } }, query_params: query_params }, params) do
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
     request = %{
       vas: assigns[:vas],
       search_keyword: params["search"],
@@ -23,7 +23,7 @@ defmodule BlueJet.UnlockableController do
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: unlockables, opts: [meta: meta, include: query_params["include"]])
+    render(conn, "index.json-api", data: unlockables, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "Unlockable" } }) do
