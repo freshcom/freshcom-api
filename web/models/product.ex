@@ -19,6 +19,7 @@ defmodule BlueJet.Product do
     belongs_to :account, BlueJet.Account
     belongs_to :avatar, BlueJet.ExternalFile
     has_many :items, BlueJet.ProductItem
+    has_many :external_file_collections, BlueJet.ExternalFileCollection
   end
 
   def translatable_fields do

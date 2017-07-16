@@ -269,7 +269,6 @@ defmodule BlueJet.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 200)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
     end
 
-    @tag :focus
     test "with valid attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
       %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
         account_id: account1_id,
