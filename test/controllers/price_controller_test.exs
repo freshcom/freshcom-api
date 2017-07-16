@@ -73,7 +73,7 @@ defmodule BlueJet.PriceControllerTest do
       assert conn.status == 401
     end
 
-    test "with invalid attrs", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do
+    test "with invalid attrs and rels", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/product_items/#{pi1_id}/prices", %{
@@ -87,7 +87,7 @@ defmodule BlueJet.PriceControllerTest do
       assert length(json_response(conn, 422)["errors"]) > 0
     end
 
-    test "with valid attrs", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do
+    test "with valid attrs and rels", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/product_items/#{pi1_id}/prices", %{
@@ -107,41 +107,25 @@ defmodule BlueJet.PriceControllerTest do
       assert json_response(conn, 201)["data"]["relationships"]["productItem"] == %{}
     end
 
-    # test "with valid attrs and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-    #   %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
-    #     account_id: account1_id,
-    #     name: Faker.Lorem.word(),
-    #     status: "uploaded",
-    #     content_type: "image/png",
-    #     size_bytes: 42
-    #   })
+    test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-    #   conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      conn = post(conn, "/v1/product_items/#{pi1_id}/prices?include=productItem", %{
+        "data" => %{
+          "type" => "Price",
+          "attributes" => @valid_attrs
+        }
+      })
 
-    #   conn = post(conn, sku_path(conn, :create, include: "avatar"), %{
-    #     "data" => %{
-    #       "type" => "Sku",
-    #       "attributes" => @valid_attrs,
-    #       "relationships" => %{
-    #         "avatar" => %{
-    #           "data" => %{
-    #             "type" => "ExternalFile",
-    #             "id" => avatar_id
-    #           }
-    #         }
-    #       }
-    #     }
-    #   })
-
-    #   assert json_response(conn, 201)["data"]["id"]
-    #   assert json_response(conn, 201)["data"]["attributes"]["status"] == @valid_attrs["status"]
-    #   assert json_response(conn, 201)["data"]["attributes"]["name"] == @valid_attrs["name"]
-    #   assert json_response(conn, 201)["data"]["attributes"]["printName"] == @valid_attrs["printName"]
-    #   assert json_response(conn, 201)["data"]["attributes"]["unitOfMeasure"] == @valid_attrs["unitOfMeasure"]
-    #   assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
-    #   assert json_response(conn, 201)["data"]["relationships"]["avatar"]["data"]["id"]
-    #   assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-    # end
+      assert json_response(conn, 201)["data"]["id"]
+      assert json_response(conn, 201)["data"]["attributes"]["status"] == @valid_attrs["status"]
+      assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
+      assert json_response(conn, 201)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 201)["data"]["attributes"]["orderUnit"] == @valid_attrs["orderUnit"]
+      assert json_response(conn, 201)["data"]["attributes"]["chargeUnit"] == @valid_attrs["chargeUnit"]
+      assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ProductItem" end)) == 1
+    end
   end
 
   # describe "GET /v1/skus/:id" do

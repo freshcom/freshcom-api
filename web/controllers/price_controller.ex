@@ -3,6 +3,7 @@ defmodule BlueJet.PriceController do
 
   alias BlueJet.Price
   alias JaSerializer.Params
+  alias BlueJet.Storefront
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -26,15 +27,19 @@ defmodule BlueJet.PriceController do
     render(conn, "index.json-api", data: product_items, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
   end
 
-  def create(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"product_item_id" => product_item_id, "data" => data = %{"type" => "Price", "attributes" => _price_params}}) do
-    fields = Map.merge(Params.to_attributes(data), %{ "account_id" => account_id, "product_item_id" => product_item_id })
-    changeset = Price.changeset(%Price{}, fields)
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "product_item_id" => product_item_id, "data" => data = %{ "type" => "Price" } }) do
+    fields = Map.merge(Params.to_attributes(data), %{ "product_item_id" => product_item_id })
+    request = %{
+      vas: assigns[:vas],
+      fields: fields,
+      preloads: assigns[:preloads]
+    }
 
-    case Repo.insert(changeset) do
+    case Storefront.create_price(request) do
       {:ok, price} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: price)
+        |> render("show.json-api", data: price, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
