@@ -22,7 +22,7 @@ defmodule BlueJet.ExternalFileCollection do
   end
 
   def translatable_fields do
-    BlueJet.Sku.__trans__(:fields)
+    BlueJet.ExternalFileCollection.__trans__(:fields)
   end
 
   def castable_fields(_) do

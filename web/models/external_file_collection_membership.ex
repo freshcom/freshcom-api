@@ -16,10 +16,6 @@ defmodule BlueJet.ExternalFileCollectionMembership do
     belongs_to :file, BlueJet.ExternalFile
   end
 
-  def translatable_fields do
-    BlueJet.Sku.__trans__(:fields)
-  end
-
   def castable_fields(state) do
     all = [:account_id, :sort_index, :collection_id, :file_id]
 

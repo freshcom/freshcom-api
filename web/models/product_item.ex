@@ -26,7 +26,7 @@ defmodule BlueJet.ProductItem do
   end
 
   def translatable_fields do
-    BlueJet.Sku.__trans__(:fields)
+    BlueJet.ProductItem.__trans__(:fields)
   end
 
   def castable_fields(state) do
