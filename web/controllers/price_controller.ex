@@ -1,30 +1,29 @@
 defmodule BlueJet.PriceController do
   use BlueJet.Web, :controller
 
-  alias BlueJet.Price
   alias JaSerializer.Params
   alias BlueJet.Storefront
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{ "product_item_id" => product_item_id }) do
-    query =
-      Price
-      |> where([p], p.account_id == ^account_id)
-      |> where([p], p.product_item_id == ^product_item_id)
-    result_count = Repo.aggregate(query, :count, :id)
-    total_count = Repo.aggregate(Price, :count, :id)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
+    request = %{
+      vas: assigns[:vas],
+      search_keyword: params["search"],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+    %{ prices: prices, total_count: total_count, result_count: result_count } = Storefront.list_prices(request)
 
-    query = paginate(query, size: conn.assigns[:page_size], number: conn.assigns[:page_number])
-    product_items =
-      Repo.all(query)
-      |> Translation.translate_collection(locale)
     meta = %{
       totalCount: total_count,
       resultCount: result_count
     }
 
-    render(conn, "index.json-api", data: product_items, opts: [meta: meta, include: conn.query_params["include"], fields: conn.query_params["fields"]])
+    render(conn, "index.json-api", data: prices, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "product_item_id" => product_item_id, "data" => data = %{ "type" => "Price" } }) do
@@ -47,34 +46,46 @@ defmodule BlueJet.PriceController do
     end
   end
 
-  def show(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    price =
-      Price
-      |> Repo.get_by!(account_id: account_id, id: id)
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => price_id }) do
+    request = %{
+      vas: assigns[:vas],
+      price_id: price_id,
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    price = Storefront.get_price!(request)
 
     render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
   end
 
-  def update(%{ assigns: %{ locale: locale, vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id, "data" => data = %{"type" => "Price", "attributes" => _price_params}}) do
-    price = Repo.get_by!(Price, account_id: account_id, id: id)
-    changeset = Price.changeset(price, Params.to_attributes(data), locale)
+  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => price_id, "data" => data = %{ "type" => "Price" } }) do
+    request = %{
+      vas: assigns[:vas],
+      price_id: price_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
+    case Storefront.update_price(request) do
       {:ok, price} ->
-        price = Translation.translate(price, locale)
-        render(conn, "show.json-api", data: price)
+        render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
-  def delete(%{ assigns: %{ vas: %{ account_id: account_id, user_id: _ } } } = conn, %{"id" => id}) do
-    price = Repo.get_by!(Price, account_id: account_id, id: id)
-    Repo.delete!(price)
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => price_id }) do
+    request = %{
+      vas: assigns[:vas],
+      price_id: price_id
+    }
+
+    Storefront.delete_price!(request)
 
     send_resp(conn, :no_content, "")
   end
-
 end

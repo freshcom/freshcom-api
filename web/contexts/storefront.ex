@@ -190,4 +190,70 @@ defmodule BlueJet.Storefront do
       other -> other
     end
   end
+
+  def get_price!(request = %{ vas: vas, price_id: price_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    price =
+      Price
+      |> Repo.get_by!(account_id: vas[:account_id], id: price_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    price
+  end
+
+  def list_prices(request = %{ vas: vas }) do
+    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+    account_id = vas[:account_id]
+
+    query =
+      Price
+      |> search([:name, :id], request.search_keyword, request.locale)
+      |> filter_by(product_item_id: request.filter[:product_item_id], label: request.filter[:label])
+      |> where([s], s.account_id == ^account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Price |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: request.page_size, number: request.page_number)
+
+    prices =
+      Repo.all(query)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    %{
+      total_count: total_count,
+      result_count: result_count,
+      prices: prices
+    }
+  end
+
+  def update_price(request = %{ vas: vas, price_id: price_id }) do
+    defaults = %{ preloads: [], fields: %{}, locale: "en" }
+    request = Map.merge(defaults, request)
+
+    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
+    changeset = Price.changeset(price, request.fields, request.locale)
+
+    with {:ok, price} <- Repo.update(changeset) do
+      price =
+        price
+        |> Repo.preload(request.preloads)
+        |> Translation.translate(request.locale)
+
+      {:ok, price}
+    else
+      other -> other
+    end
+  end
+
+  def delete_price!(%{ vas: vas, price_id: price_id }) do
+    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
+    Repo.delete!(price)
+  end
 end

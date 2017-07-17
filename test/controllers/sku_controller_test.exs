@@ -361,7 +361,7 @@ defmodule BlueJet.SkuControllerTest do
         }
       })
 
-      assert json_response(conn, 200)["data"]["id"]
+      assert json_response(conn, 200)["data"]["id"] == sku.id
       assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_attrs["status"]
       assert json_response(conn, 200)["data"]["attributes"]["name"] == @valid_attrs["name"]
       assert json_response(conn, 200)["data"]["attributes"]["printName"] == @valid_attrs["printName"]
