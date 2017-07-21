@@ -4,8 +4,8 @@ defmodule BlueJet.ExternalFile do
   alias BlueJet.Validation
 
   schema "external_files" do
-    field :name, :string
     field :status, :string, default: "pending"
+    field :name, :string
     field :content_type, :string
     field :size_bytes, :integer
     field :public_readable, :boolean, default: false
@@ -23,28 +23,38 @@ defmodule BlueJet.ExternalFile do
     belongs_to :customer, BlueJet.Customer
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :name, :status, :content_type, :size_bytes, :public_readable,
-      :version_name, :system_tag, :original_id, :user_id, :customer_id]
+  def fields do
+    BlueJet.ExternalFile.__schema__(:fields)
+    -- [:id, :translations, :inserted_at, :updated_at]
+  end
 
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id, :user_id, :customer_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id, :user_id, :customer_id]
   end
 
   def required_fields do
-    [:account_id, :name, :status, :content_type, :size_bytes]
+    [:account_id, :status, :name, :content_type, :size_bytes]
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+    |> Validation.validate_required_exactly_one([:user_id, :customer_id], :relationships)
+    |> foreign_key_constraint(:account_id)
+    |> foreign_key_constraint(:user_id)
+    |> validate_assoc_account_scope(:customer)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}) do
+  def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required(required_fields())
-    |> Validation.validate_required_exactly_one([:user_id, :customer_id], :relationships)
+    |> cast(params, castable_fields(struct))
+    |> validate()
   end
 
   def key(struct) do

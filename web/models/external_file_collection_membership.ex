@@ -1,11 +1,6 @@
 defmodule BlueJet.ExternalFileCollectionMembership do
   use BlueJet.Web, :model
 
-  alias BlueJet.ExternalFileCollection
-  alias BlueJet.ExternalFile
-  alias BlueJet.Repo
-  alias Ecto.Changeset
-
   schema "external_file_collection_memberships" do
     field :sort_index, :integer, default: 100
 
@@ -16,42 +11,31 @@ defmodule BlueJet.ExternalFileCollectionMembership do
     belongs_to :file, BlueJet.ExternalFile
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :sort_index, :collection_id, :file_id]
+  def fields do
+    BlueJet.ExternalFileCollectionMembership.__schema__(:fields)
+    -- [:id, :inserted_at, :updated_at]
+  end
 
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id, :collection_id, :file_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id, :collection_id, :file_id]
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :collection_id, :file_id])
+    |> foreign_key_constraint(:account_id)
+    |> validate_assoc_account_scope([:collection, :file])
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}) do
+  def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required([:account_id, :collection_id, :file_id])
-    |> validate_collection_id
-    |> validate_file_id
+    |> cast(params, castable_fields(struct))
+    |> validate()
   end
-
-  defp validate_collection_id(changeset = %Changeset{ changes: %{ collection_id: collection_id } }) do
-    {_, account_id} = Changeset.fetch_field(changeset, :account_id)
-    case Repo.get_by(ExternalFileCollection, account_id: account_id, id: collection_id) do
-      nil -> Changeset.add_error(changeset, :collection_id, "doesn't exist")
-      _ -> changeset
-    end
-  end
-  defp validate_collection_id(changeset), do: changeset
-
-  defp validate_file_id(changeset = %Changeset{ changes: %{ file_id: file_id } }) do
-    {_, account_id} = Changeset.fetch_field(changeset, :account_id)
-    case Repo.get_by(ExternalFile, account_id: account_id, id: file_id) do
-      nil -> Changeset.add_error(changeset, :file_id, "doesn't exist")
-      _ -> changeset
-    end
-  end
-  defp validate_file_id(changeset), do: changeset
-
 end

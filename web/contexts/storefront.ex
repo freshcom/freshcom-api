@@ -4,6 +4,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Product
   alias BlueJet.ProductItem
   alias BlueJet.Price
+  alias BlueJet.Customer
 
   ######
   # Product
@@ -255,5 +256,23 @@ defmodule BlueJet.Storefront do
   def delete_price!(%{ vas: vas, price_id: price_id }) do
     price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
     Repo.delete!(price)
+  end
+
+  ####
+  # Customer
+  ####
+  def create_customer(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Customer.changeset(%Customer{}, fields)
+
+    with {:ok, price} <- Repo.insert(changeset) do
+      price = Repo.preload(price, request.preloads)
+      {:ok, price}
+    else
+      other -> other
+    end
   end
 end

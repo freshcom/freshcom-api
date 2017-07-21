@@ -32,28 +32,27 @@ defmodule BlueJet.Sku do
     has_many :product_items, BlueJet.ProductItem
   end
 
+  def fields do
+    BlueJet.Sku.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  end
+
   def translatable_fields do
     BlueJet.Sku.__trans__(:fields)
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :code, :status, :name, :print_name, :unit_of_measure,
-     :variable_weight, :storage_type, :storage_size, :stackable,
-     :caption, :description, :specification, :storage_description,
-     :avatar_id, :custom_data]
-
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id]
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, castable_fields(state))
+    |> cast(params, castable_fields(struct))
     |> validate_length(:print_name, min: 3)
     |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
     |> Translation.put_change(translatable_fields(), struct.translations, locale)

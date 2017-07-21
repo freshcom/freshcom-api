@@ -10,21 +10,34 @@ defmodule BlueJet.AccountMembership do
     belongs_to :user, BlueJet.User
   end
 
-  def castable_fields(state) do
-    all = [:role, :user_id, :account_id]
+  def fields do
+    BlueJet.AccountMembership.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  end
 
-    case state do
-      :built -> all
-      :loaded -> all -- [:user_id, :account_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:user_id, :account_id]
+  end
+
+  def required_fields do
+    [:role, :user_id, :account_id]
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+    |> foreign_key_constraint(:account_id)
+    |> foreign_key_constraint(:user_id)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params) do
+  def changeset(struct, params) do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required([:role, :user_id, :account_id])
+    |> cast(params, castable_fields(struct))
+    |> validate()
   end
 end

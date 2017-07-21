@@ -36,6 +36,8 @@ defmodule BlueJet.Web do
       import Ecto.Changeset
       import Ecto.Query
 
+      import BlueJet.Validation
+
       @primary_key {:id, :binary_id, autogenerate: true}
       @foreign_key_type :binary_id
     end

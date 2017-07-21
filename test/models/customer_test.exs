@@ -1,18 +1,43 @@
 defmodule BlueJet.CustomerTest do
   use BlueJet.ModelCase, async: true
 
+  alias Ecto.Changeset
+  alias BlueJet.Repo
+  alias BlueJet.Account
   alias BlueJet.Customer
 
-  @valid_params %{email: "test1@example.com", password: "some content", first_name: "some content", last_name: "some content", account_id: "827ae785-1502-4489-8a97-609c4840168f"}
-  @invalid_params %{}
+  setup do
+    account1 = Repo.insert!(%Account{})
 
-  test "changeset with valid attributes" do
-    changeset = Customer.changeset(%Customer{}, @valid_params)
+    %{ account1_id: account1.id }
+  end
+
+  test "with data: %{ status: \"guest\" }, changes: %{}", %{ account1_id: account1_id } do
+    customer = %Customer{ account_id: account1_id, status: "guest" }
+    changeset =
+      %Changeset{ types: Customer.__changeset__, data: customer, changes: %{}, valid?: true }
+      |> Customer.validate()
+
     assert changeset.valid?
   end
 
-  test "changeset with invalid attributes" do
-    changeset = Customer.changeset(%Customer{}, @invalid_params)
+  test "with data: %{ status: \"guest\" }, changes: %{ status: \"member\" }", %{ account1_id: account1_id } do
+    customer = %Customer{ account_id: account1_id, status: "guest" }
+    changeset =
+      %Changeset{ types: Customer.__changeset__, data: customer, changes: %{ status: "member" }, valid?: true }
+      |> Customer.validate()
+
     refute changeset.valid?
+    assert length(changeset.errors) == 4
+  end
+
+  test "with data: %{ status: \"member\" }, changes: %{}", %{ account1_id: account1_id } do
+    customer = %Customer{ account_id: account1_id, status: "member" }
+    changeset =
+      %Changeset{ types: Customer.__changeset__, data: customer, changes: %{}, valid?: true }
+      |> Customer.validate()
+
+    refute changeset.valid?
+    assert length(changeset.errors) == 4
   end
 end

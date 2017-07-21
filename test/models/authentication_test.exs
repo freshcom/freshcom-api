@@ -38,7 +38,6 @@ defmodule BlueJet.AuthenticationTest do
     }
   end
 
-
   describe "deserialize_scope/1" do
     test "with valid scope" do
       scope = Authentication.deserialize_scope("type:user,account_id:test-test-test")
