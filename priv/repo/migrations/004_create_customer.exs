@@ -12,6 +12,9 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
       add :encrypted_password, :string
       add :display_name, :string
 
+      add :custom_data, :map, null: false, default: "{}"
+      add :translations, :map, null: false, default: "{}"
+
       timestamps()
     end
 

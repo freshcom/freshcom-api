@@ -2,7 +2,6 @@ defmodule BlueJet.ProductItem do
   use BlueJet.Web, :model
   use Trans, translates: [:short_name, :custom_data], container: :translations
 
-  alias BlueJet.Validation
   alias BlueJet.Translation
 
   schema "product_items" do
@@ -25,18 +24,19 @@ defmodule BlueJet.ProductItem do
     belongs_to :unlockable, BlueJet.Unlockable
   end
 
+  def fields do
+    BlueJet.ProductItem.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  end
+
   def translatable_fields do
     BlueJet.ProductItem.__trans__(:fields)
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :code, :status, :short_name, :sort_index, :source_quantity,
-      :maximum_public_order_quantity, :primary, :custom_data, :product_id, :sku_id, :unlockable_id]
-
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id]
   end
 
   def required_fields do
@@ -46,14 +46,20 @@ defmodule BlueJet.ProductItem do
     ]
   end
 
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+    |> validate_required_exactly_one([:sku_id, :unlockable_id], :relationships)
+    |> validate_assoc_account_scope([:product, :sku, :unlockable])
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required(required_fields())
-    |> Validation.validate_required_exactly_one([:sku_id, :unlockable_id], :relationships)
+    |> cast(params, castable_fields(struct))
+    |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 end

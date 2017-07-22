@@ -33,33 +33,38 @@ defmodule BlueJet.Price do
     belongs_to :product_item, BlueJet.ProductItem
   end
 
+  def fields do
+    BlueJet.Price.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  end
+
   def translatable_fields do
     BlueJet.Price.__trans__(:fields)
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :product_item_id, :status, :name, :caption, :currency_code,
-     :charge_amount_cents, :estimate_amount_cents, :maximum_amount_cents, :minimum_order_quantity,
-     :order_unit, :charge_unit, :public_orderable, :label, :estimate_by_default, :tax_one_rate,
-     :tax_two_rate, :tax_three_rate, :start_time, :end_time, :custom_data]
-
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id]
-    end
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id]
   end
 
   def required_fields do
     [:account_id, :status, :label, :currency_code, :charge_amount_cents, :order_unit, :charge_unit]
   end
 
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+    |> validate_assoc_account_scope(:product_item)
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required(required_fields())
+    |> cast(params, castable_fields(struct))
+    |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 end

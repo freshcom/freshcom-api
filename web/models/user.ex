@@ -14,17 +14,22 @@ defmodule BlueJet.User do
     belongs_to :default_account, BlueJet.Account
   end
 
+  def validate(changeset) do
+    changeset
+    |> validate_required([:email, :password, :first_name, :last_name, :default_account_id])
+    |> validate_length(:password, min: 8)
+    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
+    |> unique_constraint(:email)
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(struct, params \\ %{}) do
     struct
     |> cast(params, [:email, :password, :first_name, :last_name, :default_account_id])
-    |> validate_required([:email, :password, :first_name, :last_name, :default_account_id])
-    |> validate_length(:password, min: 8)
-    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-    |> unique_constraint(:email)
-    |> put_encrypted_password
+    |> validate()
+    |> put_encrypted_password()
   end
 
   defp put_encrypted_password(changeset = %Ecto.Changeset{ valid?: true, changes: %{ password: password } })  do

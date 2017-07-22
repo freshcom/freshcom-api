@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.ProductItem
   alias BlueJet.Price
   alias BlueJet.Customer
+  alias BlueJet.RefreshToken
 
   ######
   # Product
@@ -268,9 +269,47 @@ defmodule BlueJet.Storefront do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
     changeset = Customer.changeset(%Customer{}, fields)
 
-    with {:ok, price} <- Repo.insert(changeset) do
-      price = Repo.preload(price, request.preloads)
-      {:ok, price}
+    with {:ok, customer} <- Repo.insert(changeset),
+         {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ customer_id: customer.id, account_id: customer.account_id }) |> Repo.insert
+    do
+      customer = Repo.preload(customer, request.preloads)
+      {:ok, customer}
+    else
+      other -> other
+    end
+  end
+
+  def get_customer!(request = %{ vas: vas, customer_id: customer_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    customer =
+      Customer
+      |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    customer
+  end
+
+  def update_customer(request = %{ vas: vas, customer_id: customer_id }) do
+    defaults = %{ preloads: [], fields: %{}, locale: "en" }
+    request = Map.merge(defaults, request)
+
+    vas_customer_id = vas[:customer_id]
+    customer =
+      from(c in Customer, where: c.id == ^vas_customer_id)
+      |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
+
+    changeset = Customer.changeset(customer, request.fields, request.locale)
+
+    with {:ok, customer} <- Repo.update(changeset) do
+      customer =
+        customer
+        |> Repo.preload(request.preloads)
+        |> Translation.translate(request.locale)
+
+      {:ok, customer}
     else
       other -> other
     end

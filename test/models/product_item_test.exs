@@ -2,17 +2,41 @@ defmodule BlueJet.ProductItemTest do
   use BlueJet.ModelCase, async: true
 
   alias BlueJet.ProductItem
+  alias BlueJet.Account
+  alias BlueJet.Product
+  alias BlueJet.Sku
 
-  @valid_params %{
-    account_id: Ecto.UUID.generate(),
-    status: "active",
-    custom_data: %{
-      kind: "Gala"
-    },
-    product_id: Ecto.UUID.generate(),
-    sku_id: Ecto.UUID.generate()
-  }
   @invalid_params %{}
+
+  setup do
+    account1 = Repo.insert!(%Account{})
+
+    product1 = Repo.insert!(%Product{
+      account_id: account1.id,
+      status: "active",
+      name: "Apple"
+    })
+
+    sku1 = Repo.insert!(%Sku{
+      account_id: account1.id,
+      status: "active",
+      name: "Orange",
+      print_name: "ORANGE",
+      unit_of_measure: "EA"
+    })
+
+    valid_params = %{
+      account_id: account1.id,
+      status: "active",
+      custom_data: %{
+        kind: "Gala"
+      },
+      product_id: product1.id,
+      sku_id: sku1.id
+    }
+
+    %{ account1_id: account1.id, sku1_id: sku1.id, product1_id: product1.id, valid_params: valid_params }
+  end
 
   describe "schema" do
     test "defaults" do
@@ -28,16 +52,16 @@ defmodule BlueJet.ProductItemTest do
   end
 
   describe "changeset/1" do
-    test "with struct in :built state, valid params, en locale" do
-      changeset = ProductItem.changeset(%ProductItem{}, @valid_params)
+    test "with struct in :built state, valid params, en locale", %{ valid_params: valid_params } do
+      changeset = ProductItem.changeset(%ProductItem{}, valid_params)
 
       assert changeset.valid?
       assert changeset.changes.account_id
       assert changeset.changes.status
     end
 
-    test "with struct in :built state, valid params, zh-CN locale" do
-      changeset = ProductItem.changeset(%ProductItem{}, @valid_params, "zh-CN")
+    test "with struct in :built state, valid params, zh-CN locale", %{ valid_params: valid_params } do
+      changeset = ProductItem.changeset(%ProductItem{}, valid_params, "zh-CN")
 
       assert changeset.valid?
       assert changeset.changes.account_id
@@ -46,9 +70,9 @@ defmodule BlueJet.ProductItemTest do
       refute Map.get(changeset.changes, :custom_data)
     end
 
-    test "with struct in :loaded state, valid params" do
-      struct = Ecto.put_meta(%ProductItem{ account_id: Ecto.UUID.generate() }, state: :loaded)
-      changeset = ProductItem.changeset(struct, @valid_params)
+    test "with struct in :loaded state, valid params", %{ valid_params: valid_params, account1_id: account1_id } do
+      struct = Ecto.put_meta(%ProductItem{ account_id: account1_id }, state: :loaded)
+      changeset = ProductItem.changeset(struct, valid_params)
 
       assert changeset.valid?
       assert changeset.changes.status

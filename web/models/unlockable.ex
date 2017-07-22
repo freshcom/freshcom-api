@@ -24,28 +24,36 @@ defmodule BlueJet.Unlockable do
     has_many :product_items, BlueJet.ProductItem
   end
 
+  def fields do
+    BlueJet.Unlockable.__schema__(:fields)
+    -- [:id, :inserted_at, :updated_at]
+  end
+
   def translatable_fields do
     BlueJet.Unlockable.__trans__(:fields)
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :code, :status, :name, :print_name,
-     :caption, :description, :avatar_id, :custom_data]
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id]
+  end
 
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id]
-    end
+  def validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :status, :name, :print_name])
+    |> foreign_key_constraint(:account_id)
+    |> validate_assoc_account_scope(:avatar)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_length(:print_name, min: 3)
-    |> validate_required([:account_id, :status, :name, :print_name])
+    |> cast(params, castable_fields(struct))
+    |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 end

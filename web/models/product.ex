@@ -22,26 +22,34 @@ defmodule BlueJet.Product do
     has_many :external_file_collections, BlueJet.ExternalFileCollection
   end
 
+  def fields do
+    BlueJet.Product.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  end
+
   def translatable_fields do
     BlueJet.Product.__trans__(:fields)
   end
 
-  def castable_fields(state) do
-    all = [:account_id, :status, :item_mode, :name, :caption, :description, :custom_data, :avatar_id]
+  def castable_fields(%{ __meta__: %{ state: :built }}) do
+    fields()
+  end
+  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    fields() -- [:account_id]
+  end
 
-    case state do
-      :built -> all
-      :loaded -> all -- [:account_id]
-    end
+  def validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :name, :status, :item_mode])
+    |> validate_assoc_account_scope(:avatar)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct = %{ __meta__: %{ state: state } }, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
-    |> cast(params, castable_fields(state))
-    |> validate_required([:account_id, :name, :status, :item_mode])
+    |> cast(params, castable_fields(struct))
+    |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 end

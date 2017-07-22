@@ -47,6 +47,8 @@ defmodule BlueJet.Router do
     # Storefront
     #####
     resources "/customers", CustomerController, except: [:new, :edit]
+    get "/customer", CustomerController, :show
+
     resources "/products", ProductController, except: [:new, :edit] do
       resources "/items", ProductItemController, only: [:create]
     end

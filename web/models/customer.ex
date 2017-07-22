@@ -1,5 +1,8 @@
 defmodule BlueJet.Customer do
   use BlueJet.Web, :model
+  use Trans, translates: [:custom_data], container: :translations
+
+  alias BlueJet.Translation
 
   schema "customers" do
     field :status, :string, default: "guest"
@@ -11,15 +14,23 @@ defmodule BlueJet.Customer do
 
     field :password, :string, virtual: true
 
+    field :custom_data, :map, default: %{}
+    field :translations, :map, default: %{}
+
     timestamps()
 
     belongs_to :account, BlueJet.Account
+    has_one :refresh_token, BlueJet.RefreshToken
   end
 
   def fields do
     (BlueJet.Customer.__schema__(:fields)
     -- [:id, :encrypted_password, :inserted_at, :updated_at])
     ++ [:password]
+  end
+
+  def translatable_fields do
+    BlueJet.Sku.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -38,6 +49,7 @@ defmodule BlueJet.Customer do
 
   def validate(changeset) do
     status = get_field(changeset, :status)
+
     changeset
     |> validate_required(required_fields(status))
     |> validate_length(:password, min: 8)
@@ -46,11 +58,12 @@ defmodule BlueJet.Customer do
     |> unique_constraint(:email)
   end
 
-  def changeset(struct, params) do
+  def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_encrypted_password()
+    |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 
   defp put_encrypted_password(changeset = %Ecto.Changeset{ valid?: true, changes: %{ password: password } })  do
