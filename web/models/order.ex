@@ -5,6 +5,7 @@ defmodule BlueJet.Order do
     field :code, :string
     field :status, :string
     field :system_tag, :string
+    field :label, :string
 
     field :email, :string
     field :first_name, :string

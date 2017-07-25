@@ -6,6 +6,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Price
   alias BlueJet.Customer
   alias BlueJet.RefreshToken
+  alias BlueJet.Order
 
   ######
   # Product
@@ -310,6 +311,58 @@ defmodule BlueJet.Storefront do
         |> Translation.translate(request.locale)
 
       {:ok, customer}
+    else
+      other -> other
+    end
+  end
+
+  def list_customers(request = %{ vas: vas }) do
+    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+    account_id = vas[:account_id]
+
+    query =
+      Customer
+      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
+      |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
+      |> where([s], s.account_id == ^account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Customer |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: request.page_size, number: request.page_number)
+
+    customers =
+      Repo.all(query)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    %{
+      total_count: total_count,
+      result_count: result_count,
+      customers: customers
+    }
+  end
+
+  def delete_customer!(%{ vas: vas, customer_id: customer_id }) do
+    customer = Repo.get_by!(Customer, account_id: vas[:account_id], id: customer_id)
+    Repo.delete!(customer)
+  end
+
+  ####
+  # Order
+  ####
+  def create_order(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] })
+    changeset = Order.changeset(%Order{}, fields)
+
+    with {:ok, order} <- Repo.insert(changeset) do
+      order = Repo.preload(order, request.preloads)
+      {:ok, order}
     else
       other -> other
     end

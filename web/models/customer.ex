@@ -5,12 +5,15 @@ defmodule BlueJet.Customer do
   alias BlueJet.Translation
 
   schema "customers" do
+    field :code, :string
     field :status, :string, default: "guest"
     field :first_name, :string
     field :last_name, :string
     field :email, :string
     field :encrypted_password, :string
+    field :label, :string
     field :display_name, :string
+    field :phone_number, :string
 
     field :password, :string, virtual: true
 
@@ -41,7 +44,7 @@ defmodule BlueJet.Customer do
   end
 
   def required_fields("member") do
-    fields() -- [:display_name]
+    fields() -- [:display_name, :code, :phone_number, :label]
   end
   def required_fields("guest") do
     [:account_id, :status]

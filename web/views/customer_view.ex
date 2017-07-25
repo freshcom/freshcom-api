@@ -2,7 +2,25 @@ defmodule BlueJet.CustomerView do
   use BlueJet.Web, :view
   use JaSerializer.PhoenixView
 
-  attributes [:first_name, :last_name, :email, :encrypted_password, :display_name, :custom_data, :inserted_at, :updated_at]
+  attributes [
+    :code,
+    :first_name,
+    :last_name,
+    :email,
+    :encrypted_password,
+    :label,
+    :display_name,
+    :phone_number,
+    :delivery_address_line_one,
+    :delivery_address_line_two,
+    :delivery_address_province,
+    :delivery_address_city,
+    :delivery_address_country_code,
+    :delivery_address_postal_code,
+    :custom_data,
+    :inserted_at,
+    :updated_at
+  ]
 
   has_one :refresh_token, serializer: BlueJet.RefreshTokenView, identifiers: :when_included
 end

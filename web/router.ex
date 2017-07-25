@@ -56,6 +56,6 @@ defmodule BlueJet.Router do
       resources "/prices", PriceController, only: [:create]
     end
     resources "/prices", PriceController, except: [:new, :edit, :create]
-    resources "/orders", OrderController, except: [:new, :edit, :create]
+    resources "/orders", OrderController, except: [:new, :edit]
   end
 end

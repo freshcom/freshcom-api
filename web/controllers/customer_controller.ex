@@ -7,9 +7,25 @@ defmodule BlueJet.CustomerController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    customers = Repo.all(Customer)
-    render(conn, "index.json-api", data: customers)
+  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
+    request = %{
+      vas: assigns[:vas],
+      search_keyword: params["search"],
+      filter: assigns[:filter],
+      page_size: assigns[:page_size],
+      page_number: assigns[:page_number],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    %{ customers: customers, total_count: total_count, result_count: result_count } = Storefront.list_customers(request)
+
+    meta = %{
+      totalCount: total_count,
+      resultCount: result_count
+    }
+
+    render(conn, "index.json-api", data: customers, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "data" => data = %{ "type" => "Customer" } }) do
@@ -65,12 +81,13 @@ defmodule BlueJet.CustomerController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    customer = Repo.get!(Customer, id)
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => customer_id }) do
+    request = %{
+      vas: assigns[:vas],
+      customer_id: customer_id
+    }
 
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
-    Repo.delete!(customer)
+    Storefront.delete_customer!(request)
 
     send_resp(conn, :no_content, "")
   end
