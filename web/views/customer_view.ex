@@ -18,9 +18,16 @@ defmodule BlueJet.CustomerView do
     :delivery_address_country_code,
     :delivery_address_postal_code,
     :custom_data,
+    :locale,
     :inserted_at,
     :updated_at
   ]
 
   has_one :refresh_token, serializer: BlueJet.RefreshTokenView, identifiers: :when_included
+
+  def type(_, _) do
+    "Customer"
+  end
+
+  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 end

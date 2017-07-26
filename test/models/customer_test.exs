@@ -13,8 +13,8 @@ defmodule BlueJet.CustomerTest do
   end
 
   describe "validate/1" do
-    test "with data: %{ status: \"guest\" }, changes: %{}", %{ account1_id: account1_id } do
-      customer = %Customer{ account_id: account1_id, status: "guest" }
+    test "with data: %{ status: \"anonymous\" }, changes: %{}", %{ account1_id: account1_id } do
+      customer = %Customer{ account_id: account1_id, status: "anonymous" }
       changeset =
         %Changeset{ types: Customer.__changeset__, data: customer, changes: %{}, valid?: true }
         |> Customer.validate()
@@ -22,18 +22,18 @@ defmodule BlueJet.CustomerTest do
       assert changeset.valid?
     end
 
-    test "with data: %{ status: \"guest\" }, changes: %{ status: \"member\" }", %{ account1_id: account1_id } do
-      customer = %Customer{ account_id: account1_id, status: "guest" }
+    test "with data: %{ status: \"anonymous\" }, changes: %{ status: \"registered\" }", %{ account1_id: account1_id } do
+      customer = %Customer{ account_id: account1_id, status: "anonymous" }
       changeset =
-        %Changeset{ types: Customer.__changeset__, data: customer, changes: %{ status: "member" }, valid?: true }
+        %Changeset{ types: Customer.__changeset__, data: customer, changes: %{ status: "registered" }, valid?: true }
         |> Customer.validate()
 
       refute changeset.valid?
       assert length(changeset.errors) == 4
     end
 
-    test "with data: %{ status: \"member\" }, changes: %{}", %{ account1_id: account1_id } do
-      customer = %Customer{ account_id: account1_id, status: "member" }
+    test "with data: %{ status: \"registered\" }, changes: %{}", %{ account1_id: account1_id } do
+      customer = %Customer{ account_id: account1_id, status: "registered" }
       changeset =
         %Changeset{ types: Customer.__changeset__, data: customer, changes: %{}, valid?: true }
         |> Customer.validate()

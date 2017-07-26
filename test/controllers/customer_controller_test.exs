@@ -17,7 +17,7 @@ defmodule BlueJet.CustomerControllerTest do
     }
   }
   @invalid_attrs %{
-    "status" => "member"
+    "status" => "registered"
   }
 
   setup do
@@ -355,20 +355,20 @@ defmodule BlueJet.CustomerControllerTest do
     test "with valid access token and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
       Repo.insert!(%Customer{
         account_id: account1_id,
-        status: "member"
+        status: "registered"
       })
       Repo.insert!(%Customer{
         account_id: account1_id,
-        status: "member"
+        status: "registered"
       })
       Repo.insert!(%Customer{
         account_id: account1_id,
-        status: "guest"
+        status: "anonymous"
       })
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/customers?filter[status]=member")
+      conn = get(conn, "/v1/customers?filter[status]=registered")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2

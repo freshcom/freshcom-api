@@ -43,7 +43,6 @@ defmodule BlueJet.OrderControllerTest do
   end
 
   describe "POST /v1/orders" do
-    @tag :focus
     test "with no access token", %{ conn: conn } do
       conn = post(conn, "/v1/orders", %{
         "data" => %{
@@ -52,7 +51,7 @@ defmodule BlueJet.OrderControllerTest do
         }
       })
 
-      assert json_response(conn, 201)["data"]["id"]
+      assert conn.status == 401
     end
 
     # test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do

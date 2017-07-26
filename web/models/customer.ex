@@ -6,7 +6,7 @@ defmodule BlueJet.Customer do
 
   schema "customers" do
     field :code, :string
-    field :status, :string, default: "guest"
+    field :status, :string, default: "anonymous"
     field :first_name, :string
     field :last_name, :string
     field :email, :string
@@ -43,10 +43,10 @@ defmodule BlueJet.Customer do
     fields() -- [:account_id]
   end
 
-  def required_fields("member") do
+  def required_fields("registered") do
     fields() -- [:display_name, :code, :phone_number, :label]
   end
-  def required_fields("guest") do
+  def required_fields("anonymous") do
     [:account_id, :status]
   end
 
