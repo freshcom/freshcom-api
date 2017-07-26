@@ -13,7 +13,7 @@ defmodule BlueJet.OrderControllerTest do
     "status" => "cart"
   }
   @invalid_attrs %{
-    "name" => ""
+    "status" => "opened"
   }
 
   setup do
@@ -54,19 +54,21 @@ defmodule BlueJet.OrderControllerTest do
       assert conn.status == 401
     end
 
-    # test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
-    #   conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+    @tag :focus
+    test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-    #   conn = post(conn, "/v1/products", %{
-    #     "data" => %{
-    #       "type" => "Product",
-    #       "attributes" => @invalid_attrs
-    #     }
-    #   })
+      conn = post(conn, "/v1/orders", %{
+        "data" => %{
+          "type" => "Order",
+          "attributes" => @invalid_attrs
+        }
+      })
 
-    #   assert json_response(conn, 422)["errors"]
-    #   assert length(json_response(conn, 422)["errors"]) > 0
-    # end
+      IO.inspect json_response(conn, 422)["errors"]
+      assert json_response(conn, 422)["errors"]
+      assert length(json_response(conn, 422)["errors"]) > 0
+    end
 
     # test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
     #   conn = put_req_header(conn, "authorization", "Bearer #{uat1}")

@@ -33,7 +33,7 @@ defmodule BlueJet.Customer do
   end
 
   def translatable_fields do
-    BlueJet.Sku.__trans__(:fields)
+    BlueJet.Customer.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -43,18 +43,18 @@ defmodule BlueJet.Customer do
     fields() -- [:account_id]
   end
 
-  def required_fields("registered") do
-    fields() -- [:display_name, :code, :phone_number, :label]
-  end
-  def required_fields("anonymous") do
-    [:account_id, :status]
+  def required_fields(changeset) do
+    status = get_field(changeset, :status)
+
+    case status do
+      "anonymous" -> [:account_id, :status]
+      "registered" -> fields() -- [:display_name, :code, :phone_number, :label]
+    end
   end
 
   def validate(changeset) do
-    status = get_field(changeset, :status)
-
     changeset
-    |> validate_required(required_fields(status))
+    |> validate_required(required_fields(changeset))
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:account_id)

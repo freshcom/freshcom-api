@@ -357,7 +357,7 @@ defmodule BlueJet.Storefront do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
 
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] })
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] || request.fields["customer_id"] })
     changeset = Order.changeset(%Order{}, fields)
 
     with {:ok, order} <- Repo.insert(changeset) do

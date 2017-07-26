@@ -28,7 +28,7 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
       timestamps()
     end
     create unique_index(:customers, [:account_id, :code], where: "code IS NOT NULL")
-    create unique_index(:customers, [:email, :account_id])
+    create unique_index(:customers, [:email, :account_id], where: "status != 'deleted'")
     create index(:customers, :code)
     create index(:customers, :status)
     create index(:customers, :label)

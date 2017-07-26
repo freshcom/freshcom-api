@@ -35,6 +35,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :grand_total_cents, :integer, null: false, default: 0
 
       add :payment_status, :string
+      add :payment_gateway, :string
       add :payment_processor, :string
       add :payment_method, :string
 
@@ -44,10 +45,11 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :confirmation_email_sent_at, :utc_datetime
       add :receipt_email_sent_at, :utc_datetime
 
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all), null: false
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
       add :created_by_id, references(:users, type: :binary_id)
 
       add :custom_data, :map, null: false, default: "{}"
+      add :translations, :map, null: false, default: "{}"
 
       timestamps()
     end
