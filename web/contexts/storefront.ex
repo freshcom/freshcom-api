@@ -367,4 +367,49 @@ defmodule BlueJet.Storefront do
       other -> other
     end
   end
+
+  def get_order!(request = %{ vas: vas, order_id: order_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    order_scope =
+      case vas[:customer_id] do
+        nil -> Order
+        customer_id -> from(o in Order, where: o.customer_id == ^customer_id)
+      end
+
+    order =
+      order_scope
+      |> Repo.get_by!(account_id: vas[:account_id], id: order_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    order
+  end
+
+  def update_order(request = %{ vas: vas, order_id: order_id }) do
+    defaults = %{ preloads: [], fields: %{}, locale: "en" }
+    request = Map.merge(defaults, request)
+
+    order_scope =
+      case vas[:customer_id] do
+        nil -> Order
+        customer_id -> from(o in Order, where: o.customer_id == ^customer_id)
+      end
+
+    order = order_scope |> Repo.get_by!(account_id: vas[:account_id], id: order_id)
+
+    changeset = Order.changeset(order, request.fields, request.locale)
+
+    with {:ok, order} <- Repo.update(changeset) do
+      order =
+        order
+        |> Repo.preload(request.preloads)
+        |> Translation.translate(request.locale)
+
+      {:ok, order}
+    else
+      other -> other
+    end
+  end
 end

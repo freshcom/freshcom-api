@@ -8,6 +8,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :code, :string
       add :status, :string, null: false
       add :system_tag, :string
+      add :label, :string
 
       add :email, :string
       add :first_name, :string

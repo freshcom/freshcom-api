@@ -34,6 +34,7 @@ defmodule BlueJet.OrderView do
     :grand_total_cents,
 
     :payment_status,
+    :payment_gateway,
     :payment_processor,
     :payment_method,
 
@@ -42,6 +43,8 @@ defmodule BlueJet.OrderView do
     :placed_at,
     :confirmation_email_sent_at,
     :receipt_email_sent_at,
+
+    :custom_data,
     :inserted_at,
     :updated_at
   ]

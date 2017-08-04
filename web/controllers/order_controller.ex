@@ -45,7 +45,7 @@ defmodule BlueJet.OrderController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => order_id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_id }) when map_size(vas) == 2 do
     request = %{
       vas: assigns[:vas],
       order_id: order_id,
@@ -58,7 +58,7 @@ defmodule BlueJet.OrderController do
     render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => order_id, "data" => data = %{"type" => "Order" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_id, "data" => data = %{"type" => "Order" } }) when map_size(vas) == 2 do
     request = %{
       vas: assigns[:vas],
       order_id: order_id,
