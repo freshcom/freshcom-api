@@ -14,14 +14,30 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     Mix.Tasks.Ecto.Migrate.run(args)
 
     alias BlueJet.Repo
-    alias BlueJet.Sku
+    alias BlueJet.Inventory.Sku
     alias BlueJet.UserRegistration
-    alias BlueJet.CustomerRegistration
+    alias BlueJet.Identity
 
     ensure_started(Repo, [])
 
-    {:ok, %{ default_account_id: account1_id } = user} = UserRegistration.sign_up(%{ first_name: "Roy", last_name: "Bao", password: "test1234", email: "test1@example.com", account_name: "Outersky" })
-    {:ok, _customer} = CustomerRegistration.sign_up(%{ first_name: "Tiffany", last_name: "Wang", password: "test1234", email: "test1@example.com", account_id: user.default_account_id })
+    {:ok, %{ default_account_id: account1_id } = user} = Identity.create_user(%{
+      fields: %{
+        "first_name" => "Roy",
+        "last_name" => "Bao",
+        "email" => "user1@example.com",
+        "password" => "test1234",
+        "account_name" => "Outersky"
+      }
+    })
+    {:ok, _} = Identity.create_customer(%{
+      vas: %{ account_id: account1_id },
+      fields: %{
+        "first_name" => "Tiffany",
+        "last_name" => "Wang",
+        "email" => "customer1@example.com",
+        "password" => "test1234"
+      }
+    })
 
     # changeset = BlueJet.User.changeset_for_create(%BlueJet.User{}, %{ "first_name" => "Roy", "last_name" => "Bao", "password" => "test1234", "email" => "test1@example.com" })
     # Repo.insert!(changeset)

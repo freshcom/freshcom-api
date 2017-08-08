@@ -1,31 +1,40 @@
 defmodule BlueJet do
-  use Application
+  @moduledoc """
+  BlueJet keeps the contexts that define your domain
+  and business logic.
 
-  # See http://elixir-lang.org/docs/stable/elixir/Application.html
-  # for more information on OTP Applications
-  def start(_type, _args) do
-    import Supervisor.Spec
+  Contexts are also responsible for managing your data, regardless
+  if it comes from the database, an external API or others.
+  """
 
-    # Define workers and child supervisors to be supervised
-    children = [
-      # Start the Ecto repository
-      supervisor(BlueJet.Repo, []),
-      # Start the endpoint when the application starts
-      supervisor(BlueJet.Endpoint, []),
-      # Start your own worker by calling: BlueJet.Worker.start_link(arg1, arg2, arg3)
-      # worker(BlueJet.Worker, [arg1, arg2, arg3]),
-    ]
+  def context do
+    quote do
+      alias BlueJet.Repo
+      alias BlueJet.Translation
 
-    # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: BlueJet.Supervisor]
-    Supervisor.start_link(children, opts)
+      import Ecto
+      import Ecto.Query
+
+      import BlueJet.ContextHelpers
+    end
   end
 
-  # Tell Phoenix to update the endpoint configuration
-  # whenever the application is updated.
-  def config_change(changed, _new, removed) do
-    BlueJet.Endpoint.config_change(changed, removed)
-    :ok
+  def data do
+    quote do
+      use Ecto.Schema
+      import Ecto.Changeset
+
+      @primary_key {:id, :binary_id, autogenerate: true}
+      @foreign_key_type :binary_id
+
+      import BlueJet.Validation
+    end
+  end
+
+  @doc """
+  When used, dispatch to the appropriate controller/view/etc.
+  """
+  defmacro __using__(which) when is_atom(which) do
+    apply(__MODULE__, which, [])
   end
 end

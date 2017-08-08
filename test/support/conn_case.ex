@@ -1,4 +1,4 @@
-defmodule BlueJet.ConnCase do
+defmodule BlueJetWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -19,26 +19,27 @@ defmodule BlueJet.ConnCase do
     quote do
       # Import conveniences for testing with connections
       use Phoenix.ConnTest
+      import BlueJetWeb.Router.Helpers
 
-      alias BlueJet.Repo
+      # The default endpoint for testing
+      @endpoint BlueJetWeb.Endpoint
+      ######
+
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
 
-      import BlueJet.Router.Helpers
-
-      # The default endpoint for testing
-      @endpoint BlueJet.Endpoint
+      alias BlueJet.Repo
+      alias BlueJet.Identity
     end
   end
 
   setup tags do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(BlueJet.Repo)
-
     unless tags[:async] do
       Ecto.Adapters.SQL.Sandbox.mode(BlueJet.Repo, {:shared, self()})
     end
-
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
 end

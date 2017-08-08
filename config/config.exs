@@ -10,10 +10,10 @@ config :blue_jet,
   ecto_repos: [BlueJet.Repo]
 
 # Configures the endpoint
-config :blue_jet, BlueJet.Endpoint,
+config :blue_jet, BlueJetWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "wdNdABsV4IpLEClymgU+G6Hb8UXYwFkeDmCnbyC6xunEmhBInx9E0qzEcOrr9mz9",
-  render_errors: [view: BlueJet.ErrorView, accepts: ~w(json)],
+  render_errors: [view: BlueJetWeb.ErrorView, accepts: ~w(json-api json)],
   pubsub: [name: BlueJet.PubSub,
            adapter: Phoenix.PubSub.PG2]
 
