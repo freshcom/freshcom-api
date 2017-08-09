@@ -26,16 +26,24 @@ defmodule BlueJet.FileStorage.ExternalFile do
     belongs_to :customer, Customer
   end
 
-  def fields do
-    ExternalFile.__schema__(:fields)
-    -- [:id, :translations, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :system_tag,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    ExternalFile.__schema__(:fields) -- system_fields()
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id, :user_id, :customer_id]
+    writable_fields() -- [:account_id, :user_id, :customer_id]
   end
 
   def required_fields do

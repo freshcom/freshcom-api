@@ -16,16 +16,23 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
     belongs_to :file, ExternalFile
   end
 
-  def fields do
-    ExternalFileCollectionMembership.__schema__(:fields)
-    -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    ExternalFileCollectionMembership.__schema__(:fields) -- system_fields()
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id, :collection_id, :file_id]
+    writable_fields() -- [:account_id, :collection_id, :file_id]
   end
 
   def validate(changeset) do

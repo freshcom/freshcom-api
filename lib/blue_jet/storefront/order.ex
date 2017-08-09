@@ -4,6 +4,10 @@ defmodule BlueJet.Storefront.Order do
   use Trans, translates: [:custom_data], container: :translations
 
   alias BlueJet.Translation
+  alias BlueJet.Storefront.Order
+  alias BlueJet.Identity.Account
+  alias BlueJet.Identity.Customer
+  alias BlueJet.Identity.User
 
   schema "orders" do
     field :code, :string
@@ -52,17 +56,13 @@ defmodule BlueJet.Storefront.Order do
 
     timestamps()
 
-    belongs_to :account, BlueJet.Identity.Account
-    belongs_to :customer, BlueJet.Identity.Customer
-    belongs_to :created_by, BlueJet.Identity.User
-  end
-
-  def fields do
-    BlueJet.Storefront.Order.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+    belongs_to :account, Account
+    belongs_to :customer, Customer
+    belongs_to :created_by, User
   end
 
   def translatable_fields do
-    BlueJet.Storefront.Order.__trans__(:fields)
+    Order.__trans__(:fields)
   end
 
   def system_fields do
@@ -111,11 +111,15 @@ defmodule BlueJet.Storefront.Order do
     ]
   end
 
+  def writable_fields do
+    Order.__schema__(:fields) -- system_fields()
+  end
+
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields() -- system_fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- system_fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def required_fields do

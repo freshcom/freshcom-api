@@ -4,6 +4,11 @@ defmodule BlueJet.Inventory.Unlockable do
   use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
   alias BlueJet.Translation
+  alias BlueJet.Identity.Account
+  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.ExternalFileCollection
+  alias BlueJet.Storefront.ProductItem
+  alias BlueJet.Inventory.Unlockable
 
   schema "unlockables" do
     field :code, :string
@@ -19,26 +24,33 @@ defmodule BlueJet.Inventory.Unlockable do
 
     timestamps()
 
-    belongs_to :account, BlueJet.Identity.Account
-    belongs_to :avatar, BlueJet.FileStorage.ExternalFile
-    has_many :external_file_collections, BlueJet.FileStorage.ExternalFileCollection
-    has_many :product_items, BlueJet.Storefront.ProductItem
+    belongs_to :account, Account
+    belongs_to :avatar, ExternalFile
+    has_many :external_file_collections, ExternalFileCollection
+    has_many :product_items, ProductItem
   end
 
-  def fields do
-    BlueJet.Inventory.Unlockable.__schema__(:fields)
-    -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    Unlockable.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    BlueJet.Inventory.Unlockable.__trans__(:fields)
+    Unlockable.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def validate(changeset) do

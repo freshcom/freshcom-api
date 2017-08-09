@@ -348,14 +348,6 @@ defmodule BlueJetWeb.OrderControllerTest do
   #   end
 
   #   test "with valid access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
-  #       first_name: Faker.Name.first_name(),
-  #       last_name: Faker.Name.last_name(),
-  #       email: "test2@example.com",
-  #       password: "test1234",
-  #       account_name: Faker.Company.name()
-  #     })
-
   #     Repo.insert!(
   #       Map.merge(%Product{ account_id: account2_id }, @valid_fields)
   #     )
@@ -568,14 +560,6 @@ defmodule BlueJetWeb.OrderControllerTest do
   #   end
 
   #   test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
-  #     {_, %User{ default_account_id: account2_id }} = UserRegistration.sign_up(%{
-  #       first_name: Faker.Name.first_name(),
-  #       last_name: Faker.Name.last_name(),
-  #       email: "test2@example.com",
-  #       password: "test1234",
-  #       account_name: Faker.Company.name()
-  #     })
-
   #     product = Repo.insert!(
   #       Map.merge(%Product{ account_id: account2_id }, @valid_fields)
   #     )

@@ -4,7 +4,9 @@ defmodule BlueJet.Storefront.Price do
   use Trans, translates: [:name, :caption], container: :translations
 
   alias BlueJet.Translation
+  alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.ProductItem
+  alias BlueJet.Identity.Account
 
   schema "prices" do
     field :status, :string
@@ -31,23 +33,31 @@ defmodule BlueJet.Storefront.Price do
 
     timestamps()
 
-    belongs_to :account, BlueJet.Identity.Account
+    belongs_to :account, Account
     belongs_to :product_item, ProductItem
   end
 
-  def fields do
-    BlueJet.Storefront.Price.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    Price.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    BlueJet.Storefront.Price.__trans__(:fields)
+    Price.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def required_fields do

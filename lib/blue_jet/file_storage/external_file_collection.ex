@@ -28,9 +28,16 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     has_many :files, through: [:file_memberships, :file]
   end
 
-  def fields do
-    ExternalFileCollection.__schema__(:fields)
-    -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    ExternalFileCollection.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
@@ -38,10 +45,10 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def validate(changeset) do

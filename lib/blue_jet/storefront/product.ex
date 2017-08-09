@@ -5,6 +5,10 @@ defmodule BlueJet.Storefront.Product do
 
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
+  alias BlueJet.Storefront.Product
+  alias BlueJet.Identity.Account
+  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "products" do
     field :name, :string
@@ -18,25 +22,33 @@ defmodule BlueJet.Storefront.Product do
 
     timestamps()
 
-    belongs_to :account, BlueJet.Identity.Account
-    belongs_to :avatar, BlueJet.FileStorage.ExternalFile
+    belongs_to :account, Account
+    belongs_to :avatar, ExternalFile
     has_many :items, ProductItem
-    has_many :external_file_collections, BlueJet.FileStorage.ExternalFileCollection
+    has_many :external_file_collections, ExternalFileCollection
   end
 
-  def fields do
-    BlueJet.Storefront.Product.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    Product.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    BlueJet.Storefront.Product.__trans__(:fields)
+    Product.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def validate(changeset) do

@@ -15,12 +15,11 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     alias BlueJet.Repo
     alias BlueJet.Inventory.Sku
-    alias BlueJet.UserRegistration
     alias BlueJet.Identity
 
     ensure_started(Repo, [])
 
-    {:ok, %{ default_account_id: account1_id } = user} = Identity.create_user(%{
+    {:ok, %{ default_account_id: account1_id }} = Identity.create_user(%{
       fields: %{
         "first_name" => "Roy",
         "last_name" => "Bao",

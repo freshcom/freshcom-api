@@ -14,15 +14,23 @@ defmodule BlueJet.Identity.AccountMembership do
     belongs_to :user, User
   end
 
-  def fields do
-    AccountMembership.__schema__(:fields) -- [:id, :inserted_at, :updated_at]
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    AccountMembership.__schema__(:fields) -- system_fields()
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    fields()
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    fields() -- [:user_id, :account_id]
+    writable_fields() -- [:user_id, :account_id]
   end
 
   def required_fields do
