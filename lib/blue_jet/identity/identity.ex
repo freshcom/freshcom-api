@@ -17,7 +17,6 @@ defmodule BlueJet.Identity do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
 
-    fields = Map.merge(request.fields, %{ "default_account_id" => account_id })
     changeset = User.changeset(%User{}, request.fields)
 
     Repo.transaction(fn ->

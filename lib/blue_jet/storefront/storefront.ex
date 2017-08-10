@@ -320,4 +320,79 @@ defmodule BlueJet.Storefront do
       other -> other
     end
   end
+
+  def list_orders(request = %{ vas: vas }) do
+    defaults = %{ search_keyword: "", filter: %{ status: "opened" }, page_size: 25, page_number: 1, locale: "en", preloads: [] }
+    request = Map.merge(defaults, request, fn(k, v1, v2) ->
+      case k do
+        :filter -> if (map_size(v2) == 0), do: v1, else: v2
+        _ -> v2
+      end
+    end)
+    account_id = vas[:account_id]
+
+    query =
+      Order
+      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
+      |> filter_by(
+        status: request.filter[:status],
+        label: request.filter[:label],
+        delivery_address_province: request.filter[:delivery_address_province],
+        delivery_address_city: request.filter[:delivery_address_city],
+        payment_status: request.filter[:payment_status],
+        payment_gateway: request.filter[:payment_gateway],
+        payment_processor: request.filter[:payment_processor],
+        payment_method: request.filter[:payment_method],
+        fulfillment_method: request.filter[:fulfillment_method]
+      )
+      |> where([s], s.account_id == ^account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Order |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: request.page_size, number: request.page_number)
+
+    orders =
+      Repo.all(query)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    %{
+      total_count: total_count,
+      result_count: result_count,
+      orders: orders
+    }
+  end
+
+  def delete_order!(%{ vas: vas, order_id: order_id }) do
+    order = Repo.get_by!(Order, account_id: vas[:account_id], id: order_id)
+    Repo.delete!(order)
+  end
+
+  ####
+  # Charge
+  ####
+  def create_charge(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Charge.changeset(%Charge{}, fields)
+
+    # if request[:save_payment_source] then save the card
+    # acquire lock
+    # enforce inventory (before_charge)
+    # check shipping date deadline not passed (before_charge)
+    # charge through stripe
+    # create the charge object
+    # update order status and payment status (after_charge)
+    # release lock
+    with {:ok, order} <- Repo.insert(changeset) do
+      order = Repo.preload(order, request.preloads)
+      {:ok, order}
+    else
+      other -> other
+    end
+  end
 end

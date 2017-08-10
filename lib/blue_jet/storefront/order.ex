@@ -177,6 +177,7 @@ defmodule BlueJet.Storefront.Order do
     required_fields(field_values)
   end
 
+  # TODO: if changeing from cart to opened status we need to check inventory
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))

@@ -87,11 +87,7 @@ defmodule BlueJetWeb.OrderControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
     end
 
-    test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      customer = Repo.insert!(%Customer{
-        account_id: account1_id
-      })
-
+    test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, customer1_id: customer1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       conn = post(conn, "/v1/orders?include=customer", %{
@@ -102,7 +98,7 @@ defmodule BlueJetWeb.OrderControllerTest do
             "customer" => %{
               "data" => %{
                 "type" => "Customer",
-                "id" => customer.id
+                "id" => customer1_id
               }
             }
           }
@@ -110,7 +106,7 @@ defmodule BlueJetWeb.OrderControllerTest do
       })
 
       assert json_response(conn, 201)["data"]["id"]
-      assert json_response(conn, 201)["data"]["relationships"]["customer"]["data"]["id"]
+      assert json_response(conn, 201)["data"]["relationships"]["customer"]["data"]["id"] == customer1_id
       assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "Customer" end)) == 1
     end
   end
@@ -274,313 +270,247 @@ defmodule BlueJetWeb.OrderControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["firstName"] == @valid_attrs["firstName"]
     end
 
-    # test "with valid access token, attrs, rels and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-    #   product = Repo.insert!(
-    #     Map.merge(%Product{
-    #       account_id: account1_id
-    #     },
-    #     @valid_fields)
-    #   )
+    test "with valid access token, attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, customer1_id: customer1_id } do
+      order = Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "cart"
+      })
 
-    #   conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-    #   conn = patch(conn, "/v1/products/#{product.id}?locale=zh-CN", %{
-    #     "data" => %{
-    #       "id" => product.id,
-    #       "type" => "Product",
-    #       "attributes" => %{
-    #         "name" => "橙子"
-    #       }
-    #     }
-    #   })
+      conn = patch(conn, "/v1/orders/#{order.id}?include=customer", %{
+        "data" => %{
+          "id" => order.id,
+          "type" => "Order",
+          "attributes" => @valid_attrs,
+          "relationships" => %{
+            "customer" => %{
+              "data" => %{
+                "type" => "Customer",
+                "id" => customer1_id
+              }
+            }
+          }
+        }
+      })
 
-    #   assert json_response(conn, 200)["data"]["id"]
-    #   assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_fields[:status]
-    #   assert json_response(conn, 200)["data"]["attributes"]["name"] == "橙子"
-    #   assert json_response(conn, 200)["data"]["attributes"]["customData"] == @valid_fields[:custom_data]
-    # end
-
-    # test "with valid access token, attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-    #   product = Repo.insert!(
-    #     Map.merge(%Product{
-    #       account_id: account1_id
-    #     },
-    #     @valid_fields)
-    #   )
-
-    #   Repo.insert!(%ExternalFileCollection{
-    #     account_id: account1_id,
-    #     product_id: product.id,
-    #     label: "primary_images",
-    #     translations: %{
-    #       "zh-CN" => %{
-    #         "name" => "图片"
-    #       }
-    #     }
-    #   })
-
-    #   conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
-
-    #   conn = patch(conn, "/v1/products/#{product.id}?locale=zh-CN&include=externalFileCollections", %{
-    #     "data" => %{
-    #       "id" => product.id,
-    #       "type" => "Product",
-    #       "attributes" => %{
-    #         "name" => "橙子"
-    #       }
-    #     }
-    #   })
-
-    #   assert json_response(conn, 200)["data"]["id"]
-    #   assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_fields[:status]
-    #   assert json_response(conn, 200)["data"]["attributes"]["name"] == "橙子"
-    #   assert json_response(conn, 200)["data"]["attributes"]["customData"] == @valid_fields[:custom_data]
-    #   assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
-    #   assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 1
-    # end
+      assert json_response(conn, 200)["data"]["id"]
+      assert json_response(conn, 200)["data"]["relationships"]["customer"]["data"]["id"] == customer1_id
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "Customer" end)) == 1
+    end
   end
 
-  # describe "GET /v1/products" do
-  #   test "with no access token", %{ conn: conn } do
-  #     conn = get(conn, "/v1/products")
+  describe "GET /v1/orders" do
+    test "with no access token", %{ conn: conn } do
+      conn = get(conn, "/v1/orders")
 
-  #     assert conn.status == 401
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with valid access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(
-  #       Map.merge(%Product{ account_id: account2_id }, @valid_fields)
-  #     )
-  #     Repo.insert!(
-  #       Map.merge(%Product{ account_id: account1_id }, @valid_fields)
-  #     )
-  #     Repo.insert!(
-  #       Map.merge(%Product{ account_id: account1_id }, @valid_fields)
-  #     )
+    test "with valid access token", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      {:ok, %User{ default_account_id: account2_id }} = Identity.create_user(%{
+        fields: %{
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "email" => "test2@example.com",
+          "password" => "test1234",
+          "account_name" => Faker.Company.name()
+        }
+      })
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "cart"
+      })
+      Repo.insert!(%Order{
+        account_id: account2_id,
+        status: "opened"
+      })
 
-  #     conn = get(conn, "/v1/products")
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     assert length(json_response(conn, 200)["data"]) == 2
-  #   end
+      conn = get(conn, "/v1/orders")
 
-  #   test "with valid access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+      assert length(json_response(conn, 200)["data"]) == 2
+    end
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+    test "with valid access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      conn = get(conn, "/v1/orders?page[number]=2&page[size]=1")
 
-  #     conn = get(conn, "/v1/products?page[number]=2&page[size]=1")
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
 
-  #     assert length(json_response(conn, 200)["data"]) == 1
-  #     assert json_response(conn, 200)["meta"]["resultCount"] == 3
-  #     assert json_response(conn, 200)["meta"]["totalCount"] == 3
-  #   end
+    test "with valid access token and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "cart"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "cart"
+      })
 
-  #   test "with valid access token and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+      conn = get(conn, "/v1/orders?filter[status]=cart")
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "disabled",
-  #       name: "Apple"
-  #     })
+      assert length(json_response(conn, 200)["data"]) == 2
+      assert json_response(conn, 200)["meta"]["resultCount"] == 2
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+    test "with valid access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened",
+        translations: %{
+          "zh-CN" => %{
+            "custom_data" => %{
+              "custom1" => "中文"
+            }
+          }
+        }
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
 
-  #     conn = get(conn, "/v1/products?filter[status]=active")
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     assert length(json_response(conn, 200)["data"]) == 2
-  #     assert json_response(conn, 200)["meta"]["resultCount"] == 2
-  #     assert json_response(conn, 200)["meta"]["totalCount"] == 3
-  #   end
+      conn = get(conn, "/v1/orders?locale=zh-CN")
 
-  #   test "with valid access token and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+      assert length(json_response(conn, 200)["data"]) == 3
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+      assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["customData"]["custom1"] == "中文" end)) == 1
+    end
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+    test "with valid access token and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened",
+        code: "AB09435"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      conn = get(conn, "/v1/orders?search=ab")
 
-  #     conn = get(conn, "/v1/products?locale=zh-CN")
+      assert length(json_response(conn, 200)["data"]) == 1
+      assert json_response(conn, 200)["meta"]["resultCount"] == 1
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+    end
 
-  #     assert length(json_response(conn, 200)["data"]) == 3
-  #     assert json_response(conn, 200)["meta"]["resultCount"] == 3
-  #     assert json_response(conn, 200)["meta"]["totalCount"] == 3
-  #     assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "苹果" end)) == 2
-  #   end
+    test "with valid access token and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, customer1_id: customer1_id } do
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened",
+        customer_id: customer1_id
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened",
+        customer_id: customer1_id
+      })
+      Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened",
+        customer_id: customer1_id
+      })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #   test "with valid access token, locale and search", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+      conn = get(conn, "/v1/orders?include=customer")
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+      assert length(json_response(conn, 200)["data"]) == 3
+      assert json_response(conn, 200)["meta"]["resultCount"] == 3
+      assert json_response(conn, 200)["meta"]["totalCount"] == 3
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "Customer" end)) == 1
+    end
+  end
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+  describe "DELETE /v1/orders/:id" do
+    test "with no access token", %{ conn: conn } do
+      conn = delete(conn, "/v1/orders/test")
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      assert conn.status == 401
+    end
 
-  #     conn = get(conn, "/v1/products?locale=zh-CN&search=苹")
+    test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
+      {:ok, %User{ default_account_id: account2_id }} = Identity.create_user(%{
+        fields: %{
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "email" => "test2@example.com",
+          "password" => "test1234",
+          "account_name" => Faker.Company.name()
+        }
+      })
 
-  #     assert length(json_response(conn, 200)["data"]) == 2
-  #     assert json_response(conn, 200)["meta"]["resultCount"] == 2
-  #     assert json_response(conn, 200)["meta"]["totalCount"] == 3
-  #     assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "苹果" end)) == 2
-  #   end
+      order = Repo.insert!(%Order{
+        account_id: account2_id,
+        status: "opened"
+      })
 
-  #   test "with valid access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "苹果"
-  #         }
-  #       }
-  #     })
+      assert_error_sent(404, fn ->
+        delete(conn, "/v1/orders/#{order.id}")
+      end)
+    end
 
-  #     product = Repo.insert!(%Product{
-  #       account_id: account1_id,
-  #       status: "active",
-  #       name: "Apple"
-  #     })
+    test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
+      order = Repo.insert!(%Order{
+        account_id: account1_id,
+        status: "opened"
+      })
 
-  #     Repo.insert!(%ExternalFileCollection{
-  #       account_id: account1_id,
-  #       product_id: product.id,
-  #       label: "primary_images",
-  #       translations: %{
-  #         "zh-CN" => %{
-  #           "name" => "图片"
-  #         }
-  #       }
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
+      conn = delete(conn, "/v1/orders/#{order.id}")
 
-  #     conn = get(conn, "/v1/products?locale=zh-CN&include=externalFileCollections")
-
-  #     assert length(json_response(conn, 200)["data"]) == 3
-  #     assert json_response(conn, 200)["meta"]["resultCount"] == 3
-  #     assert json_response(conn, 200)["meta"]["totalCount"] == 3
-  #     assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "苹果" end)) == 2
-  #     assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
-  #     assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 1
-  #   end
-  # end
-
-  # describe "DELETE /v1/products/:id" do
-  #   test "with no access token", %{ conn: conn } do
-  #     conn = delete(conn, "/v1/products/test")
-
-  #     assert conn.status == 401
-  #   end
-
-  #   test "with access token of a different account", %{ conn: conn, uat1: uat1 } do
-  #     product = Repo.insert!(
-  #       Map.merge(%Product{ account_id: account2_id }, @valid_fields)
-  #     )
-
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
-
-  #     assert_error_sent(404, fn ->
-  #       delete(conn, "/v1/products/#{product.id}")
-  #     end)
-  #   end
-
-  #   test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-  #     product = Repo.insert!(
-  #       Map.merge(%Product{ account_id: account1_id }, @valid_fields)
-  #     )
-
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
-
-  #     conn = delete(conn, "/v1/products/#{product.id}")
-
-  #     assert conn.status == 204
-  #   end
-  # end
+      assert conn.status == 204
+    end
+  end
 end
