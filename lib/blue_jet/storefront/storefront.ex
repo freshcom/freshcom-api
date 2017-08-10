@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.Order
+  alias BlueJet.Storefront.OrderCharge
 
   ######
   # Product
@@ -371,15 +372,16 @@ defmodule BlueJet.Storefront do
   end
 
   ####
-  # Charge
+  # Order Charge
   ####
-  def create_charge(request = %{ vas: vas }) do
+  def create_order_charge(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
 
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Charge.changeset(%Charge{}, fields)
+    changeset = OrderCharge.changeset(%OrderCharge{}, fields)
 
+    # create stripe customer if there is not already one
     # if request[:save_payment_source] then save the card
     # acquire lock
     # enforce inventory (before_charge)

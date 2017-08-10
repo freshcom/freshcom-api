@@ -5,6 +5,9 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
     create table(:customers, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id)
+
+      add :stripe_customer_id, :string
+
       add :code, :string
       add :status, :string
       add :first_name, :string

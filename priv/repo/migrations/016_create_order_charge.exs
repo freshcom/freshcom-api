@@ -6,12 +6,12 @@ defmodule BlueJet.Repo.Migrations.CreateOrderCharge do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
+      add :stripe_charge_id, :string
+
       add :status, :string
       add :authorized_amount_cents, :integer
       add :captured_amount_cents, :integer
       add :refunded_amount_cents, :integer
-
-      add :stripe_charge_id, :string
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"

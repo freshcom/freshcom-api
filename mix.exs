@@ -48,6 +48,7 @@ defmodule BlueJet.Mixfile do
       {:sweet_xml, "~> 0.6"},
       {:comeonin, "~> 3.0"},
       {:jose, "~> 1.8.3"},
+      {:stripity_stripe, "~> 1.6.0"},
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
     ]
   end

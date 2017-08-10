@@ -53,6 +53,9 @@ config :blue_jet, :s3, prefix: 'uploads'
 
 config :ex_aws,
   region: [{:system, "AWS_REGION"}, :instance_role]
+
+config :stripity_stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env}.exs"

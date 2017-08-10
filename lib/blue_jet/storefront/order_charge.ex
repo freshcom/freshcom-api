@@ -4,7 +4,7 @@ defmodule BlueJet.Storefront.OrderCharge do
   use Trans, translates: [:custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Storefront.Charge
+  alias BlueJet.Storefront.OrderCharge
   alias BlueJet.Storefront.Order
   alias BlueJet.Identity.Account
 
@@ -34,11 +34,11 @@ defmodule BlueJet.Storefront.OrderCharge do
   end
 
   def writable_fields do
-    Charge.__schema__(:fields) -- system_fields()
+    OrderCharge.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    Charge.__trans__(:fields)
+    OrderCharge.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
