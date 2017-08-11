@@ -4,6 +4,7 @@ defmodule BlueJet.OrderLineItemTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
 
@@ -28,6 +29,54 @@ defmodule BlueJet.OrderLineItemTest do
     end
   end
 
+  describe "put_price_fields/3" do
+    @tag :focus
+    test "with changed price_id" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        status: "active",
+        name: "Apple",
+        account_id: account.id
+      })
+      product_item = Repo.insert!(%ProductItem{
+        status: "active",
+        account_id: account.id,
+        product_id: product.id
+      })
+      price = Repo.insert!(%Price{
+        account_id: account.id,
+        product_item_id: product_item.id,
+        status: "active",
+        label: "regular",
+        name: "Regular Price",
+        charge_amount_cents: 100,
+        order_unit: "EA",
+        charge_unit: "EA",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "原价"
+          },
+          "lala" => %{
+            "name" => "LOL"
+          }
+        }
+      })
+
+      changeset = Ecto.Changeset.change(%OrderLineItem{}, %{ price_id: price.id })
+      changeset = OrderLineItem.put_price_fields(changeset)
+      correct_translations = %{
+        "zh-CN" => %{
+          "price_name" => "原价"
+        },
+        "lala" => %{
+          "price_name" => "LOL"
+        }
+      }
+      assert changeset.changes.price_name == price.name
+      assert changeset.changes.translations == correct_translations
+    end
+  end
+
   describe "balance!/1" do
     test "with custom OrderLineItem" do
       account = Repo.insert!(%Account{})
@@ -47,7 +96,6 @@ defmodule BlueJet.OrderLineItemTest do
       assert length(children) == 0
     end
 
-    @tag :focus
     test "with OrderLineItem with ProductItem" do
       account = Repo.insert!(%Account{})
       product = Repo.insert!(%Product{

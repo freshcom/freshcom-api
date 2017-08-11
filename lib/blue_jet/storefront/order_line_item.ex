@@ -14,10 +14,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   schema "order_line_items" do
     field :name, :string
+    field :label, :string
     field :print_name, :string
     field :description, :string
 
-    field :is_leaf, :boolean, default: true
+    field :is_leaf, :boolean, default: false
 
     field :price_name, :string
     field :price_label, :string
@@ -25,8 +26,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_order_unit, :string
     field :price_charge_unit, :string
     field :price_currency_code, :string
-    field :price_charge_cents, :integer
-    field :price_estimate_cents, :integer
+    field :price_charge_amount_cents, :integer
+    field :price_estimate_amount_cents, :integer
     field :price_tax_one_rate, :integer
     field :price_tax_two_rate, :integer
     field :price_tax_three_rate, :integer
@@ -77,24 +78,32 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def writable_fields do
-    Price.__schema__(:fields) -- system_fields()
+    OrderLineItem.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    Price.__trans__(:fields)
+    OrderLineItem.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    writable_fields() -- [:account_id, :order_id, :product_id, :product_item_id, :parent_id]
+  end
+
+  def require_fields do
+    [
+      :account_id,
+      :order_id
+    ]
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :order_id])
-    |> validate_assoc_account_scope(:avatar)
+    |> validate_required(require_fields())
+    |> foreign_key_constraint(:account_id)
+    |> validate_assoc_account_scope([:order, :price, :product, :product_item, :parent])
   end
 
   @doc """
@@ -104,8 +113,67 @@ defmodule BlueJet.Storefront.OrderLineItem do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> put_is_leaf()
+    |> put_price_fields()
+    |> put_amount_fields()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
+
+  def put_amount_fields(changeset) do
+    changeset
+  end
+
+  def put_price_fields(changeset = %Ecto.Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
+    price = Repo.get!(Price, price_id)
+    changeset =
+      changeset
+      |> put_change(:price_name, price.name)
+      |> put_change(:price_label, price.label)
+      |> put_change(:price_caption, price.caption)
+      |> put_change(:price_order_unit, price.order_unit)
+      |> put_change(:price_charge_unit, price.charge_unit)
+      |> put_change(:price_currency_code, price.currency_code)
+      |> put_change(:price_charge_amount_cents, price.charge_amount_cents)
+      |> put_change(:price_estimate_amount_cents, price.estimate_amount_cents)
+      |> put_change(:price_tax_one_rate, price.tax_one_rate)
+      |> put_change(:price_tax_two_rate, price.tax_two_rate)
+      |> put_change(:price_tax_three_rate, price.tax_three_rate)
+      |> put_change(:price_end_time, price.end_time)
+
+    translations = Ecto.Changeset.get_field(changeset, :translations)
+    translations = Enum.reduce(price.translations, translations, fn({locale, price_locale_struct}, acc) ->
+      oli_locale_struct = Map.get(acc, locale, %{})
+      oli_locale_struct = merge_price_locale_struct(oli_locale_struct, price_locale_struct, ["name", "caption"])
+
+      Map.put(acc, locale, oli_locale_struct)
+    end)
+
+    put_change(changeset, :translations, translations)
+  end
+  def put_price_fields(changeset), do: changeset
+
+  defp merge_price_locale_struct(oli_locale_struct, price_locale_struct, price_fields) do
+    Enum.reduce(price_fields, oli_locale_struct, fn(field, acc) ->
+      if Map.has_key?(price_locale_struct, field) do
+        Map.put(acc, "price_#{field}", price_locale_struct[field])
+      else
+        acc
+      end
+    end)
+  end
+
+  def put_is_leaf(changeset = %Ecto.Changeset{ valid?: true }) do
+    order_quantity = Ecto.Changeset.get_field(changeset, :order_quantity)
+    product_id = Ecto.Changeset.get_field(changeset, :product_id)
+
+    if order_quantity == 1 && !product_id do
+      put_change(changeset, :is_leaf, true)
+    else
+      changeset
+    end
+  end
+  def put_is_leaf(changeset), do: changeset
+
 
   def root(query) do
     from oli in query, where: is_nil(oli.parent_id)
@@ -138,6 +206,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     struct
   end
+  # TODO:
   def balance!(struct = %OrderLineItem{ product_id: product_id, parent_id: nil }) when not is_nil(product_id) do
     product = Repo.get!(Product, product_id)
     product_items = assoc(product, :items) |> Repo.all()
