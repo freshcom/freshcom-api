@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.Order
+  alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.OrderCharge
 
   ######
@@ -372,6 +373,36 @@ defmodule BlueJet.Storefront do
   end
 
   ####
+  # Order Line Item
+  ####
+  def create_order_line_item(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+
+    with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
+      order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
+      Repo.transaction(fn ->
+        order_line_item = Repo.insert!(changeset)
+        OrderLineItem.balance!(order_line_item)
+        # balance_order!(order, :from_root)
+      end)
+    end
+  end
+
+  defp balance_order(order, :from_root) do
+    changeset = Order.changeset_for_balance(order)
+    Repo.update!(changeset)
+
+    root_items = Ecto.assoc(order, :line_items) |> OrderLineItem.root() |> Repo.all()
+    Enum.each(root_items, fn(items) -> OrderLineItem.balance_from_root() end)
+  end
+  defp balance_order(order, :from_leaf) do
+
+  end
+
+  ####
   # Order Charge
   ####
   def create_order_charge(request = %{ vas: vas }) do
@@ -380,6 +411,18 @@ defmodule BlueJet.Storefront do
 
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
     changeset = OrderCharge.changeset(%OrderCharge{}, fields)
+
+    # We create the charge first so that stripe_charge can have a reference to the charge,
+    # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
+    # so we need to make sure what the stripe_charge is for and refund manually if needed
+    with {:ok, order_charge} <- Repo.insert(changeset),
+         {:ok, order_charge} <- process_order_charge(order_charge, request.fields["payment_source"]) do
+
+      {:ok, order_charge}
+    else
+      {:error, errors} -> errors
+      other -> other
+    end
 
     # create stripe customer if there is not already one
     # if request[:save_payment_source] then save the card
@@ -396,5 +439,33 @@ defmodule BlueJet.Storefront do
     else
       other -> other
     end
+  end
+
+  # Save the payment_source to the stripe_customer
+  defp keep_payment_source(token_or_card_id, customer_id) do
+  end
+
+  # Process the order_charge through stripe
+  defp process_order_charge(order_charge, payment_source) do
+    order = Repo.get!(order_charge.order_id)
+
+    Repo.transaction(fn ->
+      Order.enforce_inventory!(order_charge.order_id) # acquires lock until end of transaction
+      Order.enforce_shipping_date_deadline!(order_charge.order_id)
+
+      with {:ok, stripe_info} = keep_payment_source(payment_source, order_charge.customer_id),
+           {:ok, stripe_charge} <- Stripe.Charges.create(order.grand_total_cents, source: stripe_info[:payment_source], customer: stripe_info[:stripe_customer_id], capture: order.is_estimate, metadata: %{ order_charge_id: order_charge.id })
+      do
+        charge_changeset = Ecto.Changeset.change(order_charge, status: "captured", stripe_charge_id: stripe_charge.id)
+        Repo.update!(charge_changeset)
+
+        order_changeset = Ecto.Changeset.change(order, status: "opened", payment_status: "paid", payment_gateway: "storefront", payment_processor: "stripe")
+        order_charge = Repo.update!(order_changeset)
+
+        {:ok, order_charge}
+      else
+        {:error, response} -> {:error, response}
+      end
+    end)
   end
 end

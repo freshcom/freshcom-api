@@ -26,8 +26,12 @@ defmodule BlueJet do
 
       @primary_key {:id, :binary_id, autogenerate: true}
       @foreign_key_type :binary_id
+      #######
 
+      import Ecto
+      import Ecto.Query
       import BlueJet.Validation
+      alias BlueJet.Repo
     end
   end
 

@@ -8,7 +8,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderCharge do
 
       add :stripe_charge_id, :string
 
-      add :status, :string
+      add :status, :string, default: "pending"
       add :authorized_amount_cents, :integer
       add :captured_amount_cents, :integer
       add :refunded_amount_cents, :integer
@@ -17,6 +17,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderCharge do
       add :translations, :map, null: false, default: "{}"
 
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all), null: false
 
       add :authorized_at, :utc_datetime
       add :captured_at, :utc_datetime

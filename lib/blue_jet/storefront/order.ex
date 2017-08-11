@@ -5,6 +5,8 @@ defmodule BlueJet.Storefront.Order do
 
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
+  alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.OrderCharge
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
@@ -59,6 +61,8 @@ defmodule BlueJet.Storefront.Order do
     belongs_to :account, Account
     belongs_to :customer, Customer
     belongs_to :created_by, User
+    has_many :line_items, OrderLineItem
+    has_many :charges, OrderCharge
   end
 
   def translatable_fields do
@@ -194,5 +198,24 @@ defmodule BlueJet.Storefront.Order do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
+  end
+
+  def changeset_for_balance(struct) do
+    query = Ecto.assoc(struct, :line_items) |> OrderLineItem.root()
+
+    sub_total_cents = Repo.aggregate(query, :sum, :sub_total_cents)
+    tax_one_cents = Repo.aggregate(query, :sum, :tax_one_cents)
+    tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents)
+    tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents)
+    grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents)
+
+    Ecto.Changeset.change(
+      struct,
+      sub_total_cents: sub_total_cents,
+      tax_one_cents: tax_one_cents,
+      tax_two_cents: tax_two_cents,
+      tax_three_cents: tax_three_cents,
+      grand_total_cents: grand_total_cents
+    )
   end
 end

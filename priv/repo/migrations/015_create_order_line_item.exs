@@ -23,27 +23,34 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_tax_one_rate, :integer
       add :price_tax_two_rate, :integer
       add :price_tax_three_rate, :integer
+      add :price_end_time, :utc_datetime
 
       add :charge_quantity, :decimal
       add :order_quantity, :integer, null: false, default: 1
 
-      add :sub_total_cents, :integer, null: false
-      add :tax_one_cents, :integer, null: false
-      add :tax_two_cents, :integer, null: false
-      add :tax_three_cents, :integer, null: false
-      add :grand_total_cents, :integer, null: false
+      add :sub_total_cents, :integer, null: false, default: 0
+      add :tax_one_cents, :integer, null: false, default: 0
+      add :tax_two_cents, :integer, null: false, default: 0
+      add :tax_three_cents, :integer, null: false, default: 0
+      add :grand_total_cents, :integer, null: false, default: 0
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
+      add :parent_id, references(:order_line_items, type: :binary_id, on_delete: :delete_all)
       add :price_id, references(:prices, type: :binary_id)
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
+      add :product_item_id, references(:product_items, type: :binary_id, on_delete: :nilify_all)
+      add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
 
       timestamps()
     end
 
+    create index(:order_line_items, [:parent_id])
     create index(:order_line_items, [:account_id])
     create index(:order_line_items, [:order_id])
     create index(:order_line_items, [:price_id])
+    create index(:order_line_items, [:product_item_id])
+    create index(:order_line_items, [:product_id])
   end
 end
