@@ -79,4 +79,13 @@ defmodule BlueJet.Storefront.Price do
     |> validate()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
+
+  def for(product_item_id: product_item_id, order_quantity: order_quantity) do
+    query = from p in Price,
+      where: p.product_item_id == ^product_item_id,
+      where: p.minimum_order_quantity <= ^order_quantity,
+      order_by: [desc: p.minimum_order_quantity]
+
+    query |> first() |> Repo.one()
+  end
 end

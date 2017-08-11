@@ -3,6 +3,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   use Trans, translates: [:name, :print_name, :description, :price_caption, :custom_data], container: :translations
 
+  alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.OrderLineItem
 
@@ -114,16 +115,62 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_is_leaf()
+    |> put_name()
+    |> put_price_id()
     |> put_price_fields()
     |> put_amount_fields()
     |> Translation.put_change(translatable_fields(), struct.translations, locale)
   end
 
-  def put_amount_fields(changeset) do
+  def put_is_leaf(changeset = %Changeset{ valid?: true }) do
+    order_quantity = Changeset.get_field(changeset, :order_quantity)
+    product_id = Changeset.get_field(changeset, :product_id)
+
+    if order_quantity == 1 && !product_id do
+      put_change(changeset, :is_leaf, true)
+    else
+      changeset
+    end
+  end
+  def put_is_leaf(changeset), do: changeset
+
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: name } }) when not is_nil(name) do
     changeset
   end
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) when not is_nil(product_item_id) do
+    product_item = Repo.get!(ProductItem, product_item_id)
+    translations =
+      Changeset.get_field(changeset, :translations)
+      |> Translation.merge_translations(product_item.translations, ["name"])
 
-  def put_price_fields(changeset = %Ecto.Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
+    changeset
+    |> put_change(:name, product_item.name)
+    |> put_change(:translations, translations)
+  end
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) when not is_nil(product_id) do
+    product = Repo.get!(Product, product_id)
+    translations =
+      Changeset.get_field(changeset, :translations)
+      |> Translation.merge_translations(product.translations, ["name"])
+
+    changeset
+    |> put_change(:name, product.name)
+    |> put_change(:translations, translations)
+  end
+
+  def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) when not is_nil(product_item_id) do
+    price_id = get_change(changeset, :price_id)
+
+    if !price_id do
+      order_quantity = get_change(changeset, :order_quantity)
+      price = Price.for(product_item_id: product_item_id, order_quantity: order_quantity)
+      put_change(changeset, :price_id, price.id)
+    else
+      changeset
+    end
+  end
+
+  def put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
     price = Repo.get!(Price, price_id)
     changeset =
       changeset
@@ -140,13 +187,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> put_change(:price_tax_three_rate, price.tax_three_rate)
       |> put_change(:price_end_time, price.end_time)
 
-    translations = Ecto.Changeset.get_field(changeset, :translations)
-    translations = Enum.reduce(price.translations, translations, fn({locale, price_locale_struct}, acc) ->
-      oli_locale_struct = Map.get(acc, locale, %{})
-      oli_locale_struct = merge_price_locale_struct(oli_locale_struct, price_locale_struct, ["name", "caption"])
-
-      Map.put(acc, locale, oli_locale_struct)
-    end)
+    translations =
+      Changeset.get_field(changeset, :translations)
+      |> Translation.merge_translations(price.translations, ["name", "caption"], "price_")
 
     put_change(changeset, :translations, translations)
   end
@@ -162,18 +205,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end)
   end
 
-  def put_is_leaf(changeset = %Ecto.Changeset{ valid?: true }) do
-    order_quantity = Ecto.Changeset.get_field(changeset, :order_quantity)
-    product_id = Ecto.Changeset.get_field(changeset, :product_id)
-
-    if order_quantity == 1 && !product_id do
-      put_change(changeset, :is_leaf, true)
-    else
-      changeset
-    end
+  def put_amount_fields(changeset) do
+    changed_keys = Map.keys(changeset.changes)
+    BlueJet.Utils.intersect_list(changed_keys, [:price_charge_cents])
   end
-  def put_is_leaf(changeset), do: changeset
-
 
   def root(query) do
     from oli in query, where: is_nil(oli.parent_id)

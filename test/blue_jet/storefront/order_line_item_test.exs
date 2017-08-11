@@ -30,7 +30,6 @@ defmodule BlueJet.OrderLineItemTest do
   end
 
   describe "put_price_fields/3" do
-    @tag :focus
     test "with changed price_id" do
       account = Repo.insert!(%Account{})
       product = Repo.insert!(%Product{

@@ -19,8 +19,9 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_order_unit, :string
       add :price_charge_unit, :string
       add :price_currency_code, :string
-      add :price_charge_cents, :integer
-      add :price_estimate_cents, :integer
+      add :price_charge_amount_cents, :integer
+      add :price_estimate_amount_cents, :integer
+      add :price_maximum_amount_cents, :integer
       add :price_tax_one_rate, :integer
       add :price_tax_two_rate, :integer
       add :price_tax_three_rate, :integer
@@ -34,6 +35,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :tax_two_cents, :integer, null: false, default: 0
       add :tax_three_cents, :integer, null: false, default: 0
       add :grand_total_cents, :integer, null: false, default: 0
+
+      add :is_estimate, :boolean, null: false, default: false
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"

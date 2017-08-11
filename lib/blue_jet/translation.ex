@@ -47,4 +47,23 @@ defmodule BlueJet.Translation do
   def translate_collection(collection, locale) do
     translate(collection, locale)
   end
+
+  def merge_translations(dst_translations, src_translations, fields, prefix \\ "") do
+    Enum.reduce(src_translations, dst_translations, fn({locale, src_locale_struct}, acc) ->
+      dst_locale_struct = Map.get(acc, locale, %{})
+      dst_locale_struct = merge_locale_struct(dst_locale_struct, src_locale_struct, fields, prefix)
+
+      Map.put(acc, locale, dst_locale_struct)
+    end)
+  end
+
+  defp merge_locale_struct(dst_struct, src_struct, fields, prefix \\ "") do
+    Enum.reduce(fields, dst_struct, fn(field, acc) ->
+      if Map.has_key?(src_struct, field) do
+        Map.put(acc, "#{prefix}#{field}", src_struct[field])
+      else
+        acc
+      end
+    end)
+  end
 end
