@@ -74,6 +74,10 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_name == price.name
       assert changeset.changes.translations == correct_translations
     end
+
+    test "with changed product_id" do
+
+    end
   end
 
   describe "balance!/1" do

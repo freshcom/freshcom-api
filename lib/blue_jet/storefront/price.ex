@@ -77,15 +77,28 @@ defmodule BlueJet.Storefront.Price do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def for(product_item_id: product_item_id, order_quantity: order_quantity) do
+  def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
     query = from p in Price,
       where: p.product_item_id == ^product_item_id,
       where: p.minimum_order_quantity <= ^order_quantity,
       order_by: [desc: p.minimum_order_quantity]
 
-    query |> first() |> Repo.one()
+    query |> first()
+  end
+  def query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) do
+    query = from p in Price,
+      select: %{ row_number: fragment("ROW_NUMBER() OVER (PARTITION BY product_item_id ORDER BY minimum_order_quantity DESC)"), id: p.id },
+      where: p.product_item_id in ^product_item_ids,
+      where: p.minimum_order_quantity <= ^order_quantity
+
+    query = from pp in subquery(query),
+      join: p in Price, on: pp.id == p.id,
+      where: pp.row_number == 1,
+      select: p
+
+    query
   end
 end

@@ -11,7 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :label, :string
       add :description, :text
 
-      add :is_leaf, :boolean, null: false, default: false
+      add :is_leaf, :boolean, null: false, default: true
 
       add :price_name, :string
       add :price_label, :string
@@ -46,6 +46,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
       add :product_item_id, references(:product_items, type: :binary_id, on_delete: :nilify_all)
       add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
+      add :sku_id, references(:skus, type: :binary_id, on_delete: :nilify_all)
+      add :unlockable_id, references(:unlockables, type: :binary_id, on_delete: :nilify_all)
 
       timestamps()
     end
@@ -56,5 +58,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
     create index(:order_line_items, [:price_id])
     create index(:order_line_items, [:product_item_id])
     create index(:order_line_items, [:product_id])
+    create index(:order_line_items, [:unlockable_id])
+    create index(:order_line_items, [:sku_id])
   end
 end

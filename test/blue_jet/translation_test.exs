@@ -9,25 +9,25 @@ defmodule BlueJet.TranslationTest do
   describe "put_change/4" do
     test "with en locale" do
       original_changeset = %Changeset{}
-      new_changeset = Translation.put_change(original_changeset, %{}, %{}, "en")
+      new_changeset = Translation.put_change(original_changeset, %{}, "en")
 
       assert new_changeset == original_changeset
     end
 
     test "with zh-CN locale" do
       data = %{}
-      types = %{ name: :string, caption: :string }
+      types = %{ name: :string, caption: :string, translations: :map }
 
-      params = %{ name: "苹果", caption: "好苹果" }
+      params = %{ name: "苹果", caption: "好苹果", translations: %{ "zh-CN" => %{ "name" => "橙子", "caption" => "好橙子", "random" => "hi" } } }
       original_changeset = Changeset.cast({data, types}, params, Map.keys(types))
       translatable_fields = [:name, :caption]
-      original_translations = %{ "zh-CN" => %{ "name" => "橙子", "caption" => "好橙子" } }
 
-      new_changeset = Translation.put_change(original_changeset, translatable_fields, original_translations, "zh-CN")
+      new_changeset = Translation.put_change(original_changeset, translatable_fields, "zh-CN")
 
       assert new_changeset != original_changeset
       assert new_changeset.changes.translations["zh-CN"]["name"] == params[:name]
       assert new_changeset.changes.translations["zh-CN"]["caption"] == params[:caption]
+      assert new_changeset.changes.translations["zh-CN"]["random"] == "hi"
       refute Map.get(new_changeset.changes, :name)
       refute Map.get(new_changeset.changes, :caption)
     end

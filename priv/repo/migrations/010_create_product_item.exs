@@ -7,6 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateProductItem do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :code, :string
       add :status, :string, null: false
+      add :name, :string, null: false
       add :short_name, :string
       add :sort_index, :integer, null: false, default: 9999
       add :source_quantity, :integer, null: false, default: 1

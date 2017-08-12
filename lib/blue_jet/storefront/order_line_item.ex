@@ -11,6 +11,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.Price
+  alias BlueJet.Storefront.Unlockable
+  alias BlueJet.Storefront.Sku
   alias BlueJet.Identity.Account
 
   schema "order_line_items" do
@@ -19,7 +21,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :print_name, :string
     field :description, :string
 
-    field :is_leaf, :boolean, default: false
+    field :is_leaf, :boolean, default: true
+    field :is_estimate, :boolean, default: false
 
     field :price_name, :string
     field :price_label, :string
@@ -29,6 +32,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_currency_code, :string
     field :price_charge_amount_cents, :integer
     field :price_estimate_amount_cents, :integer
+    field :price_estimate_by_default, :boolean
     field :price_tax_one_rate, :integer
     field :price_tax_two_rate, :integer
     field :price_tax_three_rate, :integer
@@ -54,6 +58,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     belongs_to :product, Product
     belongs_to :product_item, ProductItem
     belongs_to :parent, OrderLineItem
+    belongs_to :sku, Sku
+    belongs_to :unlockable, Unlockable
     has_many :children, OrderLineItem, foreign_key: :parent_id
   end
 
@@ -73,6 +79,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
       :price_tax_three_rate,
       :price_end_time,
       :grand_total_cents,
+      :sku_id,
+      :unlockable_id,
       :inserted_at,
       :updated_at
     ]
@@ -90,13 +98,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :order_id, :product_id, :product_item_id, :parent_id]
+    writable_fields() -- [:account_id, :order_id, :product_id, :product_item_id, :parent_id, :sku_id, :unlockable_id]
   end
 
   def require_fields do
     [
       :account_id,
-      :order_id
+      :order_id,
+      :is_estimate
     ]
   end
 
@@ -104,7 +113,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     changeset
     |> validate_required(require_fields())
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:order, :price, :product, :product_item, :parent])
+    |> validate_assoc_account_scope([:order, :price, :product, :product_item, :parent, :sku, :unlockable])
   end
 
   @doc """
@@ -116,28 +125,22 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> validate()
     |> put_is_leaf()
     |> put_name()
+    |> put_is_estimate()
     |> put_price_id()
     |> put_price_fields()
     |> put_amount_fields()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def put_is_leaf(changeset = %Changeset{ valid?: true }) do
-    order_quantity = Changeset.get_field(changeset, :order_quantity)
-    product_id = Changeset.get_field(changeset, :product_id)
-
-    if order_quantity == 1 && !product_id do
-      put_change(changeset, :is_leaf, true)
-    else
-      changeset
-    end
+  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
+    put_change(changeset, :is_leaf, false)
   end
   def put_is_leaf(changeset), do: changeset
 
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: name } }) when not is_nil(name) do
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: name } }) do
     changeset
   end
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) when not is_nil(product_item_id) do
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) do
     product_item = Repo.get!(ProductItem, product_item_id)
     translations =
       Changeset.get_field(changeset, :translations)
@@ -147,7 +150,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:name, product_item.name)
     |> put_change(:translations, translations)
   end
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) when not is_nil(product_id) do
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
     product = Repo.get!(Product, product_id)
     translations =
       Changeset.get_field(changeset, :translations)
@@ -157,18 +160,43 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:name, product.name)
     |> put_change(:translations, translations)
   end
+  def put_name(changeset), do: changeset
 
-  def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) when not is_nil(product_item_id) do
+  def put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: is_estimate } }) do
+    changeset
+  end
+  def put_is_estimate(changeset = %Changeset{ valid?: true }) do
+    price_estimate_by_default = Changeset.get_field(changeset, :price_estimate_by_default)
+    charge_quantity = Changeset.get_field(changeset, :charge_quantity)
+    cond do
+      price_estimate_by_default && !charge_quantity -> put_change(changeset, :is_estimate, true)
+      true -> put_change(changeset, :is_estimate, false)
+    end
+  end
+  def put_is_estimate(changeset), do: changeset
+
+  def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) do
     price_id = get_change(changeset, :price_id)
 
     if !price_id do
       order_quantity = get_change(changeset, :order_quantity)
-      price = Price.for(product_item_id: product_item_id, order_quantity: order_quantity)
+      price = Price.query_for(product_item_id: product_item_id, order_quantity: order_quantity) |> Repo.one()
       put_change(changeset, :price_id, price.id)
     else
       changeset
     end
   end
+  def put_price_id(changeset), do: changeset
+
+  # Add in inventory related fields to make inventory tracking easier
+  def put_inventory_fields(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id } }) do
+    product_item = Repo.get(ProductItem, product_item_id)
+
+    changeset
+    |> put_change(:sku_id, product_item.sku_id)
+    |> put_change(:unlockable_id, product_item.unlockable_id)
+  end
+  def put_inventory_fields(changeset), do: changeset
 
   def put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
     price = Repo.get!(Price, price_id)
@@ -182,6 +210,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> put_change(:price_currency_code, price.currency_code)
       |> put_change(:price_charge_amount_cents, price.charge_amount_cents)
       |> put_change(:price_estimate_amount_cents, price.estimate_amount_cents)
+      |> put_change(:price_estimate_by_default, price.estimate_by_default)
       |> put_change(:price_tax_one_rate, price.tax_one_rate)
       |> put_change(:price_tax_two_rate, price.tax_two_rate)
       |> put_change(:price_tax_three_rate, price.tax_three_rate)
@@ -195,20 +224,28 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_price_fields(changeset), do: changeset
 
-  defp merge_price_locale_struct(oli_locale_struct, price_locale_struct, price_fields) do
-    Enum.reduce(price_fields, oli_locale_struct, fn(field, acc) ->
-      if Map.has_key?(price_locale_struct, field) do
-        Map.put(acc, "price_#{field}", price_locale_struct[field])
-      else
-        acc
-      end
-    end)
-  end
+  # price_charge_amount_cents
+  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
+    order_quantity = Changeset.get_field(changeset, :order_quantity)
+    product_item_ids = ProductItem.query_for(product_id: product_id) |> select([pi], pi.id) |> Repo.all()
+    prices = Price.for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
 
+    # TODO:
+
+    sub_total_cents = BlueJet.Utils.sum(prices, :sub_total_cents)
+
+    changeset
+    # |> put_change(:sub_total_cents, sub_total_cents)
+    # |> put_change(:tax_one_cents, tax_one_cents)
+    # |> put_change(:tax_two_cents, tax_two_cents)
+    # |> put_change(:tax_three_cents, tax_three_cents)
+    # |> put_change(:grand_total_cents, grand_total_cents)
+  end
   def put_amount_fields(changeset) do
     changed_keys = Map.keys(changeset.changes)
     BlueJet.Utils.intersect_list(changed_keys, [:price_charge_cents])
   end
+  def put_amount_fields(changeset), do: changeset
 
   def root(query) do
     from oli in query, where: is_nil(oli.parent_id)

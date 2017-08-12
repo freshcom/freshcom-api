@@ -77,7 +77,7 @@ defmodule BlueJet.Identity.Customer do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_encrypted_password()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 
   defp put_encrypted_password(changeset = %Ecto.Changeset{ valid?: true, changes: %{ password: password } })  do

@@ -1,7 +1,7 @@
 defmodule BlueJet.Storefront.ProductItem do
   use BlueJet, :data
 
-  use Trans, translates: [:short_name, :custom_data], container: :translations
+  use Trans, translates: [:name, :short_name, :custom_data], container: :translations
 
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
@@ -50,7 +50,7 @@ defmodule BlueJet.Storefront.ProductItem do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    writable_fields() -- [:account_id, :product_id]
   end
 
   def required_fields do
@@ -74,6 +74,20 @@ defmodule BlueJet.Storefront.ProductItem do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> put_name()
+    |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
+    product = Repo.get!(Product, product_id)
+    short_name = Changeset.get_field(changeset, :short_name)
+    put_change(changeset, :name, "#{product.name} #{short_name}")
+  end
+
+  def query_for(product_id: product_id) do
+    query = from pi in ProductItem,
+      where: pi.product_id == ^product_id
+
+    query
   end
 end

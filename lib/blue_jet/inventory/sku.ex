@@ -69,6 +69,6 @@ defmodule BlueJet.Inventory.Sku do
     |> cast(params, castable_fields(struct))
     |> validate_length(:print_name, min: 3)
     |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 end

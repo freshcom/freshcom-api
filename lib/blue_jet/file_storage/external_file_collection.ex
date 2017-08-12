@@ -65,6 +65,6 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 end

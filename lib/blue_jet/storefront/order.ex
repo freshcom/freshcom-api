@@ -197,7 +197,7 @@ defmodule BlueJet.Storefront.Order do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), struct.translations, locale)
+    |> Translation.put_change(translatable_fields(), locale)
   end
 
   def changeset_for_balance(struct) do
