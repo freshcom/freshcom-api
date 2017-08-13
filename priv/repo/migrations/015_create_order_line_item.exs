@@ -27,14 +27,14 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_tax_three_rate, :integer
       add :price_end_time, :utc_datetime
 
-      add :charge_quantity, :decimal
-      add :order_quantity, :integer, null: false, default: 1
+      add :charge_quantity, :decimal, null: false
+      add :order_quantity, :integer, null: false
 
-      add :sub_total_cents, :integer, null: false, default: 0
-      add :tax_one_cents, :integer, null: false, default: 0
-      add :tax_two_cents, :integer, null: false, default: 0
-      add :tax_three_cents, :integer, null: false, default: 0
-      add :grand_total_cents, :integer, null: false, default: 0
+      add :sub_total_cents, :integer, null: false
+      add :tax_one_cents, :integer, null: false
+      add :tax_two_cents, :integer, null: false
+      add :tax_three_cents, :integer, null: false
+      add :grand_total_cents, :integer, null: false
 
       add :is_estimate, :boolean, null: false, default: false
 

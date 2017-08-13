@@ -40,7 +40,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_end_time, :utc_datetime
 
     field :charge_quantity, :decimal
-    field :order_quantity, :integer, default: 1
+    field :order_quantity, :integer
 
     field :sub_total_cents, Money.Ecto.Type
     field :tax_one_cents, Money.Ecto.Type
