@@ -3,6 +3,7 @@ defmodule BlueJet.Storefront.ProductItem do
 
   use Trans, translates: [:name, :short_name, :custom_data], container: :translations
 
+  alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
@@ -13,6 +14,7 @@ defmodule BlueJet.Storefront.ProductItem do
   schema "product_items" do
     field :code, :string
     field :status, :string
+    field :name, :string
     field :short_name, :string
     field :sort_index, :integer, default: 9999
     field :source_quantity, :integer, default: 1

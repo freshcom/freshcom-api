@@ -11,7 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :label, :string
       add :description, :text
 
-      add :is_leaf, :boolean, null: false, default: true
+      add :is_leaf, :boolean, null: false, default: false
 
       add :price_name, :string
       add :price_label, :string
@@ -20,8 +20,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_charge_unit, :string
       add :price_currency_code, :string
       add :price_charge_amount_cents, :integer
-      add :price_estimate_amount_cents, :integer
-      add :price_maximum_amount_cents, :integer
+      add :price_estimate_average_ratio, :decimal
+      add :price_estimate_maximum_ratio, :decimal
       add :price_tax_one_rate, :integer
       add :price_tax_two_rate, :integer
       add :price_tax_three_rate, :integer
