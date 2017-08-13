@@ -163,7 +163,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -193,7 +193,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -225,7 +225,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -268,7 +268,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -338,7 +338,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -384,7 +384,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -433,7 +433,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -482,7 +482,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -528,7 +528,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -593,7 +593,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -625,7 +625,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -640,7 +640,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -682,7 +682,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -697,7 +697,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -712,7 +712,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -754,7 +754,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item1.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -769,7 +769,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item1.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -790,7 +790,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item2.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -832,7 +832,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -847,7 +847,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -862,7 +862,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -905,7 +905,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -920,7 +920,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -935,7 +935,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -977,7 +977,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -992,7 +992,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -1007,7 +1007,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "discounted",
-        charge_amount_cents: 1200,
+        charge_cents: 1200,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -1065,7 +1065,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -1095,7 +1095,7 @@ defmodule BlueJetWeb.PriceControllerTest do
         product_item_id: product_item.id,
         status: "active",
         label: "regular",
-        charge_amount_cents: 1500,
+        charge_cents: 1500,
         order_unit: "EA",
         charge_unit: "EA"
       })

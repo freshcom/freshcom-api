@@ -37,7 +37,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -47,7 +47,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -58,7 +58,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 8,
         order_unit: "EA",
         charge_unit: "EA"
@@ -69,7 +69,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"
@@ -95,6 +95,7 @@ defmodule BlueJet.PriceTest do
       })
       product_item1 = Repo.insert!(%ProductItem{
         status: "active",
+        name: "Apple Large",
         account_id: account.id,
         product_id: product.id
       })
@@ -104,7 +105,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -114,7 +115,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -125,7 +126,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 8,
         order_unit: "EA",
         charge_unit: "EA"
@@ -136,7 +137,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"
@@ -145,7 +146,8 @@ defmodule BlueJet.PriceTest do
       product_item2 = Repo.insert!(%ProductItem{
         status: "active",
         account_id: account.id,
-        product_id: product.id
+        product_id: product.id,
+        name: "Apple Large"
       })
       price1 = Repo.insert!(%Price{
         account_id: account.id,
@@ -153,7 +155,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -163,7 +165,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -174,7 +176,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 10,
         order_unit: "EA",
         charge_unit: "EA"
@@ -185,7 +187,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"

@@ -10,7 +10,7 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       add :label, :string, null: false
       add :caption, :string
       add :currency_code, :string, null: false, default: "CAD"
-      add :charge_amount_cents, :integer, null: false
+      add :charge_cents, :integer, null: false
       add :estimate_average_ratio, :decimal
       add :estimate_maximum_ratio, :decimal
       add :minimum_order_quantity, :integer, null: false, default: 1

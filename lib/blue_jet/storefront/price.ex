@@ -14,7 +14,7 @@ defmodule BlueJet.Storefront.Price do
     field :label, :string
     field :caption, :string
     field :currency_code, :string, default: "CAD"
-    field :charge_amount_cents, Money.Ecto.Type
+    field :charge_cents, Money.Ecto.Type
     field :estimate_average_ratio, :decimal
     field :estimate_maximum_ratio, :decimal
     field :minimum_order_quantity, :integer, default: 1
@@ -61,7 +61,7 @@ defmodule BlueJet.Storefront.Price do
   end
 
   def required_fields do
-    [:account_id, :status, :label, :currency_code, :charge_amount_cents, :order_unit, :charge_unit]
+    [:account_id, :status, :label, :currency_code, :charge_cents, :order_unit, :charge_unit]
   end
 
   def validate(changeset) do

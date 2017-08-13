@@ -29,8 +29,9 @@ defmodule BlueJet.OrderLineItemTest do
     end
   end
 
-  describe "put_price_fields/3" do
-    test "with changed price_id" do
+  describe "changeset/3" do
+    @tag :focus
+    test "with new OrderLineItem with product_item_id" do
       account = Repo.insert!(%Account{})
       product = Repo.insert!(%Product{
         status: "active",
@@ -39,8 +40,17 @@ defmodule BlueJet.OrderLineItemTest do
       })
       product_item = Repo.insert!(%ProductItem{
         status: "active",
+        name: "Apple Large",
         account_id: account.id,
-        product_id: product.id
+        product_id: product.id,
+        translations: %{
+          "zh-CN" => %{
+            "name" => "苹果 大号"
+          },
+          "lala" => %{
+            "name" => "LOL Apple Large"
+          }
+        }
       })
       price = Repo.insert!(%Price{
         account_id: account.id,
@@ -48,7 +58,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_amount_cents: 100,
+        charge_cents: 100,
         order_unit: "EA",
         charge_unit: "EA",
         translations: %{
@@ -56,23 +66,31 @@ defmodule BlueJet.OrderLineItemTest do
             "name" => "原价"
           },
           "lala" => %{
-            "name" => "LOL"
+            "name" => "LOL Regular Price"
           }
         }
       })
+      order = Repo.insert!(%Order{ account_id: account.id })
 
-      changeset = Ecto.Changeset.change(%OrderLineItem{}, %{ price_id: price.id })
-      changeset = OrderLineItem.put_price_fields(changeset)
+      changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
+        "account_id" => account.id,
+        "order_id" => order.id,
+        "product_item_id" => product_item.id,
+        "order_quantity" => 2
+      })
+
       correct_translations = %{
         "zh-CN" => %{
+          "name" => "苹果 大号",
           "price_name" => "原价"
         },
         "lala" => %{
-          "price_name" => "LOL"
+          "name" => "LOL Apple Large",
+          "price_name" => "LOL Regular Price"
         }
       }
-      assert changeset.changes.price_name == price.name
       assert changeset.changes.translations == correct_translations
+      IO.inspect changeset.changes
     end
 
     test "with changed product_id" do
