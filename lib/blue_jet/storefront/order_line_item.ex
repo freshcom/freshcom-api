@@ -3,6 +3,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   use Trans, translates: [:name, :print_name, :description, :price_caption, :custom_data], container: :translations
 
+  import Money.Sigils
+
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.OrderLineItem
@@ -11,8 +13,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.Price
-  alias BlueJet.Storefront.Unlockable
-  alias BlueJet.Storefront.Sku
+  alias BlueJet.Inventory.Unlockable
+  alias BlueJet.Inventory.Sku
   alias BlueJet.Identity.Account
 
   schema "order_line_items" do
@@ -37,7 +39,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_tax_one_rate, :integer
     field :price_tax_two_rate, :integer
     field :price_tax_three_rate, :integer
-    field :price_end_time, :utc_datetime
+    field :price_end_time, Timex.Ecto.DateTime
 
     field :charge_quantity, :decimal
     field :order_quantity, :integer
@@ -248,6 +250,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     put_change(changeset, :translations, translations)
   end
+  def put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
+    order_quantity = get_field(changeset, :order_quantity)
+    product_item_ids = ProductItem.query_for(product_id: product_id) |> select([pi], pi.id) |> Repo.all()
+    prices = Price.query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
+
+    end_times =
+      prices
+      |> Enum.map(fn(price) -> price.end_time end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.sort(fn(x, y) -> Timex.compare(x, y) == -1 end)
+
+    put_change(changeset, :price_end_time, Enum.at(end_times, 0))
+  end
   def put_price_fields(changeset), do: changeset
 
   def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: charge_quantity } }) do
@@ -277,7 +292,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
         put_change(changeset, :charge_quantity, charge_quantity)
 
       !price_estimate_by_default ->
-        put_change(changeset, :charge_quantity, get_field(changeset, :order_quantity))
+        put_change(changeset, :charge_quantity, Decimal.new(get_field(changeset, :order_quantity)))
 
       true -> changeset
     end
@@ -288,27 +303,27 @@ defmodule BlueJet.Storefront.OrderLineItem do
     order_quantity = get_field(changeset, :order_quantity)
     charge_quantity = get_field(changeset, :charge_quantity)
     product_item_ids = ProductItem.query_for(product_id: product_id) |> select([pi], pi.id) |> Repo.all()
-    prices = Price.for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
+    prices = Price.query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
 
-    sub_total_cents = Enum.reduce(prices, %Money{}, fn(price, acc) ->
+    sub_total_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(charge_quantity)
       |> Money.add(acc)
     end)
 
-    tax_one_cents = Enum.reduce(prices, %Money{}, fn(price, acc) ->
+    tax_one_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_one_rate / 100)
       |> Money.multiply(charge_quantity)
       |> Money.add(acc)
     end)
-    tax_two_cents = Enum.reduce(prices, %Money{}, fn(price, acc) ->
+    tax_two_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_two_rate / 100)
       |> Money.multiply(charge_quantity)
       |> Money.add(acc)
     end)
-    tax_three_cents = Enum.reduce(prices, %Money{}, fn(price, acc) ->
+    tax_three_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_three_rate / 100)
       |> Money.multiply(charge_quantity)
@@ -344,9 +359,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     price_charge_cents = get_field(changeset, :price_charge_cents)
 
     sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, charge_quantity)
-    tax_one_cents = Money.multiply(sub_total_cents, get_field(changeset, :price_tax_one_rate) / 100)
-    tax_two_cents = Money.multiply(sub_total_cents, get_field(changeset, :price_tax_two_rate) / 100)
-    tax_three_cents = Money.multiply(sub_total_cents, get_field(changeset, :price_tax_three_rate) / 100)
+    tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_one_rate) / 100)
+    tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_two_rate) / 100)
+    tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_three_rate) / 100)
 
     grand_total_cents =
       sub_total_cents
@@ -372,24 +387,38 @@ defmodule BlueJet.Storefront.OrderLineItem do
     balance!(parent)
   end
   def balance!(struct = %OrderLineItem{ product_item_id: product_item_id, parent_id: nil }) when not is_nil(product_item_id) do
-    children_count = assoc(struct, :children) |> Repo.aggregate(:count, :id)
-    struct = enforce_children_count!(struct, struct.order_quantity - children_count)
+    product_item = Repo.get!(ProductItem, product_item_id)
+    source = cond do
+      product_item.sku_id -> Repo.get!(Sku, product_item.sku_id)
+      product_item.unlockable_id ->  Repo.get!(Unlockable, product_item.unlockable_id)
+    end
+    source_order_quantity = product_item.source_quantity * struct.order_quantity
+    children = assoc(struct, :children) |> Repo.all()
 
-    sub_total_cents = div(struct.sub_total_cents, struct.order_quantity)
-    tax_one_cents = div(struct.tax_one_cents, struct.order_quantity)
-    tax_two_cents = div(struct.tax_two_cents, struct.order_quantity)
-    tax_three_cents = div(struct.tax_three_cents, struct.order_quantity)
-    grand_total_cents = div(struct.grand_total_cents, struct.order_quantity)
-
-    assoc(struct, :children) |> Repo.update_all(
-      set: [
-        sub_total_cents: sub_total_cents,
-        tax_one_cents: tax_one_cents,
-        tax_two_cents: tax_two_cents,
-        tax_three_cents: tax_three_cents,
-        grand_total_cents: grand_total_cents
-      ]
-    )
+    child = %OrderLineItem{
+      account_id: struct.account_id,
+      order_id: struct.order_id,
+      sku_id: product_item.sku_id,
+      unlockable_id: product_item.unlockable_id,
+      parent_id: struct.id,
+      is_leaf: true,
+      name: source.name,
+      order_quantity: source_order_quantity,
+      charge_quantity: Decimal.new(source_order_quantity),
+      sub_total_cents: struct.sub_total_cents,
+      tax_one_cents: struct.tax_one_cents,
+      tax_two_cents: struct.tax_two_cents,
+      tax_three_cents: struct.tax_three_cents,
+      grand_total_cents: struct.grand_total_cents,
+      translations: Translation.merge_translations(%{}, source.translations, ["name"])
+    }
+    case length(children) do
+      0 -> Repo.insert!(child)
+      _ ->
+        Enum.at(children, 0)
+        |> OrderLineItem.changeset(Map.from_struct(child))
+        |> Repo.update!()
+    end
 
     struct
   end

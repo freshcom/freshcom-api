@@ -50,6 +50,7 @@ defmodule BlueJet.Mixfile do
       {:jose, "~> 1.8.3"},
       {:stripity_stripe, "~> 1.6.0"},
       {:money, "~> 1.2.1"},
+      {:timex_ecto, "~> 3.0"},
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
     ]
   end

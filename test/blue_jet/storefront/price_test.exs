@@ -85,7 +85,6 @@ defmodule BlueJet.PriceTest do
       assert price == price8
     end
 
-    @tag :focus
     test "with product_item_ids and order_quantity" do
       account = Repo.insert!(%Account{})
       product = Repo.insert!(%Product{

@@ -382,25 +382,25 @@ defmodule BlueJet.Storefront do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
 
     with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
-      order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
+      order = Repo.get!(Order, Ecto.Changeset.get_field(changeset, :order_id))
       Repo.transaction(fn ->
         order_line_item = Repo.insert!(changeset)
-        OrderLineItem.balance!(order_line_item)
+        # OrderLineItem.balance!(order_line_item)
         # balance_order!(order, :from_root)
       end)
     end
   end
 
-  defp balance_order(order, :from_root) do
-    changeset = Order.changeset_for_balance(order)
-    Repo.update!(changeset)
+  # defp balance_order(order, :from_root) do
+  #   changeset = Order.changeset_for_balance(order)
+  #   Repo.update!(changeset)
 
-    root_items = Ecto.assoc(order, :line_items) |> OrderLineItem.root() |> Repo.all()
-    Enum.each(root_items, fn(items) -> OrderLineItem.balance_from_root() end)
-  end
-  defp balance_order(order, :from_leaf) do
+  #   root_items = Ecto.assoc(order, :line_items) |> OrderLineItem.root() |> Repo.all()
+  #   Enum.each(root_items, fn(items) -> OrderLineItem.balance_from_root() end)
+  # end
+  # defp balance_order(order, :from_leaf) do
 
-  end
+  # end
 
   ####
   # Order Charge
