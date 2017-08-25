@@ -304,7 +304,6 @@ defmodule BlueJet.OrderLineItemTest do
       assert length(children) == 0
     end
 
-    @tag :focus
     test "with OrderLineItem with ProductItem" do
       account = Repo.insert!(%Account{})
       sku = Repo.insert!(%Sku{
@@ -358,6 +357,115 @@ defmodule BlueJet.OrderLineItemTest do
       assert child.grand_total_cents == order_line_item.grand_total_cents
       assert child.is_leaf
       assert child.sku_id == product_item.sku_id
+    end
+
+    @tag :focus
+    test "with OrderLineItem with Product" do
+      account = Repo.insert!(%Account{})
+      sku1 = Repo.insert!(%Sku{
+        account_id: account.id,
+        status: "active",
+        name: "Apple",
+        print_name: "APPLED",
+        unit_of_measure: "EA"
+      })
+      sku2 = Repo.insert!(%Sku{
+        account_id: account.id,
+        status: "active",
+        name: "Orange",
+        print_name: "ORANGE",
+        unit_of_measure: "EA"
+      })
+      product = Repo.insert!(%Product{
+        status: "active",
+        name: "Fruit Combo",
+        item_mode: "any",
+        account_id: account.id
+      })
+      product_item1 = Repo.insert!(%ProductItem{
+        status: "active",
+        account_id: account.id,
+        product_id: product.id,
+        sku_id: sku1.id,
+        name: "Apple",
+        source_quantity: 5
+      })
+      regular_price1 = Repo.insert!(%Price{
+        account_id: account.id,
+        product_item_id: product_item1.id,
+        status: "active",
+        label: "regular",
+        name: "Regular Price",
+        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        order_unit: "EA",
+        charge_unit: "EA"
+      })
+      product_item2 = Repo.insert!(%ProductItem{
+        status: "active",
+        account_id: account.id,
+        product_id: product.id,
+        sku_id: sku2.id,
+        name: "Orange",
+        source_quantity: 3
+      })
+      regular_price2 = Repo.insert!(%Price{
+        account_id: account.id,
+        product_item_id: product_item2.id,
+        status: "active",
+        label: "regular",
+        name: "Regular Price",
+        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        order_unit: "EA",
+        charge_unit: "EA"
+      })
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      order_line_item = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        name: product.name,
+        is_leaf: false,
+        parent_id: nil,
+        order_id: order.id,
+        charge_quantity: 3,
+        order_quantity: 3,
+        product_id: product.id,
+        sub_total_cents: ~M[6000],
+        tax_one_cents: ~M[0],
+        tax_two_cents: ~M[0],
+        tax_three_cents: ~M[0],
+        grand_total_cents: ~M[6000]
+      })
+
+      children =
+        order_line_item
+        |> OrderLineItem.balance!()
+        |> OrderLineItem.balance!()
+        |> Ecto.assoc(:children)
+        |> Repo.all()
+      child1 = Enum.at(children, 0)
+
+      assert length(children) == 2
+
+      IO.inspect "#{order_line_item.name} x #{order_line_item.order_quantity} #{order_line_item.grand_total_cents}"
+      Enum.each(children, fn(child) ->
+        IO.inspect "- #{child.name} x #{child.order_quantity} #{child.grand_total_cents}"
+        grandchildren = Ecto.assoc(child, :children) |> Repo.all()
+
+        Enum.each(grandchildren, fn(grandchild) ->
+          IO.inspect "-- #{grandchild.name} x #{grandchild.order_quantity} #{child.grand_total_cents}"
+        end)
+      end)
+
+      # assert child.order_quantity == 15
+      # assert child.charge_quantity == Decimal.new(15)
+      # assert child.sub_total_cents == order_line_item.sub_total_cents
+      # assert child.tax_one_cents == order_line_item.tax_one_cents
+      # assert child.tax_two_cents == order_line_item.tax_two_cents
+      # assert child.tax_three_cents == order_line_item.tax_three_cents
+      # assert child.grand_total_cents == order_line_item.grand_total_cents
+      # assert child.is_leaf
+      # assert child.sku_id == product_item.sku_id
     end
   end
 end

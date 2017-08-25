@@ -358,7 +358,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     charge_quantity = get_field(changeset, :charge_quantity)
     price_charge_cents = get_field(changeset, :price_charge_cents)
 
-    sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, charge_quantity)
+    sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, Decimal.to_float(charge_quantity))
     tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_one_rate) / 100)
     tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_two_rate) / 100)
     tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_three_rate) / 100)
@@ -386,7 +386,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     parent = assoc(struct, :parent) |> Repo.one()
     balance!(parent)
   end
-  def balance!(struct = %OrderLineItem{ product_item_id: product_item_id, parent_id: nil }) when not is_nil(product_item_id) do
+  def balance!(struct = %OrderLineItem{ product_item_id: product_item_id }) when not is_nil(product_item_id) do
     product_item = Repo.get!(ProductItem, product_item_id)
     source = cond do
       product_item.sku_id -> Repo.get!(Sku, product_item.sku_id)
@@ -428,8 +428,29 @@ defmodule BlueJet.Storefront.OrderLineItem do
     product_items = assoc(product, :items) |> Repo.all()
 
     Enum.each(product_items, fn(product_item) ->
+      existing_child = Repo.get_by(OrderLineItem, parent_id: struct.id, product_item_id: product_item.id)
+      child = case existing_child do
+        nil -> %OrderLineItem{}
+        _ -> existing_child
+      end
 
+      changeset = OrderLineItem.changeset(child, %{
+        "account_id" => struct.account_id,
+        "order_id" => struct.order_id,
+        "product_item_id" => product_item.id,
+        "order_quantity" => struct.order_quantity,
+        "parent_id" => struct.id
+      })
+
+      updated_child = case existing_child do
+        nil -> Repo.insert!(changeset)
+        _ -> Repo.update!(changeset)
+      end
+
+      OrderLineItem.balance!(updated_child)
     end)
+
+    struct
   end
 
   defp enforce_children_count!(struct, 0), do: struct
