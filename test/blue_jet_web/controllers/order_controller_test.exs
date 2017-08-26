@@ -423,7 +423,7 @@ defmodule BlueJetWeb.OrderControllerTest do
       Repo.insert!(%Order{
         account_id: account1_id,
         status: "opened",
-        code: "AB09435"
+        code: "APPLE-01"
       })
       Repo.insert!(%Order{
         account_id: account1_id,
@@ -436,7 +436,7 @@ defmodule BlueJetWeb.OrderControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/orders?search=ab")
+      conn = get(conn, "/v1/orders?search=apple")
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1

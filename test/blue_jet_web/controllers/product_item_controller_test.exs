@@ -185,6 +185,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -220,6 +221,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -256,6 +258,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         },
@@ -304,6 +307,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -369,6 +373,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -398,6 +403,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         account_id: account1_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -440,6 +446,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -483,6 +490,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -533,6 +541,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -597,6 +606,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -622,6 +632,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -647,6 +658,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Apple",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -677,6 +689,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product1_id,
         sku_id: sku1_id,
         short_name: "Fuji",
+        name: "Fuji",
         status: "active"
       })
 
@@ -690,6 +703,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product2_id,
         sku_id: sku1_id,
         short_name: "Gala",
+        name: "Gala",
         status: "active"
       })
 
@@ -710,6 +724,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product3_id,
         sku_id: sku2_id,
         short_name: "Fuji",
+        name: "Fuji",
         status: "active"
       })
 
@@ -739,6 +754,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product1_id,
         sku_id: sku1_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active"
       })
@@ -752,6 +768,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product2_id,
         sku_id: sku1_id,
+        name: "Gala",
         short_name: "Gala",
         status: "active"
       })
@@ -772,6 +789,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product3_id,
         sku_id: sku2_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active"
       })
@@ -816,6 +834,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product1_id,
         sku_id: sku1_id,
         short_name: "Fuji",
+        name: "Fuji",
         status: "active",
         custom_data: %{
           "kind" => "Blue Jay"
@@ -841,6 +860,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product2_id,
         sku_id: sku1_id,
+        name: "Gala",
         short_name: "Gala",
         status: "active",
         custom_data: %{
@@ -877,6 +897,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product3_id,
         sku_id: sku2_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active",
         custom_data: %{
@@ -927,6 +948,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product1_id,
         sku_id: sku1_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active",
         custom_data: %{
@@ -953,6 +975,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product2_id,
         sku_id: sku1_id,
+        name: "Gala",
         short_name: "Gala",
         status: "active",
         custom_data: %{
@@ -989,6 +1012,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product3_id,
         sku_id: sku2_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active",
         custom_data: %{
@@ -1040,6 +1064,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product1_id,
         sku_id: sku1_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active",
         custom_data: %{
@@ -1066,6 +1091,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product2_id,
         sku_id: sku1_id,
+        name: "Gala",
         short_name: "Gala",
         status: "active",
         custom_data: %{
@@ -1102,6 +1128,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         account_id: account1_id,
         product_id: product3_id,
         sku_id: sku2_id,
+        name: "Fuji",
         short_name: "Fuji",
         status: "active",
         custom_data: %{
@@ -1167,6 +1194,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Blue Jay",
         custom_data: %{
           "kind" => "Blue Jay"
         }
@@ -1202,6 +1230,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
         product_id: product_id,
         sku_id: sku_id,
         status: "active",
+        name: "Gala",
         custom_data: %{
           "kind" => "Blue Jay"
         }

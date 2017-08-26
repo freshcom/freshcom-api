@@ -1,5 +1,5 @@
 defmodule BlueJet.AccountTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.Identity.Account
 

@@ -136,15 +136,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ sku_id: sku_id } }) do
+  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ sku_id: _ } }) do
     put_change(changeset, :is_leaf, true)
   end
-  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ unlockable_id: unlockable_id } }) do
+  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ unlockable_id: _ } }) do
     put_change(changeset, :is_leaf, true)
   end
   def put_is_leaf(changeset), do: changeset
 
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: name } }) do
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: _ } }) do
     changeset
   end
   def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id }}) do
@@ -189,7 +189,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_name(changeset), do: changeset
 
-  def put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: is_estimate } }) do
+  def put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: _ } }) do
     changeset
   end
   def put_is_estimate(changeset = %Changeset{ valid?: true }) do
@@ -265,7 +265,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_price_fields(changeset), do: changeset
 
-  def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: charge_quantity } }) do
+  def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
     changeset
   end
   def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: sub_total_cents } }) when not is_nil(sub_total_cents) do
@@ -307,26 +307,26 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     sub_total_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
-      |> Money.multiply(charge_quantity)
+      |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
 
     tax_one_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_one_rate / 100)
-      |> Money.multiply(charge_quantity)
+      |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
     tax_two_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_two_rate / 100)
-      |> Money.multiply(charge_quantity)
+      |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
     tax_three_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
       |> Money.multiply(price.tax_three_rate / 100)
-      |> Money.multiply(charge_quantity)
+      |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
 
@@ -343,13 +343,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:tax_three_cents, tax_three_cents)
     |> put_change(:grand_total_cents, grand_total_cents)
   end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: product_item_id } }) do
+  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: _ } }) do
     refresh_amount_fields(changeset)
   end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: charge_quantity } }) do
+  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
     refresh_amount_fields(changeset)
   end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: sub_total_cents } }) do
+  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: _ } }) do
     refresh_amount_fields(changeset)
   end
   def put_amount_fields(changeset), do: changeset
@@ -422,7 +422,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     struct
   end
-  # TODO:
   def balance!(struct = %OrderLineItem{ product_id: product_id, parent_id: nil }) when not is_nil(product_id) do
     product = Repo.get!(Product, product_id)
     product_items = assoc(product, :items) |> Repo.all()
@@ -449,31 +448,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
       OrderLineItem.balance!(updated_child)
     end)
-
-    struct
-  end
-
-  defp enforce_children_count!(struct, 0), do: struct
-  defp enforce_children_count!(struct, count) when count > 0 do
-    for _ <- 1..count do
-      source = struct |> Map.drop(OrderLineItem.__schema__(:associations)) |> Map.drop([:__meta__, :__struct__, :inserted_at, :updated_at, :id, :is_leaf, :parent_id, :order_quantity])
-
-      child = Map.merge(%OrderLineItem{}, source)
-      child = %{ child |
-        parent_id: struct.id,
-        is_leaf: true,
-        order_quantity: 1
-      }
-      Repo.insert!(child)
-    end
-
-    struct
-  end
-  defp enforce_children_count!(struct, count) when count < 0 do
-    for _ <- 1..abs(count) do
-      child = assoc(struct, :children) |> first() |> Repo.one()
-      Repo.delete!(child)
-    end
 
     struct
   end

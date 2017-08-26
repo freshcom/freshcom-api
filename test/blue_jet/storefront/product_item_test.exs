@@ -1,5 +1,5 @@
 defmodule BlueJet.ProductItemTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Identity.Account
@@ -70,8 +70,8 @@ defmodule BlueJet.ProductItemTest do
       refute Map.get(changeset.changes, :custom_data)
     end
 
-    test "with struct in :loaded state, valid params", %{ valid_params: valid_params, account1_id: account1_id } do
-      struct = Ecto.put_meta(%ProductItem{ account_id: account1_id }, state: :loaded)
+    test "with struct in :loaded state, valid params", %{ valid_params: valid_params, account1_id: account1_id, product1_id: product1_id } do
+      struct = Ecto.put_meta(%ProductItem{ account_id: account1_id, product_id: product1_id, name: "Apple" }, state: :loaded)
       changeset = ProductItem.changeset(struct, valid_params)
 
       assert changeset.valid?

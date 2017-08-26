@@ -3,6 +3,8 @@ defmodule BlueJet.Storefront.Order do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  import Money.Sigils
+
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -218,4 +220,19 @@ defmodule BlueJet.Storefront.Order do
       grand_total_cents: grand_total_cents
     )
   end
+
+  def balance!(struct) do
+    changeset = changeset_for_balance(struct)
+    Repo.update!(changeset)
+  end
+
+  def enforce_inventory!(_) do
+
+  end
+
+  def enforce_shipping_date_deadline!(_) do
+
+  end
+
+
 end

@@ -85,6 +85,7 @@ defmodule BlueJet.Storefront.ProductItem do
     short_name = Changeset.get_field(changeset, :short_name)
     put_change(changeset, :name, "#{product.name} #{short_name}")
   end
+  def put_name(changeset), do: changeset
 
   def query_for(product_id: product_id) do
     query = from pi in ProductItem,

@@ -12,7 +12,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   @valid_attrs %{
     "status" => "active",
     "label" => "regular",
-    "chargeAmountCents" => 1500,
+    "chargeCents" => 1500,
     "orderUnit" => "EA",
     "chargeUnit" => "EA",
     "customData" => %{
@@ -51,7 +51,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       account_id: account1_id,
       product_id: product_id,
       unlockable_id: unlockable_id,
-      status: "active"
+      status: "active",
+      name: "Apple"
     })
 
     conn = build_conn()
@@ -100,7 +101,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["status"] == @valid_attrs["status"]
       assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
-      assert json_response(conn, 201)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 201)["data"]["attributes"]["chargeCents"] == @valid_attrs["chargeCents"]
       assert json_response(conn, 201)["data"]["attributes"]["orderUnit"] == @valid_attrs["orderUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["chargeUnit"] == @valid_attrs["chargeUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
@@ -120,7 +121,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       assert json_response(conn, 201)["data"]["id"]
       assert json_response(conn, 201)["data"]["attributes"]["status"] == @valid_attrs["status"]
       assert json_response(conn, 201)["data"]["attributes"]["label"] == @valid_attrs["label"]
-      assert json_response(conn, 201)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 201)["data"]["attributes"]["chargeCents"] == @valid_attrs["chargeCents"]
       assert json_response(conn, 201)["data"]["attributes"]["orderUnit"] == @valid_attrs["orderUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["chargeUnit"] == @valid_attrs["chargeUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
@@ -155,7 +156,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account2_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -185,7 +187,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -217,7 +220,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -260,7 +264,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -330,7 +335,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account2_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -376,7 +382,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -425,7 +432,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -456,7 +464,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       assert json_response(conn, 200)["data"]["id"] == price.id
       assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_attrs["status"]
       assert json_response(conn, 200)["data"]["attributes"]["name"] == @valid_attrs["name"]
-      assert json_response(conn, 200)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 200)["data"]["attributes"]["chargeCents"] == @valid_attrs["chargeCents"]
     end
 
     test "with valid access token, attrs, rels and locale", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -474,7 +482,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -502,7 +511,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       assert json_response(conn, 200)["data"]["id"] == price.id
       assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_attrs["status"]
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "原价"
-      assert json_response(conn, 200)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 200)["data"]["attributes"]["chargeCents"] == @valid_attrs["chargeCents"]
     end
 
     test "with valid access token, attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -520,7 +529,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -547,7 +557,7 @@ defmodule BlueJetWeb.PriceControllerTest do
 
       assert json_response(conn, 200)["data"]["id"] == price.id
       assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_attrs["status"]
-      assert json_response(conn, 200)["data"]["attributes"]["chargeAmountCents"] == @valid_attrs["chargeAmountCents"]
+      assert json_response(conn, 200)["data"]["attributes"]["chargeCents"] == @valid_attrs["chargeCents"]
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "Product" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "苹果" end)) == 1
     end
@@ -585,7 +595,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account2_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -617,7 +628,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -674,7 +686,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -746,7 +759,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item1 = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -782,7 +796,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item2 = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -824,7 +839,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -897,7 +913,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -969,7 +986,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       Repo.insert!(%Price{
@@ -1057,7 +1075,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account2_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{
@@ -1087,7 +1106,8 @@ defmodule BlueJetWeb.PriceControllerTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         product_id: product.id,
-        status: "active"
+        status: "active",
+        name: "Apple"
       })
 
       price = Repo.insert!(%Price{

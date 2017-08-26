@@ -1,5 +1,5 @@
 defmodule BlueJet.CustomerTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias Ecto.Changeset
   alias BlueJet.Repo

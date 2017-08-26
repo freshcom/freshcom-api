@@ -1,5 +1,5 @@
 defmodule BlueJet.ProductTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.Storefront.Product
 

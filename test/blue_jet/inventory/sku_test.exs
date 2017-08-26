@@ -1,5 +1,5 @@
 defmodule BlueJet.SkuTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.Inventory.Sku
 

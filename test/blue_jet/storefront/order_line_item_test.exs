@@ -11,17 +11,6 @@ defmodule BlueJet.OrderLineItemTest do
   alias BlueJet.Storefront.Product
   alias BlueJet.Inventory.Sku
 
-  @valid_params %{
-    account_id: Ecto.UUID.generate(),
-    status: "active",
-    name: "Apple",
-    item_mode: "all",
-    custom_data: %{
-      kind: "Gala"
-    }
-  }
-  @invalid_params %{}
-
   describe "schema" do
     test "defaults" do
       struct = %Product{}
@@ -131,7 +120,7 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
       assert changeset.changes.price_end_time == end_time
       assert changeset.changes.order_quantity == 3
-      assert changeset.changes.charge_quantity == 3
+      assert changeset.changes.charge_quantity == Decimal.new(3)
       assert changeset.changes.sub_total_cents == %Money{ amount: 2697, currency: :CAD }
       assert changeset.changes.tax_one_cents == %Money{ amount: 135, currency: :CAD }
       assert changeset.changes.tax_two_cents == %Money{ amount: 189, currency: :CAD }
@@ -165,7 +154,7 @@ defmodule BlueJet.OrderLineItemTest do
         source_quantity: 2
       })
       price_end_time1 = Timex.shift(Timex.now(), days: 1)
-      regular_price1 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item1.id,
         status: "active",
@@ -179,7 +168,7 @@ defmodule BlueJet.OrderLineItemTest do
         tax_three_rate: 1,
         end_time: price_end_time1
       })
-      bulk_price1 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item1.id,
         status: "active",
@@ -203,7 +192,7 @@ defmodule BlueJet.OrderLineItemTest do
         product_id: product.id
       })
       price_end_time2 = Timex.shift(Timex.now(), days: 2)
-      regular_price2 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item2.id,
         status: "active",
@@ -214,7 +203,7 @@ defmodule BlueJet.OrderLineItemTest do
         charge_unit: "EA",
         end_time: price_end_time2
       })
-      bulk_price2 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item2.id,
         status: "active",
@@ -249,7 +238,7 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.name == product.name
       assert changeset.changes.price_end_time == price_end_time1
       assert changeset.changes.order_quantity == 1
-      assert changeset.changes.charge_quantity == 1
+      assert changeset.changes.charge_quantity == Decimal.new(1)
       assert changeset.changes.sub_total_cents == ~M[2000]
       assert changeset.changes.tax_one_cents == ~M[50]
       assert changeset.changes.tax_two_cents == ~M[70]
@@ -267,7 +256,7 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.name == product.name
       assert changeset.changes.price_end_time == price_end_time1
       assert changeset.changes.order_quantity == 3
-      assert changeset.changes.charge_quantity == 3
+      assert changeset.changes.charge_quantity == Decimal.new(3)
       assert changeset.changes.sub_total_cents == ~M[5697]
       assert changeset.changes.tax_one_cents == ~M[150]
       assert changeset.changes.tax_two_cents == ~M[210]
@@ -359,7 +348,6 @@ defmodule BlueJet.OrderLineItemTest do
       assert child.sku_id == product_item.sku_id
     end
 
-    @tag :focus
     test "with OrderLineItem with Product" do
       account = Repo.insert!(%Account{})
       sku1 = Repo.insert!(%Sku{
@@ -390,7 +378,7 @@ defmodule BlueJet.OrderLineItemTest do
         name: "Apple",
         source_quantity: 5
       })
-      regular_price1 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item1.id,
         status: "active",
@@ -408,7 +396,7 @@ defmodule BlueJet.OrderLineItemTest do
         name: "Orange",
         source_quantity: 3
       })
-      regular_price2 = Repo.insert!(%Price{
+      Repo.insert!(%Price{
         account_id: account.id,
         product_item_id: product_item2.id,
         status: "active",
@@ -444,18 +432,24 @@ defmodule BlueJet.OrderLineItemTest do
         |> Ecto.assoc(:children)
         |> Repo.all()
       child1 = Enum.at(children, 0)
+      child2 = Enum.at(children, 1)
 
       assert length(children) == 2
+      assert child1.order_quantity == 3
+      assert child1.sub_total_cents == ~M[3000]
+      assert child2.order_quantity == 3
+      assert child2.sub_total_cents == ~M[3000]
 
-      IO.inspect "#{order_line_item.name} x #{order_line_item.order_quantity} #{order_line_item.grand_total_cents}"
-      Enum.each(children, fn(child) ->
-        IO.inspect "- #{child.name} x #{child.order_quantity} #{child.grand_total_cents}"
-        grandchildren = Ecto.assoc(child, :children) |> Repo.all()
 
-        Enum.each(grandchildren, fn(grandchild) ->
-          IO.inspect "-- #{grandchild.name} x #{grandchild.order_quantity} #{child.grand_total_cents}"
-        end)
-      end)
+      # IO.inspect "#{order_line_item.name} x #{order_line_item.order_quantity} #{order_line_item.grand_total_cents}"
+      # Enum.each(children, fn(child) ->
+      #   IO.inspect "- #{child.name} x #{child.order_quantity} #{child.grand_total_cents}"
+      #   grandchildren = Ecto.assoc(child, :children) |> Repo.all()
+
+      #   Enum.each(grandchildren, fn(grandchild) ->
+      #     IO.inspect "-- #{grandchild.name} x #{grandchild.order_quantity} #{child.grand_total_cents}"
+      #   end)
+      # end)
 
       # assert child.order_quantity == 15
       # assert child.charge_quantity == Decimal.new(15)

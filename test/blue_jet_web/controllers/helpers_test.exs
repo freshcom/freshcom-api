@@ -1,5 +1,5 @@
 defmodule BlueJetWeb.HelpersTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJetWeb.Controller.Helpers
 

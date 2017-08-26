@@ -1,5 +1,5 @@
 defmodule BlueJet.Plugs.IncludeTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.Plugs.Include
 

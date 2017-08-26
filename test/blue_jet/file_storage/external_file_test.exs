@@ -1,5 +1,5 @@
 defmodule BlueJet.ExternalFileTest do
-  use BlueJet.DataCase, async: true
+  use BlueJet.DataCase
 
   alias BlueJet.FileStorage.ExternalFile
 

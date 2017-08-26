@@ -385,22 +385,11 @@ defmodule BlueJet.Storefront do
       order = Repo.get!(Order, Ecto.Changeset.get_field(changeset, :order_id))
       Repo.transaction(fn ->
         order_line_item = Repo.insert!(changeset)
-        # OrderLineItem.balance!(order_line_item)
-        # balance_order!(order, :from_root)
+        OrderLineItem.balance!(order_line_item)
+        Order.balance!(order)
       end)
     end
   end
-
-  # defp balance_order(order, :from_root) do
-  #   changeset = Order.changeset_for_balance(order)
-  #   Repo.update!(changeset)
-
-  #   root_items = Ecto.assoc(order, :line_items) |> OrderLineItem.root() |> Repo.all()
-  #   Enum.each(root_items, fn(items) -> OrderLineItem.balance_from_root() end)
-  # end
-  # defp balance_order(order, :from_leaf) do
-
-  # end
 
   ####
   # Order Charge
@@ -447,7 +436,7 @@ defmodule BlueJet.Storefront do
 
   # Process the order_charge through stripe
   defp process_order_charge(order_charge, payment_source) do
-    order = Repo.get!(order_charge.order_id)
+    order = Repo.get!(Order, order_charge.order_id)
 
     Repo.transaction(fn ->
       Order.enforce_inventory!(order_charge.order_id) # acquires lock until end of transaction

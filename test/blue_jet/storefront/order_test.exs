@@ -1,9 +1,7 @@
 defmodule BlueJet.OrderTest do
   use BlueJet.DataCase
 
-  alias BlueJet.Identity.Account
   alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.OrderLineItem
 
   # @valid_params %{
   #   account_id: Ecto.UUID.generate(),
@@ -38,23 +36,6 @@ defmodule BlueJet.OrderTest do
     test "status=opened, fulfillment_method=pickup, payment_status=pending and payment_gateway=custom" do
       required_fields = Order.required_fields(%{ status: "opened", fulfillment_method: "pickup", payment_status: "pending", payment_gateway: "custom" })
       assert required_fields == [:account_id, :status, :email, :first_name, :last_name]
-    end
-  end
-
-  describe "changeset_for_balance!/1" do
-    test "xx" do
-      account = Repo.insert!(%Account{})
-      order = Repo.insert!(%Order{
-        account_id: account.id
-      })
-      Repo.insert!(%OrderLineItem{
-        account_id: account.id,
-        order_id: order.id,
-        sub_total_cents: 500,
-        grand_total_cents: 500
-      })
-
-      changeset = Order.changeset_for_balance(order)
     end
   end
 
