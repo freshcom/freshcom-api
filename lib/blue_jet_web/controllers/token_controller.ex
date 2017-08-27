@@ -4,6 +4,7 @@ defmodule BlueJetWeb.TokenController do
   alias BlueJet.Identity
 
   def create(conn, params) do
+    IO.inspect params
     with {:ok, token} <- Identity.authenticate(params) do
       conn
       |> put_status(:ok)

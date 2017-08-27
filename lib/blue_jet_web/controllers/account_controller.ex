@@ -2,6 +2,7 @@ defmodule BlueJetWeb.AccountController do
   use BlueJetWeb, :controller
 
   alias BlueJet.Identity.Account
+  alias BlueJet.Identity
   alias JaSerializer.Params
 
   plug :scrub_params, "data" when action in [:create, :update]
@@ -27,9 +28,17 @@ defmodule BlueJetWeb.AccountController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    account = Repo.get!(Account, id)
-    render(conn, "show.json-api", data: account)
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, params) do
+    request = %{
+      vas: assigns[:vas],
+      account_id: account_id,
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    account = Identity.get_account!(request)
+
+    render(conn, "show.json-api", data: account, opts: [include: conn.query_params["include"]])
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "account", "attributes" => _account_params}}) do

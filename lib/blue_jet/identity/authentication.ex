@@ -8,8 +8,8 @@ defmodule BlueJet.Identity.Authentication do
   # Get token using :username and :password
   def get_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
   def get_token(%{ username: username, password: password, scope: "" <> _ = scope }), do: get_token(%{ username: username, password: password, scope: deserialize_scope(scope) })
-  def get_token(%{ username: nil }), do: {:error, %{ error: :invalid_request, error_description: "Email can't be blank" }}
-  def get_token(%{ password: nil }), do: {:error, %{ error: :invalid_request, error_description: "Password can't be blank" }}
+  def get_token(%{ username: nil }), do: {:error, %{ error: :invalid_request, error_description: "Email can't be blank." }}
+  def get_token(%{ password: nil }), do: {:error, %{ error: :invalid_request, error_description: "Password can't be blank." }}
   def get_token(%{ username: username, password: password, scope: %{ "type" => "user" } = scope }) do
     with {:ok, user} <- get_user(username),
          {:ok, account_id} <- extract_account_id(scope, user),
@@ -19,9 +19,9 @@ defmodule BlueJet.Identity.Authentication do
       access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
-      false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid" }}
+      false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid." }}
     end
   end
   def get_token(%{ username: username, password: password, scope: %{ "type" => "customer", "account_id" => account_id } }) do
@@ -34,14 +34,14 @@ defmodule BlueJet.Identity.Authentication do
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
       :error -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid"}}
-      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match" }}
-      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid" }}
+      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+      false -> {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+      {:error, :invalid_access_token} -> {:error, %{ error: :invalid_request, error_description: "Access Token is invalid." }}
     end
   end
   # Get token using :refresh_token
   def get_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }), do: get_token(%{ refresh_token: refresh_token })
-  def get_token(%{ refresh_token: "" }), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
+  def get_token(%{ refresh_token: "" }), do: {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked."}}
   def get_token(%{ refresh_token: refresh_token }) do
     with {:ok, _} <- Ecto.UUID.dump(refresh_token),
          {:ok, refresh_token} <- get_refresh_token(refresh_token)
@@ -49,8 +49,8 @@ defmodule BlueJet.Identity.Authentication do
       access_token = generate_access_token(refresh_token)
       {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
     else
-      :error -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
-      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked"}}
+      :error -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked."}}
+      {:error, :not_found} -> {:error, %{ error: :invalid_grant, error_description: "refresh_token is invalid, expired or revoked."}}
     end
   end
   def get_token(_), do: {:error, %{ error: :invalid_request }}

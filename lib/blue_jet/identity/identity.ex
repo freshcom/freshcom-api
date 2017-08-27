@@ -12,6 +12,25 @@ defmodule BlueJet.Identity do
     Authentication.get_token(args)
   end
 
+  ####
+  # Account
+  ####
+  def get_account!(request = %{ vas: vas, account_id: account_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    account =
+      Account
+      |> Repo.get!(account_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    account
+  end
+
+  ####
+  # User
+  ####
   # Create new User to existing account
   def create_user(request = %{ vas: %{ account_id: account_id } }) do
     defaults = %{ preloads: [], fields: %{} }
@@ -47,6 +66,19 @@ defmodule BlueJet.Identity do
         {:error, changeset} -> Repo.rollback(changeset)
       end
     end)
+  end
+
+  def get_user!(request = %{ vas: vas, user_id: user_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    user =
+      User
+      |> Repo.get!(user_id)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    user
   end
 
   ####
