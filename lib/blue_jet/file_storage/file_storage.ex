@@ -66,7 +66,8 @@ defmodule BlueJet.FileStorage do
       ExternalFile
       |> search([:name, :id], request.search_keyword, request.locale)
       |> filter_by(status: request.filter[:status])
-      |> where([s], s.account_id == ^account_id)
+      |> where([ef], ef.account_id == ^account_id)
+      |> order_by([ef], desc: ef.updated_at)
     result_count = Repo.aggregate(query, :count, :id)
 
     total_query = ExternalFile |> where([s], s.account_id == ^account_id)
@@ -143,7 +144,6 @@ defmodule BlueJet.FileStorage do
     efc
   end
 
-  # TODO: need to use file_ids
   def update_external_file_collection(request = %{ vas: vas, external_file_collection_id: efc_id }) do
     defaults = %{ preloads: [], fields: %{}, locale: "en" }
     request = Map.merge(defaults, request)
@@ -222,7 +222,8 @@ defmodule BlueJet.FileStorage do
       ExternalFileCollection
       |> search([:name, :label, :id], request.search_keyword, request.locale)
       |> filter_by(label: request.filter[:label], content_type: request.filter[:content_type])
-      |> where([s], s.account_id == ^account_id)
+      |> where([efc], efc.account_id == ^account_id)
+      |> order_by([efc], desc: efc.updated_at)
     result_count = Repo.aggregate(query, :count, :id)
 
     total_query = ExternalFileCollection |> where([s], s.account_id == ^account_id)
