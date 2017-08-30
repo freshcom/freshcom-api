@@ -67,4 +67,11 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  def file_count(%ExternalFileCollection{ id: efc_id }) do
+    from(efcm in ExternalFileCollectionMembership,
+      select: count(efcm.id),
+      where: efcm.collection_id == ^efc_id)
+    |> Repo.one()
+  end
 end

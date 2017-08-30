@@ -19,7 +19,6 @@ defmodule BlueJet.FileStorage do
       external_file =
         external_file
         |> Repo.preload(request.preloads)
-        |> ExternalFile.put_url()
 
       {:ok, external_file}
     else
@@ -35,7 +34,6 @@ defmodule BlueJet.FileStorage do
       ExternalFile
       |> Repo.get_by!(account_id: vas[:account_id], id: ef_id)
       |> Repo.preload(request.preloads)
-      |> ExternalFile.put_url()
 
     external_file
   end
@@ -98,16 +96,38 @@ defmodule BlueJet.FileStorage do
   def create_external_file_collection(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
-
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, fields)
 
-    with {:ok, efc} <- Repo.insert(changeset) do
+    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields) do
+      {:ok, efc} = Repo.transaction(fn ->
+        efc = Repo.insert!(changeset)
+        create_efcms!(fields["file_ids"] || [], efc)
+      end)
+
       efc = Repo.preload(efc, request.preloads)
       {:ok, efc}
     else
-      other -> other
+      other -> {:error, other}
     end
+  end
+
+  defp create_efcms!(file_ids, efc, initial_sort_index \\ 10000, sort_index_step \\ 10000) do
+    Enum.reduce(file_ids, initial_sort_index, fn(file_id, acc) ->
+      changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, %{
+        account_id: efc.account_id,
+        collection_id: efc.id,
+        file_id: file_id,
+        sort_index: acc
+      })
+
+      if changeset.valid? do
+        Repo.insert!(changeset)
+      end
+
+      acc + 10000
+    end)
+
+    efc
   end
 
   def get_external_file_collection!(request = %{ vas: vas, external_file_collection_id: efc_id }) do
@@ -123,6 +143,7 @@ defmodule BlueJet.FileStorage do
     efc
   end
 
+  # TODO: need to use file_ids
   def update_external_file_collection(request = %{ vas: vas, external_file_collection_id: efc_id }) do
     defaults = %{ preloads: [], fields: %{}, locale: "en" }
     request = Map.merge(defaults, request)
@@ -130,7 +151,19 @@ defmodule BlueJet.FileStorage do
     efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
     changeset = ExternalFileCollection.changeset(efc, request.fields, request.locale)
 
-    with {:ok, efc} <- Repo.update(changeset) do
+    source_file_ids = Ecto.assoc(efc, :files) |> ids_only |> Repo.all
+    target_file_ids = request.fields["file_ids"] || []
+    file_ids_to_delete = source_file_ids -- target_file_ids
+    file_ids_to_add = target_file_ids -- source_file_ids
+
+    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale) do
+      {:ok, efc} = Repo.transaction(fn ->
+        efc = Repo.update!(changeset)
+        delete_efcms!(file_ids_to_delete, efc)
+        initial_sort_index = max_efcm_sort_index(efc) + 10000
+        create_efcms!(file_ids_to_add, efc, initial_sort_index)
+      end)
+
       efc =
         efc
         |> Repo.preload(request.preloads)
@@ -138,8 +171,46 @@ defmodule BlueJet.FileStorage do
 
       {:ok, efc}
     else
-      other -> other
+      other -> {:error, other}
     end
+  end
+
+  defp max_efcm_sort_index(efc = %{ id: efc_id, account_id: account_id }) do
+    from(efcm in ExternalFileCollectionMembership,
+      select: max(efcm.sort_index),
+      where: efcm.account_id == ^account_id,
+      where: efcm.collection_id == ^efc_id)
+    |> Repo.one()
+  end
+
+  defp delete_efcms!(file_ids, efc = %{ id: efc_id, account_id: account_id }) do
+    efcms =
+      from(efcm in ExternalFileCollectionMembership,
+        where: efcm.account_id == ^account_id,
+        where: efcm.collection_id == ^efc_id,
+        where: efcm.file_id in ^file_ids)
+      |> Repo.all()
+
+    efcm_ids = Enum.map(efcms, fn(efcm) -> efcm.id end)
+    ef_ids = Enum.map(efcms, fn(efcm) -> efcm.file_id end)
+    efs =
+      from(ef in ExternalFile,
+        where: ef.id in ^ef_ids)
+      |> Repo.all()
+
+    Enum.each(efs, fn(ef) ->
+      ExternalFile.delete_object(ef)
+    end)
+
+    from(efcm in ExternalFileCollectionMembership,
+      where: efcm.id in ^efcm_ids)
+    |> Repo.delete_all()
+
+    from(ef in ExternalFile,
+      where: ef.id in ^ef_ids)
+    |> Repo.delete_all()
+
+    efc
   end
 
   def list_external_file_collections(request = %{ vas: vas }) do
@@ -243,6 +314,12 @@ defmodule BlueJet.FileStorage do
 
   def delete_external_file_collection_membership!(%{ vas: vas, external_file_collection_membership_id: efcm_id }) do
     efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
-    Repo.delete!(efcm)
+    ef = Repo.get!(ExternalFile, efcm.file_id)
+
+    Repo.transaction(fn ->
+      ExternalFile.delete_object(ef)
+      Repo.delete!(efcm)
+      Repo.delete!(ef)
+    end)
   end
 end

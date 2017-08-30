@@ -3,6 +3,7 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
   use JaSerializer.PhoenixView
 
   alias BlueJet.Repo
+  alias BlueJet.FileStorage.ExternalFileCollection
 
   attributes [:name, :label, :file_count, :custom_data, :locale, :inserted_at, :updated_at]
 
@@ -16,9 +17,8 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def file_count(_external_file_collection, _conn) do
-    # TODO:
-    0
+  def file_count(efc, _conn) do
+    ExternalFileCollection.file_count(efc)
   end
 
   def files(struct, _) do

@@ -36,4 +36,8 @@ defmodule BlueJet.ContextHelpers do
     filter = Enum.filter(filter, fn({_, value}) -> value end)
     from q in query, where: ^filter
   end
+
+  def ids_only(query) do
+    from q in query, select: q.id
+  end
 end
