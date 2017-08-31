@@ -126,7 +126,7 @@ defmodule BlueJet.FileStorage do
         Repo.insert!(changeset)
       end
 
-      acc + 10000
+      acc + sort_index_step
     end)
 
     efc
@@ -150,7 +150,6 @@ defmodule BlueJet.FileStorage do
     request = Map.merge(defaults, request)
 
     efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
-    changeset = ExternalFileCollection.changeset(efc, request.fields, request.locale)
 
     source_file_ids = Ecto.assoc(efc, :files) |> ids_only |> Repo.all
     target_file_ids = request.fields["file_ids"] || []
@@ -176,7 +175,7 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  defp max_efcm_sort_index(efc = %{ id: efc_id, account_id: account_id }) do
+  defp max_efcm_sort_index(%{ id: efc_id, account_id: account_id }) do
     from(efcm in ExternalFileCollectionMembership,
       select: max(efcm.sort_index),
       where: efcm.account_id == ^account_id,

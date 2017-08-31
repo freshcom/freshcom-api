@@ -2,7 +2,7 @@ defmodule BlueJetWeb.ProductItemView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  attributes [:code, :status, :short_name, :sort_index, :source_quantity, :maximum_order_quantity,
+  attributes [:code, :status, :short_name, :name_sync, :name, :sort_index, :source_quantity, :maximum_order_quantity,
     :primary, :print_name, :custom_data, :locale, :inserted_at, :updated_at]
 
   has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included

@@ -28,7 +28,7 @@ defmodule BlueJetWeb.AccountController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, params) do
+  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, _) do
     request = %{
       vas: assigns[:vas],
       account_id: account_id,

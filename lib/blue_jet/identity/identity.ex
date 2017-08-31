@@ -15,7 +15,7 @@ defmodule BlueJet.Identity do
   ####
   # Account
   ####
-  def get_account!(request = %{ vas: vas, account_id: account_id }) do
+  def get_account!(request = %{ vas: _, account_id: account_id }) do
     defaults = %{ locale: "en", preloads: [] }
     request = Map.merge(defaults, request)
 
@@ -68,7 +68,7 @@ defmodule BlueJet.Identity do
     end)
   end
 
-  def get_user!(request = %{ vas: vas, user_id: user_id }) do
+  def get_user!(request = %{ vas: _, user_id: user_id }) do
     defaults = %{ locale: "en", preloads: [] }
     request = Map.merge(defaults, request)
 
