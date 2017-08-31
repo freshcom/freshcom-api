@@ -88,6 +88,7 @@ defmodule BlueJet.FileStorage do
 
   def delete_external_file!(%{ vas: vas, external_file_id: ef_id }) do
     external_file = Repo.get_by!(ExternalFile, account_id: vas[:account_id], id: ef_id)
+    ExternalFile.delete_object(external_file)
     Repo.delete!(external_file)
   end
 
