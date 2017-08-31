@@ -7,8 +7,8 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
 
   attributes [:name, :label, :file_count, :custom_data, :locale, :inserted_at, :updated_at]
 
-  has_one :sku, serializer: BlueJetWeb.SkuView, identifiers: :when_included
-  has_one :unlockable, serializer: BlueJetWeb.UnlockableView, identifiers: :when_included
+  has_one :sku, serializer: BlueJetWeb.SkuView, identifiers: :always
+  has_one :unlockable, serializer: BlueJetWeb.UnlockableView, identifiers: :always
   has_many :files, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
 
   def type(_external_file_collection, _conn) do
