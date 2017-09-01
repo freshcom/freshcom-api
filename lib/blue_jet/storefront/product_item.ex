@@ -102,6 +102,27 @@ defmodule BlueJet.Storefront.ProductItem do
     if get_field(changeset, :name_sync) == "sync_with_product" do
       product_id = get_field(changeset, :product_id)
       product = Repo.get!(Product, product_id) |> Translation.translate(locale)
+
+      # If this ProductItem already have localized short_name we will use it
+      # for the corresponding locale
+      old_translations = Changeset.get_field(changeset, :translations)
+      new_translations = Translation.merge_translations(old_translations, product.translations, ["name"])
+
+      new_translations = Enum.reduce(new_translations, new_translations, fn({locale, locale_struct}, acc) ->
+        localized_short_name = old_translations[locale]["short_name"]
+
+        new_locale_struct = if localized_short_name do
+          Map.put(locale_struct, "name", locale_struct["name"] + " " + localized_short_name)
+        else
+          locale_struct
+        end
+
+        Map.put(acc, locale, new_locale_struct)
+      end)
+
+      changeset = put_change(changeset, :translations, new_translations)
+
+      # Overwrite the current locale short_name as normal
       short_name = Changeset.get_field(changeset, :short_name)
       put_change(changeset, :name, "#{product.name} #{short_name}")
     else
@@ -115,6 +136,10 @@ defmodule BlueJet.Storefront.ProductItem do
       where: pi.product_id == ^product_id
 
     query
+  end
+
+  def query() do
+    from(pi in ProductItem, order_by: [desc: pi.sort_index, desc: pi.inserted_at])
   end
 
   def default_price(%ProductItem{ id: id }) do

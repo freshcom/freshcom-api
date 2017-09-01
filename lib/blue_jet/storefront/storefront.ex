@@ -35,7 +35,7 @@ defmodule BlueJet.Storefront do
     product =
       Product
       |> Repo.get_by!(account_id: vas[:account_id], id: product_id)
-      |> Repo.preload(request.preloads)
+      |> Product.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     product
@@ -141,7 +141,17 @@ defmodule BlueJet.Storefront do
     product_item = Repo.get_by!(ProductItem, account_id: vas[:account_id], id: product_item_id)
     changeset = ProductItem.changeset(product_item, request.fields, request.locale)
 
-    with {:ok, product_item} <- Repo.update(changeset) do
+    with changeset = %{ valid?: true } <- ProductItem.changeset(product_item, request.fields, request.locale) do
+      {:ok, product_item} = Repo.transaction(fn ->
+        if Ecto.Changeset.get_change(changeset, :primary) do
+          product_id = product_item.product_id
+          from(pi in ProductItem, where: pi.product_id == ^product_id)
+          |> Repo.update_all(set: [primary: false])
+        end
+
+        Repo.update!(changeset)
+      end)
+
       product_item =
         product_item
         |> Repo.preload(request.preloads)
@@ -149,7 +159,7 @@ defmodule BlueJet.Storefront do
 
       {:ok, product_item}
     else
-      other -> other
+      other -> {:error, other}
     end
   end
 
