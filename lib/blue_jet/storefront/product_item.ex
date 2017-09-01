@@ -7,6 +7,7 @@ defmodule BlueJet.Storefront.ProductItem do
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
+  alias BlueJet.Storefront.Price
   alias BlueJet.Identity.Account
   alias BlueJet.Inventory.Sku
   alias BlueJet.Inventory.Unlockable
@@ -31,6 +32,7 @@ defmodule BlueJet.Storefront.ProductItem do
     belongs_to :product, Product
     belongs_to :sku, Sku
     belongs_to :unlockable, Unlockable
+    has_many :prices, Price
   end
 
   def system_fields do

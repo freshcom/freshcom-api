@@ -12,6 +12,7 @@ defmodule BlueJet.Storefront.Product do
 
   schema "products" do
     field :name, :string
+    field :print_name, :string
     field :status, :string
     field :item_mode, :string, default: "any"
     field :caption, :string
@@ -24,8 +25,8 @@ defmodule BlueJet.Storefront.Product do
 
     belongs_to :account, Account
     belongs_to :avatar, ExternalFile
-    has_many :items, ProductItem
-    has_many :external_file_collections, ExternalFileCollection
+    has_many :items, ProductItem, on_delete: :delete_all
+    has_many :external_file_collections, ExternalFileCollection, on_delete: :delete_all
   end
 
   def system_fields do

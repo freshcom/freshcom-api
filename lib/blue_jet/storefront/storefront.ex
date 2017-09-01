@@ -8,6 +8,8 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.OrderCharge
 
+  alias BlueJet.FileStorage.ExternalFile
+
   ######
   # Product
   ######
@@ -89,7 +91,16 @@ defmodule BlueJet.Storefront do
 
   def delete_product!(%{ vas: vas, product_id: product_id }) do
     product = Repo.get_by!(Product, account_id: vas[:account_id], id: product_id)
-    Repo.delete!(product)
+
+    Repo.transaction(fn ->
+      if product.avatar_id do
+        ef = Repo.get!(ExternalFile, product.avatar_id)
+        ExternalFile.delete_object(ef)
+        Repo.delete!(ef)
+      end
+
+      Repo.delete!(product)
+    end)
   end
 
   #####
