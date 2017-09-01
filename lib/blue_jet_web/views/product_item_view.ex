@@ -4,12 +4,13 @@ defmodule BlueJetWeb.ProductItemView do
 
   alias BlueJet.Repo
 
-  attributes [:code, :status, :short_name, :name_sync, :name, :sort_index, :source_quantity, :maximum_order_quantity,
+  attributes [:code, :status, :short_name, :name_sync, :name, :sort_index, :source_quantity, :maximum_public_order_quantity,
     :primary, :print_name, :custom_data, :locale, :inserted_at, :updated_at]
 
   has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_one :sku, serializer: BlueJetWeb.SkuView, identifiers: :always
   has_one :unlockable, serializer: BlueJetWeb.UnlockableView, identifiers: :always
+  has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included
 
   def type(_, _) do
@@ -46,5 +47,9 @@ defmodule BlueJetWeb.ProductItemView do
         |> Repo.one()
       other -> other
     end
+  end
+
+  def default_price(struct, _) do
+    ProductItem.default_price(struct)
   end
 end

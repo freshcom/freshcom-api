@@ -83,32 +83,30 @@ defmodule BlueJet.Storefront.ProductItem do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id, name_sync: "sync_with_product" } }, locale) do
-    product = Repo.get!(Product, product_id) |> Translation.translate(locale)
-    short_name = Changeset.get_field(changeset, :short_name)
-    put_change(changeset, :name, "#{product.name} #{short_name}")
-  end
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ sku_id: sku_id, name_sync: "sync_with_source" } }, _) when not is_nil(sku_id) do
-    sku = Repo.get!(Sku, sku_id)
-    changeset = put_change(changeset, :name, "#{sku.name}")
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name_sync: "sync_with_source" } }, _) do
+    source = if get_field(changeset, :sku_id) do
+      Repo.get!(Sku, get_field(changeset, :sku_id))
+    else
+      Repo.get!(Unlockable, get_field(changeset, :unlockable_id))
+    end
+    changeset = put_change(changeset, :name, "#{source.name}")
 
     new_translations =
       changeset
       |> Changeset.get_field(:translations)
-      |> Translation.merge_translations(sku.translations, ["name"])
+      |> Translation.merge_translations(source.translations, ["name"])
 
     put_change(changeset, :translations, new_translations)
   end
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ unlockable_id: unlockable_id, name_sync: "sync_with_source" } }, _) when not is_nil(unlockable_id) do
-    unlockable = Repo.get!(Unlockable, unlockable_id)
-    changeset = put_change(changeset, :name, "#{unlockable.name}")
-
-    new_translations =
+  def put_name(changeset = %Changeset{ valid?: true }, locale) do
+    if get_field(changeset, :name_sync) == "sync_with_product" do
+      product_id = get_field(changeset, :product_id)
+      product = Repo.get!(Product, product_id) |> Translation.translate(locale)
+      short_name = Changeset.get_field(changeset, :short_name)
+      put_change(changeset, :name, "#{product.name} #{short_name}")
+    else
       changeset
-      |> Changeset.get_field(:translations)
-      |> Translation.merge_translations(unlockable.translations, ["name"])
-
-    put_change(changeset, :translation, new_translations)
+    end
   end
   def put_name(changeset, _), do: changeset
 
@@ -117,5 +115,13 @@ defmodule BlueJet.Storefront.ProductItem do
       where: pi.product_id == ^product_id
 
     query
+  end
+
+  def default_price(%ProductItem{ id: id }) do
+    from(p in Price,
+      where: p.product_item_id == ^id,
+      where: p.minimum_order_quantity == 1,
+      where: p.status == 'active')
+    |> Repo.one()
   end
 end
