@@ -142,6 +142,10 @@ defmodule BlueJet.Storefront.ProductItem do
     from(pi in ProductItem, order_by: [desc: pi.sort_index, desc: pi.inserted_at])
   end
 
+  def preload_keyword({:sku, sku_preloads}) do
+    [sku: {Sku.query(), Sku.preload_keyword(sku_preloads)}]
+  end
+
   def default_price(%ProductItem{ id: id }) do
     from(p in Price,
       where: p.product_item_id == ^id,

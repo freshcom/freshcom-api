@@ -74,4 +74,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
       where: efcm.collection_id == ^efc_id)
     |> Repo.one()
   end
+
+  def query() do
+    from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+  end
 end

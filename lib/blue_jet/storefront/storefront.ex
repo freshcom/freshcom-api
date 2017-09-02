@@ -51,7 +51,7 @@ defmodule BlueJet.Storefront do
     with {:ok, product} <- Repo.update(changeset) do
       product =
         product
-        |> Repo.preload(request.preloads)
+        |> Product.preload(request.preloads)
         |> Translation.translate(request.locale)
 
       {:ok, product}
@@ -79,7 +79,7 @@ defmodule BlueJet.Storefront do
 
     products =
       Repo.all(query)
-      |> Repo.preload(request.preloads)
+      |> Product.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     %{

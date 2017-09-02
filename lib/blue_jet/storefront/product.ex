@@ -68,24 +68,27 @@ defmodule BlueJet.Storefront.Product do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  # TODO: make these nestable
-  def preload(struct, targets) when length(targets) == 0 do
-    struct
+  def preload(struct_or_structs, targets) when length(targets) == 0 do
+    struct_or_structs
   end
-  def preload(struct, targets) when is_list(targets) do
+  def preload(struct_or_structs, targets) when is_list(targets) do
     [target | rest] = targets
 
-    struct
-    |> Product.preload(target)
+    struct_or_structs
+    |> Repo.preload(preload_keyword(target))
     |> Product.preload(rest)
   end
-  def preload(struct, :items) do
-    Repo.preload(struct, items: ProductItem.query())
+
+  def preload_keyword(:items) do
+    [items: ProductItem.query()]
   end
-  def preload(struct, :avatar) do
-    Repo.preload(struct, :avatar)
+  def preload_keyword({:items, [item_preloads]}) do
+    [items: {ProductItem.query(), ProductItem.preload_keyword(item_preloads)}]
   end
-  def preload(struct, :external_file_collections) do
-    Repo.preload(struct, :external_file_collections)
+  def preload_keyword(:avatar) do
+    :avatar
+  end
+  def preload_keyword(:external_file_collections) do
+    [external_file_collections: ExternalFileCollection.query()]
   end
 end

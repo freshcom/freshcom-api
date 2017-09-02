@@ -71,4 +71,12 @@ defmodule BlueJet.Inventory.Sku do
     |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  def query() do
+    from(s in Sku, order_by: [desc: s.updated_at, desc: s.inserted_at])
+  end
+
+  def preload_keyword(:avatar) do
+    [avatar: ExternalFile.query()]
+  end
 end

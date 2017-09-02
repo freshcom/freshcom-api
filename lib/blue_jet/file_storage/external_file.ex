@@ -99,4 +99,8 @@ defmodule BlueJet.FileStorage.ExternalFile do
 
     struct
   end
+
+  def query() do
+    from(ef in ExternalFile, order_by: [desc: ef.updated_at])
+  end
 end
