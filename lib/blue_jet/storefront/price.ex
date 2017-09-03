@@ -15,8 +15,8 @@ defmodule BlueJet.Storefront.Price do
     field :caption, :string
     field :currency_code, :string, default: "CAD"
     field :charge_cents, Money.Ecto.Type
-    field :estimate_average_ratio, :decimal
-    field :estimate_maximum_ratio, :decimal
+    field :estimate_average_percentage, :decimal
+    field :estimate_maximum_percentage, :decimal
     field :minimum_order_quantity, :integer, default: 1
     field :order_unit, :string
     field :charge_unit, :string

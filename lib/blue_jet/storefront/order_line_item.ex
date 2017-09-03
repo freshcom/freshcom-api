@@ -33,8 +33,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_charge_unit, :string
     field :price_currency_code, :string
     field :price_charge_cents, Money.Ecto.Type
-    field :price_estimate_average_ratio, :decimal
-    field :price_estimate_maximum_ratio, :decimal
+    field :price_estimate_average_percentage, :decimal
+    field :price_estimate_maximum_percentage, :decimal
     field :price_estimate_by_default, :boolean
     field :price_tax_one_rate, :integer
     field :price_tax_two_rate, :integer
@@ -236,8 +236,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> put_change(:price_charge_unit, price.charge_unit)
       |> put_change(:price_currency_code, price.currency_code)
       |> put_change(:price_charge_cents, price.charge_cents)
-      |> put_change(:price_estimate_average_ratio, price.estimate_average_ratio)
-      |> put_change(:price_estimate_maximum_ratio, price.estimate_maximum_ratio)
+      |> put_change(:price_estimate_average_percentage, price.estimate_average_percentage)
+      |> put_change(:price_estimate_maximum_percentage, price.estimate_maximum_percentage)
       |> put_change(:price_estimate_by_default, price.estimate_by_default)
       |> put_change(:price_tax_one_rate, price.tax_one_rate)
       |> put_change(:price_tax_two_rate, price.tax_two_rate)
@@ -286,9 +286,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
         put_change(changeset, :charge_quantity, charge_quantity)
 
       price_estimate_by_default && is_estimate ->
-        price_estimate_average_ratio = get_field(changeset, :price_estimate_average_ratio)
+        price_estimate_average_percentage = get_field(changeset, :price_estimate_average_percentage)
         order_quantity = get_field(changeset, :order_quantity)
-        charge_quantity = Decimal.new(order_quantity) * price_estimate_average_ratio
+        charge_quantity = Decimal.new(order_quantity) * price_estimate_average_percentage
         put_change(changeset, :charge_quantity, charge_quantity)
 
       !price_estimate_by_default ->
