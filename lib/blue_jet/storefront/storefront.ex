@@ -208,7 +208,7 @@ defmodule BlueJet.Storefront do
     changeset = Price.changeset(%Price{}, fields)
 
     with {:ok, price} <- Repo.insert(changeset) do
-      price = Repo.preload(price, request.preloads)
+      price = Repo.preload(price, :product_item)
       {:ok, price}
     else
       other -> other
@@ -222,7 +222,7 @@ defmodule BlueJet.Storefront do
     price =
       Price
       |> Repo.get_by!(account_id: vas[:account_id], id: price_id)
-      |> Repo.preload(request.preloads)
+      |> Repo.preload(:product_item)
       |> Translation.translate(request.locale)
 
     price
@@ -247,7 +247,7 @@ defmodule BlueJet.Storefront do
 
     prices =
       Repo.all(query)
-      |> Repo.preload(request.preloads)
+      |> Repo.preload(:product_item)
       |> Translation.translate(request.locale)
 
     %{
@@ -267,7 +267,7 @@ defmodule BlueJet.Storefront do
     with {:ok, price} <- Repo.update(changeset) do
       price =
         price
-        |> Repo.preload(request.preloads)
+        |> Repo.preload(:product_item)
         |> Translation.translate(request.locale)
 
       {:ok, price}

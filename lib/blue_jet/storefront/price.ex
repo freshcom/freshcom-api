@@ -3,6 +3,8 @@ defmodule BlueJet.Storefront.Price do
 
   use Trans, translates: [:name, :caption], container: :translations
 
+  alias Ecto.Changeset
+
   alias BlueJet.Translation
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.ProductItem
@@ -60,13 +62,18 @@ defmodule BlueJet.Storefront.Price do
     writable_fields() -- [:account_id]
   end
 
-  def required_fields do
-    [:account_id, :status, :label, :currency_code, :charge_cents, :order_unit, :charge_unit]
+  def required_fields(changeset) do
+    common_required = [:account_id, :status, :label, :currency_code, :charge_cents, :charge_unit]
+    case get_field(changeset, :estimate_by_default) do
+      true -> common_required ++ [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
+      _ -> common_required
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required(required_fields())
+    |> validate_required(required_fields(changeset))
+    |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope(:product_item)
   end
 
@@ -77,8 +84,21 @@ defmodule BlueJet.Storefront.Price do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> put_order_unit()
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  def put_order_unit(changeset = %Changeset{ valid?: true, changes: %{ charge_unit: charge_unit } }) do
+    case get_field(changeset, :estimate_by_default) do
+      false -> put_change(changeset, :order_unit, charge_unit)
+      _ -> changeset
+    end
+  end
+  def put_order_unit(changeset = %Changeset{ valid?: true, changes: %{ estimate_by_default: false } }) do
+    charge_unit = get_field(changeset, :charge_unit)
+    put_change(changeset, :order_unit, charge_unit)
+  end
+  def put_order_unit(changeset), do: changeset
 
   def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
     query = from p in Price,

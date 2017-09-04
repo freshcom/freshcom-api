@@ -42,7 +42,7 @@ defmodule BlueJetWeb.PriceController do
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 
