@@ -22,9 +22,9 @@ defmodule BlueJet.Storefront.Price do
     field :charge_unit, :string
     field :public_orderable, :boolean, default: true
     field :estimate_by_default, :boolean, default: false
-    field :tax_one_rate, :integer, default: 0
-    field :tax_two_rate, :integer, default: 0
-    field :tax_three_rate, :integer, default: 0
+    field :tax_one_percentage, :decimal, default: Decimal.new(0)
+    field :tax_two_percentage, :decimal, default: Decimal.new(0)
+    field :tax_three_percentage, :decimal, default: Decimal.new(0)
     field :start_time, :utc_datetime
     field :end_time, :utc_datetime
 

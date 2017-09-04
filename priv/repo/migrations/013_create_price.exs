@@ -18,9 +18,9 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       add :charge_unit, :string, null: false
       add :public_orderable, :boolean, null: false, default: true
       add :estimate_by_default, :boolean, null: false, default: false
-      add :tax_one_rate, :integer, null: false, default: 0
-      add :tax_two_rate, :integer, null: false, default: 0
-      add :tax_three_rate, :integer, null: false, default: 0
+      add :tax_one_percentage, :decimal, null: false, default: 0
+      add :tax_two_percentage, :decimal, null: false, default: 0
+      add :tax_three_percentage, :decimal, null: false, default: 0
       add :start_time, :utc_datetime
       add :end_time, :utc_datetime
 

@@ -36,9 +36,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_estimate_average_percentage, :decimal
     field :price_estimate_maximum_percentage, :decimal
     field :price_estimate_by_default, :boolean
-    field :price_tax_one_rate, :integer
-    field :price_tax_two_rate, :integer
-    field :price_tax_three_rate, :integer
+    field :price_tax_one_percentage, :decimal
+    field :price_tax_two_percentage, :decimal
+    field :price_tax_three_percentage, :decimal
     field :price_end_time, Timex.Ecto.DateTime
 
     field :charge_quantity, :decimal
@@ -77,9 +77,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
       :price_currency_code,
       :price_charge_cents,
       :price_estimate_cents,
-      :price_tax_one_rate,
-      :price_tax_two_rate,
-      :price_tax_three_rate,
+      :price_tax_one_percentage,
+      :price_tax_two_percentage,
+      :price_tax_three_percentage,
       :price_end_time,
       :grand_total_cents,
       :sku_id,
@@ -239,9 +239,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> put_change(:price_estimate_average_percentage, price.estimate_average_percentage)
       |> put_change(:price_estimate_maximum_percentage, price.estimate_maximum_percentage)
       |> put_change(:price_estimate_by_default, price.estimate_by_default)
-      |> put_change(:price_tax_one_rate, price.tax_one_rate)
-      |> put_change(:price_tax_two_rate, price.tax_two_rate)
-      |> put_change(:price_tax_three_rate, price.tax_three_rate)
+      |> put_change(:price_tax_one_percentage, price.tax_one_percentage)
+      |> put_change(:price_tax_two_percentage, price.tax_two_percentage)
+      |> put_change(:price_tax_three_percentage, price.tax_three_percentage)
       |> put_change(:price_end_time, price.end_time)
 
     translations =
@@ -313,19 +313,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     tax_one_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
-      |> Money.multiply(price.tax_one_rate / 100)
+      |> Money.multiply(Decimal.to_float(price.tax_one_percentage) / 100)
       |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
     tax_two_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
-      |> Money.multiply(price.tax_two_rate / 100)
+      |> Money.multiply(Decimal.to_float(price.tax_two_percentage) / 100)
       |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
     tax_three_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
       price.charge_cents
-      |> Money.multiply(price.tax_three_rate / 100)
+      |> Money.multiply(Decimal.to_float(price.tax_three_percentage) / 100)
       |> Money.multiply(Decimal.to_float(charge_quantity))
       |> Money.add(acc)
     end)
@@ -359,9 +359,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     price_charge_cents = get_field(changeset, :price_charge_cents)
 
     sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, Decimal.to_float(charge_quantity))
-    tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_one_rate) / 100)
-    tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_two_rate) / 100)
-    tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, get_field(changeset, :price_tax_three_rate) / 100)
+    tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_one_percentage)) / 100)
+    tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_two_percentage)) / 100)
+    tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_three_percentage)) / 100)
 
     grand_total_cents =
       sub_total_cents

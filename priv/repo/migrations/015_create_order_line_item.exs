@@ -22,9 +22,9 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_charge_cents, :integer
       add :price_estimate_average_percentage, :decimal
       add :price_estimate_maximum_percentage, :decimal
-      add :price_tax_one_rate, :integer
-      add :price_tax_two_rate, :integer
-      add :price_tax_three_rate, :integer
+      add :price_tax_one_percentage, :decimal
+      add :price_tax_two_percentage, :decimal
+      add :price_tax_three_percentage, :decimal
       add :price_estimate_by_default, :boolean
       add :price_end_time, :utc_datetime
 

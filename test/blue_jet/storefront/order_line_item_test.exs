@@ -73,9 +73,9 @@ defmodule BlueJet.OrderLineItemTest do
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 3,
-        tax_one_rate: 5,
-        tax_two_rate: 7,
-        tax_three_rate: 1,
+        tax_one_percentage: Decimal.new(5),
+        tax_two_percentage: Decimal.new(7),
+        tax_three_percentage: Decimal.new(1),
         end_time: end_time,
         translations: %{
           "zh-CN" => %{
@@ -114,9 +114,9 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_charge_cents == bulk_price.charge_cents
       assert changeset.changes.price_charge_unit == bulk_price.charge_unit
       assert changeset.changes.price_order_unit == bulk_price.order_unit
-      assert changeset.changes.price_tax_one_rate == bulk_price.tax_one_rate
-      assert changeset.changes.price_tax_two_rate == bulk_price.tax_two_rate
-      assert changeset.changes.price_tax_three_rate == bulk_price.tax_three_rate
+      assert changeset.changes.price_tax_one_percentage == bulk_price.tax_one_percentage
+      assert changeset.changes.price_tax_two_percentage == bulk_price.tax_two_percentage
+      assert changeset.changes.price_tax_three_percentage == bulk_price.tax_three_percentage
       assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
       assert changeset.changes.price_end_time == end_time
       assert changeset.changes.order_quantity == 3
@@ -163,9 +163,9 @@ defmodule BlueJet.OrderLineItemTest do
         charge_cents: %Money{ amount: 1000, currency: :CAD },
         order_unit: "EA",
         charge_unit: "EA",
-        tax_one_rate: 5,
-        tax_two_rate: 7,
-        tax_three_rate: 1,
+        tax_one_percentage: 5,
+        tax_two_percentage: 7,
+        tax_three_percentage: 1,
         end_time: price_end_time1
       })
       Repo.insert!(%Price{
@@ -179,9 +179,9 @@ defmodule BlueJet.OrderLineItemTest do
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 4,
-        tax_one_rate: 5,
-        tax_two_rate: 7,
-        tax_three_rate: 1,
+        tax_one_percentage: 5,
+        tax_two_percentage: 7,
+        tax_three_percentage: 1,
         end_time: price_end_time1
       })
 
