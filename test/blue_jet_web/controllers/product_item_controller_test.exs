@@ -10,6 +10,7 @@ defmodule BlueJetWeb.ProductItemControllerTest do
 
   @valid_attrs %{
     "status" => "active",
+    "nameSync" => "sync_with_source",
     "customData" => %{
       "kind" => "Gala"
     }

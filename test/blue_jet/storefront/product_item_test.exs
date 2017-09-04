@@ -28,6 +28,7 @@ defmodule BlueJet.ProductItemTest do
     valid_params = %{
       account_id: account1.id,
       status: "active",
+      name: "Apple",
       custom_data: %{
         kind: "Gala"
       },

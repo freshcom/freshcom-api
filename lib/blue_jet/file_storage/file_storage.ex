@@ -152,9 +152,18 @@ defmodule BlueJet.FileStorage do
     efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
 
     source_file_ids = Ecto.assoc(efc, :files) |> ids_only |> Repo.all
-    target_file_ids = request.fields["file_ids"] || []
-    file_ids_to_delete = source_file_ids -- target_file_ids
-    file_ids_to_add = target_file_ids -- source_file_ids
+    target_file_ids = request.fields["file_ids"]
+    file_ids_to_delete = if target_file_ids do
+      source_file_ids -- target_file_ids
+    else
+      []
+    end
+
+    file_ids_to_add = if target_file_ids do
+      target_file_ids -- source_file_ids
+    else
+      []
+    end
 
     with changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale) do
       {:ok, efc} = Repo.transaction(fn ->
@@ -176,11 +185,16 @@ defmodule BlueJet.FileStorage do
   end
 
   defp max_efcm_sort_index(%{ id: efc_id, account_id: account_id }) do
-    from(efcm in ExternalFileCollectionMembership,
+    m_sort_index = from(efcm in ExternalFileCollectionMembership,
       select: max(efcm.sort_index),
       where: efcm.account_id == ^account_id,
       where: efcm.collection_id == ^efc_id)
     |> Repo.one()
+
+    case m_sort_index do
+      nil -> 0
+      other -> other
+    end
   end
 
   defp delete_efcms!(file_ids, efc = %{ id: efc_id, account_id: account_id }) do
