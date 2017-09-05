@@ -105,7 +105,6 @@ defmodule BlueJetWeb.PriceControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["orderUnit"] == @valid_attrs["orderUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["chargeUnit"] == @valid_attrs["chargeUnit"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
-      assert json_response(conn, 201)["data"]["relationships"]["productItem"] == %{}
     end
 
     test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, pi1_id: pi1_id } do

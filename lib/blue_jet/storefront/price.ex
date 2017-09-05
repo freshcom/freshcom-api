@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront.Price do
 
   alias Ecto.Changeset
 
+  alias BlueJet.Repo
   alias BlueJet.Translation
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.ProductItem
@@ -22,7 +23,6 @@ defmodule BlueJet.Storefront.Price do
     field :minimum_order_quantity, :integer, default: 1
     field :order_unit, :string
     field :charge_unit, :string
-    field :public_orderable, :boolean, default: true
     field :estimate_by_default, :boolean, default: false
     field :tax_one_percentage, :decimal, default: Decimal.new(0)
     field :tax_two_percentage, :decimal, default: Decimal.new(0)
@@ -75,7 +75,19 @@ defmodule BlueJet.Storefront.Price do
     |> validate_required(required_fields(changeset))
     |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope(:product_item)
+    |> validate_status()
   end
+
+  def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+    moq = get_field(changeset, :minimum_order_quantity)
+    p = Repo.get_by(Price, minimum_order_quantity: moq, status: "active")
+
+    case p do
+      nil -> changeset
+      _ -> Changeset.add_error(changeset, :status, "There is already an Active Price have the same Minimum Order Quantity.", validation: :active_only_one_po)
+    end
+  end
+  def validate_status(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

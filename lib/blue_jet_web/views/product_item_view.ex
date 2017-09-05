@@ -3,6 +3,7 @@ defmodule BlueJetWeb.ProductItemView do
   use JaSerializer.PhoenixView
 
   alias BlueJet.Repo
+  alias BlueJet.ProductItem
 
   attributes [:code, :status, :short_name, :name_sync, :name, :sort_index, :source_quantity, :maximum_public_order_quantity,
     :primary, :print_name, :custom_data, :locale, :inserted_at, :updated_at]

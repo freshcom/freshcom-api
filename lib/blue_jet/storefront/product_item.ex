@@ -32,7 +32,7 @@ defmodule BlueJet.Storefront.ProductItem do
     belongs_to :product, Product
     belongs_to :sku, Sku
     belongs_to :unlockable, Unlockable
-    has_many :prices, Price
+    has_many :prices, Price, on_delete: :delete_all
   end
 
   def system_fields do

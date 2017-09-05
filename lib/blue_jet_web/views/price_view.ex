@@ -16,7 +16,6 @@ defmodule BlueJetWeb.PriceView do
     :minimum_order_quantity,
     :order_unit,
     :charge_unit,
-    :public_orderable,
     :estimate_by_default,
     :tax_one_percentage,
     :tax_two_percentage,

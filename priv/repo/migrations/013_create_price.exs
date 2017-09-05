@@ -16,7 +16,6 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       add :minimum_order_quantity, :integer, null: false, default: 1
       add :order_unit, :string, null: false
       add :charge_unit, :string, null: false
-      add :public_orderable, :boolean, null: false, default: true
       add :estimate_by_default, :boolean, null: false, default: false
       add :tax_one_percentage, :decimal, null: false, default: 0
       add :tax_two_percentage, :decimal, null: false, default: 0
