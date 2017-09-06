@@ -80,7 +80,8 @@ defmodule BlueJet.Storefront.Price do
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
     moq = get_field(changeset, :minimum_order_quantity)
-    p = Repo.get_by(Price, minimum_order_quantity: moq, status: "active")
+    product_item_id = get_field(changeset, :product_item_id)
+    p = Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
 
     case p do
       nil -> changeset
