@@ -14,7 +14,7 @@ defmodule BlueJet.Storefront.ProductItem do
 
   schema "product_items" do
     field :code, :string
-    field :status, :string
+    field :status, :string, default: "draft"
     field :name_sync, :string, default: "disabled"
     field :name, :string
     field :short_name, :string
@@ -52,7 +52,7 @@ defmodule BlueJet.Storefront.ProductItem do
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
+    writable_fields() -- [:status]
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
     writable_fields() -- [:account_id, :product_id]
@@ -67,10 +67,32 @@ defmodule BlueJet.Storefront.ProductItem do
 
   def validate(changeset) do
     changeset
+    |> validate_status()
     |> validate_required(required_fields())
     |> validate_required_exactly_one([:sku_id, :unlockable_id], :relationships)
     |> validate_assoc_account_scope([:product, :sku, :unlockable])
   end
+
+  def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+    price = Ecto.assoc(changeset.data, :prices) |> Repo.get_by(status: "active")
+
+    if price do
+      changeset
+    else
+      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active Price in order to be marked active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+    end
+  end
+  def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
+    prices = Ecto.assoc(changeset.data, :prices)
+    price = from(p in prices, where: p.status in ["active", "status"]) |> Repo.one()
+
+    if price do
+      changeset
+    else
+      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked internal.", [validation: "require_at_least_one_active_order_internal_price", full_error_message: true])
+    end
+  end
+  def validate_status(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

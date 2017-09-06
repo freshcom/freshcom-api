@@ -85,7 +85,7 @@ defmodule BlueJet.Storefront.Price do
 
     case p do
       nil -> changeset
-      _ -> Changeset.add_error(changeset, :status, "There is already an Active Price have the same Minimum Order Quantity.", validation: :active_only_one_po)
+      _ -> Changeset.add_error(changeset, :status, "There is already an Active Price have the same Minimum Order Quantity.", validation: :active_only_one_po, full_error_message: true)
     end
   end
   def validate_status(changeset), do: changeset

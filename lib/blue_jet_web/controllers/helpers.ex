@@ -43,8 +43,15 @@ defmodule BlueJetWeb.Controller.Helpers do
         String.replace(acc, "%{#{key}}", to_string(value))
       end)
 
+      {full_error_message, opts} = Keyword.pop(opts, :full_error_message)
+      title = if full_error_message do
+        msg
+      else
+        "#{humanize(field)} #{msg}"
+      end
+
       {code, meta} = Keyword.pop(opts, :validation)
-      error = %{ source: %{ pointer: pointer_for(field) }, code: code || :invalid, title: "#{humanize(field)} #{msg}" }
+      error = %{ source: %{ pointer: pointer_for(field) }, code: code || :invalid, title: title }
 
       error =
         case Enum.empty?(meta) do
