@@ -83,6 +83,24 @@ defmodule BlueJet.Storefront.ProductItem do
       _ -> changeset
     end
   end
+  # TODO: add case for Internal Product, changing Item status from Active to other
+  def validate_status(changeset = %Changeset{ data: %{ status: "active" }, changes: %{ status: status } }) do
+    pi_id = get_field(changeset, :id)
+    product_id = get_field(changeset, :product_id)
+    product = Repo.get_by(Product, id: product_id, status: "active")
+
+    if product do
+      product_items = Ecto.assoc(product, :items)
+      other_active_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status == "active")
+      oapi_count = Repo.aggregate(other_active_pi, :count, :id)
+
+      case oapi_count do
+        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Product Item of a Active Product.", [validation: "cannot_change_status_of_only_active_item_of_active_product", full_error_message: true])
+      end
+    else
+      changeset
+    end
+  end
   def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
     prices = Ecto.assoc(changeset.data, :prices)
     active_or_internal_prices = from(p in prices, where: p.status in ["active", "internal"])
@@ -91,6 +109,23 @@ defmodule BlueJet.Storefront.ProductItem do
     case aip_count do
       0 -> Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked Internal.", [validation: "require_at_least_one_active_or_internal_price", full_error_message: true])
       _ -> changeset
+    end
+  end
+  def validate_status(changeset = %Changeset{ data: %{ status: "internal" }, changes: %{ status: _ } }) do
+    pi_id = get_field(changeset, :id)
+    product_id = get_field(changeset, :product_id)
+    product = Repo.get_by(Product, id: product_id, status: "internal")
+
+    if product do
+      product_items = Ecto.assoc(product, :items)
+      other_active_or_internal_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status in ["active", "internal"])
+      oaipi_count = Repo.aggregate(other_active_or_internal_pi, :count, :id)
+
+      case oaipi_count do
+        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Internal Product Item of a Internal Product.", [validation: "cannot_change_status_of_only_internal_item_of_internal_product", full_error_message: true])
+      end
+    else
+      changeset
     end
   end
   def validate_status(changeset), do: changeset
