@@ -51,7 +51,7 @@ defmodule BlueJetWeb.Controller.Helpers do
       end
 
       {code, meta} = Keyword.pop(opts, :validation)
-      error = %{ source: %{ pointer: pointer_for(field) }, code: code || :invalid, title: title }
+      error = %{ source: %{ pointer: pointer_for(field) }, code: Inflex.camelize(code, :lower) || :invalid, title: title }
 
       error =
         case Enum.empty?(meta) do

@@ -89,7 +89,7 @@ defmodule BlueJet.Storefront.ProductItem do
     if price do
       changeset
     else
-      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked internal.", [validation: "require_at_least_one_active_order_internal_price", full_error_message: true])
+      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked internal.", [validation: "require_at_least_one_active_or_internal_price", full_error_message: true])
     end
   end
   def validate_status(changeset), do: changeset
