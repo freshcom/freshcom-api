@@ -85,9 +85,14 @@ defmodule BlueJetWeb.ProductItemController do
       product_item_id: product_item_id
     }
 
-    Storefront.delete_product_item!(request)
-
-    send_resp(conn, :no_content, "")
+    case Storefront.delete_product_item!(request) do
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+      {:error, errors} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
+    end
   end
 
 end

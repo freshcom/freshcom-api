@@ -38,6 +38,10 @@ defmodule BlueJetWeb.Controller.Helpers do
   end
 
   def extract_errors(%Ecto.Changeset{ valid?: false, errors: errors }) do
+    extract_errors(errors)
+  end
+  def extract_errors(changeset = %Ecto.Changeset{ valid?: true }), do: changeset
+  def extract_errors(errors) do
     Enum.reduce(errors, [], fn({ field, { msg, opts } }, acc) ->
       msg = Enum.reduce(opts, msg, fn({ key, value }, acc) ->
         String.replace(acc, "%{#{key}}", to_string(value))
@@ -62,7 +66,7 @@ defmodule BlueJetWeb.Controller.Helpers do
       acc ++ [error]
     end)
   end
-  def extract_errors(changeset), do: changeset
+
 
   def humanize(atom) when is_atom(atom), do: humanize(Atom.to_string(atom))
   def humanize(bin) when is_binary(bin) do

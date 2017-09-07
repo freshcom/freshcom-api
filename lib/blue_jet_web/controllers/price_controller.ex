@@ -84,8 +84,13 @@ defmodule BlueJetWeb.PriceController do
       price_id: price_id
     }
 
-    Storefront.delete_price!(request)
-
-    send_resp(conn, :no_content, "")
+    case Storefront.delete_price!(request) do
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+      {:error, errors} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
+    end
   end
 end

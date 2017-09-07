@@ -81,11 +81,47 @@ defmodule BlueJet.Storefront.Price do
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
     moq = get_field(changeset, :minimum_order_quantity)
     product_item_id = get_field(changeset, :product_item_id)
-    p = Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
+    price = Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
 
-    case p do
+    case price do
       nil -> changeset
       _ -> Changeset.add_error(changeset, :status, "There is already an Active Price that have the same Minimum Order Quantity.", validation: :can_only_active_one_per_moq, full_error_message: true)
+    end
+  end
+  def validate_status(changeset = %Changeset{ data: %{ status: "active" }, changes: %{ status: status }}) do
+    price_id = get_field(changeset, :id)
+    product_item_id = get_field(changeset, :product_item_id)
+    product_item = Repo.get_by(ProductItem, id: product_item_id, status: "active")
+
+    if product_item do
+      prices = Ecto.assoc(product_item, :prices)
+      other_active_prices = from(p in prices, where: p.id != ^price_id, where: p.status == "active")
+      oap_count = Repo.aggregate(other_active_prices, :count, :id)
+
+      case oap_count do
+        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item", [validation: "cannot_change_status_of_only_active_price_of_active_product_item"])
+        _ -> changeset
+      end
+    else
+      changeset
+    end
+  end
+  def validate_status(changeset = %Changeset{ data: %{ status: "internal" }, changes: %{ status: status }}) do
+    price_id = get_field(changeset, :id)
+    product_item_id = get_field(changeset, :product_item_id)
+    product_item = Repo.get_by(ProductItem, id: product_item_id, status: "internal")
+
+    if product_item do
+      prices = Ecto.assoc(product_item, :prices)
+      other_active_or_internal_prices = from(p in prices, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+      oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
+
+      case oaip_count do
+        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product Item", [validation: "cannot_change_status_of_only_internal_price_of_internal_product_item"])
+        _ -> changeset
+      end
+    else
+      changeset
     end
   end
   def validate_status(changeset), do: changeset

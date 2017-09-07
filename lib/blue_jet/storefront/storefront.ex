@@ -194,7 +194,15 @@ defmodule BlueJet.Storefront do
 
   def delete_product_item!(%{ vas: vas, product_item_id: product_item_id }) do
     product_item = Repo.get_by!(ProductItem, account_id: vas[:account_id], id: product_item_id)
-    Repo.delete!(product_item)
+
+    case product_item.status do
+      "disabled" ->
+        Repo.delete!(product_item)
+        {:ok, :deleted}
+      _ ->
+        errors = [id: {"Only Disabled Product Item can be deleted.", [validation: :only_disabled_can_be_deleted]}]
+        {:error, errors}
+    end
   end
 
   #####
@@ -278,7 +286,15 @@ defmodule BlueJet.Storefront do
 
   def delete_price!(%{ vas: vas, price_id: price_id }) do
     price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
-    Repo.delete!(price)
+
+    case price.status do
+      "disabled" ->
+        Repo.delete!(price)
+        {:ok, :deleted}
+      _ ->
+        errors = [id: {"Only Disabled Price can be deleted.", [validation: :only_disabled_can_be_deleted]}]
+        {:error, errors}
+    end
   end
 
   ####

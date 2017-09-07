@@ -74,22 +74,23 @@ defmodule BlueJet.Storefront.ProductItem do
   end
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
-    price = Ecto.assoc(changeset.data, :prices) |> Repo.get_by(status: "active")
+    prices = Ecto.assoc(changeset.data, :prices)
+    active_prices = from(p in prices, where: p.status == "active")
+    ap_count = Repo.aggregate(active_prices, :count, :id)
 
-    if price do
-      changeset
-    else
-      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active Price in order to be marked active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+    case ap_count do
+      0 -> Changeset.add_error(changeset, :status, "A Product Item must have at least one Active Price in order to be marked Active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+      _ -> changeset
     end
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
     prices = Ecto.assoc(changeset.data, :prices)
-    price = from(p in prices, where: p.status in ["active", "status"]) |> Repo.one()
+    active_or_internal_prices = from(p in prices, where: p.status in ["active", "internal"])
+    aip_count = Repo.aggregate(active_or_internal_prices, :count, :id)
 
-    if price do
-      changeset
-    else
-      Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked internal.", [validation: "require_at_least_one_active_or_internal_price", full_error_message: true])
+    case aip_count do
+      0 -> Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked Internal.", [validation: "require_at_least_one_active_or_internal_price", full_error_message: true])
+      _ -> changeset
     end
   end
   def validate_status(changeset), do: changeset
