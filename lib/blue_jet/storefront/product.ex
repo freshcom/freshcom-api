@@ -3,6 +3,8 @@ defmodule BlueJet.Storefront.Product do
 
   use Trans, translates: [:name, :caption, :description, :custom_data], container: :translations
 
+  alias Ecto.Changeset
+
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
@@ -56,7 +58,31 @@ defmodule BlueJet.Storefront.Product do
     changeset
     |> validate_required([:account_id, :name, :status, :item_mode])
     |> validate_assoc_account_scope(:avatar)
+    |> validate_status()
   end
+
+  # TODO: There needs to be primary item with status active
+  def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+    product_items = Ecto.assoc(changeset.data, :items)
+    active_product_items = from(pi in product_items, where: pi.status == "active")
+    api_count = Repo.aggregate(active_product_items, :count, :id)
+
+    case api_count do
+      0 -> Changeset.add_error(changeset, :status, "A Product must have at least one Active Item in order to be marked Active.", [validation: "require_at_least_one_active_item", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
+    product_items = Ecto.assoc(changeset.data, :items)
+    active_or_internal_product_items = from(pi in product_items, where: pi.status in ["active", "internal"])
+    aipi_count = Repo.aggregate(active_or_internal_product_items, :count, :id)
+
+    case aipi_count do
+      0 -> Changeset.add_error(changeset, :status, "A Product must have at least one Active/Internal Item in order to be marked Internal.", [validation: "require_at_least_one_internal_item", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  def validate_status(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -82,7 +108,7 @@ defmodule BlueJet.Storefront.Product do
   def preload_keyword(:items) do
     [items: ProductItem.query()]
   end
-  def preload_keyword({:items, [item_preloads]}) do
+  def preload_keyword({:items, item_preloads}) do
     [items: {ProductItem.query(), ProductItem.preload_keyword(item_preloads)}]
   end
   def preload_keyword(:avatar) do

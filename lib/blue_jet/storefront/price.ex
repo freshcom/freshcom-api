@@ -88,43 +88,39 @@ defmodule BlueJet.Storefront.Price do
       _ -> Changeset.add_error(changeset, :status, "There is already an Active Price that have the same Minimum Order Quantity.", [validation: :can_only_active_one_per_moq, full_error_message: true])
     end
   end
-  def validate_status(changeset = %Changeset{ data: %{ status: "active" }, changes: %{ status: _ }}) do
-    price_id = get_field(changeset, :id)
+  def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
     product_item_id = get_field(changeset, :product_item_id)
-    product_item = Repo.get_by(ProductItem, id: product_item_id, status: "active")
+    product_item = Repo.get_by(ProductItem, id: product_item_id)
 
-    if product_item do
-      prices = Ecto.assoc(product_item, :prices)
-      other_active_prices = from(p in prices, where: p.id != ^price_id, where: p.status == "active")
-      oap_count = Repo.aggregate(other_active_prices, :count, :id)
-
-      case oap_count do
-        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item.", [validation: "cannot_change_status_of_only_active_price_of_active_product_item", full_error_message: true])
-        _ -> changeset
-      end
-    else
-      changeset
-    end
-  end
-  def validate_status(changeset = %Changeset{ data: %{ status: "internal" }, changes: %{ status: _ }}) do
-    price_id = get_field(changeset, :id)
-    product_item_id = get_field(changeset, :product_item_id)
-    product_item = Repo.get_by(ProductItem, id: product_item_id, status: "internal")
-
-    if product_item do
-      prices = Ecto.assoc(product_item, :prices)
-      other_active_or_internal_prices = from(p in prices, where: p.id != ^price_id, where: p.status in ["active", "internal"])
-      oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
-
-      case oaip_count do
-        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product Item.", [validation: "cannot_change_status_of_only_internal_price_of_internal_product_item", full_error_message: true])
-        _ -> changeset
-      end
-    else
-      changeset
-    end
+    validate_status(changeset, product_item)
   end
   def validate_status(changeset), do: changeset
+  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } } , product_item = %ProductItem{ status: "active" }) do
+    price_id = get_field(changeset, :id)
+
+    prices = Ecto.assoc(product_item, :prices)
+    other_active_prices = from(p in prices, where: p.id != ^price_id, where: p.status == "active")
+    oap_count = Repo.aggregate(other_active_prices, :count, :id)
+
+    case oap_count do
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item.", [validation: "cannot_change_status_of_only_active_price_of_active_product_item", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, product_item = %ProductItem{ status: "internal" }), do: changeset
+  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product_item = %ProductItem{ status: "internal" }) do
+    price_id = get_field(changeset, :id)
+
+    prices = Ecto.assoc(product_item, :prices)
+    other_active_or_internal_prices = from(p in prices, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
+
+    case oaip_count do
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item.", [validation: "cannot_change_status_of_only_internal_price_of_internal_product_item", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  defp validate_status(changeset, _), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -171,5 +167,9 @@ defmodule BlueJet.Storefront.Price do
       select: p
 
     query
+  end
+
+  def query() do
+    from(p in Price, order_by: [asc: p.minimum_order_quantity, desc: p.inserted_at])
   end
 end

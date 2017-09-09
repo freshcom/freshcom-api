@@ -33,6 +33,7 @@ defmodule BlueJet.Storefront.ProductItem do
     belongs_to :sku, Sku
     belongs_to :unlockable, Unlockable
     has_many :prices, Price, on_delete: :delete_all
+    has_one :default_price, Price
   end
 
   def system_fields do
@@ -67,10 +68,10 @@ defmodule BlueJet.Storefront.ProductItem do
 
   def validate(changeset) do
     changeset
-    |> validate_status()
     |> validate_required(required_fields())
     |> validate_required_exactly_one([:sku_id, :unlockable_id], :relationships)
     |> validate_assoc_account_scope([:product, :sku, :unlockable])
+    |> validate_status()
   end
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
@@ -83,23 +84,11 @@ defmodule BlueJet.Storefront.ProductItem do
       _ -> changeset
     end
   end
-  # TODO: add case for Internal Product, changing Item status from Active to other
-  def validate_status(changeset = %Changeset{ data: %{ status: "active" }, changes: %{ status: status } }) do
-    pi_id = get_field(changeset, :id)
+  def validate_status(changeset = %Changeset{ data: %{ status: "active" }, changes: %{ status: "internal" } }) do
     product_id = get_field(changeset, :product_id)
-    product = Repo.get_by(Product, id: product_id, status: "active")
+    product = Repo.get_by(Product, id: product_id)
 
-    if product do
-      product_items = Ecto.assoc(product, :items)
-      other_active_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status == "active")
-      oapi_count = Repo.aggregate(other_active_pi, :count, :id)
-
-      case oapi_count do
-        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Product Item of a Active Product.", [validation: "cannot_change_status_of_only_active_item_of_active_product", full_error_message: true])
-      end
-    else
-      changeset
-    end
+    validate_status(changeset, product)
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
     prices = Ecto.assoc(changeset.data, :prices)
@@ -107,28 +96,43 @@ defmodule BlueJet.Storefront.ProductItem do
     aip_count = Repo.aggregate(active_or_internal_prices, :count, :id)
 
     case aip_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked Internal.", [validation: "require_at_least_one_active_or_internal_price", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "A Product Item must have at least one Active or Internal Price in order to be marked Internal.", [validation: "require_at_least_one_internal_price", full_error_message: true])
       _ -> changeset
     end
   end
-  def validate_status(changeset = %Changeset{ data: %{ status: "internal" }, changes: %{ status: _ } }) do
-    pi_id = get_field(changeset, :id)
+  def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
     product_id = get_field(changeset, :product_id)
-    product = Repo.get_by(Product, id: product_id, status: "internal")
+    product = Repo.get_by(Product, id: product_id)
 
-    if product do
-      product_items = Ecto.assoc(product, :items)
-      other_active_or_internal_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status in ["active", "internal"])
-      oaipi_count = Repo.aggregate(other_active_or_internal_pi, :count, :id)
-
-      case oaipi_count do
-        0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Internal Product Item of a Internal Product.", [validation: "cannot_change_status_of_only_internal_item_of_internal_product", full_error_message: true])
-      end
-    else
-      changeset
-    end
+    validate_status(changeset, product)
   end
   def validate_status(changeset), do: changeset
+  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product = %Product{ status: "active" }) do
+    pi_id = get_field(changeset, :id)
+    product_items = Ecto.assoc(product, :items)
+
+    other_active_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status == "active")
+    oapi_count = Repo.aggregate(other_active_pi, :count, :id)
+
+    case oapi_count do
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Product Item of a Active Product.", [validation: "cannot_change_status_of_only_active_item_of_active_product", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, product_item = %ProductItem{ status: "internal" }), do: changeset
+  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product = %Product{ status: "internal" }) do
+    pi_id = get_field(changeset, :id)
+    product_items = Ecto.assoc(product, :items)
+
+    other_active_or_internal_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status in ["active", "internal"])
+    oaipi_count = Repo.aggregate(other_active_or_internal_pi, :count, :id)
+
+    case oaipi_count do
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Internal Product Item of a Internal Product.", [validation: "cannot_change_status_of_only_internal_item_of_internal_product", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  defp validate_status(changeset, _), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -204,11 +208,16 @@ defmodule BlueJet.Storefront.ProductItem do
     [sku: {Sku.query(), Sku.preload_keyword(sku_preloads)}]
   end
 
-  def default_price(%ProductItem{ id: id }) do
-    from(p in Price,
-      where: p.product_item_id == ^id,
-      where: p.minimum_order_quantity == 1,
-      where: p.status == 'active')
-    |> Repo.one()
+  def preload_keyword(:default_price) do
+    [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
   end
+
+  # def default_price(%ProductItem{ id: id }) do
+  #   from(p in Price,
+  #     where: p.product_item_id == ^id,
+  #     where: p.status == "active",
+  #     order_by: [asc: :minimum_order_quantity])
+  #   |> first()
+  #   |> Repo.one()
+  # end
 end
