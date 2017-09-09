@@ -61,14 +61,12 @@ defmodule BlueJet.Storefront.Product do
     |> validate_status()
   end
 
-  # TODO: There needs to be primary item with status active
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
     product_items = Ecto.assoc(changeset.data, :items)
-    active_product_items = from(pi in product_items, where: pi.status == "active")
-    api_count = Repo.aggregate(active_product_items, :count, :id)
+    active_primary_item = Repo.get_by(ProductItem, status: "active", primary: true)
 
-    case api_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product must have at least one Active Item in order to be marked Active.", [validation: "require_at_least_one_active_item", full_error_message: true])
+    case active_primary_item do
+      nil -> Changeset.add_error(changeset, :status, "A Product must have a Primary Active Item in order to be marked Active.", [validation: "require_primary_active_item", full_error_message: true])
       _ -> changeset
     end
   end

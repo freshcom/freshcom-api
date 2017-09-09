@@ -197,6 +197,7 @@ defmodule BlueJet.FileStorage do
     end
   end
 
+  # TODO: need to also delete the s3 object
   defp delete_efcms!(file_ids, efc = %{ id: efc_id, account_id: account_id }) do
     efcms =
       from(efcm in ExternalFileCollectionMembership,
@@ -257,6 +258,7 @@ defmodule BlueJet.FileStorage do
     }
   end
 
+  # TODO: use another process to delete, and also need to remove the files
   def delete_external_file_collection!(%{ vas: vas, external_file_collection_id: efc_id }) do
     efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
     Repo.delete!(efc)

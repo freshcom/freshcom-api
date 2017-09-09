@@ -9,6 +9,7 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
 
   has_one :sku, serializer: BlueJetWeb.SkuView, identifiers: :always
   has_one :unlockable, serializer: BlueJetWeb.UnlockableView, identifiers: :always
+  has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_many :files, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
 
   def type(_external_file_collection, _conn) do
@@ -46,6 +47,16 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
       %Ecto.Association.NotLoaded{} ->
         struct
         |> Ecto.assoc(:unlockable)
+        |> Repo.one()
+      other -> other
+    end
+  end
+
+  def product(struct, _) do
+    case struct.product do
+      %Ecto.Association.NotLoaded{} ->
+        struct
+        |> Ecto.assoc(:product)
         |> Repo.one()
       other -> other
     end
