@@ -92,6 +92,10 @@ defmodule BlueJet.Storefront.Product do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  def query() do
+    from(p in Product, order_by: [desc: :updated_at])
+  end
+
   def preload(struct_or_structs, targets) when length(targets) == 0 do
     struct_or_structs
   end

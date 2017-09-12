@@ -114,7 +114,7 @@ defmodule BlueJet.Storefront do
     changeset = ProductItem.changeset(%ProductItem{}, fields)
 
     with {:ok, product_item} <- Repo.insert(changeset) do
-      product_item = Repo.preload(product_item, request.preloads)
+      product_item = ProductItem.preload(product_item, request.preloads)
       {:ok, product_item}
     else
       other -> other
@@ -128,7 +128,7 @@ defmodule BlueJet.Storefront do
     product_item =
       ProductItem
       |> Repo.get_by!(account_id: vas[:account_id], id: product_item_id)
-      |> Repo.preload(request.preloads)
+      |> ProductItem.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     product_item
@@ -154,7 +154,7 @@ defmodule BlueJet.Storefront do
 
       product_item =
         product_item
-        |> Repo.preload(request.preloads)
+        |> ProductItem.preload(request.preloads)
         |> Translation.translate(request.locale)
 
       {:ok, product_item}
@@ -182,7 +182,7 @@ defmodule BlueJet.Storefront do
 
     product_items =
       Repo.all(query)
-      |> Repo.preload(request.preloads)
+      |> ProductItem.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     %{

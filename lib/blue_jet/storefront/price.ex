@@ -99,7 +99,11 @@ defmodule BlueJet.Storefront.Price do
     price_id = get_field(changeset, :id)
 
     prices = Ecto.assoc(product_item, :prices)
-    other_active_prices = from(p in prices, where: p.id != ^price_id, where: p.status == "active")
+    other_active_prices = if price_id do
+      from(p in prices, where: p.id != ^price_id, where: p.status == "active")
+    else
+      from(p in prices, where: p.status == "active")
+    end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do

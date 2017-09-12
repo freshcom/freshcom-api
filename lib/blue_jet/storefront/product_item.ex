@@ -204,20 +204,27 @@ defmodule BlueJet.Storefront.ProductItem do
     from(pi in ProductItem, order_by: [desc: pi.sort_index, desc: pi.inserted_at])
   end
 
+  def preload(struct_or_structs, targets) when length(targets) == 0 do
+    struct_or_structs
+  end
+  def preload(struct_or_structs, targets) when is_list(targets) do
+    [target | rest] = targets
+
+    struct_or_structs
+    |> Repo.preload(preload_keyword(target))
+    |> ProductItem.preload(rest)
+  end
+
   def preload_keyword({:sku, sku_preloads}) do
     [sku: {Sku.query(), Sku.preload_keyword(sku_preloads)}]
   end
-
+  def preload_keyword({:product, product_preloads}) do
+    [product: Product.query()]
+  end
+  def preload_keyword(:prices) do
+    [prices: Price.query()]
+  end
   def preload_keyword(:default_price) do
     [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
   end
-
-  # def default_price(%ProductItem{ id: id }) do
-  #   from(p in Price,
-  #     where: p.product_item_id == ^id,
-  #     where: p.status == "active",
-  #     order_by: [asc: :minimum_order_quantity])
-  #   |> first()
-  #   |> Repo.one()
-  # end
 end
