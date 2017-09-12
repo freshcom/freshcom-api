@@ -436,7 +436,7 @@ defmodule BlueJetWeb.ProductControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/products?filter[status]=active")
+      conn = get(conn, "/v1/products?filter[status][]=active&filter[status][]=internal")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2

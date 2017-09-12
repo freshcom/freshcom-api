@@ -34,7 +34,14 @@ defmodule BlueJet.ContextHelpers do
 
   def filter_by(query, filter) do
     filter = Enum.filter(filter, fn({_, value}) -> value end)
-    from q in query, where: ^filter
+
+    Enum.reduce(filter, query, fn({k, v}, acc_query) ->
+      if is_list(v) do
+        from q in acc_query, where: field(q, ^k) in ^v
+      else
+        from q in acc_query, where: field(q, ^k) == ^v
+      end
+    end)
   end
 
   def ids_only(query) do
