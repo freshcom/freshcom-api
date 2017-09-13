@@ -171,7 +171,7 @@ defmodule BlueJet.Storefront do
     query =
       ProductItem
       |> search([:short_name, :code, :id], request.search_keyword, request.locale)
-      |> filter_by(sku_id: request.filter[:sku_id], unlockable_id: request.filter[:unlockable_id], product_id: request.filter[:product_id])
+      |> filter_by(sku_id: request.filter[:sku_id], unlockable_id: request.filter[:unlockable_id], product_id: request.filter[:product_id], status: request.filter[:status])
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
