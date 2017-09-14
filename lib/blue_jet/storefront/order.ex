@@ -234,5 +234,18 @@ defmodule BlueJet.Storefront.Order do
 
   end
 
+  def preload(struct_or_structs, targets) when length(targets) == 0 do
+    struct_or_structs
+  end
+  def preload(struct_or_structs, targets) when is_list(targets) do
+    [target | rest] = targets
 
+    struct_or_structs
+    |> Repo.preload(preload_keyword(target))
+    |> Order.preload(rest)
+  end
+
+  def preload_keyword(:line_items) do
+    [line_items: OrderLineItem.query()]
+  end
 end

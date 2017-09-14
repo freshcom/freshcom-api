@@ -328,7 +328,7 @@ defmodule BlueJet.Storefront do
     order =
       order_scope
       |> Repo.get_by!(account_id: vas[:account_id], id: order_id)
-      |> Repo.preload(request.preloads)
+      |> Order.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     order
@@ -424,7 +424,10 @@ defmodule BlueJet.Storefront do
         order_line_item = Repo.insert!(changeset)
         OrderLineItem.balance!(order_line_item)
         Order.balance!(order)
+        order_line_item
       end)
+    else
+      other -> {:error, other}
     end
   end
 

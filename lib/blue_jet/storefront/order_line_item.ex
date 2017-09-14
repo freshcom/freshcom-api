@@ -451,4 +451,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     struct
   end
+
+  def query() do
+    from(oli in OrderLineItem, where: oli.is_leaf == false , order_by: [desc: oli.inserted_at])
+  end
 end
