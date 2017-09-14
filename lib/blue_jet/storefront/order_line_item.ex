@@ -63,7 +63,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     belongs_to :parent, OrderLineItem
     belongs_to :sku, Sku
     belongs_to :unlockable, Unlockable
-    has_many :children, OrderLineItem, foreign_key: :parent_id
+    has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
   end
 
   def system_fields do
