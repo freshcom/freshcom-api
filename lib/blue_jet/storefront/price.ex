@@ -97,12 +97,13 @@ defmodule BlueJet.Storefront.Price do
   def validate_status(changeset), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } } , product_item = %ProductItem{ status: "active" }) do
     price_id = get_field(changeset, :id)
+    pi_id = get_field(changeset, :product_item_id)
 
     prices = Ecto.assoc(product_item, :prices)
     other_active_prices = if price_id do
-      from(p in prices, where: p.id != ^price_id, where: p.status == "active")
+      from(p in prices, where: p.product_item_id == ^pi_id, where: p.id != ^price_id, where: p.status == "active")
     else
-      from(p in prices, where: p.status == "active")
+      from(p in prices, where: p.product_item_id == ^pi_id, where: p.status == "active")
     end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
@@ -114,9 +115,10 @@ defmodule BlueJet.Storefront.Price do
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, product_item = %ProductItem{ status: "internal" }), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product_item = %ProductItem{ status: "internal" }) do
     price_id = get_field(changeset, :id)
+    pi_id = get_field(changeset, :product_item_id)
 
     prices = Ecto.assoc(product_item, :prices)
-    other_active_or_internal_prices = from(p in prices, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    other_active_or_internal_prices = from(p in prices, where: p.product_item_id == ^pi_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
