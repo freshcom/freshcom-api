@@ -73,6 +73,7 @@ defmodule BlueJet.Storefront.Price do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
+    |> validate_required_exactly_one([:product_item_id, :product_id], :relationships)
     |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope(:product_item)
     |> validate_status()

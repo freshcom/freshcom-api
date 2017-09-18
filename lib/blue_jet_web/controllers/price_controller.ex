@@ -26,11 +26,10 @@ defmodule BlueJetWeb.PriceController do
     render(conn, "index.json-api", data: prices, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "product_item_id" => product_item_id, "data" => data = %{ "type" => "Price" } }) do
-    fields = Map.merge(Params.to_attributes(data), %{ "product_item_id" => product_item_id })
+  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "Price" } }) do
     request = %{
       vas: assigns[:vas],
-      fields: fields,
+      fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
