@@ -62,17 +62,20 @@ defmodule BlueJet.Storefront.Product do
   end
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+    product_id = get_field(changeset, :id)
     product_items = Ecto.assoc(changeset.data, :items)
-    active_primary_item = Repo.get_by(ProductItem, status: "active", primary: true)
+    active_primary_item = Repo.get_by(ProductItem, product_id: product_id, status: "active", primary: true)
 
+    IO.inspect "testxxx"
     case active_primary_item do
       nil -> Changeset.add_error(changeset, :status, "A Product must have a Primary Active Item in order to be marked Active.", [validation: "require_primary_active_item", full_error_message: true])
       _ -> changeset
     end
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
+    product_id = get_field(changeset, :id)
     product_items = Ecto.assoc(changeset.data, :items)
-    active_or_internal_product_items = from(pi in product_items, where: pi.status in ["active", "internal"])
+    active_or_internal_product_items = from(pi in product_items, where: pi.product_id == ^product_id, where: pi.status in ["active", "internal"])
     aipi_count = Repo.aggregate(active_or_internal_product_items, :count, :id)
 
     case aipi_count do

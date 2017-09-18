@@ -109,9 +109,10 @@ defmodule BlueJet.Storefront.ProductItem do
   def validate_status(changeset), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product = %Product{ status: "active" }) do
     pi_id = get_field(changeset, :id)
+    product_id = get_field(changeset, :product_id)
     product_items = Ecto.assoc(product, :items)
 
-    other_active_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status == "active")
+    other_active_pi = from(pi in ProductItem, where: pi.product_id == ^product_id, where: pi.id != ^pi_id, where: pi.status == "active")
     oapi_count = Repo.aggregate(other_active_pi, :count, :id)
 
     case oapi_count do
@@ -122,9 +123,10 @@ defmodule BlueJet.Storefront.ProductItem do
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, product_item = %ProductItem{ status: "internal" }), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product = %Product{ status: "internal" }) do
     pi_id = get_field(changeset, :id)
+    product_id = get_field(changeset, :product_id)
     product_items = Ecto.assoc(product, :items)
 
-    other_active_or_internal_pi = from(pi in ProductItem, where: pi.id != ^pi_id, where: pi.status in ["active", "internal"])
+    other_active_or_internal_pi = from(pi in ProductItem, where: pi.product_id == ^product_id, where: pi.id != ^pi_id, where: pi.status in ["active", "internal"])
     oaipi_count = Repo.aggregate(other_active_or_internal_pi, :count, :id)
 
     case oaipi_count do
