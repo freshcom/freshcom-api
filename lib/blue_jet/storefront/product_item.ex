@@ -220,6 +220,9 @@ defmodule BlueJet.Storefront.ProductItem do
   def preload_keyword({:sku, sku_preloads}) do
     [sku: {Sku.query(), Sku.preload_keyword(sku_preloads)}]
   end
+  def preload_keyword(:product) do
+    [product: Product.query()]
+  end
   def preload_keyword({:product, product_preloads}) do
     [product: Product.query()]
   end

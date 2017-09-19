@@ -63,9 +63,14 @@ defmodule BlueJet.Storefront.Product do
     |> validate_status()
   end
 
-  def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+  def validate_status(changeset) do
+    item_mode = get_field(changeset, :item_mode)
+    validate_status(changeset, item_mode)
+  end
+  def validate_status(changeset), do: changeset
+
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "any") do
     product_id = get_field(changeset, :id)
-    product_items = Ecto.assoc(changeset.data, :items)
     active_primary_item = Repo.get_by(ProductItem, product_id: product_id, status: "active", primary: true)
 
     case active_primary_item do
@@ -73,10 +78,23 @@ defmodule BlueJet.Storefront.Product do
       _ -> changeset
     end
   end
-  def validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }) do
-    product_id = get_field(changeset, :id)
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "all") do
     product_items = Ecto.assoc(changeset.data, :items)
-    active_or_internal_product_items = from(pi in product_items, where: pi.product_id == ^product_id, where: pi.status in ["active", "internal"])
+    product_item_count = product_items |> Repo.aggregate(:count, :id)
+    active_pi_count = from(pi in product_items, where: pi.status == "active") |> Repo.aggregate(:count, :id)
+
+    prices = Ecto.assoc(changeset.data, :prices)
+    active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
+
+    cond do
+      active_pi_count != product_item_count -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All must have all of its Item set to Active in order to be marked Active.", [validation: "require_all_item_active", full_error_message: true])
+      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All require at least one Active Price in order to be marked Active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+      true -> changeset
+    end
+  end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "any") do
+    product_items = Ecto.assoc(changeset.data, :items)
+    active_or_internal_product_items = from(pi in product_items, where: pi.status in ["active", "internal"])
     aipi_count = Repo.aggregate(active_or_internal_product_items, :count, :id)
 
     case aipi_count do
@@ -84,7 +102,21 @@ defmodule BlueJet.Storefront.Product do
       _ -> changeset
     end
   end
-  def validate_status(changeset), do: changeset
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "all") do
+    product_items = Ecto.assoc(changeset.data, :items)
+    product_item_count = product_items |> Repo.aggregate(:count, :id)
+    ai_pi_count = from(pi in product_items, where: pi.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+
+    prices = Ecto.assoc(changeset.data, :prices)
+    ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+
+    cond do
+      ai_pi_count != product_item_count -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_all_item_internal", full_error_message: true])
+      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_at_least_one_internal_price", full_error_message: true])
+      true -> changeset
+    end
+  end
+  defp validate_status(changeset, item_mode), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
