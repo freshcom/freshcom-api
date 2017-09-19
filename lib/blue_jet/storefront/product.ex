@@ -8,6 +8,7 @@ defmodule BlueJet.Storefront.Product do
   alias BlueJet.Translation
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
+  alias BlueJet.Storefront.Price
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
@@ -29,6 +30,7 @@ defmodule BlueJet.Storefront.Product do
     belongs_to :avatar, ExternalFile
     has_many :items, ProductItem, on_delete: :delete_all
     has_many :external_file_collections, ExternalFileCollection, on_delete: :delete_all
+    has_many :prices, Price, on_delete: :delete_all
   end
 
   def system_fields do
@@ -51,7 +53,7 @@ defmodule BlueJet.Storefront.Product do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    writable_fields() -- [:account_id, :item_mode]
   end
 
   def validate(changeset) do
@@ -120,5 +122,8 @@ defmodule BlueJet.Storefront.Product do
   end
   def preload_keyword(:external_file_collections) do
     [external_file_collections: ExternalFileCollection.query()]
+  end
+  def preload_keyword(:prices) do
+    [prices: Price.query()]
   end
 end

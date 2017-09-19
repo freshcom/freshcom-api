@@ -9,6 +9,7 @@ defmodule BlueJet.Storefront.Price do
   alias BlueJet.Translation
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.ProductItem
+  alias BlueJet.Storefront.Product
   alias BlueJet.Identity.Account
 
   schema "prices" do
@@ -37,6 +38,7 @@ defmodule BlueJet.Storefront.Price do
 
     belongs_to :account, Account
     belongs_to :product_item, ProductItem
+    belongs_to :product, Product
   end
 
   def system_fields do
@@ -82,7 +84,13 @@ defmodule BlueJet.Storefront.Price do
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
     moq = get_field(changeset, :minimum_order_quantity)
     product_item_id = get_field(changeset, :product_item_id)
-    price = Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
+    product_id = get_field(changeset, :product_id)
+
+    price = if product_item_id do
+      Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
+    else
+      Repo.get_by(Price, product_id: product_id, minimum_order_quantity: moq, status: "active")
+    end
 
     case price do
       nil -> changeset
@@ -98,13 +106,15 @@ defmodule BlueJet.Storefront.Price do
   def validate_status(changeset), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } } , product_item = %ProductItem{ status: "active" }) do
     price_id = get_field(changeset, :id)
-    pi_id = get_field(changeset, :product_item_id)
+    product_item_id = get_field(changeset, :product_item_id)
+    product_id = get_field(changeset, :product_item_id)
 
     prices = Ecto.assoc(product_item, :prices)
-    other_active_prices = if price_id do
-      from(p in prices, where: p.product_item_id == ^pi_id, where: p.id != ^price_id, where: p.status == "active")
-    else
-      from(p in prices, where: p.product_item_id == ^pi_id, where: p.status == "active")
+    other_active_prices = cond do
+      price_id && product_item_id -> from(p in prices, where: p.product_item_id == ^product_item_id, where: p.id != ^price_id, where: p.status == "active")
+      !price_id && product_item_id -> from(p in prices, where: p.product_item_id == ^product_item_id, where: p.status == "active")
+      price_id && product_id -> from(p in prices, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status == "active")
+      !price_id && product_id -> from(p in prices, where: p.product_id == ^product_id, where: p.status == "active")
     end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
@@ -116,10 +126,15 @@ defmodule BlueJet.Storefront.Price do
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, product_item = %ProductItem{ status: "internal" }), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, product_item = %ProductItem{ status: "internal" }) do
     price_id = get_field(changeset, :id)
-    pi_id = get_field(changeset, :product_item_id)
+    product_item_id = get_field(changeset, :product_item_id)
+    product_id = get_field(changeset, :product_id)
 
     prices = Ecto.assoc(product_item, :prices)
-    other_active_or_internal_prices = from(p in prices, where: p.product_item_id == ^pi_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    other_active_or_internal_prices = if product_item_id do
+      from(p in prices, where: p.product_item_id == ^product_item_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    else
+      from(p in prices, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    end
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
