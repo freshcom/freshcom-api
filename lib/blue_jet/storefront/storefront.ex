@@ -139,7 +139,6 @@ defmodule BlueJet.Storefront do
     request = Map.merge(defaults, request)
 
     product_item = Repo.get_by!(ProductItem, account_id: vas[:account_id], id: product_item_id)
-    changeset = ProductItem.changeset(product_item, request.fields, request.locale)
 
     with changeset = %{ valid?: true } <- ProductItem.changeset(product_item, request.fields, request.locale) do
       {:ok, product_item} = Repo.transaction(fn ->
@@ -269,10 +268,18 @@ defmodule BlueJet.Storefront do
     defaults = %{ preloads: [], fields: %{}, locale: "en" }
     request = Map.merge(defaults, request)
 
-    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
-    changeset = Price.changeset(price, request.fields, request.locale)
+    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id) |> Repo.preload(:parent)
 
-    with {:ok, price} <- Repo.update(changeset) do
+    with changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale) do
+      {:ok, price} = Repo.transaction(fn ->
+        price = Repo.update!(changeset)
+        if price.parent do
+          Price.balance!(price.parent)
+        end
+
+        price
+      end)
+
       price =
         price
         |> Repo.preload(request.preloads)
@@ -280,7 +287,7 @@ defmodule BlueJet.Storefront do
 
       {:ok, price}
     else
-      other -> other
+      other -> {:error, other}
     end
   end
 

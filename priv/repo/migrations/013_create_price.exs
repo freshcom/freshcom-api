@@ -28,7 +28,7 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
 
       add :product_item_id, references(:product_items, type: :binary_id, on_delete: :delete_all)
       add :product_id, references(:products, type: :binary_id, on_delete: :delete_all)
-      add :parent_id, references(:prices, type: :binary_id)
+      add :parent_id, references(:prices, type: :binary_id, on_delete: :delete_all)
 
       timestamps()
     end
