@@ -205,7 +205,7 @@ defmodule BlueJet.ProductItemTest do
     end
 
     test "with the only Active ProductItem of an Internal Product and changing status from Active to Disabled", %{ account1_id: account1_id, sku1_id: sku1_id } do
-      active_product = Repo.insert!(%Product{
+      internal_product = Repo.insert!(%Product{
         account_id: account1_id,
         status: "internal",
         name: "Apple"
@@ -213,7 +213,7 @@ defmodule BlueJet.ProductItemTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku1_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
         status: "active",
         name: "Apple"
       })
@@ -228,7 +228,7 @@ defmodule BlueJet.ProductItemTest do
     end
 
     test "with the only Active ProductItem of an Internal Product and changing status from Active to Internal", %{ account1_id: account1_id, sku1_id: sku1_id } do
-      active_product = Repo.insert!(%Product{
+      internal_product = Repo.insert!(%Product{
         account_id: account1_id,
         status: "internal",
         name: "Apple"
@@ -236,7 +236,7 @@ defmodule BlueJet.ProductItemTest do
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku1_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
         status: "active",
         name: "Apple"
       })
@@ -250,7 +250,7 @@ defmodule BlueJet.ProductItemTest do
     end
 
     test "with one of many Active ProductItem of an Internal Product and changing status from Active to Disabled", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
-      active_product = Repo.insert!(%Product{
+      internal_product = Repo.insert!(%Product{
         account_id: account1_id,
         status: "active",
         name: "Apple"
@@ -258,14 +258,14 @@ defmodule BlueJet.ProductItemTest do
       Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku1_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
         status: "active",
         name: "Apple"
       })
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku2_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
         status: "active",
         name: "Apple1"
       })
@@ -279,7 +279,7 @@ defmodule BlueJet.ProductItemTest do
     end
 
     test "with one of many Active ProductItem of an Internal Product and changing status from Active to Internal", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
-      active_product = Repo.insert!(%Product{
+      internal_product = Repo.insert!(%Product{
         account_id: account1_id,
         status: "active",
         name: "Apple"
@@ -287,14 +287,134 @@ defmodule BlueJet.ProductItemTest do
       Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku1_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
         status: "active",
         name: "Apple"
       })
       product_item = Repo.insert!(%ProductItem{
         account_id: account1_id,
         sku_id: sku2_id,
-        product_id: active_product.id,
+        product_id: internal_product.id,
+        status: "active",
+        name: "Apple1"
+      })
+
+      changeset =
+        product_item
+        |> Ecto.Changeset.change(%{ status: "internal" })
+        |> ProductItem.validate_status()
+
+      assert changeset.valid?
+    end
+
+    test "with one of many Active ProductItem of an Active Combo and changing status from Active to Disabled", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
+      active_combo = Repo.insert!(%Product{
+        account_id: account1_id,
+        item_mode: "all",
+        status: "active",
+        name: "Apple"
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku1_id,
+        product_id: active_combo.id,
+        status: "active",
+        name: "Apple"
+      })
+      product_item = Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku2_id,
+        product_id: active_combo.id,
+        status: "active",
+        name: "Apple1"
+      })
+
+      changeset =
+        product_item
+        |> Ecto.Changeset.change(%{ status: "disabled" })
+        |> ProductItem.validate_status()
+
+      refute changeset.valid?
+    end
+
+    test "with one of many Active ProductItem of an Active Combo and changing status from Active to Internal", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
+      active_combo = Repo.insert!(%Product{
+        account_id: account1_id,
+        item_mode: "all",
+        status: "active",
+        name: "Apple"
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku1_id,
+        product_id: active_combo.id,
+        status: "active",
+        name: "Apple"
+      })
+      product_item = Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku2_id,
+        product_id: active_combo.id,
+        status: "active",
+        name: "Apple1"
+      })
+
+      changeset =
+        product_item
+        |> Ecto.Changeset.change(%{ status: "internal" })
+        |> ProductItem.validate_status()
+
+      refute changeset.valid?
+    end
+
+    test "with one of many Active ProductItem of an Internal Combo and changing status from Active to Disabled", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
+      internal_combo = Repo.insert!(%Product{
+        account_id: account1_id,
+        item_mode: "all",
+        status: "internal",
+        name: "Apple"
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku1_id,
+        product_id: internal_combo.id,
+        status: "active",
+        name: "Apple"
+      })
+      product_item = Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku2_id,
+        product_id: internal_combo.id,
+        status: "active",
+        name: "Apple1"
+      })
+
+      changeset =
+        product_item
+        |> Ecto.Changeset.change(%{ status: "disabled" })
+        |> ProductItem.validate_status()
+
+      refute changeset.valid?
+    end
+
+    test "with one of many Active ProductItem of an Internal Combo and changing status from Active to Internal", %{ account1_id: account1_id, sku1_id: sku1_id, sku2_id: sku2_id } do
+      internal_comboe = Repo.insert!(%Product{
+        account_id: account1_id,
+        item_mode: "all",
+        status: "internal",
+        name: "Apple"
+      })
+      Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku1_id,
+        product_id: internal_comboe.id,
+        status: "active",
+        name: "Apple"
+      })
+      product_item = Repo.insert!(%ProductItem{
+        account_id: account1_id,
+        sku_id: sku2_id,
+        product_id: internal_comboe.id,
         status: "active",
         name: "Apple1"
       })
