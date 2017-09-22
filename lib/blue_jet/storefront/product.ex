@@ -31,6 +31,7 @@ defmodule BlueJet.Storefront.Product do
     has_many :items, ProductItem, on_delete: :delete_all
     has_many :external_file_collections, ExternalFileCollection, on_delete: :delete_all
     has_many :prices, Price, on_delete: :delete_all
+    has_one :default_price, Price
   end
 
   def system_fields do
@@ -157,5 +158,8 @@ defmodule BlueJet.Storefront.Product do
   end
   def preload_keyword(:prices) do
     [prices: Price.query()]
+  end
+  def preload_keyword(:default_price) do
+    [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
   end
 end

@@ -120,7 +120,7 @@ defmodule BlueJet.Storefront.Price do
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, "active") do
     price_id = get_field(changeset, :id)
     product_item_id = get_field(changeset, :product_item_id)
-    product_id = get_field(changeset, :product_item_id)
+    product_id = get_field(changeset, :product_id)
 
     other_active_prices = cond do
       price_id && product_item_id -> from(p in Price, where: p.product_item_id == ^product_item_id, where: p.id != ^price_id, where: p.status == "active")
@@ -161,6 +161,7 @@ defmodule BlueJet.Storefront.Price do
   def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(struct))
+    |> put_status()
     |> put_label()
     |> put_charge_unit()
     |> put_order_unit()
@@ -168,6 +169,18 @@ defmodule BlueJet.Storefront.Price do
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  def put_status(changeset = %Changeset{ valid?: true }) do
+    parent_id = get_field(changeset, :parent_id)
+
+    if parent_id do
+      parent = Repo.get(Price, parent_id)
+      put_change(changeset, :status, parent.status)
+    else
+      changeset
+    end
+  end
+  def put_status(changeset), do: changeset
 
   def put_label(changeset = %Changeset{ valid?: true }) do
     parent_id = get_field(changeset, :parent_id)

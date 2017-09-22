@@ -8,6 +8,7 @@ defmodule BlueJetWeb.ProductView do
   has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductItemView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included
+  has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
