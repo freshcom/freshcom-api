@@ -11,7 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :label, :string
       add :description, :text
 
-      add :is_leaf, :boolean, null: false, default: false
+      add :is_leaf, :boolean, null: false, default: true
 
       add :price_name, :string
       add :price_label, :string

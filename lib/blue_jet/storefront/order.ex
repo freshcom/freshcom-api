@@ -64,6 +64,7 @@ defmodule BlueJet.Storefront.Order do
     belongs_to :customer, Customer
     belongs_to :created_by, User
     has_many :line_items, OrderLineItem
+    has_many :root_line_items, OrderLineItem
     has_many :charges, OrderCharge
   end
 
@@ -203,13 +204,13 @@ defmodule BlueJet.Storefront.Order do
   end
 
   def changeset_for_balance(struct) do
-    query = Ecto.assoc(struct, :line_items) |> OrderLineItem.root()
+    query = Ecto.assoc(struct, :root_line_items) |> OrderLineItem.root()
 
-    sub_total_cents = Repo.aggregate(query, :sum, :sub_total_cents)
-    tax_one_cents = Repo.aggregate(query, :sum, :tax_one_cents)
-    tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents)
-    tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents)
-    grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents)
+    sub_total_cents = Repo.aggregate(query, :sum, :sub_total_cents) || 0
+    tax_one_cents = Repo.aggregate(query, :sum, :tax_one_cents) || 0
+    tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents) || 0
+    tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents) || 0
+    grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents) || 0
 
     Ecto.Changeset.change(
       struct,
@@ -247,5 +248,12 @@ defmodule BlueJet.Storefront.Order do
 
   def preload_keyword(:line_items) do
     [line_items: OrderLineItem.query()]
+  end
+
+  def preload_keyword(:root_line_items) do
+    [root_line_items: OrderLineItem.query(:root)]
+  end
+  def preload_keyword({:root_line_items, line_item_preloads}) do
+    [root_line_items: {OrderLineItem.query(:root), OrderLineItem.preload_keyword(line_item_preloads)}]
   end
 end

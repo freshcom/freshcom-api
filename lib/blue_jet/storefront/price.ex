@@ -246,6 +246,15 @@ defmodule BlueJet.Storefront.Price do
 
     query |> first()
   end
+  def query_for(product_id: product_id, order_quantity: order_quantity) do
+    query = from p in Price,
+      where: p.status == "active",
+      where: p.product_id == ^product_id,
+      where: p.minimum_order_quantity <= ^order_quantity,
+      order_by: [desc: p.minimum_order_quantity]
+
+    query |> first()
+  end
   def query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) do
     query = from p in Price,
       select: %{ row_number: fragment("ROW_NUMBER() OVER (PARTITION BY product_item_id ORDER BY minimum_order_quantity DESC)"), id: p.id },

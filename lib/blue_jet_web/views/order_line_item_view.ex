@@ -39,6 +39,8 @@ defmodule BlueJetWeb.OrderLineItemView do
     :updated_at
   ]
 
+  has_many :children, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
+
   def type(_, _) do
     "OrderLineItem"
   end

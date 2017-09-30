@@ -438,6 +438,19 @@ defmodule BlueJet.Storefront do
     end
   end
 
+  def delete_order_line_item!(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    order_line_item = Repo.get_by!(OrderLineItem, account_id: vas[:account_id], id: order_line_item_id)
+    order = Repo.get_by!(Order, account_id: vas[:account_id], id: order_line_item.order_id)
+
+    Repo.transaction(fn ->
+      Repo.delete!(order_line_item)
+      Order.balance!(order)
+    end)
+  end
+
   ####
   # Order Charge
   ####

@@ -78,13 +78,13 @@ defmodule BlueJetWeb.OrderLineItemController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => order_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => order_line_item_id }) do
     request = %{
       vas: assigns[:vas],
-      order_id: order_id
+      order_line_item_id: order_line_item_id
     }
 
-    Storefront.delete_order!(request)
+    Storefront.delete_order_line_item!(request)
 
     send_resp(conn, :no_content, "")
   end

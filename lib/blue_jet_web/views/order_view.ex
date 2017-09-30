@@ -50,5 +50,5 @@ defmodule BlueJetWeb.OrderView do
   ]
 
   has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :when_included
-  has_many :line_items, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
+  has_many :root_line_items, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
 end
