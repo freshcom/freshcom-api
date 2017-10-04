@@ -15,6 +15,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     alias BlueJet.Repo
     alias BlueJet.Inventory.Sku
+    alias BlueJet.Storefront.Product
+    alias BlueJet.Storefront.ProductItem
+    # alias BlueJet.Storefront.Price
     alias BlueJet.Identity
 
     ensure_started(Repo, [])
@@ -37,9 +40,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         "password" => "test1234"
       }
     })
-
-    # changeset = BlueJet.User.changeset_for_create(%BlueJet.User{}, %{ "first_name" => "Roy", "last_name" => "Bao", "password" => "test1234", "email" => "test1@example.com" })
-    # Repo.insert!(changeset)
 
     ########################
     # 李锦记熊猫蚝油
@@ -113,6 +113,20 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     }, "zh-CN")
     Repo.update!(changeset)
 
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "status" => "draft",
+      "name" => "Seasoned Soy Saunce"
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(%ProductItem{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "sku_id" => sku.id,
+      "name_sync" => "sync_with_source"
+    })
+    product_item = Repo.insert!(changeset)
   end
 
   # We can define other functions as needed here.

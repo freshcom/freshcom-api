@@ -1,18 +1,30 @@
-defmodule BlueJet.Storefront.OrderCharge do
+defmodule BlueJet.Storefront.Payment do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Storefront.OrderCharge
+  alias BlueJet.Storefront.Payment
   alias BlueJet.Storefront.Order
   alias BlueJet.Identity.Account
 
   schema "order_charges" do
-    field :status, :string
+    field :status, :string # pending, paid, partially_refunded, fully_refunded
+
+    field :gateway, :string # online, in_person,
+    field :processor, :string # stripe, paypal
+    field :method, :string # visa, mastercard ... , cash
+
     field :authorized_amount_cents, :integer
     field :captured_amount_cents, :integer
     field :refunded_amount_cents, :integer
+
+    field :billing_address_line_one, :string
+    field :billing_address_line_two, :string
+    field :billing_address_province, :string
+    field :billing_address_city, :string
+    field :billing_address_country_code, :string
+    field :billing_address_postal_code, :string
 
     field :stripe_charge_id, :string
 
@@ -34,11 +46,11 @@ defmodule BlueJet.Storefront.OrderCharge do
   end
 
   def writable_fields do
-    OrderCharge.__schema__(:fields) -- system_fields()
+    Payment.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    OrderCharge.__trans__(:fields)
+    Payment.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do

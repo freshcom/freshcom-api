@@ -22,23 +22,11 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :delivery_address_country_code, :string
       add :delivery_address_postal_code, :string
 
-      add :billing_address_line_one, :string
-      add :billing_address_line_two, :string
-      add :billing_address_province, :string
-      add :billing_address_city, :string
-      add :billing_address_country_code, :string
-      add :billing_address_postal_code, :string
-
       add :sub_total_cents, :integer, null: false, default: 0
       add :tax_one_cents, :integer, null: false, default: 0
       add :tax_two_cents, :integer, null: false, default: 0
       add :tax_three_cents, :integer, null: false, default: 0
       add :grand_total_cents, :integer, null: false, default: 0
-
-      add :payment_status, :string
-      add :payment_gateway, :string
-      add :payment_processor, :string
-      add :payment_method, :string
 
       add :fulfillment_method, :string
 

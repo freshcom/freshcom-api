@@ -20,23 +20,11 @@ defmodule BlueJetWeb.OrderView do
     :delivery_address_country_code,
     :delivery_address_postal_code,
 
-    :billing_address_line_one,
-    :billing_address_line_two,
-    :billing_address_province,
-    :billing_address_city,
-    :billing_address_country_code,
-    :billing_address_postal_code,
-
     :sub_total_cents,
     :tax_one_cents,
     :tax_two_cents,
     :tax_three_cents,
     :grand_total_cents,
-
-    :payment_status,
-    :payment_gateway,
-    :payment_processor,
-    :payment_method,
 
     :fulfillment_method,
 
@@ -51,4 +39,8 @@ defmodule BlueJetWeb.OrderView do
 
   has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :when_included
   has_many :root_line_items, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
+
+  def type(_, _) do
+    "Order"
+  end
 end

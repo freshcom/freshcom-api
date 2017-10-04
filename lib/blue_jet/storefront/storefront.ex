@@ -6,7 +6,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.OrderCharge
+  alias BlueJet.Storefront.Payment
 
   alias BlueJet.FileStorage.ExternalFile
 
@@ -345,6 +345,8 @@ defmodule BlueJet.Storefront do
     defaults = %{ preloads: [], fields: %{}, locale: "en" }
     request = Map.merge(defaults, request)
 
+    # If Customer trying to update, scope to order that belongs to that specific
+    # Customer
     order_scope =
       case vas[:customer_id] do
         nil -> Order
@@ -454,20 +456,20 @@ defmodule BlueJet.Storefront do
   ####
   # Order Charge
   ####
-  def create_order_charge(request = %{ vas: vas }) do
+  def create_payment(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
 
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = OrderCharge.changeset(%OrderCharge{}, fields)
+    changeset = Payment.changeset(%Payment{}, fields)
 
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
-    with {:ok, order_charge} <- Repo.insert(changeset),
-         {:ok, order_charge} <- process_order_charge(order_charge, request.fields["payment_source"]) do
+    with {:ok, payment} <- Repo.insert(changeset),
+         {:ok, payment} <- process_payment(payment, request.fields["payment_source"]) do
 
-      {:ok, order_charge}
+      {:ok, payment}
     else
       {:error, errors} -> errors
       other -> other
@@ -494,24 +496,24 @@ defmodule BlueJet.Storefront do
   defp keep_payment_source(token_or_card_id, customer_id) do
   end
 
-  # Process the order_charge through stripe
-  defp process_order_charge(order_charge, payment_source) do
-    order = Repo.get!(Order, order_charge.order_id)
+  # Process the payment through stripe
+  defp process_payment(payment, payment_source) do
+    order = Repo.get!(Order, payment.order_id)
 
     Repo.transaction(fn ->
-      Order.enforce_inventory!(order_charge.order_id) # acquires lock until end of transaction
-      Order.enforce_shipping_date_deadline!(order_charge.order_id)
+      Order.enforce_inventory!(payment.order_id) # acquires lock until end of transaction
+      Order.enforce_shipping_date_deadline!(payment.order_id)
 
-      with {:ok, stripe_info} = keep_payment_source(payment_source, order_charge.customer_id),
-           {:ok, stripe_charge} <- Stripe.Charges.create(order.grand_total_cents, source: stripe_info[:payment_source], customer: stripe_info[:stripe_customer_id], capture: order.is_estimate, metadata: %{ order_charge_id: order_charge.id })
+      with {:ok, stripe_info} = keep_payment_source(payment_source, payment.customer_id),
+           {:ok, stripe_charge} <- Stripe.Charges.create(order.grand_total_cents, source: stripe_info[:payment_source], customer: stripe_info[:stripe_customer_id], capture: order.is_estimate, metadata: %{ payment_id: payment.id })
       do
-        charge_changeset = Ecto.Changeset.change(order_charge, status: "captured", stripe_charge_id: stripe_charge.id)
+        charge_changeset = Ecto.Changeset.change(payment, status: "captured", stripe_charge_id: stripe_charge.id)
         Repo.update!(charge_changeset)
 
         order_changeset = Ecto.Changeset.change(order, status: "opened", payment_status: "paid", payment_gateway: "storefront", payment_processor: "stripe")
-        order_charge = Repo.update!(order_changeset)
+        payment = Repo.update!(order_changeset)
 
-        {:ok, order_charge}
+        {:ok, payment}
       else
         {:error, response} -> {:error, response}
       end

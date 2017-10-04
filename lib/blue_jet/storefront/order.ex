@@ -8,7 +8,7 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.OrderCharge
+  alias BlueJet.Storefront.Payment
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
@@ -31,23 +31,11 @@ defmodule BlueJet.Storefront.Order do
     field :delivery_address_country_code, :string
     field :delivery_address_postal_code, :string
 
-    field :billing_address_line_one, :string
-    field :billing_address_line_two, :string
-    field :billing_address_province, :string
-    field :billing_address_city, :string
-    field :billing_address_country_code, :string
-    field :billing_address_postal_code, :string
-
     field :sub_total_cents, :integer, default: 0
     field :tax_one_cents, :integer, default: 0
     field :tax_two_cents, :integer, default: 0
     field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer, default: 0
-
-    field :payment_status, :string, default: "pending" # pending, paid, partially_refunded, fully_refunded
-    field :payment_gateway, :string # online, in_person,
-    field :payment_processor, :string # stripe, paypal
-    field :payment_method, :string # visa, mastercard ... , cash
 
     field :fulfillment_method, :string # ship, pickup
 
@@ -65,7 +53,7 @@ defmodule BlueJet.Storefront.Order do
     belongs_to :created_by, User
     has_many :line_items, OrderLineItem
     has_many :root_line_items, OrderLineItem
-    has_many :charges, OrderCharge
+    has_many :payments, Payment
   end
 
   def translatable_fields do
@@ -88,17 +76,6 @@ defmodule BlueJet.Storefront.Order do
     ]
   end
 
-  def billing_address_fields do
-    [
-      :billing_address_line_one,
-      :billing_address_line_two,
-      :billing_address_province,
-      :billing_address_city,
-      :billing_address_country_code,
-      :billing_address_postal_code
-    ]
-  end
-
   def delivery_address_fields do
     [
       :delivery_address_line_one,
@@ -110,20 +87,12 @@ defmodule BlueJet.Storefront.Order do
     ]
   end
 
-  def payment_fields do
-    [
-      :payment_gateway,
-      :payment_processor,
-      :payment_method
-    ]
-  end
-
   def writable_fields do
     Order.__schema__(:fields) -- system_fields()
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
+    writable_fields() -- [:status]
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
     writable_fields() -- [:account_id]
@@ -138,54 +107,53 @@ defmodule BlueJet.Storefront.Order do
       :last_name
     ]
   end
+  # def required_fields(%{ fulfillment_method: "ship" }) do
+  #   required_fields() ++ (delivery_address_fields() -- [:delivery_address_line_two])
+  # end
+  # def required_fields(_) do
+  #   required_fields()
+  # end
+  # def required_fields(%{ status: "opened", fulfillment_method: fulfillment_method, payment_status: payment_status, payment_gateway: payment_gateway }) do
+  #   rfields = required_fields()
 
-  def required_fields(%{ status: "cart" }) do
-    [:account_id, :status]
-  end
-  def required_fields(%{ status: "opened", fulfillment_method: fulfillment_method, payment_status: payment_status, payment_gateway: payment_gateway }) do
-    rfields = required_fields()
+  #   rfields =
+  #     if fulfillment_method == "ship" do
+  #       rfields ++ (delivery_address_fields() -- [:delivery_address_line_two])
+  #     else
+  #       rfields
+  #     end
 
-    rfields =
-      if fulfillment_method == "ship" do
-        rfields ++ delivery_address_fields()
-      else
-        rfields
-      end
+  #   rfields =
+  #     if payment_status != "pending" && payment_gateway == "online" do
+  #       rfields ++ payment_fields()
+  #     else
+  #       rfields
+  #     end
 
-    rfields =
-      if payment_status != "pending" && payment_gateway == "online" do
-        rfields ++ payment_fields()
-      else
-        rfields
-      end
+  #   rfields =
+  #     if payment_status != "pending" && payment_gateway == "in_person" do
+  #       rfields ++ (payment_fields() -- [:payment_processor])
+  #     else
+  #       rfields
+  #     end
 
-    rfields =
-      if payment_status != "pending" && payment_gateway == "in_person" do
-        rfields ++ (payment_fields() -- [:payment_processor])
-      else
-        rfields
-      end
-
-    rfields
-  end
+  #   rfields
+  # end
   def required_fields(changeset) do
-    status = get_field(changeset, :status)
     fulfillment_method = get_field(changeset, :fulfillment_method)
-    paymenet_status = get_field(changeset, :payment_status)
-    payment_gateway = get_field(changeset, :payment_gateway)
 
-    field_values = %{
-      status: status,
-      fulfillment_method: fulfillment_method,
-      payment_status: paymenet_status,
-      payment_gateway: payment_gateway
-    }
-
-    required_fields(field_values)
+    if fulfillment_method == "ship" do
+      required_fields() ++ (delivery_address_fields() -- [:delivery_address_line_two])
+    else
+      required_fields()
+    end
   end
 
   # TODO: if changeing from cart to opened status we need to check inventory
-  def validate(changeset) do
+  def validate(changeset, %{ __meta__: %{ state: :built } }) do
+    changeset
+  end
+  def validate(changeset, _) do
     changeset
     |> validate_required(required_fields(changeset))
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
@@ -199,7 +167,7 @@ defmodule BlueJet.Storefront.Order do
   def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(struct))
-    |> validate()
+    |> validate(struct)
     |> Translation.put_change(translatable_fields(), locale)
   end
 
