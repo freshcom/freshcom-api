@@ -37,6 +37,8 @@ defmodule BlueJet.Storefront.Order do
     field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer, default: 0
 
+    field :is_estimate, :boolean, default: false
+
     field :fulfillment_method, :string # ship, pickup
 
     field :placed_at, :utc_datetime
@@ -180,13 +182,29 @@ defmodule BlueJet.Storefront.Order do
     tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents) || 0
     grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents) || 0
 
+    root_line_items = Repo.all(query)
+    estimate_count = Enum.reduce(root_line_items, 0, fn(item, acc) ->
+      if item.is_estimate do
+        acc + 1
+      else
+        acc
+      end
+    end)
+
+    is_estimate = if estimate_count > 0 do
+      true
+    else
+      false
+    end
+
     Ecto.Changeset.change(
       struct,
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,
       tax_two_cents: tax_two_cents,
       tax_three_cents: tax_three_cents,
-      grand_total_cents: grand_total_cents
+      grand_total_cents: grand_total_cents,
+      is_estimate: is_estimate
     )
   end
 
@@ -195,12 +213,12 @@ defmodule BlueJet.Storefront.Order do
     Repo.update!(changeset)
   end
 
-  def enforce_inventory!(_) do
-
+  def lock_stock(_) do
+    {:ok, nil}
   end
 
-  def enforce_shipping_date_deadline!(_) do
-
+  def lock_shipping_date(_) do
+    {:ok, nil}
   end
 
   def preload(struct_or_structs, targets) when length(targets) == 0 do

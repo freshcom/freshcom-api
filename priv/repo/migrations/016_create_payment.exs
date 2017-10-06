@@ -28,7 +28,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :translations, :map, null: false, default: "{}"
 
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all), null: false
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
 
       add :authorized_at, :utc_datetime
       add :captured_at, :utc_datetime

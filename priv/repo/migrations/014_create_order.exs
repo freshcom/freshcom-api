@@ -28,6 +28,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :tax_three_cents, :integer, null: false, default: 0
       add :grand_total_cents, :integer, null: false, default: 0
 
+      add :is_estimate, :boolean, null: false, default: false
+
       add :fulfillment_method, :string
 
       add :placed_at, :utc_datetime

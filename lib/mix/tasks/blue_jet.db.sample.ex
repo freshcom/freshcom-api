@@ -17,7 +17,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Inventory.Sku
     alias BlueJet.Storefront.Product
     alias BlueJet.Storefront.ProductItem
-    # alias BlueJet.Storefront.Price
+    alias BlueJet.Storefront.Price
     alias BlueJet.Identity
 
     ensure_started(Repo, [])
@@ -56,9 +56,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "510g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
     }, "en")
-    sku = Repo.insert!(changeset)
+    sku_oyster_sauce = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku, %{
+    changeset = Sku.changeset(sku_oyster_sauce, %{
       "name" => "李锦记熊猫蚝油",
       "specification" => "每瓶510克。",
       "storage_description" => "常温保存，避免爆嗮。"
@@ -80,9 +80,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "280g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light. After open keep refrigerated."
     }, "en")
-    sku = Repo.insert!(changeset)
+    sku_chili_oil = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku, %{
+    changeset = Sku.changeset(sku_chili_oil, %{
       "name" => "老干妈豆豉辣椒油",
       "specification" => "每瓶280克。",
       "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
@@ -104,29 +104,124 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "410ml per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
     }, "en")
-    sku = Repo.insert!(changeset)
+    sku_seasoned_soy_sauce = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku, %{
+    changeset = Sku.changeset(sku_seasoned_soy_sauce, %{
       "name" => "李锦记蒸鱼豉油",
       "specification" => "每瓶410毫升。",
       "storage_description" => "常温保存，避免爆嗮。"
     }, "zh-CN")
     Repo.update!(changeset)
 
+    #######
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "status" => "draft",
-      "name" => "Seasoned Soy Saunce"
+      "name" => "Seasoned Soy Sauce"
     })
     product = Repo.insert!(changeset)
 
     changeset = ProductItem.changeset(%ProductItem{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
-      "sku_id" => sku.id,
-      "name_sync" => "sync_with_source"
+      "sku_id" => sku_seasoned_soy_sauce.id,
+      "name_sync" => "sync_with_source",
+      "primary" => true
     })
     product_item = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_item_id" => product_item.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 599,
+      "charge_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(product_item, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+    ######
+
+
+    #######
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "status" => "draft",
+      "item_mode" => "all",
+      "name" => "Sauce Combo"
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(%ProductItem{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "sku_id" => sku_oyster_sauce.id,
+      "status" => "active",
+      "name_sync" => "sync_with_source"
+    })
+    pi_oyster_sauce = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(%ProductItem{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "sku_id" => sku_chili_oil.id,
+      "status" => "active",
+      "name_sync" => "sync_with_source"
+    })
+    pi_chili_oil = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 1100,
+      "charge_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_item_id" => pi_oyster_sauce.id,
+      "parent_id" => price.id,
+      "label" => "regular",
+      "charge_cents" => 500
+    })
+    Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_item_id" => pi_chili_oil.id,
+      "parent_id" => price.id,
+      "label" => "regular",
+      "charge_cents" => 600
+    })
+    Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(pi_oyster_sauce, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = ProductItem.changeset(pi_chili_oil, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+    ######
   end
 
   # We can define other functions as needed here.

@@ -35,6 +35,7 @@ defmodule BlueJet.Storefront.Payment do
 
     belongs_to :account, Account
     belongs_to :order, Order
+    belongs_to :customer, Customer
   end
 
   def system_fields do

@@ -21,6 +21,8 @@ defmodule BlueJet.Identity.Customer do
 
     field :password, :string, virtual: true
 
+    field :stripe_customer_id, :string
+
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 

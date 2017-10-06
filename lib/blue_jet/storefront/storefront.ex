@@ -7,6 +7,8 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Payment
+  alias BlueJet.Identity.Customer
+  alias BlueJet.Storefront.StripePaymentError
 
   alias BlueJet.FileStorage.ExternalFile
 
@@ -454,7 +456,7 @@ defmodule BlueJet.Storefront do
   end
 
   ####
-  # Order Charge
+  # Payment
   ####
   def create_payment(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
@@ -466,57 +468,83 @@ defmodule BlueJet.Storefront do
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
-    with {:ok, payment} <- Repo.insert(changeset),
-         {:ok, payment} <- process_payment(payment, request.fields["payment_source"]) do
+    with {:ok, payment} <- Repo.transaction(fn ->
+        with {:ok, payment} <- Repo.insert(changeset),
+             {:ok, _} <- Order.lock_stock(payment.order_id),
+             {:ok, _} <- Order.lock_shipping_date(payment.order_id),
+             {:ok, payment} <- process_payment(payment, request.fields)
+        do
+          payment
+        else
+          {:error, errors} -> Repo.rollback(errors)
+        end
+      end)
+    do
+      {:ok, payment}
+    else
+      {:error, changeset = %Ecto.Changeset{}} -> {:error, changeset.errors}
+      {:error, :insufficient_stock} -> {:error, %{}}
+      {:error, :shipping_date_deadline_passed} -> {:error, %{}}
+      {:error, :payment_errors} -> {:error, %{}}
+      other -> other
+    end
+  end
+
+  defp send_paylink(order_id) do
+
+  end
+
+  defp process_payment(payment = %Payment{ gateway: "in_person" }, _) do
+
+  end
+  defp process_payment(payment = %Payment{ gateway: "online", status: "pending" }, _) do
+    send_paylink(payment.order_id)
+  end
+  # Process the payment through stripe
+  defp process_payment(payment = %Payment{ gateway: "online", status: "paid" }, options) do
+    payment = payment |> Repo.preload(order: :customer)
+    with {:ok, payment} <- charge_payment(payment, options) do
+      order_changeset = Ecto.Changeset.change(payment.order, status: "opened")
+      order = Repo.update(order_changeset)
 
       {:ok, payment}
     else
-      {:error, errors} -> errors
       other -> other
     end
+  end
+  # Save the source to the stripe_customer
 
-    # create stripe customer if there is not already one
-    # if request[:save_payment_source] then save the card
-    # acquire lock
-    # enforce inventory (before_charge)
-    # check shipping date deadline not passed (before_charge)
-    # charge through stripe
-    # create the charge object
-    # update order status and payment status (after_charge)
-    # release lock
-    with {:ok, order} <- Repo.insert(changeset) do
-      order = Repo.preload(order, request.preloads)
-      {:ok, order}
+  defp charge_payment(payment = %Payment{ status: "paid", processor: "stripe" }, options = %{ "source" => source }) do
+    customer = payment.order.customer
+
+    with {:ok, stripe_charge} <- create_stripe_charge(payment, customer, source),
+         {:ok, _} <- save_stripe_source(source, customer, options)
+    do
+      payment = payment
+      |> Ecto.Changeset.change(stripe_charge_id: stripe_charge.id)
+      |> Repo.update!()
+
+      {:ok, payment}
     else
-      other -> other
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
-
-  # Save the payment_source to the stripe_customer
-  defp keep_payment_source(token_or_card_id, customer_id) do
+  defp save_stripe_source(source, %Customer{ stripe_customer_id: stripe_customer_id }, %{ "saveSource" => true }) do
+    {:ok, nil}
   end
-
-  # Process the payment through stripe
-  defp process_payment(payment, payment_source) do
-    order = Repo.get!(Order, payment.order_id)
-
-    Repo.transaction(fn ->
-      Order.enforce_inventory!(payment.order_id) # acquires lock until end of transaction
-      Order.enforce_shipping_date_deadline!(payment.order_id)
-
-      with {:ok, stripe_info} = keep_payment_source(payment_source, payment.customer_id),
-           {:ok, stripe_charge} <- Stripe.Charges.create(order.grand_total_cents, source: stripe_info[:payment_source], customer: stripe_info[:stripe_customer_id], capture: order.is_estimate, metadata: %{ payment_id: payment.id })
-      do
-        charge_changeset = Ecto.Changeset.change(payment, status: "captured", stripe_charge_id: stripe_charge.id)
-        Repo.update!(charge_changeset)
-
-        order_changeset = Ecto.Changeset.change(order, status: "opened", payment_status: "paid", payment_gateway: "storefront", payment_processor: "stripe")
-        payment = Repo.update!(order_changeset)
-
-        {:ok, payment}
-      else
-        {:error, response} -> {:error, response}
-      end
-    end)
+  defp save_stripe_source(source, _, _) do
+    {:ok, nil}
+  end
+  defp create_stripe_charge(payment, %Customer{ stripe_customer_id: stripe_customer_id }, source) do
+    order = payment.order
+    Stripe.Charges.create(order.grand_total_cents, source: source, customer: stripe_customer_id, capture: order.is_estimate, metadata: %{ fc_payment_id: payment.id })
+  end
+  defp create_stripe_charge(payment, _, source) do
+    order = payment.order
+    Stripe.Charges.create(order.grand_total_cents, source: source, capture: !order.is_estimate, metadata: %{ fc_payment_id: payment.id })
+  end
+  defp format_stripe_errors(stripe_errors) do
+    IO.inspect stripe_errors
+    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
 end

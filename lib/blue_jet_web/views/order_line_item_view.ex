@@ -2,6 +2,8 @@ defmodule BlueJetWeb.OrderLineItemView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
+  alias BlueJet.Repo
+
   attributes [
     :code,
     :name,
@@ -40,9 +42,31 @@ defmodule BlueJetWeb.OrderLineItemView do
   ]
 
   has_many :children, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
+  has_one :product_item, serializer: BlueJetWeb.ProductItemView, identifiers: :always
+  has_one :product, serializer: BlueJetWeb.ProductItemView, identifiers: :always
 
   def type(_, _) do
     "OrderLineItem"
+  end
+
+  def product(struct, conn) do
+    case struct.product do
+      %Ecto.Association.NotLoaded{} ->
+        struct
+        |> Ecto.assoc(:product)
+        |> Repo.one
+      other -> other
+    end
+  end
+
+  def product_item(struct, conn) do
+    case struct.product_item do
+      %Ecto.Association.NotLoaded{} ->
+        struct
+        |> Ecto.assoc(:product_item)
+        |> Repo.one
+      other -> other
+    end
   end
 
   def price_charge_cents(struct = %{ price_charge_cents: price_charge_cents  }, _) when not is_nil(price_charge_cents) do

@@ -58,6 +58,7 @@ defmodule BlueJetWeb.Router do
     resources "/prices", PriceController, except: [:new, :edit]
     resources "/orders", OrderController, except: [:new, :edit] do
       resources "/line_items", OrderLineItemController, only: [:create]
+      resources "/payments", PaymentController, only: [:create]
     end
     resources "/order_line_items", OrderLineItemController, only: [:update, :delete]
   end

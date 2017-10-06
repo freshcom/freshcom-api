@@ -72,7 +72,12 @@ defmodule BlueJet.Storefront.Product do
 
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "any") do
     product_id = get_field(changeset, :id)
-    active_primary_item = Repo.get_by(ProductItem, product_id: product_id, status: "active", primary: true)
+
+    active_primary_item = if product_id do
+      Repo.get_by(ProductItem, product_id: product_id, status: "active", primary: true)
+    else
+      nil
+    end
 
     case active_primary_item do
       nil -> Changeset.add_error(changeset, :status, "A Product must have a Primary Active Item in order to be marked Active.", [validation: "require_primary_active_item", full_error_message: true])
