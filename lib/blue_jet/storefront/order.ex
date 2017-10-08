@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront.Order do
 
   import Money.Sigils
 
+  alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -109,38 +110,7 @@ defmodule BlueJet.Storefront.Order do
       :last_name
     ]
   end
-  # def required_fields(%{ fulfillment_method: "ship" }) do
-  #   required_fields() ++ (delivery_address_fields() -- [:delivery_address_line_two])
-  # end
-  # def required_fields(_) do
-  #   required_fields()
-  # end
-  # def required_fields(%{ status: "opened", fulfillment_method: fulfillment_method, payment_status: payment_status, payment_gateway: payment_gateway }) do
-  #   rfields = required_fields()
 
-  #   rfields =
-  #     if fulfillment_method == "ship" do
-  #       rfields ++ (delivery_address_fields() -- [:delivery_address_line_two])
-  #     else
-  #       rfields
-  #     end
-
-  #   rfields =
-  #     if payment_status != "pending" && payment_gateway == "online" do
-  #       rfields ++ payment_fields()
-  #     else
-  #       rfields
-  #     end
-
-  #   rfields =
-  #     if payment_status != "pending" && payment_gateway == "in_person" do
-  #       rfields ++ (payment_fields() -- [:payment_processor])
-  #     else
-  #       rfields
-  #     end
-
-  #   rfields
-  # end
   def required_fields(changeset) do
     fulfillment_method = get_field(changeset, :fulfillment_method)
 
@@ -161,6 +131,25 @@ defmodule BlueJet.Storefront.Order do
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope([:customer, :created_by])
+    |> validate_customer_id()
+  end
+
+  def validate_customer_id(changeset) do
+    id = get_field(changeset, :id)
+    customer_id = get_field(changeset, :customer_id)
+
+    if customer_id do
+      changeset
+    else
+      ordered_unlockable_count =
+        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: not is_nil(oli.unlockable_id))
+        |> Repo.aggregate(:count, :id)
+
+      case ordered_unlockable_count do
+        0 -> changeset
+        _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: "order_with_unlockable_must_associate_customer", full_error_message: true])
+      end
+    end
   end
 
   @doc """
@@ -197,7 +186,7 @@ defmodule BlueJet.Storefront.Order do
       false
     end
 
-    Ecto.Changeset.change(
+    Changeset.change(
       struct,
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,

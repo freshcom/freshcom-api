@@ -120,9 +120,13 @@ defmodule BlueJet.Identity do
     request = Map.merge(defaults, request)
 
     vas_customer_id = vas[:customer_id]
-    customer =
+
+    customer_scope = if vas_customer_id do
       from(c in Customer, where: c.id == ^vas_customer_id)
-      |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
+    else
+      Customer
+    end
+    customer = Repo.get_by!(customer_scope, account_id: vas[:account_id], id: customer_id)
 
     changeset = Customer.changeset(customer, request.fields, request.locale)
 

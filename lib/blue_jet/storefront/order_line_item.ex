@@ -463,6 +463,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def query(:root) do
     from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
   end
+  def query(:is_leaf) do
+    from(oli in OrderLineItem, where: oli.is_leaf == true, order_by: [desc: oli.inserted_at])
+  end
 
   def preload_keyword(:children) do
     [children: query()]

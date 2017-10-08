@@ -15,6 +15,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     alias BlueJet.Repo
     alias BlueJet.Inventory.Sku
+    alias BlueJet.Inventory.Unlockable
     alias BlueJet.Storefront.Product
     alias BlueJet.Storefront.ProductItem
     alias BlueJet.Storefront.Price
@@ -222,7 +223,52 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     Repo.update!(changeset)
     ######
-  end
 
-  # We can define other functions as needed here.
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "status" => "draft",
+      "name" => "Unlockable Product"
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = Unlockable.changeset(%Unlockable{}, %{
+      "account_id" => account1_id,
+      "code" => "HS001",
+      "status" => "active",
+      "name" => "New Associate Trainning",
+      "print_name" => "NEW ASSOC TRAIN",
+      "caption" => "Get it",
+      "description" => "Now"
+    }, "en")
+    unlockable = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(%ProductItem{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "unlockable_id" => unlockable.id,
+      "name_sync" => "sync_with_source",
+      "primary" => true
+    })
+    pi = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_item_id" => pi.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 300,
+      "charge_unit" => "EA"
+    })
+    Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(pi, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+  end
 end

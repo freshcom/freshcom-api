@@ -472,7 +472,8 @@ defmodule BlueJet.Storefront do
         with {:ok, payment} <- Repo.insert(changeset),
              {:ok, _} <- Order.lock_stock(payment.order_id),
              {:ok, _} <- Order.lock_shipping_date(payment.order_id),
-             {:ok, payment} <- process_payment(payment, request.fields)
+             {:ok, payment} <- process_payment(payment, request.fields),
+             {:ok, order} <- process_order(payment)
         do
           payment
         else
@@ -494,6 +495,13 @@ defmodule BlueJet.Storefront do
 
   end
 
+  defp process_order(order) do
+    order_changeset = Ecto.Changeset.change(order, status: "opened")
+    order = Repo.update!(order_changeset)
+
+    {:ok, order}
+  end
+
   defp process_payment(payment = %Payment{ gateway: "in_person" }, _) do
 
   end
@@ -503,14 +511,16 @@ defmodule BlueJet.Storefront do
   # Process the payment through stripe
   defp process_payment(payment = %Payment{ gateway: "online", status: "paid" }, options) do
     payment = payment |> Repo.preload(order: :customer)
-    with {:ok, payment} <- charge_payment(payment, options) do
-      order_changeset = Ecto.Changeset.change(payment.order, status: "opened")
-      order = Repo.update(order_changeset)
+    charge_payment(payment, options)
 
-      {:ok, payment}
-    else
-      other -> other
-    end
+    # with {:ok, payment} <- charge_payment(payment, options) do
+    #   order_changeset = Ecto.Changeset.change(payment.order, status: "opened")
+    #   order = Repo.update(order_changeset)
+
+    #   {:ok, payment}
+    # else
+    #   other -> other
+    # end
   end
   # Save the source to the stripe_customer
 

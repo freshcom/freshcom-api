@@ -7,6 +7,7 @@ defmodule BlueJet.Identity.Customer do
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.Customer
+  alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "customers" do
     field :code, :string
@@ -30,12 +31,14 @@ defmodule BlueJet.Identity.Customer do
 
     belongs_to :account, Account
     has_one :refresh_token, RefreshToken
+    has_many :external_file_collections, ExternalFileCollection
   end
 
   def system_fields do
     [
       :id,
       :encrypted_password,
+      :stripe_customer_id,
       :inserted_at,
       :updated_at
     ]

@@ -4,6 +4,7 @@ defmodule BlueJetWeb.CustomerView do
 
   attributes [
     :code,
+    :status,
     :first_name,
     :last_name,
     :email,

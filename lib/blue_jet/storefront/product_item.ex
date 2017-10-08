@@ -36,6 +36,10 @@ defmodule BlueJet.Storefront.ProductItem do
     has_one :default_price, Price
   end
 
+  def source(struct) do
+    struct.sku || struct.unlockable
+  end
+
   def system_fields do
     [
       :id,

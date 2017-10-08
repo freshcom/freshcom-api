@@ -7,6 +7,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
   alias BlueJet.Identity.Account
+  alias BlueJet.Identity.Customer
   alias BlueJet.Inventory.Sku
   alias BlueJet.Inventory.Unlockable
   alias BlueJet.Storefront.Product
@@ -24,6 +25,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     belongs_to :sku, Sku
     belongs_to :unlockable, Unlockable
     belongs_to :product, Product
+    belongs_to :customer, Customer
     has_many :file_memberships, ExternalFileCollectionMembership, foreign_key: :collection_id
     has_many :files, through: [:file_memberships, :file]
   end
