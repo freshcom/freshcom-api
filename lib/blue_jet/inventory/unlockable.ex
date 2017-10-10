@@ -60,6 +60,11 @@ defmodule BlueJet.Inventory.Unlockable do
     |> validate_assoc_account_scope(:avatar)
   end
 
+  def for_order(order) do
+    order_id = order.id
+    from(u in Unlockable, join: oli in OrderLineItem, where: oli.unlockable_id == u.id, where: oli.order_id == ^order_id) |> Repo.all()
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
@@ -68,5 +73,9 @@ defmodule BlueJet.Inventory.Unlockable do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  def query() do
+    from(u in Unlockable, order_by: [desc: u.updated_at])
   end
 end

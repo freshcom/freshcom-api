@@ -2,6 +2,8 @@ defmodule BlueJetWeb.CustomerView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
+  alias BlueJet.Storefront.Customer
+
   attributes [
     :code,
     :status,
@@ -25,6 +27,8 @@ defmodule BlueJetWeb.CustomerView do
   ]
 
   has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
+  has_many :unlocks, serializer: BlueJetWeb.UnlockView, identifiers: :when_included
+  has_many :orders, serializer: BlueJetWeb.OrderView, identifiers: :when_included
 
   def type(_, _) do
     "Customer"

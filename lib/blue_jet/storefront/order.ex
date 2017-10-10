@@ -42,7 +42,7 @@ defmodule BlueJet.Storefront.Order do
 
     field :fulfillment_method, :string # ship, pickup
 
-    field :placed_at, :utc_datetime
+    field :opened_at, :utc_datetime
     field :confirmation_email_sent_at, :utc_datetime
     field :receipt_email_sent_at, :utc_datetime
 
@@ -202,12 +202,20 @@ defmodule BlueJet.Storefront.Order do
     Repo.update!(changeset)
   end
 
+  def leaf_line_items(struct) do
+    Ecto.assoc(struct, :line_items) |> OrderLineItem.leaf() |> Repo.all()
+  end
+
   def lock_stock(_) do
     {:ok, nil}
   end
 
   def lock_shipping_date(_) do
     {:ok, nil}
+  end
+
+  def query() do
+    from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
   end
 
   def preload(struct_or_structs, targets) when length(targets) == 0 do

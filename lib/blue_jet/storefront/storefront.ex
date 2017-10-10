@@ -1,15 +1,18 @@
 defmodule BlueJet.Storefront do
   use BlueJet, :context
 
+  alias Ecto.Changeset
+  alias BlueJet.Identity.Customer
   alias BlueJet.Storefront.Product
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Price
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Payment
-  alias BlueJet.Identity.Customer
   alias BlueJet.Storefront.StripePaymentError
+  alias BlueJet.Storefront.Unlock
 
+  alias BlueJet.Inventory.Unlockable
   alias BlueJet.FileStorage.ExternalFile
 
   ######
@@ -144,7 +147,7 @@ defmodule BlueJet.Storefront do
 
     with changeset = %{ valid?: true } <- ProductItem.changeset(product_item, request.fields, request.locale) do
       {:ok, product_item} = Repo.transaction(fn ->
-        if Ecto.Changeset.get_change(changeset, :primary) do
+        if Changeset.get_change(changeset, :primary) do
           product_id = product_item.product_id
           from(pi in ProductItem, where: pi.product_id == ^product_id)
           |> Repo.update_all(set: [primary: false])
@@ -430,7 +433,7 @@ defmodule BlueJet.Storefront do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
 
     with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
-      order = Repo.get!(Order, Ecto.Changeset.get_field(changeset, :order_id))
+      order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
       Repo.transaction(fn ->
         order_line_item = Repo.insert!(changeset)
         OrderLineItem.balance!(order_line_item)
@@ -473,7 +476,7 @@ defmodule BlueJet.Storefront do
              {:ok, _} <- Order.lock_stock(payment.order_id),
              {:ok, _} <- Order.lock_shipping_date(payment.order_id),
              {:ok, payment} <- process_payment(payment, request.fields),
-             {:ok, order} <- process_order(payment)
+             {:ok, order} <- process_order(payment.order)
         do
           payment
         else
@@ -483,7 +486,7 @@ defmodule BlueJet.Storefront do
     do
       {:ok, payment}
     else
-      {:error, changeset = %Ecto.Changeset{}} -> {:error, changeset.errors}
+      {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
       {:error, :insufficient_stock} -> {:error, %{}}
       {:error, :shipping_date_deadline_passed} -> {:error, %{}}
       {:error, :payment_errors} -> {:error, %{}}
@@ -496,11 +499,25 @@ defmodule BlueJet.Storefront do
   end
 
   defp process_order(order) do
-    order_changeset = Ecto.Changeset.change(order, status: "opened")
+    order_changeset = Changeset.change(order, status: "opened")
     order = Repo.update!(order_changeset)
+
+    leaf_line_items = Order.leaf_line_items(order)
+    Enum.each(leaf_line_items, fn(line_item) ->
+      line_item
+      |> Repo.preload([:sku, :unlockable])
+      |> OrderLineItem.source()
+      |> process_source(order)
+    end)
 
     {:ok, order}
   end
+
+  defp process_source(unlockable = %Unlockable{}, order) do
+    changeset = Unlock.changeset(%Unlock{}, %{ account_id: unlockable.account_id, unlockable_id: unlockable.id, customer_id: order.customer_id })
+    Repo.insert!(changeset)
+  end
+  defp process_source(source), do: source
 
   defp process_payment(payment = %Payment{ gateway: "in_person" }, _) do
 
@@ -514,7 +531,7 @@ defmodule BlueJet.Storefront do
     charge_payment(payment, options)
 
     # with {:ok, payment} <- charge_payment(payment, options) do
-    #   order_changeset = Ecto.Changeset.change(payment.order, status: "opened")
+    #   order_changeset = Changeset.change(payment.order, status: "opened")
     #   order = Repo.update(order_changeset)
 
     #   {:ok, payment}
@@ -531,7 +548,7 @@ defmodule BlueJet.Storefront do
          {:ok, _} <- save_stripe_source(source, customer, options)
     do
       payment = payment
-      |> Ecto.Changeset.change(stripe_charge_id: stripe_charge.id)
+      |> Changeset.change(stripe_charge_id: stripe_charge.id)
       |> Repo.update!()
 
       {:ok, payment}
@@ -545,7 +562,7 @@ defmodule BlueJet.Storefront do
   defp save_stripe_source(source, _, _) do
     {:ok, nil}
   end
-  defp create_stripe_charge(payment, %Customer{ stripe_customer_id: stripe_customer_id }, source) do
+  defp create_stripe_charge(payment, %Customer{ stripe_customer_id: stripe_customer_id }, source) when not is_nil(stripe_customer_id) do
     order = payment.order
     Stripe.Charges.create(order.grand_total_cents, source: source, customer: stripe_customer_id, capture: order.is_estimate, metadata: %{ fc_payment_id: payment.id })
   end

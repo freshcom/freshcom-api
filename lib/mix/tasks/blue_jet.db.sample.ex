@@ -37,6 +37,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       fields: %{
         "first_name" => "Tiffany",
         "last_name" => "Wang",
+        "status" => "registered",
         "email" => "customer1@example.com",
         "password" => "test1234"
       }

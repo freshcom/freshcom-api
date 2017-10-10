@@ -109,7 +109,7 @@ defmodule BlueJet.Identity do
     customer =
       Customer
       |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
-      |> Repo.preload(request.preloads)
+      |> Customer.preload(request.preloads)
       |> Translation.translate(request.locale)
 
     customer

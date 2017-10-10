@@ -55,7 +55,6 @@ defmodule BlueJetWeb.CustomerController do
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-
     customer = Identity.get_customer!(request)
 
     render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])

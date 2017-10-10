@@ -66,6 +66,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
     has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
   end
 
+  def source(struct) do
+    struct.sku || struct.unlockable || nil
+  end
+
   def system_fields do
     [
       :id,
@@ -384,6 +388,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def root(query) do
     from oli in query, where: is_nil(oli.parent_id)
+  end
+
+  def leaf(query) do
+    from oli in query, where: oli.is_leaf == true
   end
 
   def balance!(struct = %OrderLineItem{ is_leaf: true, parent_id: nil }), do: struct

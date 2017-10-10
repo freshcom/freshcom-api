@@ -32,7 +32,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
 
       add :fulfillment_method, :string
 
-      add :placed_at, :utc_datetime
+      add :opened_at, :utc_datetime
       add :confirmation_email_sent_at, :utc_datetime
       add :receipt_email_sent_at, :utc_datetime
 

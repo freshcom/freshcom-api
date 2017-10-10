@@ -7,6 +7,8 @@ defmodule BlueJet.Identity.Customer do
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.Customer
+  alias BlueJet.Storefront.Unlock
+  alias BlueJet.Storefront.Order
   alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "customers" do
@@ -32,6 +34,9 @@ defmodule BlueJet.Identity.Customer do
     belongs_to :account, Account
     has_one :refresh_token, RefreshToken
     has_many :external_file_collections, ExternalFileCollection
+    has_many :unlocks, Unlock
+    has_many :unlockables, through: [:unlocks, :unlockable]
+    has_many :orders, Order
   end
 
   def system_fields do
@@ -64,6 +69,7 @@ defmodule BlueJet.Identity.Customer do
 
     case status do
       "anonymous" -> [:account_id, :status]
+      "internal" -> [:account_id, :status]
       "registered" -> writable_fields() -- [:display_name, :code, :phone_number, :label]
     end
   end
@@ -89,4 +95,28 @@ defmodule BlueJet.Identity.Customer do
     put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
   end
   defp put_encrypted_password(changeset), do: changeset
+
+  def preload(struct_or_structs, targets) when length(targets) == 0 do
+    struct_or_structs
+  end
+  def preload(struct_or_structs, targets) when is_list(targets) do
+    [target | rest] = targets
+
+    struct_or_structs
+    |> Repo.preload(preload_keyword(target))
+    |> Customer.preload(rest)
+  end
+
+  def preload_keyword(:orders) do
+    [orders: Order.query()]
+  end
+  def preload_keyword(:unlocks) do
+    [unlocks: Unlock.query()]
+  end
+  def preload_keyword({:unlocks, unlock_preloads}) do
+    [unlocks: {Unlock.query(), Unlock.preload_keyword(unlock_preloads)}]
+  end
+  def preload_keyword(:external_file_collections) do
+    [external_file_collections: ExternalFileCollection.query()]
+  end
 end
