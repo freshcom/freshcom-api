@@ -16,7 +16,7 @@ defmodule BlueJet.Storefront.Payment do
     field :method, :string # visa, mastercard ... , cash
 
     field :authorized_amount_cents, :integer
-    field :captured_amount_cents, :integer
+    field :paid_amount_cents, :integer
     field :refunded_amount_cents, :integer
 
     field :billing_address_line_one, :string
@@ -79,5 +79,9 @@ defmodule BlueJet.Storefront.Payment do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  def query() do
+    from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])
   end
 end

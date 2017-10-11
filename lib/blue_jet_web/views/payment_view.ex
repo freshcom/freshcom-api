@@ -10,7 +10,7 @@ defmodule BlueJetWeb.PaymentView do
     :method,
 
     :authorized_amount_cents,
-    :captured_amount_cents,
+    :paid_amount_cents,
     :refunded_amount_cents,
 
     :billing_address_line_one,

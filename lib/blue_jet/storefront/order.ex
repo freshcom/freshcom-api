@@ -37,6 +37,7 @@ defmodule BlueJet.Storefront.Order do
     field :tax_two_cents, :integer, default: 0
     field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer, default: 0
+    field :authorization_cents, :integer, default: 0
 
     field :is_estimate, :boolean, default: false
 
@@ -170,6 +171,7 @@ defmodule BlueJet.Storefront.Order do
     tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents) || 0
     tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents) || 0
     grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents) || 0
+    authorization_cents = Repo.aggregate(query, :sum, :authorization_cents) || 0
 
     root_line_items = Repo.all(query)
     estimate_count = Enum.reduce(root_line_items, 0, fn(item, acc) ->
@@ -193,6 +195,7 @@ defmodule BlueJet.Storefront.Order do
       tax_two_cents: tax_two_cents,
       tax_three_cents: tax_three_cents,
       grand_total_cents: grand_total_cents,
+      authorization_cents: authorization_cents,
       is_estimate: is_estimate
     )
   end
@@ -232,7 +235,9 @@ defmodule BlueJet.Storefront.Order do
   def preload_keyword(:line_items) do
     [line_items: OrderLineItem.query()]
   end
-
+  def preload_keyword(:payments) do
+    [payments: Payment.query()]
+  end
   def preload_keyword(:root_line_items) do
     [root_line_items: OrderLineItem.query(:root)]
   end

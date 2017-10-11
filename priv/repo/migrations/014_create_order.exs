@@ -22,13 +22,14 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :delivery_address_country_code, :string
       add :delivery_address_postal_code, :string
 
+      add :is_estimate, :boolean, null: false, default: false
+
       add :sub_total_cents, :integer, null: false, default: 0
       add :tax_one_cents, :integer, null: false, default: 0
       add :tax_two_cents, :integer, null: false, default: 0
       add :tax_three_cents, :integer, null: false, default: 0
       add :grand_total_cents, :integer, null: false, default: 0
-
-      add :is_estimate, :boolean, null: false, default: false
+      add :authorization_cents, :integer, null: false, default: 0
 
       add :fulfillment_method, :string
 

@@ -517,7 +517,7 @@ defmodule BlueJet.Storefront do
     changeset = Unlock.changeset(%Unlock{}, %{ account_id: unlockable.account_id, unlockable_id: unlockable.id, customer_id: order.customer_id })
     Repo.insert!(changeset)
   end
-  defp process_source(source), do: source
+  defp process_source(source, order), do: source
 
   defp process_payment(payment = %Payment{ gateway: "in_person" }, _) do
 
@@ -529,17 +529,7 @@ defmodule BlueJet.Storefront do
   defp process_payment(payment = %Payment{ gateway: "online", status: "paid" }, options) do
     payment = payment |> Repo.preload(order: :customer)
     charge_payment(payment, options)
-
-    # with {:ok, payment} <- charge_payment(payment, options) do
-    #   order_changeset = Changeset.change(payment.order, status: "opened")
-    #   order = Repo.update(order_changeset)
-
-    #   {:ok, payment}
-    # else
-    #   other -> other
-    # end
   end
-  # Save the source to the stripe_customer
 
   defp charge_payment(payment = %Payment{ status: "paid", processor: "stripe" }, options = %{ "source" => source }) do
     customer = payment.order.customer
@@ -547,9 +537,13 @@ defmodule BlueJet.Storefront do
     with {:ok, stripe_charge} <- create_stripe_charge(payment, customer, source),
          {:ok, _} <- save_stripe_source(source, customer, options)
     do
-      payment = payment
-      |> Changeset.change(stripe_charge_id: stripe_charge.id)
-      |> Repo.update!()
+      changeset = if stripe_charge.captured do
+        Changeset.change(payment, stripe_charge_id: stripe_charge.id, status: "paid", paid_amount_cents: stripe_charge.amount)
+      else
+        Changeset.change(payment, stripe_charge_id: stripe_charge.id, status: "authorized", authorized_amount_cents: stripe_charge.amount)
+      end
+
+      Repo.update!(changeset)
 
       {:ok, payment}
     else
@@ -568,10 +562,15 @@ defmodule BlueJet.Storefront do
   end
   defp create_stripe_charge(payment, _, source) do
     order = payment.order
-    Stripe.Charges.create(order.grand_total_cents, source: source, capture: !order.is_estimate, metadata: %{ fc_payment_id: payment.id })
+    amount_cents = if order.is_estimate do
+      order.authorization_cents
+    else
+      order.grand_total_cents
+    end
+
+    Stripe.Charges.create(amount_cents, source: source, capture: !order.is_estimate, metadata: %{ fc_payment_id: payment.id })
   end
   defp format_stripe_errors(stripe_errors) do
-    IO.inspect stripe_errors
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
 end

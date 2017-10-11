@@ -115,6 +115,30 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     }, "zh-CN")
     Repo.update!(changeset)
 
+    ########################
+    # 鱼
+    ########################
+    changeset = Sku.changeset(%Sku{}, %{
+      "account_id" => account1_id,
+      "code" => "100508",
+      "status" => "active",
+      "name" => "Fish",
+      "print_name" => "FISH",
+      "unit_of_measure" => "EA",
+      "stackable" => false,
+      "storage_type" => "cool",
+      "specification" => "About 2lb per fish",
+      "storage_description" => "Keep refrigerated"
+    }, "en")
+    sku_fish = Repo.insert!(changeset)
+
+    changeset = Sku.changeset(sku_fish, %{
+      "name" => "鱼",
+      "specification" => "每条约2磅",
+      "storage_description" => "冷藏保存"
+    }, "zh-CN")
+    Repo.update!(changeset)
+
     #######
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
@@ -153,6 +177,47 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     Repo.update!(changeset)
     ######
 
+    ######
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "status" => "draft",
+      "name" => "Fish"
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(%ProductItem{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "sku_id" => sku_fish.id,
+      "name_sync" => "sync_with_source",
+      "primary" => true
+    })
+    product_item = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_item_id" => product_item.id,
+      "status" => "active",
+      "label" => "regular",
+      "estimate_by_default" => true,
+      "estimate_average_percentage" => 200,
+      "estimate_maximum_percentage" => 250,
+      "charge_cents" => 1599,
+      "charge_unit" => "LB",
+      "order_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = ProductItem.changeset(product_item, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+    #####
 
     #######
     changeset = Product.changeset(%Product{}, %{
