@@ -3,8 +3,6 @@ defmodule BlueJet.Storefront.Order do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  import Money.Sigils
-
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order

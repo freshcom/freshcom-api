@@ -79,29 +79,4 @@ defmodule BlueJetWeb.OrderLineItemView do
       other -> other
     end
   end
-
-  def price_charge_cents(struct = %{ price_charge_cents: price_charge_cents  }, _) when not is_nil(price_charge_cents) do
-    struct.price_charge_cents.amount
-  end
-  def price_charge_cents(_, _), do: nil
-
-  def sub_total_cents(struct, _) do
-    struct.sub_total_cents.amount
-  end
-
-  def tax_one_cents(struct, _) do
-    struct.tax_one_cents.amount
-  end
-
-  def tax_two_cents(struct, _) do
-    struct.tax_two_cents.amount
-  end
-
-  def tax_three_cents(struct, _) do
-    struct.tax_three_cents.amount
-  end
-
-  def grand_total_cents(struct, _) do
-    struct.grand_total_cents.amount
-  end
 end

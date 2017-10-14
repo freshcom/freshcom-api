@@ -3,8 +3,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   use Trans, translates: [:name, :print_name, :description, :price_caption, :custom_data], container: :translations
 
-  import Money.Sigils
-
+  alias Decimal, as: D
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.OrderLineItem
@@ -32,7 +31,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_order_unit, :string
     field :price_charge_unit, :string
     field :price_currency_code, :string
-    field :price_charge_cents, Money.Ecto.Type
+    field :price_charge_cents, :integer
     field :price_estimate_average_percentage, :decimal
     field :price_estimate_maximum_percentage, :decimal
     field :price_estimate_by_default, :boolean
@@ -44,12 +43,12 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :charge_quantity, :decimal
     field :order_quantity, :integer
 
-    field :sub_total_cents, Money.Ecto.Type
-    field :tax_one_cents, Money.Ecto.Type
-    field :tax_two_cents, Money.Ecto.Type
-    field :tax_three_cents, Money.Ecto.Type
-    field :grand_total_cents, Money.Ecto.Type
-    field :authorization_cents, Money.Ecto.Type
+    field :sub_total_cents, :integer
+    field :tax_one_cents, :integer
+    field :tax_two_cents, :integer
+    field :tax_three_cents, :integer
+    field :grand_total_cents, :integer
+    field :authorization_cents, :integer
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
@@ -264,7 +263,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     price_charge_cents = get_field(changeset, :price_charge_cents)
 
     if price_charge_cents do
-      charge_quantity = Decimal.div(Decimal.new(sub_total_cents.amount), Decimal.new(price_charge_cents.amount))
+      charge_quantity = D.div(D.new(sub_total_cents), D.new(price_charge_cents))
       put_change(changeset, :charge_quantity, charge_quantity)
     else
       changeset
@@ -278,18 +277,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
       price_estimate_by_default && !is_estimate ->
         sub_total_cents = get_field(changeset, :sub_total_cents)
         price_charge_cents = get_field(changeset, :price_charge_cents)
-        charge_quantity = Decimal.div(Decimal.new(sub_total_cents.amount), Decimal.new(price_charge_cents.amount))
+        charge_quantity = D.div(D.new(sub_total_cents), D.new(price_charge_cents))
         put_change(changeset, :charge_quantity, charge_quantity)
 
       price_estimate_by_default && is_estimate ->
-        price_estimate_average_percentage = get_field(changeset, :price_estimate_average_percentage)
+        price_estimate_average_percentage = D.new(get_field(changeset, :price_estimate_average_percentage))
+        price_estimate_average_rate = D.div(price_estimate_average_percentage, D.new(100))
         order_quantity = get_field(changeset, :order_quantity)
-        # TODO: Fix this, percentage need to div 100
-        charge_quantity = Decimal.new(order_quantity) * price_estimate_average_percentage
+
+        charge_quantity = D.new(order_quantity) * price_estimate_average_rate
         put_change(changeset, :charge_quantity, charge_quantity)
 
       !price_estimate_by_default ->
-        put_change(changeset, :charge_quantity, Decimal.new(get_field(changeset, :order_quantity)))
+        put_change(changeset, :charge_quantity, D.new(get_field(changeset, :order_quantity)))
 
       true -> changeset
     end
@@ -312,34 +312,38 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp refresh_amount_fields(changeset) do
     charge_quantity = get_field(changeset, :charge_quantity)
-    price_charge_cents = get_field(changeset, :price_charge_cents)
+    price_charge_cents = D.new(get_field(changeset, :price_charge_cents))
+
+    price_tax_one_percentage = D.new(get_field(changeset, :price_tax_one_percentage))
+    price_tax_two_percentage = D.new(get_field(changeset, :price_tax_two_percentage))
+    price_tax_three_percentage = D.new(get_field(changeset, :price_tax_three_percentage))
+
+    price_tax_one_rate = D.div(price_tax_one_percentage, D.new(100))
+    price_tax_two_rate = D.div(price_tax_two_percentage, D.new(100))
+    price_tax_three_rate = D.div(price_tax_three_percentage, D.new(100))
+
     is_estimate = get_field(changeset, :is_estimate)
 
-    sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, Decimal.to_float(charge_quantity))
-    IO.inspect get_field(changeset, :price_tax_one_percentage)
-    IO.inspect changeset.data
-    tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_one_percentage)) / 100)
-    tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_two_percentage)) / 100)
-    tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_three_percentage)) / 100)
+    sub_total_cents = get_field(changeset, :sub_total_cents) || D.mult(price_charge_cents, charge_quantity) |> D.round() |> D.to_integer()
+    tax_one_cents = get_change(changeset, :tax_one_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_one_rate) |> D.round() |> D.to_integer()
+    tax_two_cents = get_change(changeset, :tax_two_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_two_rate) |> D.round() |> D.to_integer()
+    tax_three_cents = get_change(changeset, :tax_three_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_three_rate) |> D.round() |> D.to_integer()
 
-    grand_total_cents =
-      sub_total_cents
-      |> Money.add(tax_one_cents)
-      |> Money.add(tax_two_cents)
-      |> Money.add(tax_three_cents)
+    grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
 
     authorization_cents = if is_estimate do
       order_quantity = get_field(changeset, :order_quantity)
-      auth_charge_quantity = Decimal.mult(Decimal.new(order_quantity), Decimal.div(get_field(changeset, :price_estimate_maximum_percentage), Decimal.new(100)))
-      auth_sub_total_cents = Money.multiply(price_charge_cents, Decimal.to_float(auth_charge_quantity))
-      auth_tax_one_cents = Money.multiply(auth_sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_one_percentage)) / 100)
-      auth_tax_two_cents = Money.multiply(auth_sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_two_percentage)) / 100)
-      auth_tax_three_cents = Money.multiply(auth_sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_three_percentage)) / 100)
 
-      auth_sub_total_cents
-      |> Money.add(auth_tax_one_cents)
-      |> Money.add(auth_tax_two_cents)
-      |> Money.add(auth_tax_three_cents)
+      price_estimate_maximum_percentage = D.new(get_field(changeset, :price_estimate_maximum_percentage))
+      price_estimate_maximum_rate = D.div(price_estimate_maximum_percentage, D.new(100))
+
+      auth_charge_quantity = order_quantity |> D.new() |> D.mult(price_estimate_maximum_rate)
+      auth_sub_total_cents = D.mult(price_charge_cents, auth_charge_quantity) |> D.round() |> D.to_integer()
+      auth_tax_one_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_one_rate) |> D.round() |> D.to_integer()
+      auth_tax_two_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_two_rate) |> D.round() |> D.to_integer()
+      auth_tax_three_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_three_rate) |> D.round() |> D.to_integer()
+
+      auth_sub_total_cents + auth_tax_one_cents + auth_tax_two_cents + auth_tax_three_cents
     else
       grand_total_cents
     end
@@ -384,7 +388,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       is_leaf: true,
       name: source.name,
       order_quantity: source_order_quantity,
-      charge_quantity: Decimal.new(source_order_quantity),
+      charge_quantity: D.new(source_order_quantity),
       sub_total_cents: struct.sub_total_cents,
       tax_one_cents: struct.tax_one_cents,
       tax_two_cents: struct.tax_two_cents,
