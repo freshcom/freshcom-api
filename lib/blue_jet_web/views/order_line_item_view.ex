@@ -44,6 +44,7 @@ defmodule BlueJetWeb.OrderLineItemView do
   has_many :children, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
   has_one :product_item, serializer: BlueJetWeb.ProductItemView, identifiers: :always
   has_one :product, serializer: BlueJetWeb.ProductItemView, identifiers: :always
+  has_one :price, serializer: BlueJetWeb.PriceView, identifiers: :always
 
   def type(_, _) do
     "OrderLineItem"
@@ -54,7 +55,7 @@ defmodule BlueJetWeb.OrderLineItemView do
       %Ecto.Association.NotLoaded{} ->
         struct
         |> Ecto.assoc(:product)
-        |> Repo.one
+        |> Repo.one()
       other -> other
     end
   end
@@ -64,7 +65,17 @@ defmodule BlueJetWeb.OrderLineItemView do
       %Ecto.Association.NotLoaded{} ->
         struct
         |> Ecto.assoc(:product_item)
-        |> Repo.one
+        |> Repo.one()
+      other -> other
+    end
+  end
+
+  def price(struct, conn) do
+    case struct.price do
+      %Ecto.Association.NotLoaded{} ->
+        struct
+        |> Ecto.assoc(:price)
+        |> Repo.one()
       other -> other
     end
   end

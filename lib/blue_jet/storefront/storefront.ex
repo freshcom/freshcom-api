@@ -248,7 +248,7 @@ defmodule BlueJet.Storefront do
     query =
       Price
       |> search([:name, :id], request.search_keyword, request.locale)
-      |> filter_by(product_item_id: request.filter[:product_item_id], label: request.filter[:label])
+      |> filter_by(product_item_id: request.filter[:product_item_id], product_id: request.filter[:product_id], label: request.filter[:label])
       |> where([s], s.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
@@ -514,6 +514,7 @@ defmodule BlueJet.Storefront do
   end
 
   defp process_source(unlockable = %Unlockable{}, order) do
+    # TODO: check if already unlocked, add the contraint to database
     changeset = Unlock.changeset(%Unlock{}, %{ account_id: unlockable.account_id, unlockable_id: unlockable.id, customer_id: order.customer_id })
     Repo.insert!(changeset)
   end

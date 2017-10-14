@@ -499,4 +499,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def preload_keyword(:children) do
     [children: query()]
   end
+
+  def preload_keyword(:price) do
+    [price: query()]
+  end
 end
