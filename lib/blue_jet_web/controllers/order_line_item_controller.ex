@@ -59,16 +59,16 @@ defmodule BlueJetWeb.OrderLineItemController do
     render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_id, "data" => data = %{"type" => "Order" } }) when map_size(vas) == 2 do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_line_item_id, "data" => data = %{"type" => "OrderLineItem" } }) when map_size(vas) == 2 do
     request = %{
       vas: assigns[:vas],
-      order_id: order_id,
+      order_line_item_id: order_line_item_id,
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Storefront.update_order(request) do
+    case Storefront.update_order_line_item(request) do
       {:ok, order} ->
         render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->

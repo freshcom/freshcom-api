@@ -255,19 +255,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     put_change(changeset, :translations, translations)
   end
-  # def put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
-  #   order_quantity = get_field(changeset, :order_quantity)
-  #   product_item_ids = ProductItem.query_for(product_id: product_id) |> select([pi], pi.id) |> Repo.all()
-  #   prices = Price.query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
-
-  #   end_times =
-  #     prices
-  #     |> Enum.map(fn(price) -> price.end_time end)
-  #     |> Enum.reject(&is_nil/1)
-  #     |> Enum.sort(fn(x, y) -> Timex.compare(x, y) == -1 end)
-
-  #   put_change(changeset, :price_end_time, Enum.at(end_times, 0))
-  # end
   def put_price_fields(changeset), do: changeset
 
   def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
@@ -291,7 +278,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       price_estimate_by_default && !is_estimate ->
         sub_total_cents = get_field(changeset, :sub_total_cents)
         price_charge_cents = get_field(changeset, :price_charge_cents)
-        charge_quantity = Decimal.div(Decimal.new(sub_total_cents), Decimal.new(price_charge_cents))
+        charge_quantity = Decimal.div(Decimal.new(sub_total_cents.amount), Decimal.new(price_charge_cents.amount))
         put_change(changeset, :charge_quantity, charge_quantity)
 
       price_estimate_by_default && is_estimate ->
@@ -311,48 +298,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
     refresh_amount_fields(changeset)
-    # order_quantity = get_field(changeset, :order_quantity)
-    # charge_quantity = get_field(changeset, :charge_quantity)
-    # product_item_ids = ProductItem.query_for(product_id: product_id) |> select([pi], pi.id) |> Repo.all()
-    # prices = Price.query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) |> Repo.all()
-
-    # sub_total_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
-    #   price.charge_cents
-    #   |> Money.multiply(Decimal.to_float(charge_quantity))
-    #   |> Money.add(acc)
-    # end)
-
-    # tax_one_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
-    #   price.charge_cents
-    #   |> Money.multiply(Decimal.to_float(price.tax_one_percentage) / 100)
-    #   |> Money.multiply(Decimal.to_float(charge_quantity))
-    #   |> Money.add(acc)
-    # end)
-    # tax_two_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
-    #   price.charge_cents
-    #   |> Money.multiply(Decimal.to_float(price.tax_two_percentage) / 100)
-    #   |> Money.multiply(Decimal.to_float(charge_quantity))
-    #   |> Money.add(acc)
-    # end)
-    # tax_three_cents = Enum.reduce(prices, ~M[0], fn(price, acc) ->
-    #   price.charge_cents
-    #   |> Money.multiply(Decimal.to_float(price.tax_three_percentage) / 100)
-    #   |> Money.multiply(Decimal.to_float(charge_quantity))
-    #   |> Money.add(acc)
-    # end)
-
-    # grand_total_cents =
-    #   sub_total_cents
-    #   |> Money.add(tax_one_cents)
-    #   |> Money.add(tax_two_cents)
-    #   |> Money.add(tax_three_cents)
-
-    # changeset
-    # |> put_change(:sub_total_cents, sub_total_cents)
-    # |> put_change(:tax_one_cents, tax_one_cents)
-    # |> put_change(:tax_two_cents, tax_two_cents)
-    # |> put_change(:tax_three_cents, tax_three_cents)
-    # |> put_change(:grand_total_cents, grand_total_cents)
   end
   def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: _ } }) do
     refresh_amount_fields(changeset)
@@ -371,6 +316,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     is_estimate = get_field(changeset, :is_estimate)
 
     sub_total_cents = get_field(changeset, :sub_total_cents) || Money.multiply(price_charge_cents, Decimal.to_float(charge_quantity))
+    IO.inspect get_field(changeset, :price_tax_one_percentage)
+    IO.inspect changeset.data
     tax_one_cents = get_change(changeset, :tax_one_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_one_percentage)) / 100)
     tax_two_cents = get_change(changeset, :tax_two_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_two_percentage)) / 100)
     tax_three_cents = get_change(changeset, :tax_three_cents) || Money.multiply(sub_total_cents, Decimal.to_float(get_field(changeset, :price_tax_three_percentage)) / 100)

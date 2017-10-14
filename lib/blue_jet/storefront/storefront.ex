@@ -445,6 +445,24 @@ defmodule BlueJet.Storefront do
     end
   end
 
+  def update_order_line_item(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+
+    order_line_item = Repo.get_by!(OrderLineItem, account_id: vas[:account_id], id: order_line_item_id) |> Repo.preload(:order)
+
+    with changeset = %{valid?: true} <- OrderLineItem.changeset(order_line_item, request.fields) do
+      Repo.transaction(fn ->
+        order_line_item = Repo.update!(changeset)
+        OrderLineItem.balance!(order_line_item)
+        Order.balance!(order_line_item.order)
+        order_line_item
+      end)
+    else
+      other -> {:error, other}
+    end
+  end
+
   def delete_order_line_item!(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)

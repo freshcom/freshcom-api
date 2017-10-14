@@ -36,10 +36,6 @@ defmodule BlueJetWeb.PriceView do
     "Price"
   end
 
-  def charge_cents(struct, _) do
-    struct.charge_cents.amount
-  end
-
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
   def product_item(struct, %{ assigns: %{ locale: locale } }) do

@@ -3,8 +3,6 @@ defmodule BlueJet.Storefront.Price do
 
   use Trans, translates: [:name, :caption, :order_unit, :charge_unit], container: :translations
 
-  import Money.Sigils
-
   alias Ecto.Changeset
 
   alias BlueJet.Repo
@@ -20,7 +18,7 @@ defmodule BlueJet.Storefront.Price do
     field :label, :string
     field :caption, :string
     field :currency_code, :string, default: "CAD"
-    field :charge_cents, Money.Ecto.Type
+    field :charge_cents, :integer
     field :estimate_average_percentage, :decimal
     field :estimate_maximum_percentage, :decimal
     field :minimum_order_quantity, :integer, default: 1
@@ -276,11 +274,11 @@ defmodule BlueJet.Storefront.Price do
 
   def balance!(price) do
     children = Ecto.assoc(price, :children) |> Repo.all()
-    charge_cents = Enum.reduce(children, ~M[0], fn(child, acc) ->
-      Money.add(acc, child.charge_cents)
+    charge_cents = Enum.reduce(children, 0, fn(child, acc) ->
+      acc + child.charge_cents
     end)
 
-    changeset = Price.changeset(price, %{ "charge_cents" => charge_cents.amount })
+    changeset = Price.changeset(price, %{ "charge_cents" => charge_cents })
     Repo.update!(changeset)
   end
 end
