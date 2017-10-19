@@ -108,18 +108,26 @@ defmodule BlueJet.Storefront.OrderLineItem do
     writable_fields() -- [:account_id, :order_id, :product_id, :product_item_id, :parent_id, :sku_id, :unlockable_id]
   end
 
-  def require_fields do
-    [
-      :account_id,
-      :order_id,
-      :order_quantity
-    ]
+  def require_fields(changeset) do
+    common = [:account_id, :order_id]
+    if get_field(changeset, :product_id) || get_field(changeset, :product_item_id) do
+      common ++ [:price_id, :order_quantity, :charge_quantity]
+    else
+      common ++ [:sub_total_cents]
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required(require_fields())
+    |> validate_required(require_fields(changeset))
     |> foreign_key_constraint(:account_id)
+    |> foreign_key_constraint(:order_id)
+    |> foreign_key_constraint(:price_id)
+    |> foreign_key_constraint(:product_id)
+    |> foreign_key_constraint(:product_item_id)
+    |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:sku_id)
+    |> foreign_key_constraint(:unlockable_id)
     |> validate_assoc_account_scope([:order, :price, :product, :product_item, :parent, :sku, :unlockable])
   end
 
@@ -266,7 +274,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       charge_quantity = D.div(D.new(sub_total_cents), D.new(price_charge_cents))
       put_change(changeset, :charge_quantity, charge_quantity)
     else
-      changeset
+      put_change(changeset, :charge_quantity, D.new(get_field(changeset, :order_quantity)))
     end
   end
   def put_charge_quantity(changeset = %Changeset{ valid?: true }) do
@@ -285,7 +293,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
         price_estimate_average_rate = D.div(price_estimate_average_percentage, D.new(100))
         order_quantity = get_field(changeset, :order_quantity)
 
-        charge_quantity = D.new(order_quantity) * price_estimate_average_rate
+        charge_quantity = D.mult(D.new(order_quantity), price_estimate_average_rate)
         put_change(changeset, :charge_quantity, charge_quantity)
 
       !price_estimate_by_default ->
@@ -296,23 +304,28 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_charge_quantity(changeset), do: changeset
 
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id } }) do
-    refresh_amount_fields(changeset)
+  def put_amount_fields(changeset) do
+    if get_field(changeset, :price_id) do
+      refresh_amount_fields(changeset, :with_price)
+    else
+      refresh_amount_fields(changeset)
+    end
   end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ product_item_id: _ } }) do
-    refresh_amount_fields(changeset)
-  end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
-    refresh_amount_fields(changeset)
-  end
-  def put_amount_fields(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: _ } }) do
-    refresh_amount_fields(changeset)
-  end
-  def put_amount_fields(changeset), do: changeset
 
-  defp refresh_amount_fields(changeset) do
+  defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
+    sub_total_cents = get_field(changeset, :sub_total_cents)
+    tax_one_cents = get_field(changeset, :tax_one_cents)
+    tax_two_cents = get_field(changeset, :tax_two_cents)
+    tax_three_cents = get_field(changeset, :tax_three_cents)
+    grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
+
+    changeset
+    |> put_change(:grand_total_cents, grand_total_cents)
+    |> put_change(:authorization_cents, grand_total_cents)
+  end
+  defp refresh_amount_fields(changeset, :with_price) do
     charge_quantity = get_field(changeset, :charge_quantity)
-    price_charge_cents = D.new(get_field(changeset, :price_charge_cents))
+    price_charge_cents = get_field(changeset, :price_charge_cents)
 
     price_tax_one_percentage = D.new(get_field(changeset, :price_tax_one_percentage))
     price_tax_two_percentage = D.new(get_field(changeset, :price_tax_two_percentage))
@@ -324,7 +337,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     is_estimate = get_field(changeset, :is_estimate)
 
-    sub_total_cents = get_field(changeset, :sub_total_cents) || D.mult(price_charge_cents, charge_quantity) |> D.round() |> D.to_integer()
+    sub_total_cents = get_field(changeset, :sub_total_cents) || price_charge_cents |> D.new() |> D.mult(charge_quantity) |> D.round() |> D.to_integer()
     tax_one_cents = get_change(changeset, :tax_one_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_one_rate) |> D.round() |> D.to_integer()
     tax_two_cents = get_change(changeset, :tax_two_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_two_rate) |> D.round() |> D.to_integer()
     tax_three_cents = get_change(changeset, :tax_three_cents) || sub_total_cents |> D.new() |> D.mult(price_tax_three_rate) |> D.round() |> D.to_integer()
@@ -338,7 +351,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       price_estimate_maximum_rate = D.div(price_estimate_maximum_percentage, D.new(100))
 
       auth_charge_quantity = order_quantity |> D.new() |> D.mult(price_estimate_maximum_rate)
-      auth_sub_total_cents = D.mult(price_charge_cents, auth_charge_quantity) |> D.round() |> D.to_integer()
+      auth_sub_total_cents = price_charge_cents |> D.new() |> D.mult(auth_charge_quantity) |> D.round() |> D.to_integer()
       auth_tax_one_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_one_rate) |> D.round() |> D.to_integer()
       auth_tax_two_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_two_rate) |> D.round() |> D.to_integer()
       auth_tax_three_cents = auth_sub_total_cents |> D.new() |> D.mult(price_tax_three_rate) |> D.round() |> D.to_integer()
@@ -377,9 +390,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
       product_item.unlockable_id ->  Repo.get!(Unlockable, product_item.unlockable_id)
     end
     source_order_quantity = product_item.source_quantity * struct.order_quantity
+    # TODO: Change to Repo.one() since oli with product item should ever only have one child
     children = assoc(struct, :children) |> Repo.all()
 
-    child = %OrderLineItem{
+    child_fields = %{
       account_id: struct.account_id,
       order_id: struct.order_id,
       sku_id: product_item.sku_id,
@@ -388,7 +402,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       is_leaf: true,
       name: source.name,
       order_quantity: source_order_quantity,
-      charge_quantity: D.new(source_order_quantity),
+      charge_quantity: struct.charge_quantity,
       sub_total_cents: struct.sub_total_cents,
       tax_one_cents: struct.tax_one_cents,
       tax_two_cents: struct.tax_two_cents,
@@ -398,10 +412,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
       translations: Translation.merge_translations(%{}, source.translations, ["name"])
     }
     case length(children) do
-      0 -> Repo.insert!(child)
+      0 -> Repo.insert!(Changeset.change(%OrderLineItem{}, child_fields))
       _ ->
         Enum.at(children, 0)
-        |> OrderLineItem.changeset(Map.from_struct(child))
+        |> Changeset.change(child_fields)
         |> Repo.update!()
     end
 
