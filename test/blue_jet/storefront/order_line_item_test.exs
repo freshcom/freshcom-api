@@ -1,8 +1,6 @@
 defmodule BlueJet.OrderLineItemTest do
   use BlueJet.DataCase
 
-  import Money.Sigils
-
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -10,6 +8,86 @@ defmodule BlueJet.OrderLineItemTest do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Product
   alias BlueJet.Inventory.Sku
+
+  def create_regular_product do
+    account = Repo.insert!(%Account{})
+    product = Repo.insert!(%Product{
+      status: "active",
+      name: "Apple",
+      account_id: account.id
+    })
+    product_item = Repo.insert!(%ProductItem{
+      status: "active",
+      name: "Apple Large",
+      account_id: account.id,
+      product_id: product.id,
+      translations: %{
+        "zh-CN" => %{
+          "name" => "苹果 大号"
+        },
+        "lala" => %{
+          "name" => "Apple Large"
+        }
+      }
+    })
+    regular_price = Repo.insert!(%Price{
+      account_id: account.id,
+      product_item_id: product_item.id,
+      status: "active",
+      label: "regular",
+      name: "Regular Price",
+      charge_cents: 1000,
+      order_unit: "EA",
+      charge_unit: "EA",
+      translations: %{
+        "zh-CN" => %{
+          "name" => "原价"
+        },
+        "lala" => %{
+          "name" => "Regular Price"
+        }
+      }
+    })
+    end_time = Timex.shift(Timex.now(), days: 3)
+    bulk_price = Repo.insert!(%Price{
+      account_id: account.id,
+      product_item_id: product_item.id,
+      status: "active",
+      caption: "Bulk price is good",
+      label: "blulk",
+      name: "Bulk Price",
+      charge_cents: 899,
+      order_unit: "EA",
+      charge_unit: "EA",
+      minimum_order_quantity: 3,
+      tax_one_percentage: Decimal.new(5),
+      tax_two_percentage: Decimal.new(7),
+      tax_three_percentage: Decimal.new(1),
+      end_time: end_time,
+      translations: %{
+        "zh-CN" => %{
+          "name" => "团购价"
+        },
+        "lala" => %{
+          "name" => "Bulk Price"
+        }
+      }
+    })
+
+    %{ account: account, product: product, product_item: product_item, regular_price: regular_price, bulk_price: bulk_price }
+  end
+
+  def create_combo_product do
+
+  end
+
+  def create_regular_product_with_variable_weight do
+
+  end
+
+  def create_regular_product_with_unlockable do
+
+  end
 
   describe "schema" do
     test "defaults" do
@@ -22,70 +100,8 @@ defmodule BlueJet.OrderLineItemTest do
   end
 
   describe "changeset/3" do
-    test "with new OrderLineItem with product_item_id" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        status: "active",
-        name: "Apple",
-        account_id: account.id
-      })
-      product_item = Repo.insert!(%ProductItem{
-        status: "active",
-        name: "Apple Large",
-        account_id: account.id,
-        product_id: product.id,
-        translations: %{
-          "zh-CN" => %{
-            "name" => "苹果 大号"
-          },
-          "lala" => %{
-            "name" => "LOL Apple Large"
-          }
-        }
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item.id,
-        status: "active",
-        label: "regular",
-        name: "Regular Price",
-        charge_cents: %Money{ amount: 1000, currency: :CAD },
-        order_unit: "EA",
-        charge_unit: "EA",
-        translations: %{
-          "zh-CN" => %{
-            "name" => "原价"
-          },
-          "lala" => %{
-            "name" => "LOL Regular Price"
-          }
-        }
-      })
-      end_time = Timex.shift(Timex.now(), days: 3)
-      bulk_price = Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item.id,
-        status: "active",
-        caption: "Bulk price is good",
-        label: "blulk",
-        name: "Bulk Price",
-        charge_cents: %Money{ amount: 899, currency: :CAD },
-        order_unit: "EA",
-        charge_unit: "EA",
-        minimum_order_quantity: 3,
-        tax_one_percentage: Decimal.new(5),
-        tax_two_percentage: Decimal.new(7),
-        tax_three_percentage: Decimal.new(1),
-        end_time: end_time,
-        translations: %{
-          "zh-CN" => %{
-            "name" => "团购价"
-          },
-          "lala" => %{
-            "name" => "LOL Bulk Price"
-          }
-        }
-      })
+    test "with new OrderLineItem that have product_item_id and order_quantity" do
+      %{ account: account, product_item: product_item, bulk_price: bulk_price } = create_regular_product()
       order = Repo.insert!(%Order{ account_id: account.id })
 
       changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
@@ -101,11 +117,12 @@ defmodule BlueJet.OrderLineItemTest do
           "price_name" => "团购价"
         },
         "lala" => %{
-          "name" => "LOL Apple Large",
-          "price_name" => "LOL Bulk Price"
+          "name" => "Apple Large",
+          "price_name" => "Bulk Price"
         }
       }
 
+      assert changeset.valid?
       assert changeset.changes.name == product_item.name
       assert changeset.changes.price_label == bulk_price.label
       assert changeset.changes.price_caption == bulk_price.caption
@@ -118,15 +135,14 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_tax_two_percentage == bulk_price.tax_two_percentage
       assert changeset.changes.price_tax_three_percentage == bulk_price.tax_three_percentage
       assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
-      assert changeset.changes.price_end_time == end_time
+      assert changeset.changes.price_end_time == bulk_price.end_time
       assert changeset.changes.order_quantity == 3
       assert changeset.changes.charge_quantity == Decimal.new(3)
-      assert changeset.changes.sub_total_cents == %Money{ amount: 2697, currency: :CAD }
-      assert changeset.changes.tax_one_cents == %Money{ amount: 135, currency: :CAD }
-      assert changeset.changes.tax_two_cents == %Money{ amount: 189, currency: :CAD }
-      assert changeset.changes.tax_three_cents == %Money{ amount: 27, currency: :CAD }
-      assert changeset.changes.grand_total_cents == %Money{ amount: 3048, currency: :CAD }
-
+      assert changeset.changes.sub_total_cents == 2697
+      assert changeset.changes.tax_one_cents == 135
+      assert changeset.changes.tax_two_cents == 189
+      assert changeset.changes.tax_three_cents == 27
+      assert changeset.changes.grand_total_cents == 3048
       assert changeset.changes.translations == correct_translations
     end
 
@@ -160,7 +176,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        charge_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA",
         tax_one_percentage: 5,
@@ -175,7 +191,7 @@ defmodule BlueJet.OrderLineItemTest do
         caption: "Bulk price is good",
         label: "blulk",
         name: "Bulk Price",
-        charge_cents: %Money{ amount: 899, currency: :CAD },
+        charge_cents: 899,
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 4,
@@ -198,7 +214,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        charge_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA",
         end_time: price_end_time2
@@ -210,7 +226,7 @@ defmodule BlueJet.OrderLineItemTest do
         caption: "Bulk price is good",
         label: "blulk",
         name: "Bulk Price",
-        charge_cents: %Money{ amount: 899, currency: :CAD },
+        charge_cents: 899,
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 3,
@@ -239,11 +255,11 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_end_time == price_end_time1
       assert changeset.changes.order_quantity == 1
       assert changeset.changes.charge_quantity == Decimal.new(1)
-      assert changeset.changes.sub_total_cents == ~M[2000]
-      assert changeset.changes.tax_one_cents == ~M[50]
-      assert changeset.changes.tax_two_cents == ~M[70]
-      assert changeset.changes.tax_three_cents == ~M[10]
-      assert changeset.changes.grand_total_cents == ~M[2130]
+      assert changeset.changes.sub_total_cents == 2000
+      assert changeset.changes.tax_one_cents == 50
+      assert changeset.changes.tax_two_cents == 70
+      assert changeset.changes.tax_three_cents == 10
+      assert changeset.changes.grand_total_cents == 2130
       assert changeset.changes.translations == correct_translations
 
       changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
@@ -257,11 +273,11 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_end_time == price_end_time1
       assert changeset.changes.order_quantity == 3
       assert changeset.changes.charge_quantity == Decimal.new(3)
-      assert changeset.changes.sub_total_cents == ~M[5697]
-      assert changeset.changes.tax_one_cents == ~M[150]
-      assert changeset.changes.tax_two_cents == ~M[210]
-      assert changeset.changes.tax_three_cents == ~M[30]
-      assert changeset.changes.grand_total_cents == ~M[6087]
+      assert changeset.changes.sub_total_cents == 5697
+      assert changeset.changes.tax_one_cents == 150
+      assert changeset.changes.tax_two_cents == 210
+      assert changeset.changes.tax_three_cents == 30
+      assert changeset.changes.grand_total_cents == 6087
       assert changeset.changes.translations == correct_translations
     end
   end
@@ -326,11 +342,11 @@ defmodule BlueJet.OrderLineItemTest do
         charge_quantity: 3,
         order_quantity: 3,
         product_item_id: product_item.id,
-        sub_total_cents: ~M[1000],
-        tax_one_cents: ~M[20],
-        tax_two_cents: ~M[10],
-        tax_three_cents: ~M[60],
-        grand_total_cents: ~M[1090]
+        sub_total_cents: 1000,
+        tax_one_cents: 20,
+        tax_two_cents: 10,
+        tax_three_cents: 60,
+        grand_total_cents: 1090
       })
 
       children = order_line_item |> OrderLineItem.balance!() |> OrderLineItem.balance!() |> Ecto.assoc(:children) |> Repo.all()
@@ -384,7 +400,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        charge_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -402,7 +418,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: %Money{ amount: 1000, currency: :CAD },
+        charge_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -418,11 +434,11 @@ defmodule BlueJet.OrderLineItemTest do
         charge_quantity: 3,
         order_quantity: 3,
         product_id: product.id,
-        sub_total_cents: ~M[6000],
-        tax_one_cents: ~M[0],
-        tax_two_cents: ~M[0],
-        tax_three_cents: ~M[0],
-        grand_total_cents: ~M[6000]
+        sub_total_cents: 6000,
+        tax_one_cents: 0,
+        tax_two_cents: 0,
+        tax_three_cents: 0,
+        grand_total_cents: 6000
       })
 
       children =
@@ -436,9 +452,9 @@ defmodule BlueJet.OrderLineItemTest do
 
       assert length(children) == 2
       assert child1.order_quantity == 3
-      assert child1.sub_total_cents == ~M[3000]
+      assert child1.sub_total_cents == 3000
       assert child2.order_quantity == 3
-      assert child2.sub_total_cents == ~M[3000]
+      assert child2.sub_total_cents == 3000
 
 
       # IO.inspect "#{order_line_item.name} x #{order_line_item.order_quantity} #{order_line_item.grand_total_cents}"

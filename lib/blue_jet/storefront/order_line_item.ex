@@ -111,7 +111,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def require_fields(changeset) do
     common = [:account_id, :order_id]
     if get_field(changeset, :product_id) || get_field(changeset, :product_item_id) do
-      common ++ [:price_id, :order_quantity, :charge_quantity]
+      common ++ [:order_quantity]
     else
       common ++ [:sub_total_cents]
     end
@@ -304,13 +304,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_charge_quantity(changeset), do: changeset
 
-  def put_amount_fields(changeset) do
+  def put_amount_fields(changeset = %Changeset{ valid?: true }) do
     if get_field(changeset, :price_id) do
       refresh_amount_fields(changeset, :with_price)
     else
       refresh_amount_fields(changeset)
     end
   end
+  def put_amount_fields(changeset), do: changeset
 
   defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
@@ -423,6 +424,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def balance!(struct = %OrderLineItem{ product_id: product_id, parent_id: nil }) when not is_nil(product_id) do
     product = Repo.get!(Product, product_id)
+    price = Repo.get!(Price, struct.price_id) |> Repo.preload(:children)
     product_items = assoc(product, :items) |> Repo.all()
 
     Enum.each(product_items, fn(product_item) ->
@@ -432,12 +434,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
         _ -> existing_child
       end
 
+      target_price = Enum.find(price.children, fn(child_price) ->
+        child_price.product_item_id == product_item.id
+      end)
       changeset = OrderLineItem.changeset(child, %{
         "account_id" => struct.account_id,
         "order_id" => struct.order_id,
         "product_item_id" => product_item.id,
         "order_quantity" => struct.order_quantity,
-        "parent_id" => struct.id
+        "parent_id" => struct.id,
+        "price_id" => target_price.id
       })
 
       updated_child = case existing_child do
