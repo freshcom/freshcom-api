@@ -9,6 +9,7 @@ defmodule BlueJetWeb.PaymentView do
     :processor,
     :method,
 
+    :pending_amount_cents,
     :authorized_amount_cents,
     :paid_amount_cents,
     :refunded_amount_cents,

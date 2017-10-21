@@ -15,6 +15,7 @@ defmodule BlueJet.Storefront.Payment do
     field :processor, :string # stripe, paypal
     field :method, :string # visa, mastercard ... , cash
 
+    field :pending_amount_cents, :integer
     field :authorized_amount_cents, :integer
     field :paid_amount_cents, :integer
     field :refunded_amount_cents, :integer
@@ -61,13 +62,22 @@ defmodule BlueJet.Storefront.Payment do
     writable_fields() -- [:account_id, :order_id]
   end
 
-  def required_fields do
-    [:account_id, :order_id]
+  def required_fields(changeset) do
+    status = get_field(changeset, :status)
+    gateway = get_field(changeset, :gateway)
+    common = [:account_id, :order_id, :gateway]
+
+    cond do
+      status == "pending" -> common
+      status == "paid" && gateway == "online" -> common ++ [:processor]
+      status == "paid" && gateway == "offline" -> common ++ [:method]
+      true -> common
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required(required_fields())
+    |> validate_required(required_fields(changeset))
     |> validate_assoc_account_scope(:order)
   end
 

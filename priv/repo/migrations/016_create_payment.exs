@@ -11,6 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :processor, :string
       add :method, :string
 
+      add :pending_amount_cents, :integer
       add :authorized_amount_cents, :integer
       add :paid_amount_cents, :integer
       add :refunded_amount_cents, :integer

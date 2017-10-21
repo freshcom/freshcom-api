@@ -484,14 +484,17 @@ defmodule BlueJet.Storefront do
     request = Map.merge(defaults, request)
 
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Payment.changeset(%Payment{}, fields)
 
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
-    with {:ok, payment} <- Repo.transaction(fn ->
-        with {:ok, payment} <- Repo.insert(changeset),
-             {:ok, _} <- Order.lock_stock(payment.order_id),
+
+    # TODO: validate first
+    with changeset = %Changeset{ valid?: true } <- Payment.changeset(%Payment{}, fields),
+      {:ok, payment} <- Repo.transaction(fn ->
+
+        payment = Repo.insert!(changeset) |> Repo.preload(:order)
+        with {:ok, _} <- Order.lock_stock(payment.order_id),
              {:ok, _} <- Order.lock_shipping_date(payment.order_id),
              {:ok, payment} <- process_payment(payment, request.fields),
              {:ok, order} <- process_order(payment.order)
@@ -500,6 +503,7 @@ defmodule BlueJet.Storefront do
         else
           {:error, errors} -> Repo.rollback(errors)
         end
+
       end)
     do
       {:ok, payment}
@@ -508,6 +512,7 @@ defmodule BlueJet.Storefront do
       {:error, :insufficient_stock} -> {:error, %{}}
       {:error, :shipping_date_deadline_passed} -> {:error, %{}}
       {:error, :payment_errors} -> {:error, %{}}
+      changeset = %Changeset{} -> {:error, changeset.errors}
       other -> other
     end
   end
@@ -538,8 +543,11 @@ defmodule BlueJet.Storefront do
   end
   defp process_source(source, order), do: source
 
-  defp process_payment(payment = %Payment{ gateway: "in_person" }, _) do
+  defp process_payment(payment = %Payment{ gateway: "offline" }, _) do
+    changeset = Changeset.change(payment, pending_amount_cents: payment.order.grand_total_cents)
+    payment = Repo.update!(changeset)
 
+    {:ok, payment}
   end
   defp process_payment(payment = %Payment{ gateway: "online", status: "pending" }, _) do
     send_paylink(payment.order_id)
