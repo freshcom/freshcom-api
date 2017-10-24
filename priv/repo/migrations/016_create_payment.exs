@@ -2,7 +2,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
   use Ecto.Migration
 
   def change do
-    create table(:order_charges, primary_key: false) do
+    create table(:payments, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string, default: "pending"
@@ -14,7 +14,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :pending_amount_cents, :integer
       add :authorized_amount_cents, :integer
       add :paid_amount_cents, :integer
-      add :refunded_amount_cents, :integer
+      add :refunded_amount_cents, :integer, null: false, default: 0
 
       add :billing_address_line_one, :string
       add :billing_address_line_two, :string
@@ -38,7 +38,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       timestamps()
     end
 
-    create index(:order_charges, [:account_id])
-    create index(:order_charges, [:order_id])
+    create index(:payments, [:account_id])
+    create index(:payments, [:order_id])
   end
 end

@@ -51,6 +51,7 @@ defmodule BlueJet.Mixfile do
       {:stripity_stripe, "~> 1.6.0"},
       {:timex_ecto, "~> 3.0"},
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
+      {:uri_query, "~> 0.1.2"}
     ]
   end
 

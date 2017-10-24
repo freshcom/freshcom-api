@@ -11,6 +11,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.Payment
   alias BlueJet.Storefront.StripePaymentError
   alias BlueJet.Storefront.Unlock
+  alias BlueJet.Storefront.Refund
 
   alias BlueJet.Inventory.Unlockable
   alias BlueJet.FileStorage.ExternalFile
@@ -392,10 +393,6 @@ defmodule BlueJet.Storefront do
         label: request.filter[:label],
         delivery_address_province: request.filter[:delivery_address_province],
         delivery_address_city: request.filter[:delivery_address_city],
-        payment_status: request.filter[:payment_status],
-        payment_gateway: request.filter[:payment_gateway],
-        payment_processor: request.filter[:payment_processor],
-        payment_method: request.filter[:payment_method],
         fulfillment_method: request.filter[:fulfillment_method]
       )
       |> where([s], s.account_id == ^account_id)
@@ -488,15 +485,13 @@ defmodule BlueJet.Storefront do
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
-
-    # TODO: validate first
     with changeset = %Changeset{ valid?: true } <- Payment.changeset(%Payment{}, fields),
       {:ok, payment} <- Repo.transaction(fn ->
 
         payment = Repo.insert!(changeset) |> Repo.preload(:order)
         with {:ok, _} <- Order.lock_stock(payment.order_id),
              {:ok, _} <- Order.lock_shipping_date(payment.order_id),
-             {:ok, payment} <- process_payment(payment, request.fields),
+             {:ok, payment} <- process_payment(payment, changeset, request.fields),
              {:ok, order} <- process_order(payment.order)
         do
           payment
@@ -512,6 +507,30 @@ defmodule BlueJet.Storefront do
       {:error, :insufficient_stock} -> {:error, %{}}
       {:error, :shipping_date_deadline_passed} -> {:error, %{}}
       {:error, :payment_errors} -> {:error, %{}}
+      changeset = %Changeset{} -> {:error, changeset.errors}
+      other -> other
+    end
+  end
+
+  def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+    payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
+
+    with changeset = %Changeset{ valid?: true } <- Payment.changeset(payment, request.fields),
+      {:ok, payment} <- Repo.transaction(fn ->
+
+        payment = Repo.update!(changeset)
+        with {:ok, payment} <- process_payment(payment, changeset, request.fields) do
+          payment
+        else
+          {:error, errors} -> Repo.rollback(errors)
+        end
+
+      end)
+    do
+      {:ok, payment}
+    else
       changeset = %Changeset{} -> {:error, changeset.errors}
       other -> other
     end
@@ -543,31 +562,40 @@ defmodule BlueJet.Storefront do
   end
   defp process_source(source, order), do: source
 
-  defp process_payment(payment = %Payment{ gateway: "offline" }, _) do
+  defp process_payment(payment, changest = %Changeset{ data: %Payment{ gateway: nil }, changes: %{ gateway: "offline" } }, _) do
     changeset = Changeset.change(payment, pending_amount_cents: payment.order.grand_total_cents)
     payment = Repo.update!(changeset)
 
     {:ok, payment}
   end
-  defp process_payment(payment = %Payment{ gateway: "online", status: "pending" }, _) do
+  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "pending" } }, _) do
     send_paylink(payment.order_id)
   end
-  # Process the payment through stripe
-  defp process_payment(payment = %Payment{ gateway: "online", status: "paid" }, options) do
+  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "paid" } }, options) do
     payment = payment |> Repo.preload(order: :customer)
     charge_payment(payment, options)
   end
+  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ paid_amount_cents: nil, gateway: "online" }, changes: %{ paid_amount_cents: paid_amount_cents } }, options) do
+    capture_payment(payment, options)
+  end
 
+  defp capture_payment(payment = %Payment{ status: "paid", processor: "stripe" }, _) do
+    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
+      {:ok, payment}
+    else
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+    end
+  end
   defp charge_payment(payment = %Payment{ status: "paid", processor: "stripe" }, options = %{ "source" => source }) do
     customer = payment.order.customer
 
     with {:ok, stripe_charge} <- create_stripe_charge(payment, customer, source),
          {:ok, _} <- save_stripe_source(source, customer, options)
     do
-      changeset = if stripe_charge.captured do
-        Changeset.change(payment, stripe_charge_id: stripe_charge.id, status: "paid", paid_amount_cents: stripe_charge.amount)
+      changeset = if stripe_charge["captured"] do
+        Changeset.change(payment, stripe_charge_id: stripe_charge["id"], status: "paid", paid_amount_cents: stripe_charge["amount"])
       else
-        Changeset.change(payment, stripe_charge_id: stripe_charge.id, status: "authorized", authorized_amount_cents: stripe_charge.amount)
+        Changeset.change(payment, stripe_charge_id: stripe_charge["id"], status: "authorized", authorized_amount_cents: stripe_charge["amount"])
       end
 
       Repo.update!(changeset)
@@ -577,11 +605,16 @@ defmodule BlueJet.Storefront do
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
+
   defp save_stripe_source(source, %Customer{ stripe_customer_id: stripe_customer_id }, %{ "saveSource" => true }) do
     {:ok, nil}
   end
   defp save_stripe_source(source, _, _) do
     {:ok, nil}
+  end
+
+  defp capture_stripe_charge(payment) do
+    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.paid_amount_cents })
   end
   defp create_stripe_charge(payment, %Customer{ stripe_customer_id: stripe_customer_id }, source) when not is_nil(stripe_customer_id) do
     order = payment.order
@@ -595,9 +628,61 @@ defmodule BlueJet.Storefront do
       order.grand_total_cents
     end
 
-    Stripe.Charges.create(amount_cents, source: source, capture: !order.is_estimate, metadata: %{ fc_payment_id: payment.id })
+    StripeClient.post("/charges", %{ amount: amount_cents, source: source, capture: !order.is_estimate, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
   end
+
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
+  end
+
+  ######
+  # Refund
+  ######
+  def create_refund(request = %{ vas: vas }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+
+    with changeset = %Changeset{ valid?: true } <- Refund.changeset(%Refund{}, fields),
+      {:ok, refund} <- Repo.transaction(fn ->
+
+        refund = Repo.insert!(changeset) |> Repo.preload(:payment)
+        new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
+        new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
+          "fully_refunded"
+        else
+          "partially_refunded"
+        end
+
+        payment_changeset = Changeset.change(refund.payment, %{ refunded_amount_cents: new_refunded_amount_cents, status: new_payment_status })
+        payment = Repo.update!(payment_changeset)
+
+        with {:ok, refund} <- process_refund(refund, payment) do
+          refund
+        else
+          {:error, errors} -> Repo.rollback(errors)
+        end
+
+      end)
+    do
+      {:ok, refund}
+    else
+      {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
+      changeset = %Changeset{} -> {:error, changeset.errors}
+      other -> other
+    end
+  end
+
+  defp process_refund(refund, payment = %Payment{ gateway: "online", processor: "stripe" }) do
+    with {:ok, stripe_refund} <- create_stripe_refund(refund, payment) do
+      {:ok, refund}
+    else
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+    end
+  end
+  defp process_refund(refund, _), do: {:ok, refund}
+
+  defp create_stripe_refund(refund, payment) do
+    StripeClient.post("/refunds", %{ charge: payment.stripe_charge_id, amount: refund.amount_cents, metadata: %{ fc_refund_id: refund.id }  })
   end
 end

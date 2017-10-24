@@ -60,6 +60,9 @@ defmodule BlueJetWeb.Router do
       resources "/line_items", OrderLineItemController, only: [:create]
       resources "/payments", PaymentController, only: [:create]
     end
+    resources "/payments", PaymentController, only: [:update, :show, :delete] do
+      resources "/refunds", RefundController, only: [:create]
+    end
     resources "/order_line_items", OrderLineItemController, only: [:update, :delete]
   end
 end

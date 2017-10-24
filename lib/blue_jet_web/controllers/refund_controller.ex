@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.PaymentController do
+defmodule BlueJetWeb.RefundController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -6,39 +6,19 @@ defmodule BlueJetWeb.PaymentController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, params) do
-    request = %{
-      vas: assigns[:vas],
-      search_keyword: params["search"],
-      filter: assigns[:filter],
-      page_size: assigns[:page_size],
-      page_number: assigns[:page_number],
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-    %{ payments: payments, total_count: total_count, result_count: result_count } = Storefront.list_payments(request)
-
-    meta = %{
-      totalCount: total_count,
-      resultCount: result_count
-    }
-
-    render(conn, "index.json-api", data: payments, opts: [meta: meta, include: conn.query_params["include"]])
-  end
-
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "Payment" } }) when map_size(vas) == 2 do
-    fields = Map.merge(Params.to_attributes(data), %{ "order_id" => order_id })
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) when map_size(vas) == 2 do
+    fields = Map.merge(Params.to_attributes(data), %{ "payment_id" => payment_id })
     request = %{
       vas: assigns[:vas],
       fields: fields,
       preloads: assigns[:preloads]
     }
 
-    case Storefront.create_payment(request) do
-      {:ok, payment} ->
+    case Storefront.create_refund(request) do
+      {:ok, refund} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: payment, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: refund, opts: [include: conn.query_params["include"]])
       {:error, errors} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -76,16 +56,5 @@ defmodule BlueJetWeb.PaymentController do
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
     end
-  end
-
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => payment_id }) do
-    request = %{
-      vas: assigns[:vas],
-      payment_id: payment_id
-    }
-
-    Storefront.delete_payment!(request)
-
-    send_resp(conn, :no_content, "")
   end
 end
