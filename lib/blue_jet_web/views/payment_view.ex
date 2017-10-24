@@ -33,6 +33,7 @@ defmodule BlueJetWeb.PaymentView do
   ]
 
   has_one :order, serializer: BlueJetWeb.OrderView, identifiers: :always
+  has_many :refunds, serializer: BlueJetWeb.RefundView, identifiers: :when_included
 
   def type(_, _) do
     "Payment"

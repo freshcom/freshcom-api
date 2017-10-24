@@ -17,6 +17,7 @@ defmodule BlueJet.Storefront.Order do
     field :status, :string, default: "cart"
     field :system_tag, :string
     field :label, :string
+    field :is_payment_balanced, :boolean, default: false
 
     field :email, :string
     field :first_name, :string
@@ -188,6 +189,7 @@ defmodule BlueJet.Storefront.Order do
 
     Changeset.change(
       struct,
+      is_payment_balanced: is_payment_balanced(%{ struct | authorization_cents: authorization_cents, grand_total_cents: grand_total_cents }),
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,
       tax_two_cents: tax_two_cents,
@@ -202,6 +204,28 @@ defmodule BlueJet.Storefront.Order do
     changeset = changeset_for_balance(struct)
     Repo.update!(changeset)
   end
+
+  def is_payment_balanced(struct = %Order{ status: "cart" }), do: false
+  def is_payment_balanced(struct) do
+    payments = Repo.all(Ecto.assoc(struct, :payments))
+    payment_amount_cents = Enum.reduce(payments, 0, fn(payment, acc) ->
+      case payment.status do
+        "pending" -> acc + payment.pending_amount_cents
+        "authorized" -> acc + payment.authorized_amount_cents
+        "paid" -> acc + payment.paid_amount_cents
+        "partially_refunded" -> acc + payment.paid_amount_cents - payment.refunded_amount_cents
+        "refunded" -> acc
+        _ -> acc
+      end
+    end)
+
+    cond do
+      struct.is_estimate && (payment_amount_cents >= struct.authorization_cents) -> true
+      !struct.is_estimate && payment_amount_cents == struct.grand_total_cents -> true
+      true -> false
+    end
+  end
+
 
   def leaf_line_items(struct) do
     Ecto.assoc(struct, :line_items) |> OrderLineItem.leaf() |> Repo.all()

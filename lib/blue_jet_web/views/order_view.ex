@@ -7,6 +7,7 @@ defmodule BlueJetWeb.OrderView do
     :status,
     :system_tag,
     :label,
+    :is_payment_balanced,
 
     :email,
     :first_name,

@@ -476,6 +476,20 @@ defmodule BlueJet.Storefront do
   ####
   # Payment
   ####
+
+  def get_payment!(request = %{ vas: vas, payment_id: payment_id }) do
+    defaults = %{ locale: "en", preloads: [] }
+    request = Map.merge(defaults, request)
+
+    payment =
+      Payment
+      |> Repo.get_by!(account_id: vas[:account_id], id: payment_id)
+      |> Payment.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    payment
+  end
+
   def create_payment(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
@@ -541,7 +555,7 @@ defmodule BlueJet.Storefront do
   end
 
   defp process_order(order) do
-    order_changeset = Changeset.change(order, status: "opened")
+    order_changeset = Changeset.change(order, status: "opened", is_payment_balanced: true)
     order = Repo.update!(order_changeset)
 
     leaf_line_items = Order.leaf_line_items(order)
@@ -563,7 +577,13 @@ defmodule BlueJet.Storefront do
   defp process_source(source, order), do: source
 
   defp process_payment(payment, changest = %Changeset{ data: %Payment{ gateway: nil }, changes: %{ gateway: "offline" } }, _) do
-    changeset = Changeset.change(payment, pending_amount_cents: payment.order.grand_total_cents)
+    amount_cents = if payment.order.is_estimate do
+      payment.order.authorization_cents
+    else
+      payment.order.grand_total_cents
+    end
+
+    changeset = Changeset.change(payment, pending_amount_cents: amount_cents)
     payment = Repo.update!(changeset)
 
     {:ok, payment}
@@ -649,7 +669,7 @@ defmodule BlueJet.Storefront do
         refund = Repo.insert!(changeset) |> Repo.preload(:payment)
         new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
         new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
-          "fully_refunded"
+          "refunded"
         else
           "partially_refunded"
         end

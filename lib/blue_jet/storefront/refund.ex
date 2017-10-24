@@ -76,4 +76,7 @@ defmodule BlueJet.Storefront.Refund do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  def query() do
+    from(r in Refund, order_by: [desc: r.updated_at, desc: r.inserted_at])
+  end
 end

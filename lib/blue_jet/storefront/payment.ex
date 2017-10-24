@@ -6,6 +6,7 @@ defmodule BlueJet.Storefront.Payment do
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.Payment
+  alias BlueJet.Storefront.Refund
   alias BlueJet.Storefront.Order
   alias BlueJet.Identity.Account
 
@@ -38,6 +39,7 @@ defmodule BlueJet.Storefront.Payment do
     belongs_to :account, Account
     belongs_to :order, Order
     belongs_to :customer, Customer
+    has_many :refunds, Refund
   end
 
   def system_fields do
@@ -115,5 +117,20 @@ defmodule BlueJet.Storefront.Payment do
 
   def query() do
     from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])
+  end
+
+  def preload(struct_or_structs, targets) when length(targets) == 0 do
+    struct_or_structs
+  end
+  def preload(struct_or_structs, targets) when is_list(targets) do
+    [target | rest] = targets
+
+    struct_or_structs
+    |> Repo.preload(preload_keyword(target))
+    |> Payment.preload(rest)
+  end
+
+  def preload_keyword(:refunds) do
+    [refunds: Refund.query()]
   end
 end
