@@ -6,6 +6,11 @@ defmodule StripeClient do
     unwrap_response(response)
   end
 
+  def get(path) do
+    {:ok, response} = StripeHttpClient.get(path)
+    unwrap_response(response)
+  end
+
   def unwrap_response(response = %{ status_code: 200 }) do
     {:ok, response.body}
   end

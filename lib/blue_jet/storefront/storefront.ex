@@ -503,7 +503,6 @@ defmodule BlueJet.Storefront do
 
     Customer.preprocess(order.customer, request.fields)
 
-    IO.inspect request.fields
     # TODO: handle stock and shipping errors
     create_payment(changeset, fields)
   end

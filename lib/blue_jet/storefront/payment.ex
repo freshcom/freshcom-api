@@ -199,7 +199,7 @@ defmodule BlueJet.Storefront.Payment do
     customer = payment.order.customer
     order = payment.order
 
-    with {:ok, source} <- Customer.keep_stripe_source(customer, source),
+    with {:ok, source} <- Customer.keep_stripe_source(customer, source, options),
          {:ok, stripe_charge} <- create_stripe_charge(payment, order, customer, source),
          {:ok, _} <- save_stripe_source(source, customer, options)
     do

@@ -16,9 +16,10 @@ defmodule StripeHttpClient do
     headers
   end
 
-  defp process_request_body(body) do
+  defp process_request_body(body = %{}) do
     body |> UriQuery.params |> URI.encode_query
   end
+  defp process_request_body(body), do: body
 
   defp process_response_body(body) do
     body
