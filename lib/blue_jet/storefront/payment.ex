@@ -199,7 +199,8 @@ defmodule BlueJet.Storefront.Payment do
     customer = payment.order.customer
     order = payment.order
 
-    with {:ok, stripe_charge} <- create_stripe_charge(payment, order, customer, source),
+    with {:ok, source} <- Customer.keep_stripe_source(customer, source),
+         {:ok, stripe_charge} <- create_stripe_charge(payment, order, customer, source),
          {:ok, _} <- save_stripe_source(source, customer, options)
     do
       sync_with_stripe_charge(payment, stripe_charge)
@@ -226,15 +227,16 @@ defmodule BlueJet.Storefront.Payment do
 
     {:ok, payment}
   end
-  defp sync_with_stripe_charge(payment, %{ "captured" => false, "id" => stripe_charge_id, "amount" => paid_amount_cents }) do
+  defp sync_with_stripe_charge(payment, %{ "captured" => false, "id" => stripe_charge_id, "amount" => authorized_amount_cents }) do
     payment =
       payment
-      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "authorized", paid_amount_cents: paid_amount_cents)
+      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "authorized", authorized_amount_cents: authorized_amount_cents)
       |> Repo.update!()
 
     {:ok, payment}
   end
 
+  # TODO: create the stripe customer if it is not already created before this step
   @spec create_stripe_charge(Payment.t, Order.t, Customer.t, String.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(payment, %Order{ is_estimate: true, authorization_cents: authorization_cents }, %Customer{ stripe_customer_id: stripe_customer_id }, source) do
     StripeClient.post("/charges", %{ amount: authorization_cents, customer: stripe_customer_id, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })

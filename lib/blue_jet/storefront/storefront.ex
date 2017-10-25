@@ -493,65 +493,63 @@ defmodule BlueJet.Storefront do
   def create_payment(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
-
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Payment.changeset(%Payment{}, fields)
 
+    order =
+      Order
+      |> Repo.get_by!(account_id: vas[:account_id], id: request.fields["order_id"])
+      |> Repo.preload(:customer)
+
+    Customer.preprocess(order.customer, request.fields)
+
+    IO.inspect request.fields
+    # TODO: handle stock and shipping errors
+    create_payment(changeset, fields)
+  end
+  def create_payment(changeset = %Changeset{ valid?: true }, options) do
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
-    with changeset = %Changeset{ valid?: true } <- Payment.changeset(%Payment{}, fields),
-      {:ok, payment} <- Repo.transaction(fn ->
+    Repo.transaction(fn ->
+      payment = Repo.insert!(changeset) |> Repo.preload(:order)
 
-        payment = Repo.insert!(changeset) |> Repo.preload(:order)
-        with {:ok, _} <- Order.lock_stock(payment.order_id),
-             {:ok, _} <- Order.lock_shipping_date(payment.order_id),
-             {:ok, payment} <- process_payment(payment, changeset, request.fields),
-             {:ok, order} <- process_order(payment.order)
-        do
-          payment
-        else
-          {:error, errors} -> Repo.rollback(errors)
-        end
+      order_changeset = Changeset.change(payment.order, status: "opened")
+      order = Repo.update!(order_changeset)
 
-      end)
-    do
-      {:ok, payment}
-    else
-      {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
-      {:error, :insufficient_stock} -> {:error, %{}}
-      {:error, :shipping_date_deadline_passed} -> {:error, %{}}
-      {:error, :payment_errors} -> {:error, %{}}
-      changeset = %Changeset{} -> {:error, changeset.errors}
-      other -> other
-    end
+      with {:ok, _} <- Order.lock_stock(payment.order_id),
+           {:ok, _} <- Order.lock_shipping_date(payment.order_id),
+           {:ok, payment} <- Payment.process(payment, changeset, options),
+           {:ok, order} <- Order.process(order, order_changeset)
+      do
+        payment
+      else
+        {:error, errors} -> Repo.rollback(errors)
+      end
+    end)
+  end
+  def create_payment(changeset, _) do
+    {:error, changeset.errors}
   end
 
   def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
     payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-
-    with changeset = %Changeset{ valid?: true } <- Payment.changeset(payment, request.fields),
-      {:ok, payment} <- Repo.transaction(fn ->
-
-        payment = Repo.update!(changeset)
-        with {:ok, payment} <- process_payment(payment, changeset, request.fields) do
-          payment
-        else
-          {:error, errors} -> Repo.rollback(errors)
-        end
-
-      end)
-    do
-      {:ok, payment}
-    else
-      changeset = %Changeset{} -> {:error, changeset.errors}
-      other -> other
-    end
+    update_payment(Payment.changeset(payment, request.fields), request.fields)
   end
-
-  defp send_paylink(order_id) do
-
+  def update_payment(changeset = %Changeset{ valid?: true }, options) do
+    Repo.transaction(fn ->
+      payment = Repo.update!(changeset)
+      with {:ok, payment} <- Payment.process(payment, changeset, options) do
+        payment
+      else
+        {:error, errors} -> Repo.rollback(errors)
+      end
+    end)
+  end
+  def update_payment(changeset, _) do
+    {:error, changeset.errors}
   end
 
   defp process_order(order) do
@@ -575,81 +573,6 @@ defmodule BlueJet.Storefront do
     Repo.insert!(changeset)
   end
   defp process_source(source, order), do: source
-
-  defp process_payment(payment, changest = %Changeset{ data: %Payment{ gateway: nil }, changes: %{ gateway: "offline" } }, _) do
-    amount_cents = if payment.order.is_estimate do
-      payment.order.authorization_cents
-    else
-      payment.order.grand_total_cents
-    end
-
-    changeset = Changeset.change(payment, pending_amount_cents: amount_cents)
-    payment = Repo.update!(changeset)
-
-    {:ok, payment}
-  end
-  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "pending" } }, _) do
-    send_paylink(payment.order_id)
-  end
-  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "paid" } }, options) do
-    payment = payment |> Repo.preload(order: :customer)
-    charge_payment(payment, options)
-  end
-  defp process_payment(payment, changeset = %Changeset{ data: %Payment{ paid_amount_cents: nil, gateway: "online" }, changes: %{ paid_amount_cents: paid_amount_cents } }, options) do
-    capture_payment(payment, options)
-  end
-
-  defp capture_payment(payment = %Payment{ status: "paid", processor: "stripe" }, _) do
-    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
-      {:ok, payment}
-    else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-    end
-  end
-  defp charge_payment(payment = %Payment{ status: "paid", processor: "stripe" }, options = %{ "source" => source }) do
-    customer = payment.order.customer
-
-    with {:ok, stripe_charge} <- create_stripe_charge(payment, customer, source),
-         {:ok, _} <- save_stripe_source(source, customer, options)
-    do
-      changeset = if stripe_charge["captured"] do
-        Changeset.change(payment, stripe_charge_id: stripe_charge["id"], status: "paid", paid_amount_cents: stripe_charge["amount"])
-      else
-        Changeset.change(payment, stripe_charge_id: stripe_charge["id"], status: "authorized", authorized_amount_cents: stripe_charge["amount"])
-      end
-
-      Repo.update!(changeset)
-
-      {:ok, payment}
-    else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-    end
-  end
-
-  defp save_stripe_source(source, %Customer{ stripe_customer_id: stripe_customer_id }, %{ "saveSource" => true }) do
-    {:ok, nil}
-  end
-  defp save_stripe_source(source, _, _) do
-    {:ok, nil}
-  end
-
-  defp capture_stripe_charge(payment) do
-    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.paid_amount_cents })
-  end
-  defp create_stripe_charge(payment, %Customer{ stripe_customer_id: stripe_customer_id }, source) when not is_nil(stripe_customer_id) do
-    order = payment.order
-    Stripe.Charges.create(order.grand_total_cents, source: source, customer: stripe_customer_id, capture: order.is_estimate, metadata: %{ fc_payment_id: payment.id })
-  end
-  defp create_stripe_charge(payment, _, source) do
-    order = payment.order
-    amount_cents = if order.is_estimate do
-      order.authorization_cents
-    else
-      order.grand_total_cents
-    end
-
-    StripeClient.post("/charges", %{ amount: amount_cents, source: source, capture: !order.is_estimate, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
-  end
 
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]

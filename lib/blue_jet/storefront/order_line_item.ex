@@ -12,6 +12,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Storefront.ProductItem
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.Price
+  alias BlueJet.Storefront.Unlock
   alias BlueJet.Inventory.Unlockable
   alias BlueJet.Inventory.Sku
   alias BlueJet.Identity.Account
@@ -473,5 +474,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def preload_keyword(:price) do
     [price: query()]
+  end
+
+  def process(line_item = %OrderLineItem{ unlockable_id: unlockable_id }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(unlockable_id) do
+    changeset = Unlock.changeset(%Unlock{}, %{ account_id: line_item.account_id, unlockable_id: unlockable_id, customer_id: customer.id })
+    Repo.insert!(changeset)
+  end
+  def process(line_item, _, _, _) do
+    {:ok, line_item}
   end
 end

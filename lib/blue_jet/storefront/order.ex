@@ -268,4 +268,22 @@ defmodule BlueJet.Storefront.Order do
   def preload_keyword({:root_line_items, line_item_preloads}) do
     [root_line_items: {OrderLineItem.query(:root), OrderLineItem.preload_keyword(line_item_preloads)}]
   end
+
+  #####
+  # Business Functions
+  #####
+
+  @doc """
+  Process the given `order`
+  """
+  def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    order = Repo.preload(order, :customer)
+    leaf_line_items = Order.leaf_line_items(order)
+    Enum.each(leaf_line_items, fn(line_item) ->
+      OrderLineItem.process(line_item, order, changeset, order.customer)
+    end)
+
+    {:ok, order}
+  end
+  def process(order, changeset), do: {:ok, order}
 end

@@ -3,6 +3,7 @@ defmodule BlueJet.Identity.Customer do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
@@ -120,5 +121,69 @@ defmodule BlueJet.Identity.Customer do
   end
   def preload_keyword(:external_file_collections) do
     [external_file_collections: ExternalFileCollection.query()]
+  end
+
+  @doc """
+  Save the Stripe source as a card associated with the Stripe customer object
+  """
+  @spec keep_stripe_source(Customer.t, String.t, map) :: {:ok, String.t} | {:error, map}
+  def keep_stripe_source(customer = %Customer{ stripe_customer_id: stripe_customer_id }, source, options \\ %{}) when not is_nil(stripe_customer_id) do
+    case List.first(String.split(source, "_")) do
+      "card" -> {:ok, source}
+      "tok" -> keep_stripe_token_as_card(customer, source, options)
+    end
+  end
+  def keep_stripe_source(_, source, options), do: {:ok, source}
+
+  @spec keep_stripe_token_as_card(Customer.t, String.t, map) :: {:ok, String.t} | {:error, map}
+  def keep_stripe_token_as_card(customer = %Customer{ stripe_customer_id: stripe_customer_id }, token, options \\ %{}) when not is_nil(stripe_customer_id) do
+    with {:ok, token_object} <- retrieve_stripe_token(token),
+         nil <- get_stripe_card_by_fingerprint(customer, token_object["fingerprint"]),
+         {:ok, card_object} <- create_stripe_card(customer, token, options)
+    do
+      {:ok, card_object["id"]}
+    else
+      %{ "id" => existing_card_id } -> {:ok, existing_card_id}
+      other -> other
+    end
+  end
+
+  @doc """
+  Preprocess the customer to be ready for its first payment
+  """
+  @spec preprocess(Customer.t, map) :: Customer.t
+  def preprocess(customer = %Customer{ stripe_customer_id: stripe_customer_id }, %{ "processor" => "stripe" }) when is_nil(stripe_customer_id) do
+    {:ok, stripe_customer} = create_stripe_customer(customer)
+
+    customer
+    |> Changeset.change(stripe_customer_id: stripe_customer["id"])
+    |> Repo.update!()
+  end
+  def preprocess(customer, _), do: customer
+
+  @spec create_stripe_customer(Customer.t) :: {:ok, map} | {:error, map}
+  defp create_stripe_customer(customer) do
+    StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } })
+  end
+
+  defp create_stripe_card(%Customer{ stripe_customer_id: stripe_customer_id }, source, options \\ %{}) when not is_nil(stripe_customer_id) do
+    StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source })
+  end
+
+  defp retrieve_stripe_token(token) do
+    StripeClient.get("/tokens/#{token}")
+  end
+
+  defp list_stripe_card(%Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
+    StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100")
+  end
+
+  defp get_stripe_card_by_fingerprint(%Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
+    # TODO: Test this
+    with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
+      Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
+    else
+      other -> other
+    end
   end
 end
