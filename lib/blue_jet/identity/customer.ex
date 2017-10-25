@@ -11,6 +11,8 @@ defmodule BlueJet.Identity.Customer do
   alias BlueJet.Storefront.Order
   alias BlueJet.FileStorage.ExternalFileCollection
 
+  @type t :: Ecto.Schema.t
+
   schema "customers" do
     field :code, :string
     field :status, :string, default: "anonymous"

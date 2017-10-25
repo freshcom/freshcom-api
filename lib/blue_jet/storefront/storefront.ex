@@ -655,6 +655,11 @@ defmodule BlueJet.Storefront do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
 
+  def delete_payment!(request = %{ vas: vas, payment_id: payment_id }) do
+    payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
+    Repo.delete!(payment)
+  end
+
   ######
   # Refund
   ######

@@ -12,6 +12,8 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
 
+  @type t :: Ecto.Schema.t
+
   schema "orders" do
     field :code, :string
     field :status, :string, default: "cart"
@@ -220,7 +222,7 @@ defmodule BlueJet.Storefront.Order do
     end)
 
     cond do
-      struct.is_estimate && (payment_amount_cents >= struct.authorization_cents) -> true
+      struct.is_estimate && (payment_amount_cents == struct.authorization_cents) -> true
       !struct.is_estimate && payment_amount_cents == struct.grand_total_cents -> true
       true -> false
     end

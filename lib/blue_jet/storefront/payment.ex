@@ -3,12 +3,15 @@ defmodule BlueJet.Storefront.Payment do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Storefront.Payment
   alias BlueJet.Storefront.Refund
   alias BlueJet.Storefront.Order
   alias BlueJet.Identity.Account
+
+  @type t :: Ecto.Schema.t
 
   schema "payments" do
     field :status, :string # pending, paid, partially_refunded, fully_refunded
@@ -132,5 +135,130 @@ defmodule BlueJet.Storefront.Payment do
 
   def preload_keyword(:refunds) do
     [refunds: Refund.query()]
+  end
+
+
+  #####
+  # Business Logic
+  #####
+
+  alias BlueJet.Identity.Customer
+
+  @doc """
+  Send a paylink
+
+  Returns the payment
+  """
+  def send_paylink(payment) do
+    payment
+  end
+
+  @doc """
+  Process the given payment.
+
+  This function may change the payment in the database.
+
+  Returns the processed payment.
+
+  The given `payment` should be a payment that is just created/updated using the `changeset`.
+  """
+  @spec process(Payment.t, Changeset.t, map) :: {:ok, Payment.t} | {:error. map}
+  def process(payment, changest = %Changeset{ data: %Payment{ gateway: nil }, changes: %{ gateway: "offline" } }, _) do
+    payment = Repo.preload(payment, :order)
+    pending_amount_cents = if payment.order.is_estimate do
+      payment.order.authorization_cents
+    else
+      payment.order.grand_total_cents
+    end
+
+    changeset = Changeset.change(payment, pending_amount_cents: pending_amount_cents)
+    payment = Repo.update!(changeset)
+
+    {:ok, payment}
+  end
+  def process(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "pending" } }, _) do
+    send_paylink(payment)
+  end
+  def process(payment, changeset = %Changeset{ data: %Payment{ gateway: nil, status: nil }, changes: %{ gateway: "online", status: "paid" } }, options) do
+    charge(payment, options)
+  end
+  def process(payment, changeset = %Changeset{ data: %Payment{ gateway: "online", paid_amount_cents: nil }, changes: %{ paid_amount_cents: paid_amount_cents } }, options) do
+    capture(payment, options)
+  end
+
+  @doc """
+  Charge the given payment using its online processor.
+
+  This function may change the payment in the database.
+
+  Returns the charged payment.
+  """
+  @spec charge(Payment.t, map) :: {:ok, Payment.t} | {:error, map}
+  def charge(payment = %Payment{ status: "paid", processor: "stripe" }, options = %{ "source" => source }) do
+    payment = payment |> Repo.preload(order: :customer)
+    customer = payment.order.customer
+    order = payment.order
+
+    with {:ok, stripe_charge} <- create_stripe_charge(payment, order, customer, source),
+         {:ok, _} <- save_stripe_source(source, customer, options)
+    do
+      sync_with_stripe_charge(payment, stripe_charge)
+    else
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+    end
+  end
+
+  @spec capture(Payment.t, map) :: {:ok, Payment.t} | {:error, map}
+  def capture(payment = %Payment{ status: "paid", processor: "stripe" }, _) do
+    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
+      {:ok, payment}
+    else
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+    end
+  end
+
+  @spec sync_with_stripe_charge(Payment.t, map) :: {:ok, Payment.t}
+  defp sync_with_stripe_charge(payment, %{ "captured" => true, "id" => stripe_charge_id, "amount" => paid_amount_cents }) do
+    payment =
+      payment
+      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "paid", paid_amount_cents: paid_amount_cents)
+      |> Repo.update!()
+
+    {:ok, payment}
+  end
+  defp sync_with_stripe_charge(payment, %{ "captured" => false, "id" => stripe_charge_id, "amount" => paid_amount_cents }) do
+    payment =
+      payment
+      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "authorized", paid_amount_cents: paid_amount_cents)
+      |> Repo.update!()
+
+    {:ok, payment}
+  end
+
+  @spec create_stripe_charge(Payment.t, Order.t, Customer.t, String.t) :: {:ok, map} | {:error, map}
+  defp create_stripe_charge(payment, %Order{ is_estimate: true, authorization_cents: authorization_cents }, %Customer{ stripe_customer_id: stripe_customer_id }, source) do
+    StripeClient.post("/charges", %{ amount: authorization_cents, customer: stripe_customer_id, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
+  end
+  defp create_stripe_charge(payment, %Order{ is_estimate: true, authorization_cents: authorization_cents }, _, source) do
+    StripeClient.post("/charges", %{ amount: authorization_cents, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
+  end
+  defp create_stripe_charge(payment, %Order{ is_estimate: false, grand_total_cents: grand_total_cents }, %Customer{ stripe_customer_id: stripe_customer_id }, source) do
+    StripeClient.post("/charges", %{ amount: grand_total_cents, customer: stripe_customer_id, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
+  end
+  defp create_stripe_charge(payment, %Order{ is_estimate: false, grand_total_cents: grand_total_cents }, _, source) do
+    StripeClient.post("/charges", %{ amount: grand_total_cents, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id }  })
+  end
+
+  @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
+  defp capture_stripe_charge(payment) do
+    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.paid_amount_cents })
+  end
+
+  defp save_stripe_source(source, _, _) do
+    {:ok, nil}
+  end
+
+  defp format_stripe_errors(stripe_errors) do
+    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
 end
