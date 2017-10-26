@@ -496,17 +496,18 @@ defmodule BlueJet.Storefront do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
     changeset = Payment.changeset(%Payment{}, fields)
 
+    # TODO: remove options
     order =
       Order
       |> Repo.get_by!(account_id: vas[:account_id], id: request.fields["order_id"])
       |> Repo.preload(:customer)
 
-    Customer.preprocess(order.customer, request.fields)
+    Customer.preprocess(order.customer, payment_processor: request.fields["processor"])
 
     # TODO: handle stock and shipping errors
-    create_payment(changeset, fields)
+    create_payment(changeset)
   end
-  def create_payment(changeset = %Changeset{ valid?: true }, options) do
+  def create_payment(changeset = %Changeset{ valid?: true }) do
     # We create the charge first so that stripe_charge can have a reference to the charge,
     # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
     # so we need to make sure what the stripe_charge is for and refund manually if needed
@@ -518,7 +519,7 @@ defmodule BlueJet.Storefront do
 
       with {:ok, _} <- Order.lock_stock(payment.order_id),
            {:ok, _} <- Order.lock_shipping_date(payment.order_id),
-           {:ok, payment} <- Payment.process(payment, changeset, options),
+           {:ok, payment} <- Payment.process(payment, changeset),
            {:ok, order} <- Order.process(order, order_changeset)
       do
         payment
