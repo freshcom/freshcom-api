@@ -3,6 +3,7 @@ defmodule BlueJet.Identity.Customer do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Identity.Account
@@ -128,6 +129,9 @@ defmodule BlueJet.Identity.Customer do
   Save the Stripe source as a card associated with the Stripe customer object,
   duplicate card will not be saved.
 
+  If the given source is already a Stripe card ID then this function returns immediately
+  with the given Stripe card ID.
+
   Returns `{:ok, source}` if successful where the `source` is a stripe card ID.
   """
   @spec keep_stripe_source(Customer.t, String.t, Keyword.t) :: {:ok, String.t} | {:error, map}
@@ -139,31 +143,41 @@ defmodule BlueJet.Identity.Customer do
   end
   def keep_stripe_source(_, source, _), do: {:ok, source}
 
+  @doc """
+  Save the Stripe token as a card associated with the Stripe customer object,
+  a token that contains the same card fingerprint of a existing card will not be
+  created again, instead they will be updated according to `opts`.
+
+  Returns `{:ok, stripe_card_id}` if successful.
+  """
   @spec keep_stripe_token_as_card(Customer.t, String.t, Keyword.t) :: {:ok, String.t} | {:error, map}
   def keep_stripe_token_as_card(customer = %Customer{ stripe_customer_id: stripe_customer_id }, token, status: status) when not is_nil(stripe_customer_id) do
-    with {:ok, token_object} <- retrieve_stripe_token(token),
-         nil <- Repo.get_by(Card, customer_id: customer.id, fingerprint: token_object["card"]["fingerprint"]),
-         # Create the new card
-         card <- Repo.insert!(%Card{ status: status, source: token, account_id: customer.account_id, customer_id: customer.id }),
-         {:ok, card} <- Card.process(card, customer)
-    do
-      {:ok, card.stripe_card_id}
-    else
-      # If there is existing card with the same status just return
-      %Card{ stripe_card_id: stripe_card_id, status: ^status } -> {:ok, stripe_card_id}
+    Repo.transaction(fn ->
+      with {:ok, token_object} <- retrieve_stripe_token(token),
+           nil <- Repo.get_by(Card, customer_id: customer.id, fingerprint: token_object["card"]["fingerprint"]),
+           # Create the new card
+           card <- Repo.insert!(%Card{ status: status, source: token, account_id: customer.account_id, customer_id: customer.id }),
+           {:ok, card} <- Card.process(card, customer)
+      do
+        card.stripe_card_id
+      else
+        # If there is existing card with the same status just return
+        %Card{ stripe_card_id: stripe_card_id, status: ^status } -> {:ok, stripe_card_id}
 
-      # If there is existing card with different status then we update the card
-      card = %Card{ stripe_card_id: stripe_card_id } ->
-        card
-        |> Card.changeset(%{ status: status })
-        |> Repo.update!()
-        |> Card.update_stripe_card(customer, %{ fc_status: status, fc_account_id: card.account_id })
-        {:ok, stripe_card_id}
+        # If there is existing card with different status then we update the card
+        card = %Card{ stripe_card_id: stripe_card_id } ->
+          card
+          |> Card.changeset(%{ status: status })
+          |> Repo.update!()
+          |> Card.update_stripe_card(customer, %{ fc_status: status, fc_account_id: card.account_id })
+          stripe_card_id
 
-      other ->
-        IO.inspect other
-    end
+        {:error, errors} -> Repo.rollback(errors)
+        other -> Repo.rollback(other)
+      end
+    end)
   end
+  def keep_stripe_token_as_card(_, source, opts), do: {:error, :stripe_customer_id_is_nil}
 
   @doc """
   Preprocess the customer to be ready for its first payment
