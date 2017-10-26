@@ -9,6 +9,7 @@ defmodule BlueJet.Storefront.Payment do
   alias BlueJet.Storefront.Payment
   alias BlueJet.Storefront.Refund
   alias BlueJet.Storefront.Order
+  alias BlueJet.Storefront.Card
   alias BlueJet.Identity.Account
 
   @type t :: Ecto.Schema.t
@@ -204,7 +205,7 @@ defmodule BlueJet.Storefront.Payment do
     order = payment.order
     keep_source_status = if save_source, do: "saved_by_customer", else: "kept_by_system"
 
-    with {:ok, source} <- Customer.keep_stripe_source(customer, source, status: keep_source_status),
+    with {:ok, source} <- Card.keep_stripe_source(source, customer, status: keep_source_status),
          {:ok, stripe_charge} <- create_stripe_charge(payment, order, customer, source)
     do
       sync_with_stripe_charge(payment, stripe_charge)
