@@ -42,6 +42,7 @@ defmodule BlueJet.Identity.Customer do
     has_many :unlocks, Unlock
     has_many :unlockables, through: [:unlocks, :unlockable]
     has_many :orders, Order
+    has_many :cards, Card
   end
 
   def system_fields do
@@ -112,6 +113,9 @@ defmodule BlueJet.Identity.Customer do
     |> Customer.preload(rest)
   end
 
+  def preload_keyword(:cards) do
+    [cards: Card.query()]
+  end
   def preload_keyword(:orders) do
     [orders: Order.query()]
   end

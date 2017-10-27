@@ -29,6 +29,7 @@ defmodule BlueJetWeb.CustomerView do
   has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
   has_many :unlocks, serializer: BlueJetWeb.UnlockView, identifiers: :when_included
   has_many :orders, serializer: BlueJetWeb.OrderView, identifiers: :when_included
+  has_many :cards, serializer: BlueJetWeb.CardView, identifiers: :when_included
 
   def type(_, _) do
     "Customer"

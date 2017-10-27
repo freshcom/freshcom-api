@@ -12,6 +12,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.StripePaymentError
   alias BlueJet.Storefront.Unlock
   alias BlueJet.Storefront.Refund
+  alias BlueJet.Storefront.Card
 
   alias BlueJet.Inventory.Unlockable
   alias BlueJet.FileStorage.ExternalFile
@@ -377,12 +378,15 @@ defmodule BlueJet.Storefront do
 
   def list_orders(request = %{ vas: vas }) do
     defaults = %{ search_keyword: "", filter: %{ status: "opened" }, page_size: 25, page_number: 1, locale: "en", preloads: [] }
+
+    # Merge in a way so that empty map will not overwrite defaults
     request = Map.merge(defaults, request, fn(k, v1, v2) ->
       case k do
         :filter -> if (map_size(v2) == 0), do: v1, else: v2
         _ -> v2
       end
     end)
+
     account_id = vas[:account_id]
 
     query =
@@ -471,6 +475,36 @@ defmodule BlueJet.Storefront do
       Repo.delete!(order_line_item)
       Order.balance!(order)
     end)
+  end
+
+  def list_cards(request = %{ vas: vas, customer_id: target_customer_id }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+    customer_id = vas[:customer_id] || target_customer_id
+    account_id = vas[:account_id]
+
+    query =
+      Card
+      |> filter_by(status: "kept_by_system")
+      |> where([c], c.account_id == ^account_id)
+      |> where([c], c.customer_id == ^customer_id)
+
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Order |> where([s], s.account_id == ^account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: request.page_size, number: request.page_number)
+
+    cards =
+      Repo.all(query)
+      |> Translation.translate(request.locale)
+
+    %{
+      total_count: total_count,
+      result_count: result_count,
+      cards: cards
+    }
   end
 
   ####

@@ -72,6 +72,10 @@ defmodule BlueJet.Storefront.Card do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  def query() do
+    from(c in Card, order_by: [desc: c.inserted_at, desc: c.updated_at])
+  end
+
   @doc """
   Save the Stripe source as a card associated with the Stripe customer object,
   duplicate card will not be saved.
@@ -88,7 +92,7 @@ defmodule BlueJet.Storefront.Card do
       "tok" -> keep_stripe_token_as_card(source, customer, status: status)
     end
   end
-  def keep_stripe_source(_, source, _), do: {:ok, source}
+  def keep_stripe_source(source, _, _), do: {:ok, source}
 
   @doc """
   Save the Stripe token as a card associated with the Stripe customer object,
@@ -124,7 +128,7 @@ defmodule BlueJet.Storefront.Card do
       end
     end)
   end
-  def keep_stripe_token_as_card(_, source, opts), do: {:error, :stripe_customer_id_is_nil}
+  def keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
   @spec process(Card.t, Customer.t) :: {:ok, Card.t} | {:error, map}
   def process(card = %Card{ source: source }, customer) do

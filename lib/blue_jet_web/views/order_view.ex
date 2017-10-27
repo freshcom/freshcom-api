@@ -2,6 +2,8 @@ defmodule BlueJetWeb.OrderView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
+  alias BlueJet.Repo
+
   attributes [
     :code,
     :status,
@@ -41,11 +43,21 @@ defmodule BlueJetWeb.OrderView do
     :updated_at
   ]
 
-  has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :when_included
+  has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :always
   has_many :root_line_items, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
   has_many :payments, serializer: BlueJetWeb.PaymentView, identifiers: :when_included
 
   def type(_, _) do
     "Order"
+  end
+
+  def customer(struct, conn) do
+    case struct.customer do
+      %Ecto.Association.NotLoaded{} ->
+        struct
+        |> Ecto.assoc(:customer)
+        |> Repo.one()
+      other -> other
+    end
   end
 end
