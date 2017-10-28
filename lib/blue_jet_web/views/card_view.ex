@@ -13,6 +13,7 @@ defmodule BlueJetWeb.CardView do
     :cardholder_name,
     :brand,
     :stripe_card_id,
+    :primary,
     :inserted_at,
     :updated_at
   ]

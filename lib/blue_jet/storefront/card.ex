@@ -20,6 +20,7 @@ defmodule BlueJet.Storefront.Card do
     field :cardholder_name, :string
     field :brand, :string
     field :stripe_card_id, :string
+    field :primary, :boolean, default: false
     field :source, :string, virtual: true
 
     field :custom_data, :map, default: %{}
@@ -69,11 +70,23 @@ defmodule BlueJet.Storefront.Card do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> put_primary()
     |> Translation.put_change(translatable_fields(), locale)
   end
 
   def query() do
     from(c in Card, order_by: [desc: c.inserted_at, desc: c.updated_at])
+  end
+
+  def put_primary(changeset) do
+    customer_id = get_field(changeset, :customer_id)
+    existing_primary_card = Repo.get_by(Card, customer_id: customer_id, status: "saved_by_customer", primary: true)
+
+    if !existing_primary_card do
+      put_change(changeset, :primary, true)
+    else
+      changeset
+    end
   end
 
   @doc """

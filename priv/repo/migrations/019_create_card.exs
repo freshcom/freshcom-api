@@ -13,6 +13,7 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
       add :fingerprint, :string
       add :cardholder_name, :string
       add :brand, :string
+      add :primary, :boolean, null: false, default: false
 
       add :stripe_card_id, :string
       add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all), null: false

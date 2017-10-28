@@ -485,13 +485,13 @@ defmodule BlueJet.Storefront do
 
     query =
       Card
-      |> filter_by(status: "kept_by_system")
+      |> filter_by(status: "saved_by_customer")
       |> where([c], c.account_id == ^account_id)
       |> where([c], c.customer_id == ^customer_id)
 
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = Order |> where([s], s.account_id == ^account_id)
+    total_query = Card |> where([s], s.account_id == ^account_id)
     total_count = Repo.aggregate(total_query, :count, :id)
 
     query = paginate(query, size: request.page_size, number: request.page_number)
@@ -585,28 +585,6 @@ defmodule BlueJet.Storefront do
   def update_payment(changeset, _) do
     {:error, changeset.errors}
   end
-
-  defp process_order(order) do
-    order_changeset = Changeset.change(order, status: "opened", is_payment_balanced: true)
-    order = Repo.update!(order_changeset)
-
-    leaf_line_items = Order.leaf_line_items(order)
-    Enum.each(leaf_line_items, fn(line_item) ->
-      line_item
-      |> Repo.preload([:sku, :unlockable])
-      |> OrderLineItem.source()
-      |> process_source(order)
-    end)
-
-    {:ok, order}
-  end
-
-  defp process_source(unlockable = %Unlockable{}, order) do
-    # TODO: check if already unlocked, add the contraint to database
-    changeset = Unlock.changeset(%Unlock{}, %{ account_id: unlockable.account_id, unlockable_id: unlockable.id, customer_id: order.customer_id })
-    Repo.insert!(changeset)
-  end
-  defp process_source(source, order), do: source
 
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
