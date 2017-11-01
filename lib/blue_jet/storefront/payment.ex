@@ -24,7 +24,7 @@ defmodule BlueJet.Storefront.Payment do
     field :pending_amount_cents, :integer
     field :authorized_amount_cents, :integer
     field :paid_amount_cents, :integer
-    field :refunded_amount_cents, :integer
+    field :refunded_amount_cents, :integer, default: 0
 
     field :billing_address_line_one, :string
     field :billing_address_line_two, :string
@@ -261,7 +261,8 @@ defmodule BlueJet.Storefront.Payment do
     StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.paid_amount_cents })
   end
 
-  defp format_stripe_errors(stripe_errors) do
+  defp format_stripe_errors(stripe_errors = %{}) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
+  defp format_stripe_errors(stripe_errors), do: stripe_errors
 end

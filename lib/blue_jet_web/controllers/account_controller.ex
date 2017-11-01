@@ -41,17 +41,22 @@ defmodule BlueJetWeb.AccountController do
     render(conn, "show.json-api", data: account, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "account", "attributes" => _account_params}}) do
-    account = Repo.get!(Account, id)
-    changeset = Account.changeset(account, Params.to_attributes(data))
+  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, %{"data" => data = %{"type" => "Account", "attributes" => _account_params}}) do
+    request = %{
+      vas: assigns[:vas],
+      account_id: account_id,
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
-      {:ok, account} ->
-        render(conn, "show.json-api", data: account)
+    case Identity.update_account(request) do
+      {:ok, order} ->
+        render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(changeset))
     end
   end
 

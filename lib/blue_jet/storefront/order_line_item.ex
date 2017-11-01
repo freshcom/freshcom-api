@@ -205,7 +205,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: _ } }) do
     changeset
   end
-  def put_is_estimate(changeset = %Changeset{ valid?: true }) do
+  def put_is_estimate(changeset = %Changeset{ valid?: true, data: %OrderLineItem{ id: nil } }) do
     price_estimate_by_default = get_field(changeset, :price_estimate_by_default)
     charge_quantity = get_field(changeset, :charge_quantity)
     cond do

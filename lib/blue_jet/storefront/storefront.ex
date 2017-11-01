@@ -390,7 +390,7 @@ defmodule BlueJet.Storefront do
     account_id = vas[:account_id]
 
     query =
-      Order
+      from(o in Order, order_by: [desc: o.inserted_at])
       |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
       |> filter_by(
         status: request.filter[:status],
@@ -399,10 +399,10 @@ defmodule BlueJet.Storefront do
         delivery_address_city: request.filter[:delivery_address_city],
         fulfillment_method: request.filter[:fulfillment_method]
       )
-      |> where([s], s.account_id == ^account_id)
+      |> where([o], o.account_id == ^account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = Order |> where([s], s.account_id == ^account_id)
+    total_query = Order |> where([o], o.account_id == ^account_id)
     total_count = Repo.aggregate(total_query, :count, :id)
 
     query = paginate(query, size: request.page_size, number: request.page_number)
@@ -575,7 +575,7 @@ defmodule BlueJet.Storefront do
   def update_payment(changeset = %Changeset{ valid?: true }, options) do
     Repo.transaction(fn ->
       payment = Repo.update!(changeset)
-      with {:ok, payment} <- Payment.process(payment, changeset, options) do
+      with {:ok, payment} <- Payment.process(payment, changeset) do
         payment
       else
         {:error, errors} -> Repo.rollback(errors)

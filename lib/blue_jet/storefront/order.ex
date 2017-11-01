@@ -242,7 +242,7 @@ defmodule BlueJet.Storefront.Order do
   end
 
   def query() do
-    from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
+    from(o in Order, where: o.status != "cart", order_by: [desc: o.opened_at, desc: o.inserted_at])
   end
 
   def preload(struct_or_structs, targets) when length(targets) == 0 do
@@ -274,7 +274,9 @@ defmodule BlueJet.Storefront.Order do
   #####
 
   @doc """
-  Process the given `order`
+  Process the given `order`.
+
+  This function may change the order in the database.
   """
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     order = Repo.preload(order, :customer)
@@ -282,6 +284,9 @@ defmodule BlueJet.Storefront.Order do
     Enum.each(leaf_line_items, fn(line_item) ->
       OrderLineItem.process(line_item, order, changeset, order.customer)
     end)
+
+    changeset = Changeset.change(order, opened_at: Ecto.DateTime.utc())
+    order = Repo.update!(changeset)
 
     {:ok, order}
   end

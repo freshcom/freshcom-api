@@ -1,6 +1,4 @@
 defmodule StripeClient do
-  use HTTPoison.Base
-
   def post(path, body) do
     {:ok, response} = StripeHttpClient.post(path, body)
     unwrap_response(response)

@@ -59,6 +59,7 @@ defmodule BlueJet.Storefront.Refund do
     payment_id = get_field(changeset, :payment_id)
     payment = Repo.get_by!(Payment, account_id: account_id, id: payment_id)
 
+    IO.inspect payment
     case amount_cents > payment.paid_amount_cents - payment.refunded_amount_cents do
       true -> Changeset.add_error(changeset, :amount_cents, "Amount Cents cannot be greater than the Payment's net Paid Amount Cents", [validation: "amount_cents_must_be_smaller_or_equal_to_payment_net_paid_amount_cents", full_error_message: true])
       _ -> changeset

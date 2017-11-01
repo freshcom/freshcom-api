@@ -26,6 +26,7 @@ defmodule BlueJetWeb.Router do
     ####
     resources "/accounts", AccountController, except: [:new, :edit]
     get "/account", AccountController, :show
+    patch "/account", AccountController, :update
     resources "/members", AccountMemberController, except: [:new, :edit]
     resources "/users", UserController, except: [:new, :edit]
     get "/user", UserController, :show

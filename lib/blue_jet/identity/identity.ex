@@ -1,6 +1,7 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
 
+  alias Ecto.Changeset
   alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
@@ -28,6 +29,26 @@ defmodule BlueJet.Identity do
     account
   end
 
+  def update_account(request = %{ vas: vas, account_id: account_id }) do
+    defaults = %{ preloads: [], fields: %{} }
+    request = Map.merge(defaults, request)
+    account = Repo.get_by!(Account, id: vas[:account_id])
+    changeset = Account.changeset(account, request.fields)
+    update_account(changeset)
+  end
+  def update_account(changeset = %Changeset{ valid?: true }) do
+    Repo.transaction(fn ->
+      account = Repo.update!(changeset)
+      with {:ok, account} <- Account.process(account, changeset) do
+        account
+      else
+        {:error, errors} -> Repo.rollback(errors)
+      end
+    end)
+  end
+  def update_account(changeset) do
+    {:error, changeset.errors}
+  end
   ####
   # User
   ####
