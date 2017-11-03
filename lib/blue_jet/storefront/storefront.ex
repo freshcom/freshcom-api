@@ -14,7 +14,6 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.Refund
   alias BlueJet.Storefront.Card
 
-  alias BlueJet.Inventory.Unlockable
   alias BlueJet.FileStorage.ExternalFile
 
   ######
