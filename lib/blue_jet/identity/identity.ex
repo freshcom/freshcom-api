@@ -8,6 +8,96 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
+  alias BlueJet.Identity.Role
+  alias BlueJet.Identity.RoleInstance
+  alias BlueJet.Identity.Permission
+
+  defmodule Query do
+    alias Ecto.Multi
+
+    def create_account(fields) do
+      Multi.new()
+      |> Multi.insert(:account, Account.changeset(%Account{}, fields))
+      |> Multi.run(:system_roles, fn(%{ account: account }) ->
+        system_roles = [
+          Repo.insert!(Role.changeset(%Role{}, %{
+            account_id: account.id,
+            name: "Administrator",
+            system_label: "administrator",
+            permissions: Permission.default(:administrator)
+          })),
+          Repo.insert!(Role.changeset(%Role{}, %{
+            account_id: account.id,
+            name: "Developer",
+            system_label: "developer",
+            permissions: Permission.default(:developer)
+          })),
+          Repo.insert!(Role.changeset(%Role{}, %{
+            account_id: account.id,
+            name: "Support Personnel",
+            system_label: "support_personnel",
+            permissions: Permission.default(:support_personnel)
+          })),
+          Repo.insert!(Role.changeset(%Role{}, %{
+            account_id: account.id,
+            name: "Customer",
+            system_label: "customer",
+            permissions: Permission.default(:customer)
+          }))
+        ]
+
+        {:ok, system_roles}
+      end)
+    end
+
+    def create_global_user(fields) do
+      Multi.new()
+      |> Multi.append(create_account(%{ name: fields.account_name }))
+      |> Multi.run(:user, fn(x = %{ account: account }) ->
+          Repo.insert(User.changeset(%User{}, Map.merge(fields, %{ default_account_id: account.id })))
+        end)
+      |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
+          account_membership = Repo.insert!(
+            AccountMembership.changeset(%AccountMembership{}, %{
+              account_id: account.id,
+              user_id: user.id
+            })
+          )
+
+          {:ok, account_membership}
+        end)
+      |> Multi.run(:role_instance, fn(%{ account_membership: account_membership, account: account, system_roles: system_roles }) ->
+          admin_role = Enum.find(system_roles, fn(role) ->
+            role.system_label == "administrator"
+          end)
+
+          role_instance = Repo.insert!(RoleInstance.changeset(%RoleInstance{}, %{
+            account_id: account.id,
+            role_id: admin_role.id,
+            account_membership_id: account_membership.id
+          }))
+
+          {:ok, role_instance}
+        end)
+      |> Multi.run(:refresh_tokens, fn(%{ account: account, user: user}) ->
+          refresh_tokens = [
+            Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id })),
+            Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id, user_id: user.id })),
+            Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ user_id: user.id }))
+          ]
+
+          {:ok, refresh_tokens}
+        end)
+    end
+
+    def create_account_user(account_id, fields) do
+      Multi.new()
+      |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ default_account_id: account_id, account_id: account_id })))
+      |> Multi.run(:user_refresh_token, fn(%{ user: user }) ->
+          Repo.insert(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account_id, user_id: user.id }))
+        end)
+    end
+  end
 
   def authenticate(args) do
     Authentication.get_token(args)
@@ -16,17 +106,13 @@ defmodule BlueJet.Identity do
   ####
   # Account
   ####
-  def get_account!(request = %{ vas: _, account_id: account_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-
+  def get_account(%ContextRequest{ vas: %{ account_id: account_id }, locale: locale }) do
     account =
       Account
       |> Repo.get!(account_id)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+      |> Translation.translate(locale)
 
-    account
+    {:ok, %ContextResponse{ data: account }}
   end
 
   def update_account(request = %{ vas: vas, account_id: account_id }) do
@@ -49,44 +135,36 @@ defmodule BlueJet.Identity do
   def update_account(changeset) do
     {:error, changeset.errors}
   end
+
   ####
   # User
   ####
-  # Create new User to existing account
-  def create_user(request = %{ vas: %{ account_id: account_id } }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
+  def create_user(request = %ContextRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
+    result = Query.create_global_user(fields) |> Repo.transaction()
 
-    changeset = User.changeset(%User{}, request.fields)
+    case result do
+      {:ok, %{ user: user }} ->
+        user = Repo.preload(user, User.Query.preloads(preloads))
+        response = %ContextResponse{ data: user }
 
-    Repo.transaction(fn ->
-      with {:ok, user} <- Repo.insert(changeset),
-           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ user_id: user.id, account_id: account_id }) |> Repo.insert,
-           {:ok, _membership} <- AccountMembership.changeset(%AccountMembership{}, %{ role: "admin", account_id: account_id, user_id: user.id }) |> Repo.insert
-      do
-        user
-      else
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
+        {:ok, %ContextResponse{ data: user }}
+      {:error, failed_operation, failed_value, _} ->
+        {:error, %ContextResponse{ errors: failed_value.errors }}
+      other -> IO.inspect other
+    end
   end
-  # Sign up a new User
-  def create_user(request) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
+  def create_user(request = %{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
+    result = Query.create_account_user(account_id, fields) |> Repo.transaction()
 
-    Repo.transaction(fn ->
-      with {:ok, default_account} <- Account.changeset(%Account{}, %{ name: Map.get(request.fields, "account_name") }) |> Repo.insert,
-           {:ok, user} <- User.changeset(%User{}, Map.put(request.fields, "default_account_id", default_account.id)) |> Repo.insert,
-           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ user_id: user.id, account_id: default_account.id }) |> Repo.insert,
-           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ account_id: default_account.id }) |> Repo.insert,
-           {:ok, _membership} <- AccountMembership.changeset(%AccountMembership{}, %{ role: "admin", account_id: default_account.id, user_id: user.id }) |> Repo.insert
-      do
-        user
-      else
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
+    case result do
+      {:ok, %{ user: user }} ->
+        user = Repo.preload(user, User.Query.preloads(preloads))
+        response = %ContextResponse{ data: user }
+
+        {:ok, %ContextResponse{ data: user }}
+      {:error, failed_operation, failed_value, _} ->
+        {:error, %ContextResponse{ errors: failed_value.errors }}
+    end
   end
 
   def get_user!(request = %{ vas: _, user_id: user_id }) do
@@ -100,100 +178,5 @@ defmodule BlueJet.Identity do
       |> Translation.translate(request.locale)
 
     user
-  end
-
-  ####
-  # Customer
-  ####
-  def create_customer(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Customer.changeset(%Customer{}, fields)
-
-    Repo.transaction(fn ->
-      with {:ok, customer} <- Repo.insert(changeset),
-           {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ customer_id: customer.id, account_id: customer.account_id }) |> Repo.insert
-      do
-        Repo.preload(customer, request.preloads)
-      else
-        {:error, changeset} -> Repo.rollback(changeset)
-      end
-    end)
-  end
-
-  def get_customer!(request = %{ vas: vas, customer_id: customer_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-
-    customer =
-      Customer
-      |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
-      |> Customer.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    customer
-  end
-
-  def update_customer(request = %{ vas: vas, customer_id: customer_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
-
-    vas_customer_id = vas[:customer_id]
-
-    customer_scope = if vas_customer_id do
-      from(c in Customer, where: c.id == ^vas_customer_id)
-    else
-      Customer
-    end
-    customer = Repo.get_by!(customer_scope, account_id: vas[:account_id], id: customer_id)
-
-    changeset = Customer.changeset(customer, request.fields, request.locale)
-
-    with {:ok, customer} <- Repo.update(changeset) do
-      customer =
-        customer
-        |> Repo.preload(request.preloads)
-        |> Translation.translate(request.locale)
-
-      {:ok, customer}
-    else
-      other -> other
-    end
-  end
-
-  def list_customers(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
-
-    query =
-      Customer
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
-      |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
-      |> where([s], s.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = Customer |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    customers =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      customers: customers
-    }
-  end
-
-  def delete_customer!(%{ vas: vas, customer_id: customer_id }) do
-    customer = Repo.get_by!(Customer, account_id: vas[:account_id], id: customer_id)
-    Repo.delete!(customer)
   end
 end

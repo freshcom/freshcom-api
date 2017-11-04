@@ -1,8 +1,27 @@
 defmodule BlueJet.Identity.RefreshToken do
+  @moduledoc """
+  Provides function related to Refresh Token.
+
+  Refresh Token are long lived token that the client use to get a new Access Token.
+  Refresh Token can be revoked easily in case it is compromised. Refresh Token
+  can be obtained using Resource Owner's credential or from the FreshCom Dashboard.
+
+  There is two types of Refresh Token:
+  - Public Refresh Token
+  - User Refresh Token
+
+  Refresh Token with `user_id` set to `nil` is considered a Public Refresh Token and
+  it never epxires.
+
+  Refresh Token with `user_id` set to a specific User's ID is considered a User Refresh Token
+  and by default it expires in 2 weeks.
+  """
   use BlueJet, :data
 
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
+  alias BlueJet.Identity.RefreshToken
+  alias BlueJet.Identity.Account
 
   schema "refresh_tokens" do
     field :email, :string, virtual: true
@@ -10,8 +29,7 @@ defmodule BlueJet.Identity.RefreshToken do
 
     timestamps()
 
-    belongs_to :account, BlueJet.Identity.Account
-    belongs_to :customer, Customer
+    belongs_to :account, Account
     belongs_to :user, User
   end
 
@@ -20,11 +38,9 @@ defmodule BlueJet.Identity.RefreshToken do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:account_id, :user_id, :customer_id])
-    |> validate_required([:account_id])
+    |> cast(params, [:account_id, :user_id])
     |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:user_id)
-    |> foreign_key_constraint(:customer_id)
   end
 
   def sign_token(claims) do
@@ -40,5 +56,11 @@ defmodule BlueJet.Identity.RefreshToken do
                                           |> JOSE.JWK.from_pem
                                           |> JOSE.JWT.verify_strict(["RS256"], signed_token)
     {true, claims}
+  end
+
+  defmodule Query do
+    def default() do
+      from(rt in RefreshToken, order_by: [desc: :inserted_at])
+    end
   end
 end

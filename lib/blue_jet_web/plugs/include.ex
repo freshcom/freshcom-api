@@ -7,18 +7,41 @@ defmodule BlueJet.Plugs.Include do
     query_params = Map.put(conn.query_params, "include", Inflex.underscore(include))
     conn = %{ conn | query_params: query_params }
 
-    preloads = String.split(include, ",")
-    preloads = Enum.sort_by(preloads, fn(item) -> length(String.split(item, ".")) end)
-
-    preloads = Enum.reduce(preloads, [], fn(item, acc) ->
-      acc ++ deserialize_preload(item)
-    end)
-
-    assign(conn, :preloads, preloads)
+    assign(conn, :preloads, to_preloads(include))
   end
   def call(conn, opts), do: assign(conn, :preloads, opts[:default])
 
-  defp deserialize_preload(preload) do
+  @doc """
+  Deserialize the include string to a keyword list that can be used for preload.
+  """
+  def to_preloads(preloads_string) do
+    preloads = String.split(preloads_string, ",")
+    preloads = Enum.sort_by(preloads, fn(item) -> length(String.split(item, ".")) end)
+
+    preloads = Enum.reduce(preloads, [], fn(item, acc) ->
+      preload = to_preload(item)
+
+      # If its a chained preload and the root key already exist in acc
+      # then we need to merge it.
+      with [{key, value}] <- preload,
+           true <- Keyword.has_key?(acc, key)
+      do
+        # Merge chained preload with existing root key
+        existing_value = Keyword.get(acc, key)
+        index = Enum.find_index(acc, fn(item) ->
+          is_tuple(item) && elem(item, 0) == key
+        end)
+
+        List.update_at(acc, index, fn(index) ->
+          {key, List.flatten([existing_value]) ++ value}
+        end)
+      else
+        other ->
+          acc ++ preload
+      end
+    end)
+  end
+  def to_preload(preload) do
     preload =
       preload
       |> Inflex.underscore()

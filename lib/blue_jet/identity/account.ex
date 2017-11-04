@@ -1,21 +1,17 @@
 defmodule BlueJet.Identity.Account do
   use BlueJet, :data
 
-  alias Ecto.Changeset
+  alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.Account
-  alias BlueJet.Repo
+  alias BlueJet.Identity.AccountMembership
 
   schema "accounts" do
     field :name, :string
-    field :stripe_user_id, :string
-    field :stripe_access_token, :string
-    field :stripe_refresh_token, :string
-    field :stripe_publishable_key, :string
-    field :stripe_livemode, :boolean
-    field :stripe_scope, :string
-    field :stripe_code, :string, virtual: true
 
     timestamps()
+
+    has_many :refresh_tokens, RefreshToken
+    has_many :memberships, AccountMembership
   end
 
   @type t :: Ecto.Schema.t
@@ -25,41 +21,25 @@ defmodule BlueJet.Identity.Account do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:name, :stripe_code])
+    |> cast(params, [:name])
   end
 
-  @doc """
-  Process the given account.
 
-  This function may change data in the database.
+  defmodule Query do
+    use BlueJet, :query
 
-  Returns the processed account.
-
-  The given `account` should be a account that is just created/updated using the `changeset`.
-  """
-  @spec process(Account.t, Changeset.t) :: {:ok, Account.t} | {:error. map}
-  def process(account = %Account{ stripe_code: stripe_code }, changeset) when not is_nil(stripe_code) do
-    with {:ok, data} <- create_stripe_access_token(stripe_code) do
-      changeset = Changeset.change(account, %{
-        stripe_user_id: data["stripe_user_id"],
-        stripe_livemode: data["stripe_livemode"],
-        stripe_access_token: data["access_token"],
-        stripe_refresh_token: data["stripe_refresh_token"],
-        stripe_publishable_key: data["stripe_publishable_key"],
-        stripe_scope: data["scope"]
-      })
-
-      account = Repo.update!(changeset)
-      {:ok, account}
-    else
-      {:error, errors} -> {:error, [stripe_code: { errors["error_description"], [code: errors["error"], full_error_message: true] }]}
+    def preloads(:refresh_tokens) do
+      [refresh_tokens: RefreshToken.Query.default()]
     end
-  end
-  def process(account, _), do: account
+    def preloads(:memberships) do
+      [memberships: AccountMembership.Query.default()]
+    end
+    def preloads({:memberships, membership_preloads}) do
+      [memberships: {AccountMembership.Query.default(), AccountMembership.Query.preloads(membership_preloads)}]
+    end
 
-  @spec create_stripe_access_token(string) :: {:ok, map} | {:error, map}
-  defp create_stripe_access_token(stripe_code) do
-    key = System.get_env("STRIPE_SECRET_KEY")
-    OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_code, grant_type: "authorization_code" })
+    def default() do
+      from(a in Account, order_by: [desc: :inserted_at])
+    end
   end
 end

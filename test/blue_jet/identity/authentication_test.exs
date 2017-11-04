@@ -4,7 +4,6 @@ defmodule BlueJet.AuthenticationTest do
   alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.User
-  alias BlueJet.Identity.Customer
   alias BlueJet.Identity
   alias BlueJet.Repo
 

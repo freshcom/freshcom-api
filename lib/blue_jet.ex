@@ -11,6 +11,8 @@ defmodule BlueJet do
     quote do
       alias BlueJet.Repo
       alias BlueJet.Translation
+      alias BlueJet.ContextRequest
+      alias BlueJet.ContextResponse
 
       import Ecto
       import Ecto.Query
@@ -32,6 +34,19 @@ defmodule BlueJet do
       import Ecto.Query
       import BlueJet.Validation
       alias BlueJet.Repo
+      alias BlueJet.Translation
+    end
+  end
+
+  def query do
+    quote do
+      def preloads(targets) when is_list(targets) and length(targets) == 0 do
+        []
+      end
+      def preloads(targets) when is_list(targets) do
+        [target | rest] = targets
+        preloads(target) ++ preloads(rest)
+      end
     end
   end
 

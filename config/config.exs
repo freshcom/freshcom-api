@@ -51,6 +51,13 @@ config :ja_serializer,
 
 config :blue_jet, :s3, prefix: 'uploads'
 
+config :blue_jet, :authorization, %{
+  permission_providers: [
+    BlueJet.Storefront.PermissionProvider,
+    BlueJet.Inventory.PermissionProvider
+  ]
+}
+
 config :ex_aws,
   region: [{:system, "AWS_REGION"}, :instance_role]
 

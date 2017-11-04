@@ -17,5 +17,12 @@ defmodule BlueJet.Plugs.IncludeTest do
 
       assert conn.assigns[:preloads] == [:avatar, external_file_collections: :files, product_items: [sku: :avatar]]
     end
+
+    test "with nested include and some same root key" do
+      conn = %Plug.Conn{ query_params: %{ "include" => "productItems.sku.avatar,avatar,externalFileCollections.files,productItems.product" } }
+      conn = Include.call(conn, %{})
+
+      assert conn.assigns[:preloads] == [:avatar, external_file_collections: :files, product_items: [:product, {:sku, :avatar}]]
+    end
   end
 end
