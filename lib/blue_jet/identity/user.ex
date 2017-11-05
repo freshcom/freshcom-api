@@ -22,8 +22,6 @@ defmodule BlueJet.Identity.User do
     belongs_to :account, Account
     has_many :refresh_tokens, RefreshToken
     has_many :account_memberships, AccountMembership
-    has_many :role_instances, through: [:account_memberships, :role_instances]
-    has_many :roles, through: [:role_instances, :role]
   end
 
   def system_fields do

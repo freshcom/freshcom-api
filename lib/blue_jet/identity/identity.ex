@@ -64,14 +64,30 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def authenticate(args) do
-    Authentication.get_token(args)
+
+  def authorize(vas = %{}, endpoint) do
+    Authorization.authorize(vas, endpoint)
   end
+
+  def create_token() do
+
+  end
+
+  # def authenticate(args) do
+  #   Authentication.get_token(args)
+  # end
 
   ####
   # Account
   ####
-  def get_account(%AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
+  def get_account(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Authorization.authorize(vas, "identity.get_account") do
+      do_get_account(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_account(%AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
     account =
       Account
       |> Repo.get!(account_id)
@@ -111,7 +127,6 @@ defmodule BlueJet.Identity do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-
   defp do_create_user(request = %AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
     result = Query.create_global_user(fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
@@ -125,7 +140,6 @@ defmodule BlueJet.Identity do
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-
   defp do_create_user_response({:ok, %{ user: user}}, preloads) do
     user = Repo.preload(user, User.Query.preloads(preloads))
     {:ok, %AccessResponse{ data: user }}
@@ -134,16 +148,26 @@ defmodule BlueJet.Identity do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
 
-  def get_user!(request = %{ vas: _, user_id: user_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-
+  def get_user(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Authorization.authorize(vas, "identity.get_user") do
+      do_get_user(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_user(%AccessRequest{ vas: %{ account_id: account_id, user_id: user_id }, preloads: preloads, locale: locale }) do
+    user = Repo.get(User, user_id)
+    do_get_user_response(user, preloads, locale)
+  end
+  defp do_get_user_response(nil) do
+    {:error, :not_found}
+  end
+  defp do_get_user_response(user, preloads, locale) do
     user =
-      User
-      |> Repo.get!(user_id)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+      user
+      |> Repo.preload(User.Query.preloads(preloads))
+      |> Translation.translate(locale)
 
-    user
+    {:ok, %AccessResponse{ data: user }}
   end
 end

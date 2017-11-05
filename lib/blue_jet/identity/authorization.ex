@@ -1,30 +1,38 @@
 defmodule BlueJet.Identity.Authorization do
 
   alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Repo
 
   @role_endpoints %{
     "anonymous" => [
-      "identity.create_user"
+      "identity.create_user",
+      "identity.get_account"
     ],
 
     "guest" => [
-      "identity.create_user"
+      "identity.create_user",
+      "identity.get_account"
     ],
 
     "customer" => [
-
+      "identity.get_account",
+      "identity.get_user"
     ],
 
     "support_personnel" => [
-
+      "identity.get_account",
+      "identity.get_user"
     ],
 
     "developer" => [
-
+      "identity.get_account",
+      "identity.get_user"
     ],
 
     "administrator" => [
-      "identity.create_user"
+      "identity.create_user",
+      "identity.get_account",
+      "identity.get_user"
     ],
   }
 
