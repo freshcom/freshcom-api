@@ -4,14 +4,14 @@ defmodule BlueJet.Identity.AccountMembership do
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.User
-  alias BlueJet.Identity.RoleInstance
 
   schema "account_memberships" do
+    field :role, :string
+
     timestamps()
 
     belongs_to :account, Account
     belongs_to :user, User
-    has_many :role_instances, RoleInstance
   end
 
   def system_fields do
@@ -34,7 +34,7 @@ defmodule BlueJet.Identity.AccountMembership do
   end
 
   def required_fields(_) do
-    [:user_id, :account_id]
+    [:role, :user_id, :account_id]
   end
 
   def validate(changeset) do
@@ -56,13 +56,6 @@ defmodule BlueJet.Identity.AccountMembership do
 
   defmodule Query do
     use BlueJet, :query
-
-    def preloads(:role_instances) do
-      [role_instances: RoleInstance.Query.default()]
-    end
-    def preloads({:role_instances, role_instance_preloads}) do
-      [role_instances: {RoleInstance.Query.default(), RoleInstance.Query.preloads(role_instance_preloads)}]
-    end
 
     def default() do
       from(a in AccountMembership, order_by: [desc: :inserted_at])

@@ -1,4 +1,4 @@
-defmodule BlueJet.ContextRequest do
+defmodule BlueJet.AccessRequest do
   defstruct vas: %{},
             params: %{},
             fields: %{},

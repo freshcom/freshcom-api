@@ -11,8 +11,8 @@ defmodule BlueJet do
     quote do
       alias BlueJet.Repo
       alias BlueJet.Translation
-      alias BlueJet.ContextRequest
-      alias BlueJet.ContextResponse
+      alias BlueJet.AccessRequest
+      alias BlueJet.AccessResponse
 
       import Ecto
       import Ecto.Query

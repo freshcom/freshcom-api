@@ -1,3 +1,3 @@
-defmodule BlueJet.ContextResponse do
+defmodule BlueJet.AccessResponse do
   defstruct data: %{}, errors: %{}
 end

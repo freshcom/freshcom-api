@@ -6,6 +6,7 @@ defmodule BlueJet.Identity.User do
   alias BlueJet.Identity.User
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
+  alias BlueJet.Identity.AccountMembership
 
   schema "users" do
     field :email, :string
@@ -20,6 +21,9 @@ defmodule BlueJet.Identity.User do
     belongs_to :default_account, Account
     belongs_to :account, Account
     has_many :refresh_tokens, RefreshToken
+    has_many :account_memberships, AccountMembership
+    has_many :role_instances, through: [:account_memberships, :role_instances]
+    has_many :roles, through: [:role_instances, :role]
   end
 
   def system_fields do
@@ -79,6 +83,9 @@ defmodule BlueJet.Identity.User do
     end
     def preloads(:refresh_tokens) do
       [refresh_tokens: RefreshToken.Query.default()]
+    end
+    def preloads(:account_memberships) do
+      [account_memberships: AccountMembership.Query.default()]
     end
   end
 end

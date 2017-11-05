@@ -2,14 +2,14 @@ defmodule BlueJet.IdentityTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity
-  alias BlueJet.ContextRequest
+  alias BlueJet.AccessRequest
   alias BlueJet.Identity.User
   alias BlueJet.Identity.Account
 
   describe "create_user/1" do
     test "with no vas" do
-      request = %ContextRequest{
-        preloads: [:refresh_tokens, {:default_account, [:refresh_tokens, {:memberships, [role_instances: :role]}]}],
+      request = %AccessRequest{
+        preloads: [:refresh_tokens, :account_memberships, [default_account: :refresh_tokens]],
         vas: %{},
         fields: %{
           email: Faker.Internet.email(),
@@ -26,12 +26,14 @@ defmodule BlueJet.IdentityTest do
       assert user.default_account_id != nil
       assert length(user.default_account.refresh_tokens) == 2
       assert length(user.refresh_tokens) == 2
+      assert length(user.account_memberships) == 1
+      assert Enum.at(user.account_memberships, 0).role == "administrator"
     end
 
-    test "with vas" do
+    test "with guest vas" do
       account = Repo.insert!(%Account{})
 
-      request = %ContextRequest{
+      request = %AccessRequest{
         preloads: [:refresh_tokens],
         vas: %{ account_id: account.id },
         fields: %{
@@ -54,7 +56,7 @@ defmodule BlueJet.IdentityTest do
     test "with vas" do
       %{ id: account_id } = Repo.insert!(%Account{})
 
-      request = %ContextRequest{
+      request = %AccessRequest{
         vas: %{ account_id: account_id }
       }
 
