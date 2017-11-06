@@ -25,17 +25,20 @@ defmodule BlueJetWeb.UserController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: user_id } } }, _) do
-    request = %{
+  # TODO: allow user_id from params
+  def show(conn = %{ assigns: assigns }, _) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      user_id: user_id,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    user = Identity.get_user!(request)
+    case Identity.get_user(request) do
+      {:ok, %{ data: user }} ->
+        render(conn, "show.json-api", data: user, opts: [include: conn.query_params["include"]])
+    end
 
-    render(conn, "show.json-api", data: user, opts: [include: conn.query_params["include"]])
+    # render(conn, "show.json-api", data: user, opts: [include: conn.query_params["include"]])
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "user", "attributes" => _user_params}}) do

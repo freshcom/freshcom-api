@@ -31,12 +31,12 @@ defmodule BlueJet.Plugs.Authentication do
   end
 
   def extract_authorization_scope(%{ "prn" => user_id, "aud" => account_id, "typ" => "user" }) do
-    {:ok, %{ account_id: account_id, user_id: user_id }}
+    {:ok, %{ user_id: user_id, account_id: account_id,  }}
   end
-  def extract_authorization_scope(%{ "prn" => customer_id, "aud" => account_id, "typ" => "customer" }) do
-    {:ok, %{ account_id: account_id, customer_id: customer_id }}
+  def extract_authorization_scope(%{ "prn" => user_id, "typ" => "user" }) do
+    {:ok, %{ user_id: user_id }}
   end
-  def extract_authorization_scope(%{ "prn" => account_id, "typ" => "account" }) do
+  def extract_authorization_scope(%{ "prn" => account_id, "typ" => "storefront" }) do
     {:ok, %{ account_id: account_id }}
   end
 end

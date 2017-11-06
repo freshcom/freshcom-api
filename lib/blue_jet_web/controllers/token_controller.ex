@@ -4,12 +4,12 @@ defmodule BlueJetWeb.TokenController do
   alias BlueJet.Identity
 
   def create(conn, params) do
-    with {:ok, token} <- Identity.authenticate(params) do
+    with {:ok, %{ data: token }} <- Identity.create_token(%AccessRequest{ fields: params }) do
       conn
       |> put_status(:ok)
       |> json(token)
     else
-      {:error, errors} ->
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:bad_request)
         |> json(errors)

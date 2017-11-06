@@ -79,6 +79,10 @@ defmodule BlueJet.Identity.User do
         where: ac.account_id == ^account_id
     end
 
+    def global(query) do
+      from u in query, where: is_nil(u.account_id)
+    end
+
     def default() do
       from(u in User, order_by: [desc: :inserted_at])
     end

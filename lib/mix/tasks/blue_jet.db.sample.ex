@@ -20,28 +20,30 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Storefront.ProductItem
     alias BlueJet.Storefront.Price
     alias BlueJet.Identity
+    alias BlueJet.AccessRequest
 
     ensure_started(Repo, [])
 
-    {:ok, %{ default_account_id: account1_id }} = Identity.create_user(%{
+    {:ok, %{ data: %{ default_account_id: account1_id } }} = Identity.create_user(%AccessRequest{
       fields: %{
-        "first_name" => "Roy",
-        "last_name" => "Bao",
-        "email" => "user1@example.com",
-        "password" => "test1234",
-        "account_name" => "Outersky"
+        first_name: "Roy",
+        last_name: "Bao",
+        email: "user1@example.com",
+        password: "test1234",
+        account_name: "Outersky"
       }
     })
-    {:ok, _} = Identity.create_customer(%{
-      vas: %{ account_id: account1_id },
-      fields: %{
-        "first_name" => "Tiffany",
-        "last_name" => "Wang",
-        "status" => "registered",
-        "email" => "customer1@example.com",
-        "password" => "test1234"
-      }
-    })
+
+    # {:ok, _} = Identity.create_customer(%{
+    #   vas: %{ account_id: account1_id },
+    #   fields: %{
+    #     "first_name" => "Tiffany",
+    #     "last_name" => "Wang",
+    #     "status" => "registered",
+    #     "email" => "customer1@example.com",
+    #     "password" => "test1234"
+    #   }
+    # })
 
     ########################
     # 李锦记熊猫蚝油

@@ -3,6 +3,7 @@ defmodule BlueJet.Identity do
 
   alias Ecto.Changeset
   alias BlueJet.Identity.Authorization
+  alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.User
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.AccountMembership
@@ -64,23 +65,29 @@ defmodule BlueJet.Identity do
     end
   end
 
-
   def authorize(vas = %{}, endpoint) do
     Authorization.authorize(vas, endpoint)
   end
 
-  def create_token() do
-
+  def create_token(%AccessRequest{ fields: fields }) do
+    with {:ok, token} <- Authentication.create_token(fields) do
+      {:ok, %AccessResponse{ data: token }}
+    else
+      {:error, errors} -> {:error, %AccessResponse{ errors: errors }}
+    end
   end
-
-  # def authenticate(args) do
-  #   Authentication.get_token(args)
-  # end
 
   ####
   # Account
   ####
-  def get_account(request = %AccessRequest{ vas: vas }) do
+  def get_account(request = %AccessRequest{ vas: vas = %{ user_id: user_id } }, params: %{ account_id: account_id }) when map_size(vas) == 1 do
+    get_account(Map.merge(request, %{ vas: %{ user_id: user_id, account_id: account_id }}))
+  end
+  def get_account(request = %AccessRequest{ vas: vas = %{ user_id: user_id } }) when map_size(vas) == 1 do
+    user = Repo.get!(User, user_id)
+    get_account(Map.merge(request, %{ vas: %{ user_id: user_id, account_id: user.default_account_id }}))
+  end
+  def get_account(request = %AccessRequest{ vas: vas = %{ account_id: account_id } }) do
     with {:ok, role} <- Authorization.authorize(vas, "identity.get_account") do
       do_get_account(request)
     else
@@ -154,7 +161,7 @@ defmodule BlueJet.Identity do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_user(%AccessRequest{ vas: %{ account_id: account_id, user_id: user_id }, preloads: preloads, locale: locale }) do
+  def do_get_user(%AccessRequest{ vas: %{ user_id: user_id }, preloads: preloads, locale: locale }) do
     user =
       User
       |> Repo.get!(user_id)

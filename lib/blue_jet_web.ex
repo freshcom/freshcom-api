@@ -17,18 +17,6 @@ defmodule BlueJetWeb do
   and import those modules here.
   """
 
-  def context do
-    quote do
-      alias BlueJet.Repo
-      alias BlueJet.Translation
-
-      import Ecto
-      import Ecto.Query
-
-      import BlueJet.Context.Helpers
-    end
-  end
-
   def model do
     quote do
       use Ecto.Schema
@@ -56,6 +44,8 @@ defmodule BlueJetWeb do
       alias BlueJet.Translation
 
       import BlueJetWeb.Controller.Helpers
+      alias BlueJet.AccessRequest
+      alias BlueJet.AccessResponse
       # def paginate(query, %{ number: number, size: size }) do
       #   limit = size
       #   offset = size * (number - 1)

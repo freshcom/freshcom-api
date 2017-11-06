@@ -34,12 +34,17 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_account"
     ],
+
+    "global" => [
+      "identity.list_account",
+      "identity.get_user"
+    ]
   }
 
   def authorize(vas, endpoint) when map_size(vas) == 0 do
     authorize("anonymous", endpoint)
   end
-  def authorize(%{ account_id: account_id, user_id: user_id }, endpoint) do
+  def authorize(%{ user_id: user_id, account_id: account_id }, endpoint) do
     with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
          {:ok, role} <- authorize(role, endpoint)
     do
@@ -51,6 +56,9 @@ defmodule BlueJet.Identity.Authorization do
   end
   def authorize(%{ account_id: account_id }, endpoint) do
     authorize("guest", endpoint)
+  end
+  def authorize(%{ user_id: user_id }, endpoint) do
+    authorize("global", endpoint)
   end
   def authorize(role, target_endpoint) when is_bitstring(role) do
     endpoints = Map.get(@role_endpoints, role)

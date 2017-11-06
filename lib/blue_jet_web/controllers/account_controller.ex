@@ -28,17 +28,15 @@ defmodule BlueJetWeb.AccountController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, _) do
-    request = %{
-      vas: assigns[:vas],
-      account_id: account_id,
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
+    request = %AccessRequest{
+      vas: vas
     }
 
-    account = Identity.get_account!(request)
-
-    render(conn, "show.json-api", data: account, opts: [include: conn.query_params["include"]])
+    case Identity.get_account(request) do
+      {:ok, %{ data: account }} ->
+        render(conn, "show.json-api", data: account, opts: [include: conn.query_params["include"]])
+    end
   end
 
   def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, %{"data" => data = %{"type" => "Account", "attributes" => _account_params}}) do
