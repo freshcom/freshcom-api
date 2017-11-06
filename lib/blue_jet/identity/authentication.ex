@@ -81,8 +81,8 @@ defmodule BlueJet.Identity.Authentication do
 
     if user && Comeonin.Bcrypt.checkpw(password, user.encrypted_password) do
       with refresh_token = %RefreshToken{} <- Repo.get_by(RefreshToken, user_id: user.id, account_id: account_id) do
-        access_token = generate_access_token(refresh_token)
-        {:ok, %{ access_token: access_token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
+        token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: "account_id:#{account_id}", prn: "user_id:#{}", typ: "storefront" })
+        {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
       else
         nil -> {:error, %{ error: :invalid_scope, error_description: "The scope provided is invalid or not allowed." }}
       end
@@ -91,6 +91,26 @@ defmodule BlueJet.Identity.Authentication do
     end
   end
   def create_user_account_token(user_global_refresh_token_id, account_id) do
+    refresh_token = Repo.get_by(RefreshToken, user_global_refresh_token_id)
+
+    # Make sure its an User Refresh Token
+    if refresh_token && refresh_token.user_id do
+      user =
+        User
+        |> User.Query.member_of_account(account_id)
+        |> Repo.get_by(refresh_token.user_id)
+
+      # Make sure the account matches
+      if user && refresh_token.account_id == account_id do
+        token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: "account_id:#{account_id}", prn: "user_id:#{user.id}", typ: "user" })
+        {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
+      else
+        {:error, %{ error: :invalid_scope, error_description: "The scope provided is invalid or not allowed." }}
+      end
+
+    else
+      {:error, %{ error: :invalid_grant, error_description: "Refresh Token is invalid." }}
+    end
   end
   def create_user_account_token(user_account_refresh_token_id) do
 

@@ -100,6 +100,10 @@ defmodule BlueJet.Identity.AuthenticationTest do
 
       {:error, %{ error: :invalid_scope, error_description: _ }} = Authentication.create_user_account_token(user.email, "test1234", account.id)
     end
+
+    test "with valid user global refresh token and account_id" do
+
+    end
   end
 
   # describe "create_token/1" do
