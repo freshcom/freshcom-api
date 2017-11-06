@@ -96,26 +96,25 @@ defmodule BlueJet.Identity do
     {:ok, %AccessResponse{ data: account }}
   end
 
-  # def update_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   account = Repo.get_by!(Account, id: vas[:account_id])
-  #   changeset = Account.changeset(account, request.fields)
-  #   update_account(changeset)
-  # end
-  # def update_account(changeset = %Changeset{ valid?: true }) do
-  #   Repo.transaction(fn ->
-  #     account = Repo.update!(changeset)
-  #     with {:ok, account} <- Account.process(account, changeset) do
-  #       account
-  #     else
-  #       {:error, errors} -> Repo.rollback(errors)
-  #     end
-  #   end)
-  # end
-  # def update_account(changeset) do
-  #   {:error, changeset.errors}
-  # end
+  def update_account(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Authorization.authorize(vas, "identity.update_account") do
+      do_update_account(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_account(request = %AccessRequest{ vas: %{ account_id: account_id }, fields: fields }) do
+    changeset =
+      Account
+      |> Repo.get!(account_id)
+      |> Account.changeset(fields)
+
+    with {:ok, account} <- Repo.update(changeset) do
+      {:ok, %AccessResponse{ data: account }}
+    else
+      {:error, changeset} -> {:error, %AccessResponse{ errors: changeset.errors }}
+    end
+  end
 
   ####
   # User
@@ -156,15 +155,9 @@ defmodule BlueJet.Identity do
     end
   end
   def do_get_user(%AccessRequest{ vas: %{ account_id: account_id, user_id: user_id }, preloads: preloads, locale: locale }) do
-    user = Repo.get(User, user_id)
-    do_get_user_response(user, preloads, locale)
-  end
-  defp do_get_user_response(nil) do
-    {:error, :not_found}
-  end
-  defp do_get_user_response(user, preloads, locale) do
     user =
-      user
+      User
+      |> Repo.get!(user_id)
       |> Repo.preload(User.Query.preloads(preloads))
       |> Translation.translate(locale)
 

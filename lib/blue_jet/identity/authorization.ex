@@ -5,8 +5,7 @@ defmodule BlueJet.Identity.Authorization do
 
   @role_endpoints %{
     "anonymous" => [
-      "identity.create_user",
-      "identity.get_account"
+      "identity.create_user"
     ],
 
     "guest" => [
@@ -32,7 +31,8 @@ defmodule BlueJet.Identity.Authorization do
     "administrator" => [
       "identity.create_user",
       "identity.get_account",
-      "identity.get_user"
+      "identity.get_user",
+      "identity.update_account"
     ],
   }
 

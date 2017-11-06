@@ -7,10 +7,10 @@ defmodule BlueJet.Identity.RefreshToken do
   can be obtained using Resource Owner's credential or from the FreshCom Dashboard.
 
   There is two types of Refresh Token:
-  - Public Refresh Token
+  - Storefront Refresh Token
   - User Refresh Token
 
-  Refresh Token with `user_id` set to `nil` is considered a Public Refresh Token and
+  Refresh Token with `user_id` set to `nil` is considered a Storefront Refresh Token and
   it never epxires.
 
   Refresh Token with `user_id` set to a specific User's ID is considered a User Refresh Token

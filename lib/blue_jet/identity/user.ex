@@ -73,17 +73,14 @@ defmodule BlueJet.Identity.User do
   defmodule Query do
     use BlueJet, :query
 
-    def preloads(:default_account) do
-      [default_account: Account.Query.default()]
+    def member_of_account(query, account_id) do
+      from u in query,
+        join: ac in AccountMembership, on: ac.user_id == u.id,
+        where: ac.account_id == ^account_id
     end
-    def preloads({:default_account, default_account_preloads}) do
-      [default_account: {Account.Query.default(), Account.Query.preloads(default_account_preloads)}]
-    end
-    def preloads(:refresh_tokens) do
-      [refresh_tokens: RefreshToken.Query.default()]
-    end
-    def preloads(:account_memberships) do
-      [account_memberships: AccountMembership.Query.default()]
+
+    def default() do
+      from(u in User, order_by: [desc: :inserted_at])
     end
   end
 end

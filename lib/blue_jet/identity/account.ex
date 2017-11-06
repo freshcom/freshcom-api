@@ -24,19 +24,8 @@ defmodule BlueJet.Identity.Account do
     |> cast(params, [:name])
   end
 
-
   defmodule Query do
     use BlueJet, :query
-
-    def preloads(:refresh_tokens) do
-      [refresh_tokens: RefreshToken.Query.default()]
-    end
-    def preloads(:memberships) do
-      [memberships: AccountMembership.Query.default()]
-    end
-    def preloads({:memberships, membership_preloads}) do
-      [memberships: {AccountMembership.Query.default(), AccountMembership.Query.preloads(membership_preloads)}]
-    end
 
     def default() do
       from(a in Account, order_by: [desc: :inserted_at])
