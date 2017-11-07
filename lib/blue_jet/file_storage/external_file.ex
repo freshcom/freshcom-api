@@ -103,4 +103,12 @@ defmodule BlueJet.FileStorage.ExternalFile do
   def query() do
     from(ef in ExternalFile, order_by: [desc: ef.updated_at])
   end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def default() do
+      from(ef in ExternalFile, order_by: [desc: ef.updated_at])
+    end
+  end
 end

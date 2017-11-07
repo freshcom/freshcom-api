@@ -16,16 +16,13 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     field :name, :string
     field :label, :string
 
+    field :owner_id, Ecto.UUID
+    field :owner_type, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
 
     timestamps()
 
-    belongs_to :account, Account
-    belongs_to :sku, Sku
-    belongs_to :unlockable, Unlockable
-    belongs_to :product, Product
-    belongs_to :customer, Customer
     has_many :file_memberships, ExternalFileCollectionMembership, foreign_key: :collection_id
     has_many :files, through: [:file_memberships, :file]
   end
@@ -79,5 +76,17 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
   def query() do
     from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_owner_type(owner_type) do
+      from(efc in ExternalFileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
+    end
+
+    def default() do
+      from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+    end
   end
 end

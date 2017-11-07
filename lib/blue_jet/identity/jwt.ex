@@ -1,9 +1,5 @@
 defmodule BlueJet.Identity.Jwt do
-  @moduledoc """
-  There are two types of Access Token:
-  - Public Access Token
-  - User Access Token
-  """
+
   def sign_token(claims) do
     {_, signed} = System.get_env("JWT_PRIVATE_KEY")
                  |> JOSE.JWK.from_pem

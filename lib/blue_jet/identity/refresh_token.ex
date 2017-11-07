@@ -59,6 +59,10 @@ defmodule BlueJet.Identity.RefreshToken do
   end
 
   defmodule Query do
+    def for_user(user_id) do
+      from(rt in RefreshToken, where: rt.user_id == ^user_id)
+    end
+
     def default() do
       from(rt in RefreshToken, order_by: [desc: :inserted_at])
     end

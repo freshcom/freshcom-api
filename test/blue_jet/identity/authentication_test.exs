@@ -24,7 +24,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
   describe "create_token_by_password/2" do
     test "with valid user and password" do
       %{ user: user } = create_identity("administrator")
-      refresh_token = Repo.insert!(%RefreshToken{ user_id: user.id })
+      refresh_token = Repo.insert!(%RefreshToken{ user_id: user.id, account_id: user.default_account_id })
       {:ok, token} = Authentication.create_token_by_password(user, "test1234")
 
       assert token.access_token
@@ -98,40 +98,6 @@ defmodule BlueJet.Identity.AuthenticationTest do
 
     test "with nil Refresh Token" do
       {:error, %{ error: :invalid_grant }} = Authentication.create_token_by_refresh_token(nil)
-    end
-  end
-
-  describe "create_token_by_refresh_token/2" do
-    test "with User Account Refresh Token and matching scope_account_id" do
-      refresh_token_id = Ecto.UUID.generate()
-      account_id = Ecto.UUID.generate()
-      {:ok, token} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, account_id: account_id, user_id: Ecto.UUID.generate() }, account_id)
-
-      assert token.access_token
-      assert token.token_type
-      assert token.expires_in
-      assert token.refresh_token == refresh_token_id
-    end
-
-    test "with User Account Refresh Token and mis-matched scope_account_id" do
-      refresh_token_id = Ecto.UUID.generate()
-      account_id = Ecto.UUID.generate()
-      {:error, %{ error: :invalid_scope }} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, account_id: account_id, user_id: Ecto.UUID.generate() }, Ecto.UUID.generate())
-    end
-
-    test "with User Global Refresh Token and scope_account_id" do
-      refresh_token_id = Ecto.UUID.generate()
-      account_id = Ecto.UUID.generate()
-      {:ok, token} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: Ecto.UUID.generate() }, account_id)
-
-      assert token.access_token
-      assert token.token_type
-      assert token.expires_in
-      assert token.refresh_token == refresh_token_id
-    end
-
-    test "with nil Refresh Token" do
-      {:error, %{ error: :invalid_grant }} = Authentication.create_token_by_refresh_token(nil, Ecto.UUID.generate())
     end
   end
 end

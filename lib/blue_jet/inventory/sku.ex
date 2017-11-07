@@ -34,7 +34,7 @@ defmodule BlueJet.Inventory.Sku do
 
     belongs_to :account, Account
     belongs_to :avatar, ExternalFile
-    has_many :external_file_collections, ExternalFileCollection
+    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
     has_many :product_items, ProductItem
   end
 
@@ -78,5 +78,25 @@ defmodule BlueJet.Inventory.Sku do
 
   def preload_keyword(:avatar) do
     [avatar: ExternalFile.query()]
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(s in query, where: s.account_id == ^account_id)
+    end
+
+    def preloads(:avatar) do
+      [avatar: ExternalFile.Query.default()]
+    end
+
+    def preloads(:external_file_collections) do
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("sku")]
+    end
+
+    def default() do
+      from(s in Sku, order_by: [desc: :updated_at])
+    end
   end
 end

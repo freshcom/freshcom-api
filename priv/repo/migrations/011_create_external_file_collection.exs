@@ -12,14 +12,12 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
-      add :sku_id, references(:skus, type: :binary_id, on_delete: :delete_all)
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
-      add :unlockable_id, references(:unlockables, type: :binary_id, on_delete: :delete_all)
-      add :product_id, references(:products, type: :binary_id, on_delete: :delete_all)
+      add :owner_id, :binary_id
+      add :owner_type, :string
 
       timestamps()
     end
 
-    create unique_index(:external_file_collections, [:account_id, :sku_id, :label], where: "sku_id IS NOT NULL")
+    create index(:external_file_collections, [:owner_type, :owner_id])
   end
 end

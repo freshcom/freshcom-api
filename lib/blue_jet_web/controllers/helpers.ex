@@ -93,6 +93,12 @@ defmodule BlueJetWeb.Controller.Helpers do
     end
   end
 
+  def camelize_map(map) do
+    Enum.reduce(map, %{}, fn({key, value}, acc) ->
+      Map.put(acc, Inflex.camelize(key, :lower), value)
+    end)
+  end
+
   # def translate_collection(collection, "en"), do: collection
   # def translate_collection(collection, locale) do
   #   Enum.map(collection, fn(item) -> translate(item, locale) end)

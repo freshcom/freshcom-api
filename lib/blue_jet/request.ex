@@ -4,6 +4,7 @@ defmodule BlueJet.AccessRequest do
             params: %{},
             fields: %{},
 
+            search: "",
             filter: %{},
             sort: %{},
             pagination: %{},

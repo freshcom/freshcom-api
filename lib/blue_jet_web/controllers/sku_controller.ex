@@ -8,84 +8,80 @@ defmodule BlueJetWeb.SkuController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
-    request = %{
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      search_keyword: params["search"],
+      search: params["search"],
+      params: %{ account_id: params["account_id"] },
       filter: assigns[:filter],
-      page_size: assigns[:page_size],
-      page_number: assigns[:page_number],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    %{ skus: skus, total_count: total_count, result_count: result_count } = Inventory.list_skus(request)
 
-    meta = %{
-      totalCount: total_count,
-      resultCount: result_count
-    }
+    {:ok, %AccessResponse{ data: skus, meta: meta }} = Inventory.list_sku(request)
 
-    render(conn, "index.json-api", data: skus, opts: [meta: meta, include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: skus, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "data" => data = %{ "type" => "Sku" } }) do
-    request = %{
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Sku" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
     case Inventory.create_sku(request) do
-      {:ok, sku} ->
+      {:ok, %AccessResponse{ data: sku }} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: sku, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => sku_id }) do
-    request = %{
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      sku_id: sku_id,
+      params: %{ sku_id: sku_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    sku = Inventory.get_sku!(request)
+    {:ok, %AccessResponse{ data: sku }} = Inventory.get_sku(request)
 
     render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => sku_id, "data" => data = %{ "type" => "Sku" } }) do
-    request = %{
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id, "data" => data = %{ "type" => "Sku" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      sku_id: sku_id,
+      params: %{ sku_id: sku_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Inventory.update_sku(request) do
-      {:ok, sku} ->
+      {:ok, %AccessResponse{ data: sku }} ->
         render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => sku_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      sku_id: sku_id
+      params: %{ sku_id: sku_id }
     }
 
-    Inventory.delete_sku!(request)
+    Inventory.delete_sku(request)
 
     send_resp(conn, :no_content, "")
   end

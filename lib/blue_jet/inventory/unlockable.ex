@@ -26,7 +26,7 @@ defmodule BlueJet.Inventory.Unlockable do
 
     belongs_to :account, Account
     belongs_to :avatar, ExternalFile
-    has_many :external_file_collections, ExternalFileCollection
+    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
     has_many :product_items, ProductItem
   end
 
@@ -77,5 +77,25 @@ defmodule BlueJet.Inventory.Unlockable do
 
   def query() do
     from(u in Unlockable, order_by: [desc: u.updated_at])
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(u in query, where: u.account_id == ^account_id)
+    end
+
+    def preloads(:avatar) do
+      [avatar: ExternalFile.Query.default()]
+    end
+
+    def preloads(:external_file_collections) do
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("unlockable")]
+    end
+
+    def default() do
+      from(u in Unlockable, order_by: [desc: :updated_at])
+    end
   end
 end

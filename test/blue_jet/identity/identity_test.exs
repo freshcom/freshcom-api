@@ -23,7 +23,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       assert user.account_id == nil
       assert user.default_account_id != nil
-      assert length(user.refresh_tokens) == 2
+      assert length(user.refresh_tokens) == 1
       assert length(user.account_memberships) == 1
       assert Enum.at(user.account_memberships, 0).role == "administrator"
     end
