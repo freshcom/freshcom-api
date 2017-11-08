@@ -1,6 +1,7 @@
 defmodule BlueJet.FileStorage do
   use BlueJet, :context
 
+  alias BlueJet.Identity
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
@@ -8,6 +9,42 @@ defmodule BlueJet.FileStorage do
   ####
   # ExternalFile
   ####
+  def list_external_file(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.list_external_file") do
+      do_list_external_file(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_external_file(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      ExternalFile.Query.default()
+      |> search([:name, :id], request.search, request.locale)
+      |> filter_by(status: filter[:status])
+      |> ExternalFile.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = ExternalFile |> ExternalFile.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    external_files =
+      Repo.all(query)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count
+      },
+      data: external_files
+    }
+
+    {:ok, response}
+  end
+
   def create_external_file(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
@@ -57,35 +94,6 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def list_external_files(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
-
-    query =
-      ExternalFile
-      |> search([:name, :id], request.search_keyword, request.locale)
-      |> filter_by(status: request.filter[:status])
-      |> where([ef], ef.account_id == ^account_id)
-      |> order_by([ef], desc: ef.updated_at)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = ExternalFile |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    external_files =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      external_files: external_files
-    }
-  end
-
   def delete_external_file!(%{ vas: vas, external_file_id: ef_id }) do
     external_file = Repo.get_by!(ExternalFile, account_id: vas[:account_id], id: ef_id)
     ExternalFile.delete_object(external_file)
@@ -95,21 +103,66 @@ defmodule BlueJet.FileStorage do
   ####
   # ExternalFileCollection
   ####
-  def create_external_file_collection(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+  def list_external_file_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.list_external_file_collection") do
+      do_list_external_file_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_external_file_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      ExternalFileCollection.Query.default()
+      |> search([:name, :label, :id], request.search, request.locale)
+      |> filter_by(label: filter[:label], content_type: filter[:content_type])
+      |> ExternalFileCollection.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
 
+    total_query = ExternalFileCollection |> ExternalFileCollection.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    efcs =
+      Repo.all(query)
+      |> Repo.preload(ExternalFileCollection.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count
+      },
+      data: efcs
+    }
+
+    {:ok, response}
+  end
+
+  def create_external_file_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.create_external_file_collection") do
+      do_create_external_file_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_external_file_collection(request = %{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    IO.inspect fields
     with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields) do
       {:ok, efc} = Repo.transaction(fn ->
         efc = Repo.insert!(changeset)
         create_efcms!(fields["file_ids"] || [], efc)
       end)
 
-      efc = Repo.preload(efc, request.preloads)
-      {:ok, efc}
+      efc =
+        efc
+        |> Repo.preload(ExternalFileCollection.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: efc }}
     else
-      other -> {:error, other}
+      changeset -> {:error, changeset.errors}
     end
   end
 
@@ -226,36 +279,6 @@ defmodule BlueJet.FileStorage do
     |> Repo.delete_all()
 
     efc
-  end
-
-  def list_external_file_collections(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
-
-    query =
-      ExternalFileCollection
-      |> search([:name, :label, :id], request.search_keyword, request.locale)
-      |> filter_by(label: request.filter[:label], content_type: request.filter[:content_type])
-      |> where([efc], efc.account_id == ^account_id)
-      |> order_by([efc], desc: efc.updated_at)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = ExternalFileCollection |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    efcs =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      external_file_collections: efcs
-    }
   end
 
   # TODO: use another process to delete, and also need to remove the files

@@ -30,7 +30,7 @@ defmodule BlueJet.Inventory do
 
     skus =
       Repo.all(query)
-      |> Repo.preload(request.preloads)
+      |> Repo.preload(Sku.Query.preloads(request.preloads))
       |> Translation.translate(request.locale)
 
     response = %AccessResponse{

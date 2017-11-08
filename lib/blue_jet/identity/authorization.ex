@@ -5,24 +5,39 @@ defmodule BlueJet.Identity.Authorization do
 
   @role_endpoints %{
     "anonymous" => [
-      "identity.create_user"
+      "identity.create_user",
+
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection"
     ],
 
     "guest" => [
       "identity.create_user",
-      "identity.get_account"
+      "identity.get_account",
+
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection"
     ],
 
     "customer" => [
       "identity.list_account",
       "identity.get_account",
-      "identity.get_user"
+      "identity.get_user",
+
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection"
     ],
 
     "support_specialist" => [
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+
+      "file_storage.list_external_file",
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection",
+      "file_storage.list_external_file_collection",
+      "file_storage.create_external_file_collection",
 
       "identity.list_sku",
       "identity.get_sku"
@@ -32,6 +47,12 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+
+      "file_storage.list_external_file",
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection",
+      "file_storage.list_external_file_collection",
+      "file_storage.create_external_file_collection",
 
       "inventory.list_sku",
       "inventory.create_sku",
@@ -49,6 +70,12 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+
+      "file_storage.list_external_file",
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection",
+      "file_storage.list_external_file_collection",
+      "file_storage.create_external_file_collection",
 
       "inventory.list_sku",
       "inventory.create_sku",
@@ -68,6 +95,12 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_account",
       "identity.create_user",
       "identity.get_user",
+
+      "file_storage.list_external_file",
+      "file_storage.get_external_file",
+      "file_storage.get_external_file_collection",
+      "file_storage.list_external_file_collection",
+      "file_storage.create_external_file_collection",
 
       "inventory.list_sku",
       "inventory.create_sku",

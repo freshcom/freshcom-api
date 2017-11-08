@@ -12,7 +12,6 @@ defmodule BlueJetWeb.SkuController do
     request = %AccessRequest{
       vas: assigns[:vas],
       search: params["search"],
-      params: %{ account_id: params["account_id"] },
       filter: assigns[:filter],
       pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: assigns[:preloads],

@@ -23,6 +23,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     timestamps()
 
+    belongs_to :account, Account
     has_many :file_memberships, ExternalFileCollectionMembership, foreign_key: :collection_id
     has_many :files, through: [:file_memberships, :file]
   end
@@ -54,7 +55,6 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     changeset
     |> validate_required([:account_id, :label])
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:sku, :unlockable, :product])
   end
 
   @doc """
@@ -83,6 +83,10 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     def for_owner_type(owner_type) do
       from(efc in ExternalFileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
+    end
+
+    def for_account(query, account_id) do
+      from(efc in query, where: efc.account_id == ^account_id)
     end
 
     def default() do
