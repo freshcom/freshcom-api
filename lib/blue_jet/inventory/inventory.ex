@@ -94,7 +94,7 @@ defmodule BlueJet.Inventory do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_sku(request = %{ vas: vas, params: %{ sku_id: sku_id }}) do
+  def do_update_sku(request = %AccessRequest{ vas: vas, params: %{ sku_id: sku_id }}) do
     sku = Sku |> Sku.Query.for_account(vas[:account_id]) |> Repo.get(sku_id)
     changeset = Sku.changeset(sku, request.fields, request.locale)
 
@@ -125,6 +125,7 @@ defmodule BlueJet.Inventory do
   end
   def do_delete_sku(%AccessRequest{ vas: vas, params: %{ sku_id: sku_id } }) do
     sku = Sku |> Sku.Query.for_account(vas[:account_id]) |> Repo.get!(sku_id)
+
     if sku do
       Repo.delete!(sku)
       {:ok, %AccessResponse{}}

@@ -2,11 +2,10 @@ defmodule BlueJet.FileStorage.ExternalFile do
   use BlueJet, :data
 
   alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.Customer
 
   schema "external_files" do
+    field :account_id, Ecto.UUID
+
     field :status, :string, default: "pending"
     field :name, :string
     field :content_type, :string
@@ -17,13 +16,11 @@ defmodule BlueJet.FileStorage.ExternalFile do
     field :original_id, Ecto.UUID
     field :url, :string, virtual: true
 
+    field :user_id, Ecto.UUID
+
     field :custom_data, :map, default: %{}
 
     timestamps()
-
-    belongs_to :account, Account
-    belongs_to :user, User
-    belongs_to :customer, Customer
   end
 
   def system_fields do
@@ -47,16 +44,14 @@ defmodule BlueJet.FileStorage.ExternalFile do
   end
 
   def required_fields do
-    [:account_id, :status, :name, :content_type, :size_bytes]
+    [:account_id, :status, :name, :content_type, :size_bytes, :user_id]
   end
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> validate_required_exactly_one([:user_id, :customer_id], :relationships)
     |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:user_id)
-    |> validate_assoc_account_scope(:customer)
   end
 
   @doc """
@@ -98,10 +93,6 @@ defmodule BlueJet.FileStorage.ExternalFile do
     ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(struct))
 
     struct
-  end
-
-  def query() do
-    from(ef in ExternalFile, order_by: [desc: ef.updated_at])
   end
 
   defmodule Query do

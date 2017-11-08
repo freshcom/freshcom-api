@@ -4,14 +4,13 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.Identity.Account
 
   schema "external_file_collection_memberships" do
+    field :account_id, Ecto.UUID
     field :sort_index, :integer, default: 100
 
     timestamps()
 
-    belongs_to :account, Account
     belongs_to :collection, ExternalFileCollection
     belongs_to :file, ExternalFile
   end

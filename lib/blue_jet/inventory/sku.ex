@@ -76,10 +76,6 @@ defmodule BlueJet.Inventory.Sku do
     from(s in Sku, order_by: [desc: s.updated_at, desc: s.inserted_at])
   end
 
-  def preload_keyword(:avatar) do
-    [avatar: ExternalFile.query()]
-  end
-
   defmodule Query do
     use BlueJet, :query
 
@@ -92,7 +88,7 @@ defmodule BlueJet.Inventory.Sku do
     end
 
     def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("sku")]
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("Sku")]
     end
 
     def default() do

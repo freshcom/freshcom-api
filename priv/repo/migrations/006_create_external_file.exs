@@ -18,7 +18,6 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
       add :custom_data, :map, null: false, default: "{}"
 
       add :user_id, references(:users, type: :binary_id)
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
 
       timestamps()
     end

@@ -8,6 +8,7 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
   attributes [:name, :label, :file_count, :custom_data, :locale, :inserted_at, :updated_at]
 
   has_many :files, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
+  has_one :owner, serializer: BlueJetWeb.OwnerView, identifiers: :always
 
   def type(_external_file_collection, _conn) do
     "ExternalFileCollection"
@@ -26,6 +27,17 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
         |> Ecto.assoc(:files)
         |> Repo.all()
       other -> other
+    end
+  end
+
+  def owner(struct, _) do
+    if struct.owner_id do
+      %{
+        id: struct.owner_id,
+        type: struct.owner_type
+      }
+    else
+      nil
     end
   end
 end

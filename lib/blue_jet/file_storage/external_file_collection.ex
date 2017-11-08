@@ -4,15 +4,13 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   use Trans, translates: [:name, :custom_data], container: :translations
 
   alias BlueJet.Translation
+  alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.Customer
-  alias BlueJet.Inventory.Sku
-  alias BlueJet.Inventory.Unlockable
-  alias BlueJet.Storefront.Product
 
   schema "external_file_collections" do
+    field :account_id, Ecto.UUID
+
     field :name, :string
     field :label, :string
 
@@ -23,7 +21,6 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     timestamps()
 
-    belongs_to :account, Account
     has_many :file_memberships, ExternalFileCollectionMembership, foreign_key: :collection_id
     has_many :files, through: [:file_memberships, :file]
   end
@@ -74,10 +71,6 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     |> Repo.one()
   end
 
-  def query() do
-    from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
-  end
-
   defmodule Query do
     use BlueJet, :query
 
@@ -87,6 +80,10 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     def for_account(query, account_id) do
       from(efc in query, where: efc.account_id == ^account_id)
+    end
+
+    def preloads(:files) do
+      [files: ExternalFile.Query.default()]
     end
 
     def default() do

@@ -45,21 +45,27 @@ defmodule BlueJet.FileStorage do
     {:ok, response}
   end
 
-  def create_external_file(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-
+  def create_external_file(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.create_external_file") do
+      do_create_external_file(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_external_file(request = %AccessRequest{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "user_id" => vas[:user_id], "customer_id" => vas[:customer_id] })
     changeset = ExternalFile.changeset(%ExternalFile{}, fields)
 
     with {:ok, external_file} <- Repo.insert(changeset) do
       external_file =
         external_file
-        |> Repo.preload(request.preloads)
+        |> Translation.translate(request.locale)
 
-      {:ok, external_file}
+      {:ok, %AccessResponse{ data: external_file } }
     else
-      other -> other
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -75,29 +81,51 @@ defmodule BlueJet.FileStorage do
     external_file
   end
 
-  def update_external_file(request = %{ vas: vas, external_file_id: ef_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
+  def update_external_file(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.update_external_file") do
+      do_update_external_file(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_external_file(request = %AccessRequest{ vas: vas, params: %{ external_file_id: external_file_id }}) do
+    external_file = ExternalFile |> ExternalFile.Query.for_account(vas[:account_id]) |> Repo.get(external_file_id)
 
-    external_file = Repo.get_by!(ExternalFile, account_id: vas[:account_id], id: ef_id)
-    changeset = ExternalFile.changeset(external_file, request.fields)
-
-    with {:ok, external_file} <- Repo.update(changeset) do
+    with %ExternalFile{} <- external_file,
+         changeset = ExternalFile.changeset(external_file, request.fields),
+         {:ok, external_file} <- Repo.update(changeset)
+    do
       external_file =
         external_file
-        |> Repo.preload(request.preloads)
         |> ExternalFile.put_url()
+        |> Translation.translate(request.locale)
 
-      {:ok, external_file}
+      {:ok, %AccessResponse{ data: external_file }}
     else
-      other -> other
+      nil -> {:error, :not_found}
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def delete_external_file!(%{ vas: vas, external_file_id: ef_id }) do
-    external_file = Repo.get_by!(ExternalFile, account_id: vas[:account_id], id: ef_id)
-    ExternalFile.delete_object(external_file)
-    Repo.delete!(external_file)
+  def delete_external_file(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.delete_external_file") do
+      do_delete_external_file(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_external_file(%AccessRequest{ vas: vas, params: %{ external_file_id: external_file_id } }) do
+    external_file = ExternalFile |> ExternalFile.Query.for_account(vas[:account_id]) |> Repo.get(external_file_id)
+
+    if external_file do
+      ExternalFile.delete_object(external_file)
+      Repo.delete!(external_file)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 
   ####
@@ -148,7 +176,7 @@ defmodule BlueJet.FileStorage do
   end
   def do_create_external_file_collection(request = %{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    IO.inspect fields
+
     with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields) do
       {:ok, efc} = Repo.transaction(fn ->
         efc = Repo.insert!(changeset)
@@ -162,7 +190,9 @@ defmodule BlueJet.FileStorage do
 
       {:ok, %AccessResponse{ data: efc }}
     else
-      changeset -> {:error, changeset.errors}
+      changeset ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -185,40 +215,55 @@ defmodule BlueJet.FileStorage do
     efc
   end
 
-  def get_external_file_collection!(request = %{ vas: vas, external_file_collection_id: efc_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
+  def get_external_file_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.get_external_file_collection") do
+      do_get_external_file_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_external_file_collection(request = %AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id } }) do
+    efc = ExternalFileCollection |> ExternalFileCollection.Query.for_account(vas[:account_id]) |> Repo.get(efc_id)
 
-    efc =
-      ExternalFileCollection
-      |> Repo.get_by!(account_id: vas[:account_id], id: efc_id)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+    if efc do
+      efc =
+        efc
+        |> Repo.preload(ExternalFileCollection.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
 
-    efc
+      {:ok, %AccessResponse{ data: efc }}
+    else
+      {:error, :not_found}
+    end
   end
 
-  def update_external_file_collection(request = %{ vas: vas, external_file_collection_id: efc_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
-
-    efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
-
-    source_file_ids = Ecto.assoc(efc, :files) |> ids_only |> Repo.all
-    target_file_ids = request.fields["file_ids"]
-    file_ids_to_delete = if target_file_ids do
-      source_file_ids -- target_file_ids
+  def update_external_file_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.update_external_file_collection") do
+      do_update_external_file_collection(request)
     else
-      []
+      {:error, reason} -> {:error, :access_denied}
     end
+  end
+  def do_update_external_file_collection(request = %AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id }}) do
+    efc = ExternalFileCollection |> ExternalFileCollection.Query.for_account(vas[:account_id]) |> Repo.get(efc_id)
 
-    file_ids_to_add = if target_file_ids do
-      target_file_ids -- source_file_ids
-    else
-      []
-    end
+    with %ExternalFileCollection{} <- efc,
+         changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale)
+    do
+      source_file_ids = Ecto.assoc(efc, :files) |> ids_only |> Repo.all
+      target_file_ids = request.fields["file_ids"]
+      file_ids_to_delete = if target_file_ids do
+        source_file_ids -- target_file_ids
+      else
+        []
+      end
 
-    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale) do
+      file_ids_to_add = if target_file_ids do
+        target_file_ids -- source_file_ids
+      else
+        []
+      end
+
       {:ok, efc} = Repo.transaction(fn ->
         efc = Repo.update!(changeset)
         delete_efcms!(file_ids_to_delete, efc)
@@ -228,12 +273,15 @@ defmodule BlueJet.FileStorage do
 
       efc =
         efc
-        |> Repo.preload(request.preloads)
+        |> Repo.preload(ExternalFileCollection.Query.preloads(request.preloads))
         |> Translation.translate(request.locale)
 
-      {:ok, efc}
+      {:ok, %AccessResponse{ data: efc }}
     else
-      other -> {:error, other}
+      nil -> {:error, :not_found}
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -282,84 +330,97 @@ defmodule BlueJet.FileStorage do
   end
 
   # TODO: use another process to delete, and also need to remove the files
-  def delete_external_file_collection!(%{ vas: vas, external_file_collection_id: efc_id }) do
-    efc = Repo.get_by!(ExternalFileCollection, account_id: vas[:account_id], id: efc_id)
-    Repo.delete!(efc)
+  def delete_external_file_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.delete_external_file_collection") do
+      do_delete_external_file_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_external_file_collection(%AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id } }) do
+    efc = ExternalFileCollection |> ExternalFileCollection.Query.for_account(vas[:account_id]) |> Repo.get(efc_id)
+
+    if efc do
+      Repo.delete!(efc)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 
   ####
   # ExternalFileCollectionMembership
   ####
-  def create_external_file_collection_membership(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
+  # def create_external_file_collection_membership(request = %{ vas: vas }) do
+  #   defaults = %{ preloads: [], fields: %{} }
+  #   request = Map.merge(defaults, request)
 
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, fields)
+  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+  #   changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, fields)
 
-    with {:ok, efcm} <- Repo.insert(changeset) do
-      efcm = Repo.preload(efcm, request.preloads)
-      {:ok, efcm}
-    else
-      other -> other
-    end
-  end
+  #   with {:ok, efcm} <- Repo.insert(changeset) do
+  #     efcm = Repo.preload(efcm, request.preloads)
+  #     {:ok, efcm}
+  #   else
+  #     other -> other
+  #   end
+  # end
 
-  def update_external_file_collection_membership(request = %{ vas: vas, external_file_collection_membership_id: efcm_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
+  # def update_external_file_collection_membership(request = %{ vas: vas, external_file_collection_membership_id: efcm_id }) do
+  #   defaults = %{ preloads: [], fields: %{}, locale: "en" }
+  #   request = Map.merge(defaults, request)
 
-    efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
-    changeset = ExternalFileCollectionMembership.changeset(efcm, request.fields)
+  #   efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
+  #   changeset = ExternalFileCollectionMembership.changeset(efcm, request.fields)
 
-    with {:ok, efcm} <- Repo.update(changeset) do
-      efcm =
-        efcm
-        |> Repo.preload(request.preloads)
-        |> Translation.translate(request.locale)
+  #   with {:ok, efcm} <- Repo.update(changeset) do
+  #     efcm =
+  #       efcm
+  #       |> Repo.preload(request.preloads)
+  #       |> Translation.translate(request.locale)
 
-      {:ok, efcm}
-    else
-      other -> other
-    end
-  end
+  #     {:ok, efcm}
+  #   else
+  #     other -> other
+  #   end
+  # end
 
-  def list_external_file_collection_memberships(request = %{ vas: vas }) do
-    defaults = %{ filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
+  # def list_external_file_collection_memberships(request = %{ vas: vas }) do
+  #   defaults = %{ filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
+  #   request = Map.merge(defaults, request)
+  #   account_id = vas[:account_id]
 
-    query =
-      ExternalFileCollectionMembership
-      |> filter_by(collection_id: request.filter[:collection_id], file_id: request.filter[:file_id])
-      |> where([s], s.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+  #   query =
+  #     ExternalFileCollectionMembership
+  #     |> filter_by(collection_id: request.filter[:collection_id], file_id: request.filter[:file_id])
+  #     |> where([s], s.account_id == ^account_id)
+  #   result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = ExternalFileCollectionMembership |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+  #   total_query = ExternalFileCollectionMembership |> where([s], s.account_id == ^account_id)
+  #   total_count = Repo.aggregate(total_query, :count, :id)
 
-    query = paginate(query, size: request.page_size, number: request.page_number)
+  #   query = paginate(query, size: request.page_size, number: request.page_number)
 
-    efcms =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+  #   efcms =
+  #     Repo.all(query)
+  #     |> Repo.preload(request.preloads)
+  #     |> Translation.translate(request.locale)
 
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      external_file_collection_memberships: efcms
-    }
-  end
+  #   %{
+  #     total_count: total_count,
+  #     result_count: result_count,
+  #     external_file_collection_memberships: efcms
+  #   }
+  # end
 
-  def delete_external_file_collection_membership!(%{ vas: vas, external_file_collection_membership_id: efcm_id }) do
-    efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
-    ef = Repo.get!(ExternalFile, efcm.file_id)
+  # def delete_external_file_collection_membership!(%{ vas: vas, external_file_collection_membership_id: efcm_id }) do
+  #   efcm = Repo.get_by!(ExternalFileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
+  #   ef = Repo.get!(ExternalFile, efcm.file_id)
 
-    Repo.transaction(fn ->
-      ExternalFile.delete_object(ef)
-      Repo.delete!(efcm)
-      Repo.delete!(ef)
-    end)
-  end
+  #   Repo.transaction(fn ->
+  #     ExternalFile.delete_object(ef)
+  #     Repo.delete!(efcm)
+  #     Repo.delete!(ef)
+  #   end)
+  # end
 end

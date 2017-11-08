@@ -22,22 +22,22 @@ defmodule BlueJetWeb.ExternalFileController do
     render(conn, "index.json-api", data: skus, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) when map_size(vas) == 2 do
-    request = %{
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
     case FileStorage.create_external_file(request) do
-      {:ok, external_file} ->
+      {:ok, %AccessResponse{ data: external_file }} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: external_file, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
@@ -54,32 +54,32 @@ defmodule BlueJetWeb.ExternalFileController do
     render(conn, "show.json-api", data: external_file)
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) when map_size(vas) == 2 do
-    request = %{
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      external_file_id: ef_id,
+      params: %{ external_file_id: ef_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case FileStorage.update_external_file(request) do
-      {:ok, external_file} ->
+      {:ok, %AccessResponse{ data: external_file }} ->
         render(conn, "show.json-api", data: external_file, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => ef_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      external_file_id: ef_id
+      params: %{ external_file_id: ef_id }
     }
 
-    FileStorage.delete_external_file!(request)
+    FileStorage.delete_external_file(request)
 
     send_resp(conn, :no_content, "")
   end
