@@ -16,9 +16,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Repo
     alias BlueJet.Inventory.Sku
     alias BlueJet.Inventory.Unlockable
-    alias BlueJet.Storefront.Product
-    alias BlueJet.Storefront.ProductItem
-    alias BlueJet.Storefront.Price
+    alias BlueJet.Catalogue.Product
+    alias BlueJet.Catalogue.ProductItem
+    alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
 

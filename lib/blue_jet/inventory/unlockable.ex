@@ -4,13 +4,13 @@ defmodule BlueJet.Inventory.Unlockable do
   use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Identity.Account
+  alias BlueJet.Inventory.Unlockable
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.Storefront.ProductItem
-  alias BlueJet.Inventory.Unlockable
 
   schema "unlockables" do
+    field :account_id, Ecto.UUID
+
     field :code, :string
     field :status, :string
     field :name, :string
@@ -24,10 +24,8 @@ defmodule BlueJet.Inventory.Unlockable do
 
     timestamps()
 
-    belongs_to :account, Account
     belongs_to :avatar, ExternalFile
     has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
-    has_many :product_items, ProductItem
   end
 
   def system_fields do

@@ -5,10 +5,7 @@ defmodule BlueJet.Identity.Authorization do
 
   @role_endpoints %{
     "anonymous" => [
-      "identity.create_user",
-
-      "file_storage.get_external_file",
-      "file_storage.get_external_file_collection"
+      "identity.create_user"
     ],
 
     "guest" => [
@@ -16,7 +13,12 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_account",
 
       "file_storage.get_external_file",
-      "file_storage.get_external_file_collection"
+      "file_storage.get_external_file_collection",
+
+      "catalogue.list_product",
+      "catalogue.get_product",
+      "catalogue.list_product_item",
+      "catalogue.get_product_item"
     ],
 
     "customer" => [
@@ -25,7 +27,10 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
 
       "file_storage.get_external_file",
-      "file_storage.get_external_file_collection"
+      "file_storage.get_external_file_collection",
+      "catalogue.get_product",
+      "catalogue.list_product_item",
+      "catalogue.get_product_item"
     ],
 
     "support_specialist" => [
@@ -45,7 +50,18 @@ defmodule BlueJet.Identity.Authorization do
       "file_storage.delete_external_file_collection",
 
       "identity.list_sku",
-      "identity.get_sku"
+      "identity.get_sku",
+
+      "catalogue.list_product",
+      "catalogue.create_product",
+      "catalogue.get_product",
+      "catalogue.update_product",
+      "catalogue.delete_product",
+      "catalogue.list_product_item",
+      "catalogue.create_product_item",
+      "catalogue.get_product_item",
+      "catalogue.update_product_item",
+      "catalogue.delete_product_item"
     ],
 
     "inventory_specialist" => [
@@ -73,7 +89,18 @@ defmodule BlueJet.Identity.Authorization do
       "inventory.create_unlockable",
       "inventory.get_unlockable",
       "inventory.update_unlockable",
-      "inventory.delete_unlockable"
+      "inventory.delete_unlockable",
+
+      "catalogue.list_product",
+      "catalogue.create_product",
+      "catalogue.get_product",
+      "catalogue.update_product",
+      "catalogue.delete_product",
+      "catalogue.list_product_item",
+      "catalogue.create_product_item",
+      "catalogue.get_product_item",
+      "catalogue.update_product_item",
+      "catalogue.delete_product_item"
     ],
 
     "developer" => [
@@ -101,7 +128,18 @@ defmodule BlueJet.Identity.Authorization do
       "inventory.create_unlockable",
       "inventory.get_unlockable",
       "inventory.update_unlockable",
-      "inventory.delete_unlockable"
+      "inventory.delete_unlockable",
+
+      "catalogue.list_product",
+      "catalogue.create_product",
+      "catalogue.get_product",
+      "catalogue.update_product",
+      "catalogue.delete_product",
+      "catalogue.list_product_item",
+      "catalogue.create_product_item",
+      "catalogue.get_product_item",
+      "catalogue.update_product_item",
+      "catalogue.delete_product_item"
     ],
 
     "administrator" => [
@@ -131,7 +169,18 @@ defmodule BlueJet.Identity.Authorization do
       "inventory.create_unlockable",
       "inventory.get_unlockable",
       "inventory.update_unlockable",
-      "inventory.delete_unlockable"
+      "inventory.delete_unlockable",
+
+      "catalogue.list_product",
+      "catalogue.create_product",
+      "catalogue.get_product",
+      "catalogue.update_product",
+      "catalogue.delete_product",
+      "catalogue.list_product_item",
+      "catalogue.create_product_item",
+      "catalogue.get_product_item",
+      "catalogue.update_product_item",
+      "catalogue.delete_product_item"
     ]
   }
 

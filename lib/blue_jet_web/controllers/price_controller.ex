@@ -2,7 +2,7 @@ defmodule BlueJetWeb.PriceController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Storefront
+  alias BlueJet.Catalogue
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -16,7 +16,7 @@ defmodule BlueJetWeb.PriceController do
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    %{ prices: prices, total_count: total_count, result_count: result_count } = Storefront.list_prices(request)
+    %{ prices: prices, total_count: total_count, result_count: result_count } = Catalogue.list_prices(request)
 
     meta = %{
       totalCount: total_count,
@@ -33,7 +33,7 @@ defmodule BlueJetWeb.PriceController do
       preloads: assigns[:preloads]
     }
 
-    case Storefront.create_price(request) do
+    case Catalogue.create_price(request) do
       {:ok, price} ->
         conn
         |> put_status(:created)
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.PriceController do
       locale: assigns[:locale]
     }
 
-    price = Storefront.get_price!(request)
+    price = Catalogue.get_price!(request)
 
     render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
   end
@@ -67,7 +67,7 @@ defmodule BlueJetWeb.PriceController do
       locale: assigns[:locale]
     }
 
-    case Storefront.update_price(request) do
+    case Catalogue.update_price(request) do
       {:ok, price} ->
         render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
       {:error, changeset} ->
@@ -83,7 +83,7 @@ defmodule BlueJetWeb.PriceController do
       price_id: price_id
     }
 
-    case Storefront.delete_price!(request) do
+    case Catalogue.delete_price!(request) do
       {:ok, _} ->
         send_resp(conn, :no_content, "")
       {:error, errors} ->

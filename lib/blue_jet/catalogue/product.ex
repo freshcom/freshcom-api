@@ -1,4 +1,4 @@
-defmodule BlueJet.Storefront.Product do
+defmodule BlueJet.Catalogue.Product do
   use BlueJet, :data
 
   use Trans, translates: [:name, :caption, :description, :custom_data], container: :translations
@@ -6,14 +6,14 @@ defmodule BlueJet.Storefront.Product do
   alias Ecto.Changeset
 
   alias BlueJet.Translation
-  alias BlueJet.Storefront.ProductItem
-  alias BlueJet.Storefront.Product
-  alias BlueJet.Storefront.Price
-  alias BlueJet.Identity.Account
+  alias BlueJet.Catalogue.ProductItem
+  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.Price
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "products" do
+    field :account_id, Ecto.UUID
     field :name, :string
     field :print_name, :string
     field :status, :string
@@ -26,10 +26,9 @@ defmodule BlueJet.Storefront.Product do
 
     timestamps()
 
-    belongs_to :account, Account
     belongs_to :avatar, ExternalFile
     has_many :items, ProductItem, on_delete: :delete_all
-    has_many :external_file_collections, ExternalFileCollection, on_delete: :delete_all
+    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id, on_delete: :delete_all
     has_many :prices, Price, on_delete: :delete_all
     has_one :default_price, Price
   end
@@ -166,5 +165,35 @@ defmodule BlueJet.Storefront.Product do
   end
   def preload_keyword(:default_price) do
     [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(p in query, where: p.account_id == ^account_id)
+    end
+    def preloads(:items) do
+      [items: ProductItem.Query.default()]
+    end
+    def preloads({:items, item_preloads}) do
+      [items: {ProductItem.Query.default(), ProductItem.Query.preloads(item_preloads)}]
+    end
+    def preloads(:prices) do
+      [prices: Price.Query.default()]
+    end
+    def preloads(:default_price) do
+      [default_price: Price.Query.active_by_moq()]
+    end
+    def preloads(:avatar) do
+      [avatar: ExternalFile.Query.default()]
+    end
+    def preloads(:external_file_collections) do
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("Product")]
+    end
+
+    def default() do
+      from(p in Product, order_by: [desc: :updated_at])
+    end
   end
 end

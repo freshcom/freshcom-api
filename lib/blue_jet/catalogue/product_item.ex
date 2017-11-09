@@ -1,13 +1,13 @@
-defmodule BlueJet.Storefront.ProductItem do
+defmodule BlueJet.Catalogue.ProductItem do
   use BlueJet, :data
 
   use Trans, translates: [:name, :short_name, :custom_data], container: :translations
 
   alias Ecto.Changeset
   alias BlueJet.Translation
-  alias BlueJet.Storefront.ProductItem
-  alias BlueJet.Storefront.Product
-  alias BlueJet.Storefront.Price
+  alias BlueJet.Catalogue.ProductItem
+  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.Price
   alias BlueJet.Identity.Account
   alias BlueJet.Inventory.Sku
   alias BlueJet.Inventory.Unlockable
@@ -243,5 +243,33 @@ defmodule BlueJet.Storefront.ProductItem do
   end
   def preload_keyword(:default_price) do
     [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(pi in query, where: pi.account_id == ^account_id)
+    end
+
+    def preloads(:product) do
+      [product: Product.Query.default()]
+    end
+    def preloads({:product, product_preloads}) do
+      [product: {Product.Query.default(), Product.Query.preloads(product_preloads)}]
+    end
+    def preloads({:sku, sku_preloads}) do
+      [sku: {Sku.Query.default(), Sku.Query.preloads(sku_preloads)}]
+    end
+    def preloads(:prices) do
+      [prices: Price.Query.default()]
+    end
+    def preloads(:default_price) do
+      [default_price: Price.Query.active_by_moq()]
+    end
+
+    def default() do
+      from(pi in ProductItem, order_by: [desc: :sort_index, desc: :inserted_at])
+    end
   end
 end

@@ -1,4 +1,4 @@
-defmodule BlueJet.Storefront.Price do
+defmodule BlueJet.Catalogue.Price do
   use BlueJet, :data
 
   use Trans, translates: [:name, :caption, :order_unit, :charge_unit], container: :translations
@@ -7,9 +7,9 @@ defmodule BlueJet.Storefront.Price do
 
   alias BlueJet.Repo
   alias BlueJet.Translation
-  alias BlueJet.Storefront.Price
-  alias BlueJet.Storefront.ProductItem
-  alias BlueJet.Storefront.Product
+  alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.ProductItem
+  alias BlueJet.Catalogue.Product
   alias BlueJet.Identity.Account
 
   schema "prices" do
@@ -280,5 +280,21 @@ defmodule BlueJet.Storefront.Price do
 
     changeset = Price.changeset(price, %{ "charge_cents" => charge_cents })
     Repo.update!(changeset)
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(p in query, where: p.account_id == ^account_id)
+    end
+
+    def active_by_moq() do
+      from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])
+    end
+
+    def default() do
+      from(p in Price, order_by: [desc: :inserted_at])
+    end
   end
 end

@@ -5,12 +5,12 @@ defmodule BlueJet.Inventory.Sku do
 
   alias BlueJet.Translation
   alias BlueJet.Inventory.Sku
-  alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.Storefront.ProductItem
 
   schema "skus" do
+    field :account_id, Ecto.UUID
+
     field :code, :string
     field :status, :string
     field :name, :string
@@ -32,10 +32,8 @@ defmodule BlueJet.Inventory.Sku do
 
     timestamps()
 
-    belongs_to :account, Account
     belongs_to :avatar, ExternalFile
     has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
-    has_many :product_items, ProductItem
   end
 
   def system_fields do
@@ -70,10 +68,6 @@ defmodule BlueJet.Inventory.Sku do
     |> validate_length(:print_name, min: 3)
     |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
     |> Translation.put_change(translatable_fields(), locale)
-  end
-
-  def query() do
-    from(s in Sku, order_by: [desc: s.updated_at, desc: s.inserted_at])
   end
 
   defmodule Query do
