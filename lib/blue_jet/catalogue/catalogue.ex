@@ -103,9 +103,18 @@ defmodule BlueJet.Catalogue do
     product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(product_id)
 
     with %Product{} <- product,
-         changeset <- Product.changeset(product, request.fields, request.locale),
-         {:ok, product} <- Repo.update(changeset)
+         changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale)
     do
+      {:ok, product} = Repo.transaction(fn ->
+        if Changeset.get_change(changeset, :primary) do
+          parent_id = product.parent_id
+          from(pi in Product, where: pi.parent_id == ^parent_id)
+          |> Repo.update_all(set: [primary: false])
+        end
+
+        Repo.update!(changeset)
+      end)
+
       product =
         product
         |> Repo.preload(Product.Query.preloads(request.preloads))
@@ -114,7 +123,7 @@ defmodule BlueJet.Catalogue do
       {:ok, %AccessResponse{ data: product }}
     else
       nil -> {:error, :not_found}
-      {:error, changeset} ->
+      changeset = %Changeset{} ->
         errors = Enum.into(changeset.errors, %{})
         {:error, %AccessResponse{ errors: errors }}
     end

@@ -107,6 +107,12 @@ defmodule BlueJet.Catalogue.Product do
   end
 
   def validate_source(changeset) do
+    kind = get_field(changeset, :kind)
+    validate_source(changeset, kind)
+  end
+  defp validate_source(changeset, "with_variants"), do: changeset
+  defp validate_source(changeset, "combo"), do: changeset
+  defp validate_source(changeset, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
@@ -123,6 +129,9 @@ defmodule BlueJet.Catalogue.Product do
   end
   def validate_status(changeset), do: changeset
 
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "variant") do
+    validate_status(changeset, "simple")
+  end
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "simple") do
     id = get_field(changeset, :id)
 
@@ -165,13 +174,26 @@ defmodule BlueJet.Catalogue.Product do
       true -> changeset
     end
   end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "variant") do
+    validate_status(changeset, "simple")
+  end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "simple") do
+    prices = Ecto.assoc(changeset.data, :prices)
+    ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+
+    if ai_price_count > 0 do
+      changeset
+    else
+      Changeset.add_error(changeset, :status, "A Product must have a Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
+    end
+  end
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "with_variants") do
     variants = Ecto.assoc(changeset.data, :variants)
     active_or_internal_variants = from(p in variants, where: p.status in ["active", "internal"])
     aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
     case aiv_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_at_least_one_internal_item", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_at_least_one_internal_variant", full_error_message: true])
       _ -> changeset
     end
   end

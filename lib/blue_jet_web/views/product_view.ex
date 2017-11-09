@@ -5,10 +5,12 @@ defmodule BlueJetWeb.ProductView do
   attributes [
     :status,
     :kind,
+    :name_sync,
     :name,
     :print_name,
     :item_mode,
     :caption,
+    :primary,
     :description,
     :custom_data,
     :locale,
@@ -31,5 +33,9 @@ defmodule BlueJetWeb.ProductView do
 
   def kind(struct, _) do
     Inflex.camelize(struct.kind, :lower)
+  end
+
+  def name_sync(struct, _) do
+    Inflex.camelize(struct.name_sync, :lower)
   end
 end

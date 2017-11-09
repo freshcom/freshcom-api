@@ -156,6 +156,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "source_id" => sku_seasoned_soy_sauce.id,
       "source_type" => "Sku",
       "name_sync" => "sync_with_source",
+      "maximum_public_order_quantity" => 9999,
+      "sort_index" => 9999,
+      "source_quantity" => 1,
       "primary" => true
     })
     item_seasoned_soy_sauce = Repo.insert!(changeset)
@@ -166,7 +169,10 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "parent_id" => product.id,
       "source_id" => sku_oyster_sauce.id,
       "source_type" => "Sku",
-      "name_sync" => "sync_with_source"
+      "name_sync" => "sync_with_source",
+      "maximum_public_order_quantity" => 9999,
+      "sort_index" => 9999,
+      "source_quantity" => 1
     })
     item_oyster_sauce = Repo.insert!(changeset)
 
@@ -212,7 +218,10 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "status" => "draft",
       "source_id" => sku_fish.id,
       "source_type" => "Sku",
-      "name_sync" => "sync_with_source"
+      "name_sync" => "sync_with_source",
+      "maximum_public_order_quantity" => 9999,
+      "sort_index" => 9999,
+      "source_quantity" => 1,
     })
     product = Repo.insert!(changeset)
 
@@ -241,6 +250,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "status" => "draft",
       "kind" => "combo",
+      "maximum_public_order_quantity" => 9999,
       "name" => "Sauce Combo"
     })
     product = Repo.insert!(changeset)
@@ -252,7 +262,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "source_type" => "Sku",
       "status" => "active",
       "kind" => "item",
-      "name_sync" => "sync_with_source"
+      "name_sync" => "sync_with_source",
+      "sort_index" => 9999,
+      "source_quantity" => 1
     })
     item_oyster_sauce = Repo.insert!(changeset)
 
@@ -263,7 +275,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "source_type" => "Sku",
       "status" => "active",
       "kind" => "item",
-      "name_sync" => "sync_with_source"
+      "name_sync" => "sync_with_source",
+      "sort_index" => 9999,
+      "source_quantity" => 1
     })
     item_chili_oil = Repo.insert!(changeset)
 
@@ -330,6 +344,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "Unlockable Product",
       "name_sync" => "sync_with_source",
       "primary" => true,
+      "maximum_public_order_quantity" => 9999,
+      "sort_index" => 9999,
+      "source_quantity" => 1,
       "caption" => "Get it",
       "description" => "Now"
     })
