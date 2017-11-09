@@ -17,7 +17,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Inventory.Sku
     alias BlueJet.Inventory.Unlockable
     alias BlueJet.Catalogue.Product
-    alias BlueJet.Catalogue.ProductItem
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
@@ -145,22 +144,35 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "status" => "draft",
-      "name" => "Seasoned Soy Sauce"
+      "kind" => "with_variants",
+      "name" => "Sauce"
     })
     product = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(%ProductItem{}, %{
+    changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
-      "product_id" => product.id,
-      "sku_id" => sku_seasoned_soy_sauce.id,
+      "kind" => "variant",
+      "parent_id" => product.id,
+      "source_id" => sku_seasoned_soy_sauce.id,
+      "source_type" => "Sku",
       "name_sync" => "sync_with_source",
       "primary" => true
     })
-    product_item = Repo.insert!(changeset)
+    item_seasoned_soy_sauce = Repo.insert!(changeset)
+
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "kind" => "variant",
+      "parent_id" => product.id,
+      "source_id" => sku_oyster_sauce.id,
+      "source_type" => "Sku",
+      "name_sync" => "sync_with_source"
+    })
+    item_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
-      "product_item_id" => product_item.id,
+      "product_id" => item_seasoned_soy_sauce.id,
       "status" => "active",
       "label" => "regular",
       "charge_cents" => 599,
@@ -168,7 +180,22 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     price = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(product_item, %{
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_id" => item_oyster_sauce.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 1099,
+      "charge_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = Product.changeset(item_seasoned_soy_sauce, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    changeset = Product.changeset(item_oyster_sauce, %{
       "status" => "active"
     })
     Repo.update!(changeset)
@@ -183,22 +210,15 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "status" => "draft",
-      "name" => "Fish"
+      "source_id" => sku_fish.id,
+      "source_type" => "Sku",
+      "name_sync" => "sync_with_source"
     })
     product = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(%ProductItem{}, %{
-      "account_id" => account1_id,
-      "product_id" => product.id,
-      "sku_id" => sku_fish.id,
-      "name_sync" => "sync_with_source",
-      "primary" => true
-    })
-    product_item = Repo.insert!(changeset)
-
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
-      "product_item_id" => product_item.id,
+      "product_id" => product.id,
       "status" => "active",
       "label" => "regular",
       "estimate_by_default" => true,
@@ -210,11 +230,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     price = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(product_item, %{
-      "status" => "active"
-    })
-    Repo.update!(changeset)
-
     changeset = Product.changeset(product, %{
       "status" => "active"
     })
@@ -225,28 +240,32 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "status" => "draft",
-      "item_mode" => "all",
+      "kind" => "combo",
       "name" => "Sauce Combo"
     })
     product = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(%ProductItem{}, %{
+    changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
-      "product_id" => product.id,
-      "sku_id" => sku_oyster_sauce.id,
+      "parent_id" => product.id,
+      "source_id" => sku_oyster_sauce.id,
+      "source_type" => "Sku",
       "status" => "active",
+      "kind" => "item",
       "name_sync" => "sync_with_source"
     })
-    pi_oyster_sauce = Repo.insert!(changeset)
+    item_oyster_sauce = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(%ProductItem{}, %{
+    changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
-      "product_id" => product.id,
-      "sku_id" => sku_chili_oil.id,
+      "parent_id" => product.id,
+      "source_id" => sku_chili_oil.id,
+      "source_type" => "Sku",
       "status" => "active",
+      "kind" => "item",
       "name_sync" => "sync_with_source"
     })
-    pi_chili_oil = Repo.insert!(changeset)
+    item_chili_oil = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
@@ -260,7 +279,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
-      "product_item_id" => pi_oyster_sauce.id,
+      "product_id" => item_oyster_sauce.id,
       "parent_id" => price.id,
       "label" => "regular",
       "charge_cents" => 500
@@ -269,19 +288,19 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
-      "product_item_id" => pi_chili_oil.id,
+      "product_id" => item_chili_oil.id,
       "parent_id" => price.id,
       "label" => "regular",
       "charge_cents" => 600
     })
     Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(pi_oyster_sauce, %{
+    changeset = Product.changeset(item_oyster_sauce, %{
       "status" => "active"
     })
     Repo.update!(changeset)
 
-    changeset = ProductItem.changeset(pi_chili_oil, %{
+    changeset = Product.changeset(item_chili_oil, %{
       "status" => "active"
     })
     Repo.update!(changeset)
@@ -291,13 +310,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     Repo.update!(changeset)
     ######
-
-    changeset = Product.changeset(%Product{}, %{
-      "account_id" => account1_id,
-      "status" => "draft",
-      "name" => "Unlockable Product"
-    })
-    product = Repo.insert!(changeset)
 
     changeset = Unlockable.changeset(%Unlockable{}, %{
       "account_id" => account1_id,
@@ -310,29 +322,28 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     }, "en")
     unlockable = Repo.insert!(changeset)
 
-    changeset = ProductItem.changeset(%ProductItem{}, %{
+    changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
-      "product_id" => product.id,
-      "unlockable_id" => unlockable.id,
+      "source_id" => unlockable.id,
+      "source_type" => "Unlockable",
+      "status" => "draft",
+      "name" => "Unlockable Product",
       "name_sync" => "sync_with_source",
-      "primary" => true
+      "primary" => true,
+      "caption" => "Get it",
+      "description" => "Now"
     })
-    pi = Repo.insert!(changeset)
+    product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
-      "product_item_id" => pi.id,
+      "product_id" => product.id,
       "status" => "active",
       "label" => "regular",
       "charge_cents" => 300,
       "charge_unit" => "EA"
     })
     Repo.insert!(changeset)
-
-    changeset = ProductItem.changeset(pi, %{
-      "status" => "active"
-    })
-    Repo.update!(changeset)
 
     changeset = Product.changeset(product, %{
       "status" => "active"

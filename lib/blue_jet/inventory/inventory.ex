@@ -260,4 +260,5 @@ defmodule BlueJet.Inventory do
       {:error, :not_found}
     end
   end
+
 end

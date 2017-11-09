@@ -110,4 +110,13 @@ defmodule BlueJetWeb.Controller.Helpers do
   #   Map.merge(struct, t_attributes)
   # end
 
+  def underscore_value(map, keys) do
+    Enum.reduce(map, map, fn({k, v}, acc) ->
+      if Enum.member?(keys, k) && acc[k] do
+        %{ acc | k => Inflex.underscore(v) }
+      else
+        acc
+      end
+    end)
+  end
 end

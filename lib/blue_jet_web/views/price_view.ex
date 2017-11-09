@@ -28,7 +28,6 @@ defmodule BlueJetWeb.PriceView do
     :updated_at
   ]
 
-  has_one :product_item, serializer: BlueJetWeb.ProductItemView, identifiers: :always
   has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_many :children, serializer: BlueJetWeb.PriceView, identifiers: :when_included
 
@@ -37,16 +36,6 @@ defmodule BlueJetWeb.PriceView do
   end
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
-
-  def product_item(struct, %{ assigns: %{ locale: locale } }) do
-    case struct.product_item do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:product_item)
-        |> Repo.one()
-      other -> other
-    end
-  end
 
   def product(struct, %{ assigns: %{ locale: locale } }) do
     case struct.product do

@@ -22,9 +22,13 @@ defmodule BlueJetWeb.ProductController do
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Product" } }) do
+    fields =
+      Params.to_attributes(data)
+      |> underscore_value(["kind", "name_sync"])
+
     request = %AccessRequest{
       vas: assigns[:vas],
-      fields: Params.to_attributes(data),
+      fields: fields,
       preloads: assigns[:preloads]
     }
 
@@ -54,10 +58,14 @@ defmodule BlueJetWeb.ProductController do
   end
 
   def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => product_id, "data" => data = %{ "type" => "Product" } }) do
+    fields =
+      Params.to_attributes(data)
+      |> underscore_value(["kind", "name_sync"])
+
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ product_id: product_id },
-      fields: Params.to_attributes(data),
+      fields: fields,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }

@@ -8,11 +8,10 @@ defmodule BlueJet.Catalogue.Price do
   alias BlueJet.Repo
   alias BlueJet.Translation
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.ProductItem
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Identity.Account
 
   schema "prices" do
+    field :account_id, Ecto.UUID
     field :status, :string
     field :name, :string
     field :label, :string
@@ -36,8 +35,6 @@ defmodule BlueJet.Catalogue.Price do
 
     timestamps()
 
-    belongs_to :account, Account
-    belongs_to :product_item, ProductItem
     belongs_to :product, Product
     belongs_to :parent, Price
     has_many :children, Price, foreign_key: :parent_id, on_delete: :delete_all
@@ -68,7 +65,7 @@ defmodule BlueJet.Catalogue.Price do
   end
 
   def required_fields(changeset) do
-    common_required = [:account_id, :status, :label, :currency_code, :charge_cents, :charge_unit]
+    common_required = [:account_id, :product_id, :status, :label, :currency_code, :charge_cents, :charge_unit]
     case get_field(changeset, :estimate_by_default) do
       true -> common_required ++ [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
       _ -> common_required
@@ -78,22 +75,16 @@ defmodule BlueJet.Catalogue.Price do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
-    |> validate_required_exactly_one([:product_item_id, :product_id], :relationships)
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope(:product_item)
+    |> validate_assoc_account_scope(:product)
     |> validate_status()
   end
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
     moq = get_field(changeset, :minimum_order_quantity)
-    product_item_id = get_field(changeset, :product_item_id)
     product_id = get_field(changeset, :product_id)
 
-    price = if product_item_id do
-      Repo.get_by(Price, product_item_id: product_item_id, minimum_order_quantity: moq, status: "active")
-    else
-      Repo.get_by(Price, product_id: product_id, minimum_order_quantity: moq, status: "active")
-    end
+    price = Repo.get_by(Price, product_id: product_id, minimum_order_quantity: moq, status: "active")
 
     case price do
       nil -> changeset
@@ -101,53 +92,37 @@ defmodule BlueJet.Catalogue.Price do
     end
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
-    product_item_id = get_field(changeset, :product_item_id)
     product_id = get_field(changeset, :product_id)
+    product = Repo.get_by(Product, id: product_id)
 
-    status = if product_item_id do
-      product_item = Repo.get_by(ProductItem, id: product_item_id)
-      product_item.status
-    else
-      product = Repo.get_by(Product, id: product_id)
-      product.status
-    end
-
-    validate_status(changeset, status)
+    validate_status(changeset, product.status)
   end
   def validate_status(changeset), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, "active") do
     price_id = get_field(changeset, :id)
-    product_item_id = get_field(changeset, :product_item_id)
     product_id = get_field(changeset, :product_id)
 
     other_active_prices = cond do
-      price_id && product_item_id -> from(p in Price, where: p.product_item_id == ^product_item_id, where: p.id != ^price_id, where: p.status == "active")
-      !price_id && product_item_id -> from(p in Price, where: p.product_item_id == ^product_item_id, where: p.status == "active")
       price_id && product_id -> from(p in Price, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status == "active")
       !price_id && product_id -> from(p in Price, where: p.product_id == ^product_id, where: p.status == "active")
     end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item.", [validation: "cannot_change_status_of_only_active_price_of_active_product_item", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: "cannot_change_status_of_only_active_price_of_active_product", full_error_message: true])
       _ -> changeset
     end
   end
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "internal"), do: changeset
   defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, "internal") do
     price_id = get_field(changeset, :id)
-    product_item_id = get_field(changeset, :product_item_id)
     product_id = get_field(changeset, :product_id)
 
-    other_active_or_internal_prices = if product_item_id do
-      from(p in Price, where: p.product_item_id == ^product_item_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
-    else
-      from(p in Price, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
-    end
+    other_active_or_internal_prices = from(p in Price, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product Item.", [validation: "cannot_change_status_of_only_internal_price_of_internal_product_item", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: "cannot_change_status_of_only_internal_price_of_internal_product", full_error_message: true])
       _ -> changeset
     end
   end
@@ -266,10 +241,6 @@ defmodule BlueJet.Catalogue.Price do
       select: p
 
     query
-  end
-
-  def query() do
-    from(p in Price, order_by: [asc: p.minimum_order_quantity, desc: p.inserted_at])
   end
 
   def balance!(price) do

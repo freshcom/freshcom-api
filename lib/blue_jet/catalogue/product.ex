@@ -1,11 +1,23 @@
 defmodule BlueJet.Catalogue.Product do
+  @moduledoc """
+  Product kinds:
+  - simple
+  - combo
+  - with_variants
+  """
+
   use BlueJet, :data
 
   use Trans, translates: [:name, :caption, :description, :custom_data], container: :translations
 
   alias Ecto.Changeset
 
+  alias BlueJet.AccessRequest
+  alias BlueJet.AccessResponse
   alias BlueJet.Translation
+
+  alias BlueJet.Inventory
+
   alias BlueJet.Catalogue.ProductItem
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
@@ -14,12 +26,25 @@ defmodule BlueJet.Catalogue.Product do
 
   schema "products" do
     field :account_id, Ecto.UUID
+
+    field :kind, :string, default: "simple"
+    field :status, :string, default: "draft"
+
+    field :name_sync, :string, default: "disabled"
     field :name, :string
+    field :short_name, :string
     field :print_name, :string
-    field :status, :string
-    field :item_mode, :string, default: "any"
+
+    field :sort_index, :integer
+    field :source_quantity, :integer
+    field :maximum_public_order_quantity, :integer
+    field :primary, :boolean, default: false
+
     field :caption, :string
     field :description, :string
+
+    field :source_id, Ecto.UUID
+    field :source_type, :string
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
@@ -27,7 +52,10 @@ defmodule BlueJet.Catalogue.Product do
     timestamps()
 
     belongs_to :avatar, ExternalFile
-    has_many :items, ProductItem, on_delete: :delete_all
+    belongs_to :parent, Product
+    has_many :items, Product, foreign_key: :parent_id, on_delete: :delete_all
+    has_many :variants, Product, foreign_key: :parent_id, on_delete: :delete_all
+
     has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id, on_delete: :delete_all
     has_many :prices, Price, on_delete: :delete_all
     has_one :default_price, Price
@@ -53,75 +81,115 @@ defmodule BlueJet.Catalogue.Product do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :item_mode]
+    writable_fields() -- [:account_id, :kind]
+  end
+
+  def required_fields(changeset) do
+    kind = get_field(changeset, :kind)
+
+    common = [:account_id, :kind, :status, :name_sync, :name, :primary]
+    case kind do
+      "simple" -> common ++ [:source_quantity, :maximum_public_order_quantity, :source_id, :source_type]
+      "with_variants" -> common
+      "combo" -> common ++ [:maximum_public_order_quantity]
+      "variant" -> common ++ [:parent_id, :source_quantity, :maximum_public_order_quantity, :sort_index, :source_id, :source_type]
+      "item" -> common ++ [:parent_id, :source_quantity, :sort_index, :source_id, :source_type]
+      _ -> common
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name, :status, :item_mode])
+    |> validate_required(required_fields(changeset))
     |> validate_assoc_account_scope(:avatar)
     |> validate_status()
+    |> validate_source()
+  end
+
+  def validate_source(changeset) do
+    source_id = get_field(changeset, :source_id)
+    source_type = get_field(changeset, :source_type)
+    account_id = get_field(changeset, :account_id)
+
+    case source(account_id, source_id, source_type) do
+      nil -> Changeset.add_error(changeset, :source_id, "is invalid")
+      _ -> changeset
+    end
   end
 
   def validate_status(changeset) do
-    item_mode = get_field(changeset, :item_mode)
-    validate_status(changeset, item_mode)
+    kind = get_field(changeset, :kind)
+    validate_status(changeset, kind)
   end
   def validate_status(changeset), do: changeset
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "any") do
-    product_id = get_field(changeset, :id)
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "simple") do
+    id = get_field(changeset, :id)
 
-    active_primary_item = if product_id do
-      Repo.get_by(ProductItem, product_id: product_id, status: "active", primary: true)
+    active_price = if id do
+      Repo.get_by(Price, product_id: id, status: "active")
+    else
+      nil
+    end
+
+    case active_price do
+      nil -> Changeset.add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+      _ -> changeset
+    end
+  end
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "with_variants") do
+    id = get_field(changeset, :id)
+
+    active_primary_item = if id do
+      Repo.get_by(Product, parent_id: id, status: "active", primary: true)
     else
       nil
     end
 
     case active_primary_item do
-      nil -> Changeset.add_error(changeset, :status, "A Product must have a Primary Active Item in order to be marked Active.", [validation: "require_primary_active_item", full_error_message: true])
+      nil -> Changeset.add_error(changeset, :status, "A Product with variants must have a Primary Active Variant in order to be marked Active.", [validation: "require_primary_active_variant", full_error_message: true])
       _ -> changeset
     end
   end
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "all") do
-    product_items = Ecto.assoc(changeset.data, :items)
-    product_item_count = product_items |> Repo.aggregate(:count, :id)
-    active_pi_count = from(pi in product_items, where: pi.status == "active") |> Repo.aggregate(:count, :id)
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "combo") do
+    items = Ecto.assoc(changeset.data, :items)
+    item_count = Ecto.assoc(changeset.data, :items) |> Repo.aggregate(:count, :id)
+    active_item_count = from(p in items, where: p.status == "active") |> Repo.aggregate(:count, :id)
 
     prices = Ecto.assoc(changeset.data, :prices)
     active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
 
     cond do
-      active_pi_count != product_item_count -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All must have all of its Item set to Active in order to be marked Active.", [validation: "require_all_item_active", full_error_message: true])
-      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All require at least one Active Price in order to be marked Active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+      active_item_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_all_item_active", full_error_message: true])
+      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_at_least_one_active_price", full_error_message: true])
       true -> changeset
     end
   end
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "any") do
-    product_items = Ecto.assoc(changeset.data, :items)
-    active_or_internal_product_items = from(pi in product_items, where: pi.status in ["active", "internal"])
-    aipi_count = Repo.aggregate(active_or_internal_product_items, :count, :id)
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "with_variants") do
+    variants = Ecto.assoc(changeset.data, :variants)
+    active_or_internal_variants = from(p in variants, where: p.status in ["active", "internal"])
+    aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
-    case aipi_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product must have at least one Active/Internal Item in order to be marked Internal.", [validation: "require_at_least_one_internal_item", full_error_message: true])
+    case aiv_count do
+      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_at_least_one_internal_item", full_error_message: true])
       _ -> changeset
     end
   end
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "all") do
-    product_items = Ecto.assoc(changeset.data, :items)
-    product_item_count = product_items |> Repo.aggregate(:count, :id)
-    ai_pi_count = from(pi in product_items, where: pi.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "combo") do
+    items = Ecto.assoc(changeset.data, :items)
+    item_count = items |> Repo.aggregate(:count, :id)
+    aip_count = from(p in items, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     prices = Ecto.assoc(changeset.data, :prices)
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     cond do
-      ai_pi_count != product_item_count -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_all_item_internal", full_error_message: true])
-      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product with Item Mode set to All require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_at_least_one_internal_price", full_error_message: true])
+      aip_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_all_item_internal", full_error_message: true])
+      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_at_least_one_internal_price", full_error_message: true])
       true -> changeset
     end
   end
-  defp validate_status(changeset, item_mode), do: changeset
+  defp validate_status(changeset, kind), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -129,43 +197,55 @@ defmodule BlueJet.Catalogue.Product do
   def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(struct))
+    |> put_name(locale)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def query() do
-    from(p in Product, order_by: [desc: :updated_at])
-  end
+  def source(account_id, source_id, "Sku") do
+    response = Inventory.do_get_sku(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ sku_id: source_id }
+    })
 
-  def preload(struct_or_structs, targets) when length(targets) == 0 do
-    struct_or_structs
+    case response do
+      {:ok, %{ data: sku }} -> sku
+      {:error, _} -> nil
+    end
   end
-  def preload(struct_or_structs, targets) when is_list(targets) do
-    [target | rest] = targets
+  def source(account_id, source_id, "Unlockable") do
+    response = Inventory.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ unlockable_id: source_id }
+    })
 
-    struct_or_structs
-    |> Repo.preload(preload_keyword(target))
-    |> Product.preload(rest)
+    case response do
+      {:ok, %{ data: unlockable }} -> unlockable
+      {:error, _} -> nil
+    end
   end
+  def source(_, _, _), do: nil
 
-  def preload_keyword(:items) do
-    [items: ProductItem.query()]
+  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name_sync: "sync_with_source" } }, _) do
+    source_id = get_field(changeset, :source_id)
+    source_type = get_field(changeset, :source_type)
+    account_id = get_field(changeset, :account_id)
+    source = source(account_id, source_id, source_type)
+
+    if source do
+      changeset = put_change(changeset, :name, "#{source.name}")
+
+      new_translations =
+        changeset
+        |> Changeset.get_field(:translations)
+        |> Translation.merge_translations(source.translations, ["name"])
+
+      put_change(changeset, :translations, new_translations)
+    else
+      changeset
+    end
   end
-  def preload_keyword({:items, item_preloads}) do
-    [items: {ProductItem.query(), ProductItem.preload_keyword(item_preloads)}]
-  end
-  def preload_keyword(:avatar) do
-    :avatar
-  end
-  def preload_keyword(:external_file_collections) do
-    [external_file_collections: ExternalFileCollection.query()]
-  end
-  def preload_keyword(:prices) do
-    [prices: Price.query()]
-  end
-  def preload_keyword(:default_price) do
-    [default_price: from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])]
-  end
+  def put_name(changeset, _), do: changeset
 
   defmodule Query do
     use BlueJet, :query
@@ -173,11 +253,25 @@ defmodule BlueJet.Catalogue.Product do
     def for_account(query, account_id) do
       from(p in query, where: p.account_id == ^account_id)
     end
+
+    def variant_default() do
+      from(p in Product, where: p.kind == "variant", order_by: [desc: :updated_at])
+    end
+    def item_default() do
+      from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
+    end
+
     def preloads(:items) do
-      [items: ProductItem.Query.default()]
+      [items: Product.Query.item_default()]
     end
     def preloads({:items, item_preloads}) do
-      [items: {ProductItem.Query.default(), ProductItem.Query.preloads(item_preloads)}]
+      [items: {Product.Query.item_default(), Product.Query.preloads(item_preloads)}]
+    end
+    def preloads(:variants) do
+      [variants: Product.Query.variant_default()]
+    end
+    def preloads({:variants, variant_preloads}) do
+      [variants: {Product.Query.variant_default(), Product.Query.preloads(variant_preloads)}]
     end
     def preloads(:prices) do
       [prices: Price.Query.default()]
@@ -190,6 +284,10 @@ defmodule BlueJet.Catalogue.Product do
     end
     def preloads(:external_file_collections) do
       [external_file_collections: ExternalFileCollection.Query.for_owner_type("Product")]
+    end
+
+    def root(query) do
+      from(p in query, where: is_nil(p.parent_id))
     end
 
     def default() do
