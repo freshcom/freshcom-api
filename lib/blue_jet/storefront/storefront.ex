@@ -2,6 +2,9 @@ defmodule BlueJet.Storefront do
   use BlueJet, :context
 
   alias Ecto.Changeset
+
+  alias BlueJet.Identity
+
   alias BlueJet.Identity.Customer
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -16,6 +19,54 @@ defmodule BlueJet.Storefront do
   ####
   # Order
   ####
+  def list_order(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.list_order") do
+      do_list_order(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_order(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    filter = if !filter[:status] do
+      Map.put(filter, :status, "opened")
+    else
+      filter
+    end
+
+    query =
+      Order.Query.default()
+      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      |> filter_by(
+        status: filter[:status],
+        label: filter[:label],
+        delivery_address_province: filter[:delivery_address_province],
+        delivery_address_city: filter[:delivery_address_city],
+        fulfillment_method: filter[:fulfillment_method]
+      )
+      |> Order.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Order.Query.default() |> Order.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    orders =
+      Repo.all(query)
+      |> Repo.preload(Order.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: orders
+    }
+
+    {:ok, response}
+  end
+
   def create_order(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
@@ -76,49 +127,6 @@ defmodule BlueJet.Storefront do
     else
       other -> other
     end
-  end
-
-  def list_orders(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{ status: "opened" }, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-
-    # Merge in a way so that empty map will not overwrite defaults
-    request = Map.merge(defaults, request, fn(k, v1, v2) ->
-      case k do
-        :filter -> if (map_size(v2) == 0), do: v1, else: v2
-        _ -> v2
-      end
-    end)
-
-    account_id = vas[:account_id]
-
-    query =
-      from(o in Order, order_by: [desc: o.inserted_at])
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
-      |> filter_by(
-        status: request.filter[:status],
-        label: request.filter[:label],
-        delivery_address_province: request.filter[:delivery_address_province],
-        delivery_address_city: request.filter[:delivery_address_city],
-        fulfillment_method: request.filter[:fulfillment_method]
-      )
-      |> where([o], o.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = Order |> where([o], o.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    orders =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      orders: orders
-    }
   end
 
   def delete_order!(%{ vas: vas, order_id: order_id }) do

@@ -34,7 +34,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_product_item",
       "catalogue.get_product_item",
       "catalogue.list_price",
-      "catalogue.get_price"
+      "catalogue.get_price",
+
+      "storefront.list_order"
     ],
 
     "support_specialist" => [
@@ -65,7 +67,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.create_price",
       "catalogue.get_price",
       "catalogue.update_price",
-      "catalogue.delete_price"
+      "catalogue.delete_price",
+
+      "storefront.list_order"
     ],
 
     "inventory_specialist" => [
@@ -100,7 +104,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_product",
       "catalogue.get_product_item",
       "catalogue.list_price",
-      "catalogue.get_price"
+      "catalogue.get_price",
+
+      "storefront.list_order"
     ],
 
     "developer" => [
@@ -139,7 +145,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.create_price",
       "catalogue.get_price",
       "catalogue.update_price",
-      "catalogue.delete_price"
+      "catalogue.delete_price",
+
+      "storefront.list_order"
     ],
 
     "administrator" => [
@@ -180,7 +188,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.create_price",
       "catalogue.get_price",
       "catalogue.update_price",
-      "catalogue.delete_price"
+      "catalogue.delete_price",
+
+      "storefront.list_order"
     ]
   }
 

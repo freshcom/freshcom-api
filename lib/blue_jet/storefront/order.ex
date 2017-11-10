@@ -291,4 +291,16 @@ defmodule BlueJet.Storefront.Order do
     {:ok, order}
   end
   def process(order, changeset), do: {:ok, order}
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(o in query, where: o.account_id == ^account_id)
+    end
+
+    def default() do
+      from(o in Order, where: o.status != "cart", order_by: [desc: o.opened_at, desc: o.inserted_at])
+    end
+  end
 end
