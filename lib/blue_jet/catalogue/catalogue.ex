@@ -165,70 +165,98 @@ defmodule BlueJet.Catalogue do
   #####
   # Price
   #####
-  def create_price(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
+  def list_price(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.list_price") do
+      do_list_price(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_price(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      Price.Query.default()
+      |> search([:name, :id], request.search, request.locale)
+      |> filter_by(product_id: filter[:product_id], label: filter[:label])
+      |> Price.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
 
+    total_query = Price |> Price.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    prices =
+      Repo.all(query)
+      |> Repo.preload(Price.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: prices
+    }
+
+    {:ok, response}
+  end
+
+  def create_price(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_price") do
+      do_create_price(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_price(request = %AccessRequest{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
     changeset = Price.changeset(%Price{}, fields)
 
     with {:ok, price} <- Repo.insert(changeset) do
-      price = Repo.preload(price, request.preloads)
-      {:ok, price}
+      price = Repo.preload(price, Price.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: price }}
     else
-      other -> other
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_price!(request = %{ vas: vas, price_id: price_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
+  def get_price(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.get_price") do
+      do_get_price(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_price(request = %AccessRequest{ vas: vas, params: %{ price_id: price_id } }) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id)
 
-    price =
-      Price
-      |> Repo.get_by!(account_id: vas[:account_id], id: price_id)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+    if price do
+      price =
+        price
+        |> Repo.preload(Price.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
 
-    price
+      {:ok, %AccessResponse{ data: price }}
+    else
+      {:error, :not_found}
+    end
   end
 
-  def list_prices(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
-
-    query =
-      Price
-      |> search([:name, :id], request.search_keyword, request.locale)
-      |> filter_by(product_item_id: request.filter[:product_item_id], product_id: request.filter[:product_id], label: request.filter[:label])
-      |> where([s], s.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = Price |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    prices =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      prices: prices
-    }
+  def update_price(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.update_price") do
+      do_update_price(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
   end
+  def do_update_price(request = %AccessRequest{ vas: vas, params: %{ price_id: price_id }}) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id) |> Repo.preload(:parent)
 
-  def update_price(request = %{ vas: vas, price_id: price_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
-
-    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id) |> Repo.preload(:parent)
-
-    with changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale) do
+    with %Price{} <- price,
+         changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale)
+    do
       {:ok, price} = Repo.transaction(fn ->
         price = Repo.update!(changeset)
         if price.parent do
@@ -240,25 +268,35 @@ defmodule BlueJet.Catalogue do
 
       price =
         price
-        |> Repo.preload(request.preloads)
+        |> Repo.preload(Price.Query.preloads(request.preloads))
         |> Translation.translate(request.locale)
 
-      {:ok, price}
+      {:ok, %AccessResponse{ data: price }}
     else
-      other -> {:error, other}
+      nil -> {:error, :not_found}
+      changeset = %Changeset{} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def delete_price!(%{ vas: vas, price_id: price_id }) do
-    price = Repo.get_by!(Price, account_id: vas[:account_id], id: price_id)
+  def delete_price(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_price") do
+      do_delete_price(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_price(%AccessRequest{ vas: vas, params: %{ price_id: price_id } }) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id)
 
     case price.status do
       "disabled" ->
         Repo.delete!(price)
-        {:ok, :deleted}
+        {:ok, %AccessResponse{}}
       _ ->
-        errors = [id: {"Only Disabled Price can be deleted.", [validation: :only_disabled_can_be_deleted]}]
-        {:error, errors}
+        errors = %{ id: {"Only Disabled Price can be deleted.", [validation: :only_disabled_can_be_deleted]} }
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 

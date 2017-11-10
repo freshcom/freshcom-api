@@ -260,6 +260,16 @@ defmodule BlueJet.Catalogue.Price do
       from(p in query, where: p.account_id == ^account_id)
     end
 
+    def preloads(:product) do
+      [product: Product.Query.default()]
+    end
+    def preloads({:children, children_preloads}) do
+      [children: {Price.Query.default(), Price.Query.preloads(children_preloads)}]
+    end
+    def preloads(:children) do
+      [children: Price.Query.default()]
+    end
+
     def active_by_moq() do
       from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])
     end
