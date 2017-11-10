@@ -23,9 +23,16 @@ defmodule BlueJet.Catalogue do
     query =
       Product.Query.default()
       |> search([:name], request.search, request.locale)
-      |> filter_by(status: filter[:status], item_mode: filter[:item_mode])
+      |> filter_by(status: filter[:status], item_mode: filter[:item_mode], parent_id: filter[:parent_id])
+
+    query = if filter[:parent_id] do
+      query |> Product.Query.for_account(account_id)
+    else
+      query
       |> Product.Query.root()
       |> Product.Query.for_account(account_id)
+    end
+
     result_count = Repo.aggregate(query, :count, :id)
 
     total_query = Product |> Product.Query.for_account(account_id)
@@ -154,145 +161,6 @@ defmodule BlueJet.Catalogue do
         {:error, :not_found}
     end
   end
-
-  #####
-  # ProductItem
-  #####
-  # def list_product_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product_item") do
-  #     do_list_product_item(request)
-  #   else
-  #     {:error, reason} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_list_product_item(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-  #   query =
-  #     ProductItem
-  #     |> search([:short_name, :code, :id], request.search, request.locale)
-  #     |> filter_by(sku_id: filter[:sku_id], unlockable_id: filter[:unlockable_id], product_id: filter[:product_id], status: filter[:status])
-  #     |> ProductItem.Query.for_account(account_id)
-  #   result_count = Repo.aggregate(query, :count, :id)
-
-  #   total_query = ProductItem |> where([s], s.account_id == ^account_id)
-  #   total_count = Repo.aggregate(total_query, :count, :id)
-
-  #   query = paginate(query, size: pagination[:size], number: pagination[:number])
-
-  #   product_items =
-  #     Repo.all(query)
-  #     |> ProductItem.preload(ProductItem.Query.preloads(request.preloads))
-  #     |> Translation.translate(request.locale)
-
-  #   response = %AccessResponse{
-  #     meta: %{
-  #       total_count: total_count,
-  #       result_count: result_count,
-  #     },
-  #     data: product_items
-  #   }
-
-  #   {:ok, response}
-  # end
-
-  # def create_product_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_item") do
-  #     do_create_product_item(request)
-  #   else
-  #     {:error, reason} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_create_product_item(request = %{ vas: vas }) do
-  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-  #   changeset = ProductItem.changeset(%ProductItem{}, fields)
-
-  #   with {:ok, product_item} <- Repo.insert(changeset) do
-  #     product_item = ProductItem.preload(product_item, ProductItem.Query.preloads(request.preloads))
-  #     {:ok, %AccessResponse{ data: product_item }}
-  #   else
-  #     {:error, changeset} ->
-  #       errors = Enum.into(changeset.errors, %{})
-  #       {:error, %AccessResponse{ errors: errors }}
-  #   end
-  # end
-
-  # def get_product_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product_item") do
-  #     do_get_product_item(request)
-  #   else
-  #     {:error, reason} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_get_product_item(request = %AccessRequest{ vas: vas, params: %{ product_item_id: product_item_id } }) do
-  #   product_item = ProductItem |> ProductItem.Query.for_account(vas[:account_id]) |> Repo.get(product_item_id)
-
-  #   if product_item do
-  #     product_item =
-  #       product_item
-  #       |> Repo.preload(ProductItem.Query.preloads(request.preloads))
-  #       |> Translation.translate(request.locale)
-  #     {:ok, %AccessResponse{ data: product_item }}
-  #   else
-  #     {:error, :not_found}
-  #   end
-  # end
-
-  # def update_product_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product_item") do
-  #     do_update_product_item(request)
-  #   else
-  #     {:error, reason} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_update_product_item(request = %AccessRequest{ vas: vas, params: %{ product_item_id: product_item_id }}) do
-  #   product_item = ProductItem |> ProductItem.Query.for_account(vas[:account_id]) |> Repo.get(product_item_id)
-
-  #   with %ProductItem{} <- product_item,
-  #        changeset = %Changeset{ valid?: true } <- ProductItem.changeset(product_item, request.fields, request.locale) do
-  #     {:ok, product_item} = Repo.transaction(fn ->
-  #       if Changeset.get_change(changeset, :primary) do
-  #         product_id = product_item.product_id
-  #         from(pi in ProductItem, where: pi.product_id == ^product_id)
-  #         |> Repo.update_all(set: [primary: false])
-  #       end
-
-  #       Repo.update!(changeset)
-  #     end)
-
-  #     product_item =
-  #       product_item
-  #       |> Repo.preload(ProductItem.Query.preloads(request.preloads))
-  #       |> Translation.translate(request.locale)
-
-  #     {:ok, %AccessResponse{ data: product_item }}
-  #   else
-  #     nil -> {:error, :not_found}
-  #     changeset = %Changeset{} ->
-  #       errors = Enum.into(changeset.errors, %{})
-  #       {:error, %AccessResponse{ errors: errors }}
-  #   end
-  # end
-
-  # def delete_product_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_item") do
-  #     do_delete_product_item(request)
-  #   else
-  #     {:error, reason} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_delete_product_item(%AccessRequest{ vas: vas, params: %{ product_item_id: product_item_id } }) do
-  #   product_item = ProductItem |> ProductItem.Query.for_account(vas[:account_id]) |> Repo.get(product_item_id)
-
-  #   cond do
-  #     !product_item ->
-  #       {:error, :not_found}
-  #     product_item && product_item.status == "disabled" ->
-  #       Repo.delete!(product_item)
-  #       {:ok, %AccessResponse{}}
-  #     product_item ->
-  #       errors = %{id: {"Only Disabled Product Item can be deleted.", [validation: :only_disabled_can_be_deleted]}}
-  #       {:error, %AccessResponse{ errors: errors }}
-  #   end
-  # end
 
   #####
   # Price
