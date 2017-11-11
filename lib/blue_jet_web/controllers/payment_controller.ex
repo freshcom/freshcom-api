@@ -2,44 +2,38 @@ defmodule BlueJetWeb.PaymentController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Storefront
+  alias BlueJet.Billing
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, params) do
-    request = %{
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      search_keyword: params["search"],
+      search: params["search"],
       filter: assigns[:filter],
-      page_size: assigns[:page_size],
-      page_number: assigns[:page_number],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    %{ payments: payments, total_count: total_count, result_count: result_count } = Storefront.list_payments(request)
 
-    meta = %{
-      totalCount: total_count,
-      resultCount: result_count
-    }
+    {:ok, %AccessResponse{ data: payments, meta: meta }} = Billing.list_payment(request)
 
-    render(conn, "index.json-api", data: payments, opts: [meta: meta, include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: payments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "Payment" } }) when map_size(vas) == 2 do
-    fields = Map.merge(Params.to_attributes(data), %{ "order_id" => order_id })
-    request = %{
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Payment" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      fields: fields,
+      fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Storefront.create_payment(request) do
-      {:ok, payment} ->
+    case Billing.create_payment(request) do
+      {:ok, %AccessResponse{ data: payment }} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: payment, opts: [include: conn.query_params["include"]])
-      {:error, errors} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -54,7 +48,7 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    payment = Storefront.get_payment!(request)
+    payment = Billing.get_payment!(request)
 
     render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   end
@@ -68,7 +62,7 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    case Storefront.update_payment(request) do
+    case Billing.update_payment(request) do
       {:ok, payment} ->
         render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
       {:error, errors} ->
@@ -84,7 +78,7 @@ defmodule BlueJetWeb.PaymentController do
       payment_id: payment_id
     }
 
-    Storefront.delete_payment!(request)
+    Billing.delete_payment!(request)
 
     send_resp(conn, :no_content, "")
   end

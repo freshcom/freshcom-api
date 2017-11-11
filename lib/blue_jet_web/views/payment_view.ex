@@ -32,20 +32,16 @@ defmodule BlueJetWeb.PaymentView do
     :updated_at
   ]
 
-  has_one :order, serializer: BlueJetWeb.OrderView, identifiers: :always
   has_many :refunds, serializer: BlueJetWeb.RefundView, identifiers: :when_included
 
   def type(_, _) do
     "Payment"
   end
 
-  def order(struct, conn) do
-    case struct.order do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:order)
-        |> Repo.one()
-      other -> other
-    end
+  def owner(struct, _) do
+    %{
+      id: struct.owner_id,
+      type: struct.owner_type
+    }
   end
 end

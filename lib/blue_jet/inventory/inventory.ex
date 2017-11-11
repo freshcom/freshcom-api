@@ -108,7 +108,6 @@ defmodule BlueJet.Inventory do
 
       {:ok, %AccessResponse{ data: sku }}
     else
-      nil -> {:error, :not_found}
       {:error, changeset} ->
         errors = Enum.into(changeset.errors, %{})
         {:error, %AccessResponse{ errors: errors }}

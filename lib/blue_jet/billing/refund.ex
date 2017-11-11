@@ -1,15 +1,16 @@
-defmodule BlueJet.Storefront.Refund do
+defmodule BlueJet.Billing.Refund do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
   alias BlueJet.Translation
-  alias BlueJet.Storefront.Payment
-  alias BlueJet.Identity.Account
-  alias BlueJet.Storefront.Refund
+
+  alias BlueJet.Billing.Refund
+  alias BlueJet.Billing.Payment
 
   schema "refunds" do
+    field :account_id, Ecto.UUID
     field :amount_cents, :integer
     field :stripe_refund_id, :string
 
@@ -18,7 +19,6 @@ defmodule BlueJet.Storefront.Refund do
 
     timestamps()
 
-    belongs_to :account, Account
     belongs_to :payment, Payment
   end
 
@@ -59,7 +59,6 @@ defmodule BlueJet.Storefront.Refund do
     payment_id = get_field(changeset, :payment_id)
     payment = Repo.get_by!(Payment, account_id: account_id, id: payment_id)
 
-    IO.inspect payment
     case amount_cents > payment.paid_amount_cents - payment.refunded_amount_cents do
       true -> Changeset.add_error(changeset, :amount_cents, "Amount Cents cannot be greater than the Payment's net Paid Amount Cents", [validation: "amount_cents_must_be_smaller_or_equal_to_payment_net_paid_amount_cents", full_error_message: true])
       _ -> changeset

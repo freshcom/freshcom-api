@@ -25,12 +25,16 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :billing_address_postal_code, :string
 
       add :stripe_charge_id, :string
+      add :stripe_customer_id, :string
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
-      add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
+      add :owner_id, :binary_id
+      add :owner_type, :string
+
+      add :target_id, :binary_id
+      add :target_type, :string
 
       add :authorized_at, :utc_datetime
       add :captured_at, :utc_datetime
@@ -40,6 +44,5 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
     end
 
     create index(:payments, [:account_id])
-    create index(:payments, [:order_id])
   end
 end

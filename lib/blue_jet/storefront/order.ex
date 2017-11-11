@@ -7,7 +7,6 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Payment
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
@@ -58,7 +57,6 @@ defmodule BlueJet.Storefront.Order do
     belongs_to :created_by, User
     has_many :line_items, OrderLineItem
     has_many :root_line_items, OrderLineItem
-    has_many :payments, Payment
   end
 
   def translatable_fields do
@@ -144,7 +142,7 @@ defmodule BlueJet.Storefront.Order do
       changeset
     else
       ordered_unlockable_count =
-        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: not is_nil(oli.unlockable_id))
+        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: oli.source_type == "Unlockable")
         |> Repo.aggregate(:count, :id)
 
       case ordered_unlockable_count do
@@ -258,9 +256,6 @@ defmodule BlueJet.Storefront.Order do
 
   def preload_keyword(:line_items) do
     [line_items: OrderLineItem.query()]
-  end
-  def preload_keyword(:payments) do
-    [payments: Payment.query()]
   end
   def preload_keyword(:root_line_items) do
     [root_line_items: OrderLineItem.query(:root)]

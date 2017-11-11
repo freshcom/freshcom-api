@@ -51,11 +51,8 @@ config :ja_serializer,
 
 config :blue_jet, :s3, prefix: 'uploads'
 
-config :blue_jet, :authorization, %{
-  permission_providers: [
-    BlueJet.Storefront.PermissionProvider,
-    BlueJet.Inventory.PermissionProvider
-  ]
+config :blue_jet, :billing, %{
+  listeners: [BlueJet.Storefront]
 }
 
 config :ex_aws,

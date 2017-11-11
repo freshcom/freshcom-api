@@ -3,6 +3,7 @@ defmodule BlueJetWeb.CustomerController do
 
   alias JaSerializer.Params
   alias BlueJet.Identity
+  alias BlueJet.Storefront
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -17,7 +18,7 @@ defmodule BlueJetWeb.CustomerController do
       locale: assigns[:locale]
     }
 
-    %{ customers: customers, total_count: total_count, result_count: result_count } = Identity.list_customers(request)
+    %{ customers: customers, total_count: total_count, result_count: result_count } = Storefront.list_customers(request)
 
     meta = %{
       totalCount: total_count,
