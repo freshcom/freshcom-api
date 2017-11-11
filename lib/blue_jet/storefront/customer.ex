@@ -18,7 +18,7 @@ defmodule BlueJet.Identity.Customer do
 
   schema "customers" do
     field :code, :string
-    field :status, :string, default: "anonymous"
+    field :status, :string, default: "guest"
     field :first_name, :string
     field :last_name, :string
     field :email, :string
@@ -42,7 +42,6 @@ defmodule BlueJet.Identity.Customer do
     has_many :unlocks, Unlock
     has_many :unlockables, through: [:unlocks, :unlockable]
     has_many :orders, Order
-    has_many :cards, Card
   end
 
   def system_fields do
@@ -74,7 +73,7 @@ defmodule BlueJet.Identity.Customer do
     status = get_field(changeset, :status)
 
     case status do
-      "anonymous" -> [:account_id, :status]
+      "guest" -> [:account_id, :status]
       "internal" -> [:account_id, :status]
       "registered" -> writable_fields() -- [:display_name, :code, :phone_number, :label]
     end
@@ -159,5 +158,17 @@ defmodule BlueJet.Identity.Customer do
   @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
   defp list_stripe_card(%Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
     StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100")
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(s in query, where: s.account_id == ^account_id)
+    end
+
+    def default() do
+      from(s in Sku, order_by: [desc: :updated_at])
+    end
   end
 end

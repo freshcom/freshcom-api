@@ -63,7 +63,6 @@ defmodule BlueJet.Billing.Card do
     changeset
     |> validate_required(required_fields())
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope(:customer)
   end
 
   def changeset(struct, params \\ %{}, locale \\ "en") do
@@ -79,8 +78,10 @@ defmodule BlueJet.Billing.Card do
   end
 
   def put_primary(changeset) do
-    customer_id = get_field(changeset, :customer_id)
-    existing_primary_card = Repo.get_by(Card, customer_id: customer_id, status: "saved_by_customer", primary: true)
+    owner_id = get_field(changeset, :owner_id)
+    owner_type = get_field(changeset, :owner_type)
+
+    existing_primary_card = Repo.get_by(Card, owner_id: owner_id, owner_type: owner_type, status: "saved_by_customer", primary: true)
 
     if !existing_primary_card do
       put_change(changeset, :primary, true)

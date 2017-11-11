@@ -16,7 +16,7 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
       add :primary, :boolean, null: false, default: false
 
       add :stripe_card_id, :string
-      add :string_customer_id, :string
+      add :stripe_customer_id, :string
       add :owner_id, :binary_id
       add :owner_type, :string
 

@@ -12,17 +12,16 @@ defmodule BlueJet.Billing do
 
   alias BlueJet.FileStorage.ExternalFile
 
-  def list_cards(request = %{ vas: vas, customer_id: target_customer_id }) do
+  def list_cards(request = %{ vas: vas }) do
     defaults = %{ preloads: [], fields: %{} }
     request = Map.merge(defaults, request)
-    customer_id = vas[:customer_id] || target_customer_id
     account_id = vas[:account_id]
 
     query =
       Card
       |> filter_by(status: "saved_by_customer")
+      |> filter_by(owner_id: request.filter[:owner_id], owner_type: request.filter[:owner_type])
       |> where([c], c.account_id == ^account_id)
-      |> where([c], c.customer_id == ^customer_id)
 
     result_count = Repo.aggregate(query, :count, :id)
 
@@ -107,17 +106,21 @@ defmodule BlueJet.Billing do
   end
   def do_create_payment(request = %AccessRequest{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Payment.changeset(%Payment{}, fields)
 
     owner = %{ id: fields["owner_id"], type: fields["owner_type"] }
     target = %{ id: fields["target_id"], type: fields["target_type"]}
 
     statements = Multi.new()
-    |> Multi.run(:before_create, fn(_) ->
-        run_event_handler("billing.payment.before_create", %{ target: target, owner: owner })
+    |> Multi.run(:fields, fn(_) ->
+        run_before_create(fields, owner, target)
        end)
-    |> Multi.insert(:payment, changeset)
-    |> Multi.run(:processed_payment, fn(%{ payment: payment }) ->
+    |> Multi.run(:changeset, fn(%{ fields: fields }) ->
+        {:ok, Payment.changeset(%Payment{}, fields)}
+       end)
+    |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
+        Repo.insert(changeset)
+       end)
+    |> Multi.run(:processed_payment, fn(%{ payment: payment, changeset: changeset }) ->
         Payment.process(payment, changeset)
        end)
     |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
@@ -149,14 +152,26 @@ defmodule BlueJet.Billing do
   def create_payment(changeset, _) do
     {:error, changeset.errors}
   end
+
+  defp run_before_create(fields, owner, target) do
+    with {:ok, results} <- run_event_handler("billing.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
+      values = Keyword.values(results)
+      fields = Enum.reduce(values, %{}, fn(fields, acc) ->
+        Map.merge(acc, fields)
+      end)
+
+      {:ok, fields}
+    else
+      other -> other
+    end
+  end
   defp run_event_handler(name, data) do
     listeners = Map.get(Application.get_env(:blue_jet, :billing, %{}), :listeners, [])
 
     Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
-      IO.inspect listener
       with {:ok, result} <- listener.handle_event(name, data) do
-        {:ok, result} = acc
-        {:cont, {:ok, result ++ [{listener, result}]}}
+        {:ok, acc_result} = acc
+        {:cont, {:ok, acc_result ++ [{listener, result}]}}
       else
         {:error, errors} -> {:halt, {:error, errors}}
         other -> {:halt, other}

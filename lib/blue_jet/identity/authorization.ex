@@ -23,6 +23,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
 
       "storefront.update_order",
+      "storefront.create_customer",
 
       "billing.create_payment",
       "billing.list_payment"
@@ -80,6 +81,7 @@ defmodule BlueJet.Identity.Authorization do
 
       "storefront.list_order",
       "storefront.update_order",
+      "storefront.create_customer",
 
       "billing.create_payment",
       "billing.list_payment"
@@ -121,6 +123,7 @@ defmodule BlueJet.Identity.Authorization do
 
       "storefront.list_order",
       "storefront.update_order",
+      "storefront.create_customer",
 
       "billing.create_payment",
       "billing.list_payment"
@@ -166,6 +169,7 @@ defmodule BlueJet.Identity.Authorization do
 
       "storefront.list_order",
       "storefront.update_order",
+      "storefront.create_customer",
 
       "billing.create_payment",
       "billing.list_payment"
@@ -213,6 +217,7 @@ defmodule BlueJet.Identity.Authorization do
 
       "storefront.list_order",
       "storefront.update_order",
+      "storefront.create_customer",
 
       "billing.create_payment",
       "billing.list_payment"

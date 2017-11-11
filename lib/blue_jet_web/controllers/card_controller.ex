@@ -3,20 +3,20 @@ defmodule BlueJetWeb.CardController do
 
   alias JaSerializer.Params
   alias BlueJet.Storefront
+  alias BlueJet.Billing
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "customer_id" => customer_id }) when map_size(vas) == 2 do
+  def index(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
     request = %{
       vas: assigns[:vas],
-      customer_id: customer_id,
       filter: assigns[:filter],
       page_size: assigns[:page_size],
       page_number: assigns[:page_number],
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    %{ cards: cards, total_count: total_count, result_count: result_count } = Storefront.list_cards(request)
+    %{ cards: cards, total_count: total_count, result_count: result_count } = Billing.list_cards(request)
 
     meta = %{
       totalCount: total_count,

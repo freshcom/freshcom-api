@@ -187,6 +187,12 @@ defmodule BlueJet.Storefront do
     end)
   end
 
+  def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
+    customer = Repo.get!(Customer, customer_id)
+    customer = Customer.preprocess(customer, payment_processor: "stripe")
+    xxx = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
+    {:ok, xxx}
+  end
   def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
     order_changeset = Changeset.change(order, status: "opened")
@@ -195,7 +201,6 @@ defmodule BlueJet.Storefront do
     Order.process(order, order_changeset)
   end
   def handle_event(_, data) do
-    IO.inspect data
     {:ok, nil}
   end
 
@@ -374,23 +379,26 @@ defmodule BlueJet.Storefront do
   ####
   # Customer
   ####
-  # def create_customer(request = %{ vas: vas }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
+  def create_customer(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.create_customer") do
+      do_create_customer(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_customer(request = %{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Customer.changeset(%Customer{}, fields)
 
-  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-  #   changeset = Customer.changeset(%Customer{}, fields)
-
-  #   Repo.transaction(fn ->
-  #     with {:ok, customer} <- Repo.insert(changeset),
-  #          {:ok, _refresh_token} <- RefreshToken.changeset(%RefreshToken{}, %{ customer_id: customer.id, account_id: customer.account_id }) |> Repo.insert
-  #     do
-  #       Repo.preload(customer, request.preloads)
-  #     else
-  #       {:error, changeset} -> Repo.rollback(changeset)
-  #     end
-  #   end)
-  # end
+    with {:ok, customer} <- Repo.insert(changeset) do
+      customer = Repo.preload(customer, Customer.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: customer }}
+    else
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
 
   def get_customer!(request = %{ vas: vas, customer_id: customer_id }) do
     defaults = %{ locale: "en", preloads: [] }

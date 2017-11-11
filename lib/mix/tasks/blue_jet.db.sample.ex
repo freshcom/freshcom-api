@@ -20,6 +20,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
+    alias BlueJet.Storefront
 
     ensure_started(Repo, [])
 
@@ -30,6 +31,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         email: "user1@example.com",
         password: "test1234",
         account_name: "Outersky"
+      }
+    })
+
+    {:ok, _} = Storefront.create_customer(%AccessRequest{
+      vas: %{ account_id: account1_id },
+      fields: %{
+        "first_name" => "Tiffany",
+        "last_name" => "Wang",
+        "email" => "customer1@example.com",
+        "status" => "registered",
+        "password" => "test1234"
       }
     })
 

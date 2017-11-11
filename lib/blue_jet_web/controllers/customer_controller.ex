@@ -28,24 +28,22 @@ defmodule BlueJetWeb.CustomerController do
     render(conn, "index.json-api", data: customers, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "data" => data = %{ "type" => "Customer" } }) do
-    preloads = assigns[:preloads] ++ [:refresh_token]
-    request = %{
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Sku" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
-      preloads: preloads
+      preloads: assigns[:preloads]
     }
 
-
-    case Identity.create_customer(request) do
-      {:ok, customer} ->
+    case Storefront.create_customer(request) do
+      {:ok, %AccessResponse{ data: customer }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: customer, opts: [include: Enum.join(preloads, ",")])
-      {:error, changeset} ->
+        |> render("show.json-api", data: customer, opts: [include: conn.query_params["include"]])
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
