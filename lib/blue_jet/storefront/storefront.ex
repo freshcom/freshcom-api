@@ -2,6 +2,7 @@ defmodule BlueJet.Storefront do
   use BlueJet, :context
 
   alias Ecto.Changeset
+  alias Ecto.Multi
 
   alias BlueJet.Identity
 
@@ -35,6 +36,7 @@ defmodule BlueJet.Storefront do
 
     query =
       Order.Query.default()
+      |> Order.Query.not_cart()
       |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
       |> filter_by(
         status: filter[:status],
@@ -137,23 +139,50 @@ defmodule BlueJet.Storefront do
   ####
   # Order Line Item
   ####
-  def create_order_line_item(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-
-    with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
-      order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
-      Repo.transaction(fn ->
-        order_line_item = Repo.insert!(changeset)
-        OrderLineItem.balance!(order_line_item)
-        Order.balance!(order)
-        order_line_item
-      end)
+  def create_order_line_item(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.create_order_line_item") do
+      do_create_order_line_item(request)
     else
-      other -> {:error, other}
+      {:error, reason} -> {:error, :access_denied}
     end
+  end
+  def do_create_order_line_item(request = %AccessRequest{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = OrderLineItem.changeset(%OrderLineItem{}, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:oli, changeset)
+      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+          {:ok, OrderLineItem.balance!(oli)}
+         end)
+      |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
+          order = Repo.get!(Order, balanced_oli.order_id)
+          {:ok, Order.balance!(order)}
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ oli: oli }} ->
+        oli = Repo.preload(oli, OrderLineItem.Query.preloads(request.preloads))
+        {:ok, %AccessResponse{ data: oli }}
+      {:error, _, errors, _} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+
+    # with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
+
+    #   Repo.transaction(fn ->
+    #     order_line_item = Repo.insert!(changeset)
+
+    #     order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
+
+    #     OrderLineItem.balance!(order_line_item)
+    #     Order.balance!(order)
+    #     order_line_item
+    #   end)
+    # else
+    #   other -> {:error, other}
+    # end
   end
 
   def update_order_line_item(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do

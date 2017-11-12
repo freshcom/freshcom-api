@@ -395,6 +395,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
         |> Changeset.change(child_fields)
         |> Repo.update!()
     end
+
+    struct
   end
   def balance_by_product(struct, product = %Product{ kind: kind}) when kind == "combo" do
     price = Repo.get!(Price, struct.price_id) |> Repo.preload(:children)
@@ -527,5 +529,31 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def process(line_item, _, _, _) do
     {:ok, line_item}
+  end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def preloads(:order) do
+      [order: Order]
+    end
+    def preloads({:order, order_preloads}) do
+      [order: {Order.Query.default(), Order.Query.preloads(order_preloads)}]
+    end
+    def preloads(:children) do
+      [children: OrderLineItem.Query.default()]
+    end
+
+    def for_account(query, account_id) do
+      from(oli in query, where: oli.account_id == ^account_id)
+    end
+
+    def root() do
+      from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
+    end
+
+    def default() do
+      from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
+    end
   end
 end

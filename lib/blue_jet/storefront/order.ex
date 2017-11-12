@@ -294,8 +294,19 @@ defmodule BlueJet.Storefront.Order do
       from(o in query, where: o.account_id == ^account_id)
     end
 
+    def preloads(:root_line_items) do
+      [root_line_items: OrderLineItem.Query.root()]
+    end
+    def preloads({:root_line_items, root_line_item_preloads}) do
+      [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads)}]
+    end
+
+    def not_cart(query) do
+      from(o in query, where: o.status != "cart")
+    end
+
     def default() do
-      from(o in Order, where: o.status != "cart", order_by: [desc: o.opened_at, desc: o.inserted_at])
+      from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
     end
   end
 end

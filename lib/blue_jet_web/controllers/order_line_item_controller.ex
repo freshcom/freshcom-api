@@ -26,23 +26,23 @@ defmodule BlueJetWeb.OrderLineItemController do
     render(conn, "index.json-api", data: orders, opts: [meta: meta, include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) when map_size(vas) == 2 do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "order_id" => order_id })
-    request = %{
+    request = %AccessRequest{
       vas: assigns[:vas],
       fields: fields,
       preloads: assigns[:preloads]
     }
 
     case Storefront.create_order_line_item(request) do
-      {:ok, order} ->
+      {:ok, %AccessResponse{ data: oli }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: order, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+        |> render("show.json-api", data: oli, opts: [include: conn.query_params["include"]])
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
