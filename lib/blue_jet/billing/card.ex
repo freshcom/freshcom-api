@@ -186,4 +186,16 @@ defmodule BlueJet.Billing.Card do
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(c in query, where: c.account_id == ^account_id)
+    end
+
+    def default() do
+      from(c in Card, order_by: [desc: :updated_at])
+    end
+  end
 end

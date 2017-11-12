@@ -190,9 +190,11 @@ defmodule BlueJet.Storefront do
   def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
     customer = Repo.get!(Customer, customer_id)
     customer = Customer.preprocess(customer, payment_processor: "stripe")
-    xxx = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
-    {:ok, xxx}
+    fields = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
+    {:ok, fields}
   end
+  def handle_event("billing.payment.before_create", %{ fields: fields }), do: {:ok, fields}
+
   def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
     order_changeset = Changeset.change(order, status: "opened")

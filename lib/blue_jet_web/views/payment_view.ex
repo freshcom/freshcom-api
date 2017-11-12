@@ -23,6 +23,12 @@ defmodule BlueJetWeb.PaymentView do
     :billing_address_country_code,
     :billing_address_postal_code,
 
+    :target_id,
+    :target_type,
+
+    :owner_id,
+    :owner_type,
+
     :authorized_at,
     :captured_at,
     :refunded_at,
@@ -33,6 +39,8 @@ defmodule BlueJetWeb.PaymentView do
   ]
 
   has_many :refunds, serializer: BlueJetWeb.RefundView, identifiers: :when_included
+  has_one :target, serializer: BlueJetWeb.IdentifierView, identifiers: :always
+  has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type(_, _) do
     "Payment"
@@ -42,6 +50,13 @@ defmodule BlueJetWeb.PaymentView do
     %{
       id: struct.owner_id,
       type: struct.owner_type
+    }
+  end
+
+  def target(struct, _) do
+    %{
+      id: struct.target_id,
+      type: struct.target_type
     }
   end
 end

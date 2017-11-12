@@ -3,12 +3,14 @@ defmodule BlueJet.Billing.Payment do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  alias Decimal, as: D
   alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Billing.Payment
   alias BlueJet.Billing.Refund
   alias BlueJet.Billing.Card
+  alias BlueJet.Billing.StripeAccount
 
   @type t :: Ecto.Schema.t
 
@@ -16,7 +18,7 @@ defmodule BlueJet.Billing.Payment do
     field :account_id, Ecto.UUID
     field :status, :string # pending, paid, partially_refunded, fully_refunded
 
-    field :gateway, :string # online, in_person,
+    field :gateway, :string # online, offline,
     field :processor, :string # stripe, paypal
     field :method, :string # visa, mastercard ... , cash
 
@@ -24,6 +26,8 @@ defmodule BlueJet.Billing.Payment do
     field :authorized_amount_cents, :integer
     field :paid_amount_cents, :integer
     field :refunded_amount_cents, :integer, default: 0
+
+    field :transaction_fee_cents, :integer
 
     field :billing_address_line_one, :string
     field :billing_address_line_two, :string
@@ -153,6 +157,15 @@ defmodule BlueJet.Billing.Payment do
 
   alias BlueJet.Identity.Customer
 
+  def destination_amount(total_amount, payment, stripe_account) do
+    total_amount - transaction_fee_cents(total_amount, payment, stripe_account)
+  end
+
+  def transaction_fee_cents(total_amount, payment, stripe_account) do
+    rate = stripe_account.transaction_fee_percentage |> D.div(D.new(100))
+    D.new(total_amount) |> D.mult(rate) |> D.round() |> D.to_integer
+  end
+
   @doc """
   Send a paylink
 
@@ -238,6 +251,7 @@ defmodule BlueJet.Billing.Payment do
   """
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
+    stripe_account = Repo.get_by!(StripeAccount, account_id: payment.account_id)
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
     card_fields = %{
@@ -248,7 +262,7 @@ defmodule BlueJet.Billing.Payment do
     }
 
     with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields),
-         {:ok, stripe_charge} <- create_stripe_charge(payment, source)
+         {:ok, stripe_charge} <- create_stripe_charge(payment, source, stripe_account)
     do
       sync_with_stripe_charge(payment, stripe_charge)
     else
@@ -274,52 +288,54 @@ defmodule BlueJet.Billing.Payment do
     {:ok, payment}
   end
 
-  @spec create_stripe_charge(Payment.t, String.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_charge(Payment.t, String.t, StripeAccount.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
     payment = %{ paid_amount_cents: paid_amount_cents, stripe_customer_id: stripe_customer_id },
-    source
+    source,
+    stripe_account
   ) when not is_nil(paid_amount_cents) do
-    if stripe_customer_id do
-      StripeClient.post("/charges", %{
-        customer: stripe_customer_id,
-        amount: paid_amount_cents,
-        source: source,
-        capture: true,
-        currency: "USD",
-        metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id }
-      })
+    destination_amount = Payment.destination_amount(paid_amount_cents, payment, stripe_account)
+
+    stripe_request = %{
+      amount: paid_amount_cents,
+      source: source,
+      capture: true,
+      currency: "USD",
+      metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
+      destination: %{ account: stripe_account.stripe_user_id, amount: destination_amount }
+    }
+
+    stripe_request = if stripe_customer_id do
+      Map.put(stripe_request, :customer, stripe_customer_id)
     else
-      StripeClient.post("/charges", %{
-        amount: paid_amount_cents,
-        source: source,
-        capture: true,
-        currency: "USD",
-        metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id }
-      })
+      stripe_request
     end
+
+    StripeClient.post("/charges", stripe_request)
   end
   defp create_stripe_charge(
     payment = %{ authorized_amount_cents: authorized_amount_cents, stripe_customer_id: stripe_customer_id },
-    source
+    source,
+    stripe_account
   ) when not is_nil(authorized_amount_cents) do
-    if stripe_customer_id do
-      StripeClient.post("/charges", %{
-        customer: stripe_customer_id,
-        amount: authorized_amount_cents,
-        source: source,
-        capture: false,
-        currency: "USD",
-        metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id }
-      })
+    destination_amount = Payment.destination_amount(authorized_amount_cents, payment, stripe_account)
+
+    stripe_request = %{
+      amount: authorized_amount_cents,
+      source: source,
+      capture: false,
+      currency: "USD",
+      metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
+      destination: %{ account: stripe_account.stripe_user_id, amount: destination_amount }
+    }
+
+    stripe_request = if stripe_customer_id do
+      Map.put(stripe_request, :customer, stripe_customer_id)
     else
-      StripeClient.post("/charges", %{
-        amount: authorized_amount_cents,
-        source: source,
-        capture: false,
-        currency: "USD",
-        metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id }
-      })
+      stripe_request
     end
+
+    StripeClient.post("/charges", stripe_request)
   end
 
   # defp create_stripe_charge(payment = %{ paid_amount_cents: paid_amount_cents }, _, source) when not is_nil(paid_amount_cents) do
@@ -345,6 +361,10 @@ defmodule BlueJet.Billing.Payment do
 
     def for_account(query, account_id) do
       from(p in query, where: p.account_id == ^account_id)
+    end
+
+    def preloads(:refunds) do
+      [refunds: Refund.Query.default()]
     end
 
     def default() do

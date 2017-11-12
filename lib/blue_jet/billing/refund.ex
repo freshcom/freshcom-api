@@ -79,4 +79,16 @@ defmodule BlueJet.Billing.Refund do
   def query() do
     from(r in Refund, order_by: [desc: r.updated_at, desc: r.inserted_at])
   end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(r in query, where: r.account_id == ^account_id)
+    end
+
+    def default() do
+      from(r in Refund, order_by: [desc: :updated_at])
+    end
+  end
 end

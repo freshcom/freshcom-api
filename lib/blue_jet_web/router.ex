@@ -48,7 +48,6 @@ defmodule BlueJetWeb.Router do
     # Storefront
     #####
     resources "/customers", CustomerController, except: [:new, :edit]
-    resources "/cards", CardController, only: [:index, :create]
 
     get "/customer", CustomerController, :show
 
@@ -60,9 +59,15 @@ defmodule BlueJetWeb.Router do
     resources "/orders", OrderController, except: [:new, :edit] do
       resources "/line_items", OrderLineItemController, only: [:create]
     end
+    resources "/order_line_items", OrderLineItemController, only: [:update, :delete]
+
+    #####
+    # Billing
+    #####
+    resources "/stripe_accounts", StripeAccountController, only: [:create]
+    resources "/cards", CardController, only: [:index, :create]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
     end
-    resources "/order_line_items", OrderLineItemController, only: [:update, :delete]
   end
 end

@@ -18,7 +18,7 @@ defmodule BlueJetWeb.CardView do
     :updated_at
   ]
 
-  has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :always
+  has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type(_, _) do
     "Card"
@@ -26,13 +26,10 @@ defmodule BlueJetWeb.CardView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def customer(struct, conn) do
-    case struct.customer do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:customer)
-        |> Repo.one()
-      other -> other
-    end
+  def owner(struct, _) do
+    %{
+      id: struct.owner_id,
+      type: struct.owner_type
+    }
   end
 end

@@ -40,15 +40,15 @@ defmodule BlueJetWeb.PaymentController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => payment_id }) when map_size(vas) == 2 do
-    request = %{
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => payment_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      payment_id: payment_id,
+      params: %{ payment_id: payment_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    payment = Billing.get_payment!(request)
+    {:ok, %AccessResponse{ data: payment }} = Billing.get_payment(request)
 
     render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   end

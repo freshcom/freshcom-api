@@ -9,36 +9,83 @@ defmodule BlueJet.Billing do
   alias BlueJet.Billing.Payment
   alias BlueJet.Billing.Refund
   alias BlueJet.Billing.Card
+  alias BlueJet.Billing.StripeAccount
 
   alias BlueJet.FileStorage.ExternalFile
 
-  def list_cards(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
+  def run_event_handler(name, data) do
+    listeners = Map.get(Application.get_env(:blue_jet, :billing, %{}), :listeners, [])
 
+    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
+      with {:ok, result} <- listener.handle_event(name, data) do
+        {:ok, acc_result} = acc
+        {:cont, {:ok, acc_result ++ [{listener, result}]}}
+      else
+        {:error, errors} -> {:halt, {:error, errors}}
+        other -> {:halt, other}
+      end
+    end)
+  end
+
+  def create_stripe_account(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.create_stripe_account") do
+      do_create_stripe_account(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_stripe_account(request = %AccessRequest{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = StripeAccount.changeset(%StripeAccount{}, fields)
+
+    statements = Multi.new()
+    |> Multi.insert(:stripe_account, changeset)
+    |> Multi.run(:processed_stripe_account, fn(%{ stripe_account: stripe_account }) ->
+        StripeAccount.process(stripe_account, changeset)
+       end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_stripe_account: stripe_account }} ->
+        {:ok, %AccessResponse{ data: stripe_account }}
+      {:error, _, errors, _} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def list_card(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.list_card") do
+      do_list_card(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_card(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
-      Card
-      |> filter_by(status: "saved_by_customer")
-      |> filter_by(owner_id: request.filter[:owner_id], owner_type: request.filter[:owner_type])
-      |> where([c], c.account_id == ^account_id)
+      Card.Query.default()
+      |> filter_by(status: "saved_by_owner")
+      |> filter_by(owner_id: filter[:owner_id], owner_type: filter[:owner_type])
+      |> Card.Query.for_account(account_id)
 
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = Card |> where([s], s.account_id == ^account_id)
+    total_query = Card |> Card.Query.for_account(account_id)
     total_count = Repo.aggregate(total_query, :count, :id)
 
-    query = paginate(query, size: request.page_size, number: request.page_number)
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
 
     cards =
       Repo.all(query)
       |> Translation.translate(request.locale)
 
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      cards: cards
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: cards
     }
+
+    {:ok, response}
   end
 
   ####
@@ -51,7 +98,7 @@ defmodule BlueJet.Billing do
       {:error, reason} -> {:error, :access_denied}
     end
   end
- def do_list_payment(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+  def do_list_payment(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       Payment.Query.default()
       |> filter_by(
@@ -84,19 +131,6 @@ defmodule BlueJet.Billing do
     {:ok, response}
   end
 
-  def get_payment!(request = %{ vas: vas, payment_id: payment_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-
-    payment =
-      Payment
-      |> Repo.get_by!(account_id: vas[:account_id], id: payment_id)
-      |> Payment.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    payment
-  end
-
   def create_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.create_payment") do
       do_create_payment(request)
@@ -112,7 +146,7 @@ defmodule BlueJet.Billing do
 
     statements = Multi.new()
     |> Multi.run(:fields, fn(_) ->
-        run_before_create(fields, owner, target)
+        run_payment_before_create(fields, owner, target)
        end)
     |> Multi.run(:changeset, fn(%{ fields: fields }) ->
         {:ok, Payment.changeset(%Payment{}, fields)}
@@ -135,25 +169,7 @@ defmodule BlueJet.Billing do
     end
   end
 
-  defp create_payment_by_changeset(changeset = %Changeset{ valid?: true }) do
-    # We create the charge first so that stripe_charge can have a reference to the charge,
-    # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
-    # so we need to make sure what the stripe_charge is for and refund manually if needed
-    Repo.transaction(fn ->
-      payment = Repo.insert!(changeset)
-
-      with {:ok, payment} <- Payment.process(payment, changeset) do
-        payment
-      else
-        {:error, errors} -> Repo.rollback(errors)
-      end
-    end)
-  end
-  def create_payment(changeset, _) do
-    {:error, changeset.errors}
-  end
-
-  defp run_before_create(fields, owner, target) do
+  defp run_payment_before_create(fields, owner, target) do
     with {:ok, results} <- run_event_handler("billing.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
       values = Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
@@ -165,18 +181,28 @@ defmodule BlueJet.Billing do
       other -> other
     end
   end
-  defp run_event_handler(name, data) do
-    listeners = Map.get(Application.get_env(:blue_jet, :billing, %{}), :listeners, [])
 
-    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
-      with {:ok, result} <- listener.handle_event(name, data) do
-        {:ok, acc_result} = acc
-        {:cont, {:ok, acc_result ++ [{listener, result}]}}
-      else
-        {:error, errors} -> {:halt, {:error, errors}}
-        other -> {:halt, other}
-      end
-    end)
+  def get_payment(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.get_payment") do
+      do_get_payment(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
+    payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
+
+    if payment do
+      payment =
+        payment
+        |> Repo.preload(Payment.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: payment }}
+    else
+      {:error, :not_found}
+    end
+
   end
 
   def update_payment(request = %{ vas: vas, payment_id: payment_id }) do

@@ -26,7 +26,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.create_customer",
 
       "billing.create_payment",
-      "billing.list_payment"
+      "billing.get_payment"
     ],
 
     "customer" => [
@@ -45,8 +45,10 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_order",
       "storefront.update_order",
 
+      "billing.list_payment",
       "billing.create_payment",
-      "billing.list_payment"
+      "billing.get_payment",
+      "billing.list_card"
     ],
 
     "support_specialist" => [
@@ -83,8 +85,10 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order",
       "storefront.create_customer",
 
+      "billing.list_payment",
       "billing.create_payment",
-      "billing.list_payment"
+      "billing.get_payment",
+      "billing.list_card"
     ],
 
     "inventory_specialist" => [
@@ -119,14 +123,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_product",
       "catalogue.get_product_item",
       "catalogue.list_price",
-      "catalogue.get_price",
-
-      "storefront.list_order",
-      "storefront.update_order",
-      "storefront.create_customer",
-
-      "billing.create_payment",
-      "billing.list_payment"
+      "catalogue.get_price"
     ],
 
     "developer" => [
@@ -171,8 +168,10 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order",
       "storefront.create_customer",
 
+      "billing.list_payment",
       "billing.create_payment",
-      "billing.list_payment"
+      "billing.get_payment",
+      "billing.list_card"
     ],
 
     "administrator" => [
@@ -219,8 +218,11 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order",
       "storefront.create_customer",
 
+      "billing.list_payment",
       "billing.create_payment",
-      "billing.list_payment"
+      "billing.get_payment",
+      "billing.list_card",
+      "billing.create_stripe_account"
     ]
   }
 

@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.OwnerView do
+defmodule BlueJetWeb.IdentifierView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
