@@ -11,10 +11,12 @@ defmodule BlueJetWeb.PaymentView do
     :processor,
     :method,
 
-    :pending_amount_cents,
-    :authorized_amount_cents,
-    :paid_amount_cents,
+    :amount_cents,
     :refunded_amount_cents,
+    :gross_amount_cents,
+    :transaction_fee_cents,
+    :refunded_transaction_fee_cents,
+    :net_amount_cents,
 
     :billing_address_line_one,
     :billing_address_line_two,

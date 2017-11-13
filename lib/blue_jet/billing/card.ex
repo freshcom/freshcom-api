@@ -127,7 +127,7 @@ defmodule BlueJet.Billing.Card do
         card.stripe_card_id
       else
         # If there is existing card with the same status just return
-        %Card{ stripe_card_id: stripe_card_id, status: ^status } -> {:ok, stripe_card_id}
+        %Card{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
 
         # If there is existing card with different status then we update the card
         card = %Card{ stripe_card_id: stripe_card_id } ->

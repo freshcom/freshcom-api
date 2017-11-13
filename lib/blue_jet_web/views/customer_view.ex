@@ -10,7 +10,6 @@ defmodule BlueJetWeb.CustomerView do
     :first_name,
     :last_name,
     :email,
-    :encrypted_password,
     :label,
     :display_name,
     :phone_number,

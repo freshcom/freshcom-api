@@ -130,6 +130,9 @@ defmodule BlueJet.Billing do
 
     {:ok, response}
   end
+  def list_payment_for_target(target_type, target_id) do
+    Payment |> Payment.Query.for_target(target_type, target_id) |> Repo.all()
+  end
 
   def create_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.create_payment") do

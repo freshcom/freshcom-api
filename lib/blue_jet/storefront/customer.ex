@@ -164,11 +164,11 @@ defmodule BlueJet.Identity.Customer do
     use BlueJet, :query
 
     def for_account(query, account_id) do
-      from(s in query, where: s.account_id == ^account_id)
+      from(c in query, where: c.account_id == ^account_id)
     end
 
     def default() do
-      from(s in Sku, order_by: [desc: :updated_at])
+      from(c in Customer, order_by: [desc: :updated_at])
     end
   end
 end

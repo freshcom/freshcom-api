@@ -4,6 +4,8 @@ defmodule BlueJet.Storefront.Order do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
+  alias BlueJet.Billing
+
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -66,12 +68,12 @@ defmodule BlueJet.Storefront.Order do
   def system_fields do
     [
       :system_tag,
+      :is_payment_balanced,
       :sub_total_cents,
       :tax_one_cents,
       :tax_two_cents,
       :tax_three_cents,
       :grant_total_cents,
-      :pament_status,
       :placed_at,
       :confirmation_email_sent_at,
       :receipt_email_sent_at,
@@ -207,25 +209,16 @@ defmodule BlueJet.Storefront.Order do
 
   def is_payment_balanced(struct = %Order{ status: "cart" }), do: false
   def is_payment_balanced(struct) do
-    payments = Repo.all(Ecto.assoc(struct, :payments))
-    payment_amount_cents = Enum.reduce(payments, 0, fn(payment, acc) ->
-      case payment.status do
-        "pending" -> acc + payment.pending_amount_cents
-        "authorized" -> acc + payment.authorized_amount_cents
-        "paid" -> acc + payment.paid_amount_cents
-        "partially_refunded" -> acc + payment.paid_amount_cents - payment.refunded_amount_cents
-        "refunded" -> acc
-        _ -> acc
-      end
+    payments = Billing.list_payment_for_target("Order", struct.id)
+    gross_amount_cents = Enum.reduce(payments, 0, fn(payment, acc) ->
+      acc + payment.gross_amount_cents
     end)
 
-    cond do
-      struct.is_estimate && (payment_amount_cents == struct.authorization_cents) -> true
-      !struct.is_estimate && payment_amount_cents == struct.grand_total_cents -> true
-      true -> false
+    case struct.is_estimate do
+      true -> gross_amount_cents == struct.authorization_cents
+      false -> gross_amount_cents == struct.grand_total_cents
     end
   end
-
 
   def leaf_line_items(struct) do
     Ecto.assoc(struct, :line_items) |> OrderLineItem.leaf() |> Repo.all()
@@ -299,6 +292,9 @@ defmodule BlueJet.Storefront.Order do
     end
     def preloads({:root_line_items, root_line_item_preloads}) do
       [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads)}]
+    end
+    def preloads(:customer) do
+      [customer: Customer.Query.default()]
     end
 
     def not_cart(query) do

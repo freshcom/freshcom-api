@@ -16,18 +16,18 @@ defmodule BlueJet.Billing.Payment do
 
   schema "payments" do
     field :account_id, Ecto.UUID
-    field :status, :string # pending, paid, partially_refunded, fully_refunded
+    field :status, :string # pending, authorized, paid, partially_refunded, fully_refunded
 
     field :gateway, :string # online, offline,
     field :processor, :string # stripe, paypal
     field :method, :string # visa, mastercard ... , cash
 
-    field :pending_amount_cents, :integer
-    field :authorized_amount_cents, :integer
-    field :paid_amount_cents, :integer
+    field :amount_cents, :integer
     field :refunded_amount_cents, :integer, default: 0
-
-    field :transaction_fee_cents, :integer
+    field :gross_amount_cents, :integer
+    field :transaction_fee_cents, :integer, default: 0
+    field :refunded_transaction_fee_cents, :integer, default: 0
+    field :net_amount_cents, :integer
 
     field :billing_address_line_one, :string
     field :billing_address_line_two, :string
@@ -50,6 +50,7 @@ defmodule BlueJet.Billing.Payment do
 
     field :source, :string, virtual: true
     field :save_source, :boolean, virtual: true
+    field :capture, :boolean, virtual: true, default: true
 
     timestamps()
 
@@ -59,6 +60,10 @@ defmodule BlueJet.Billing.Payment do
   def system_fields do
     [
       :id,
+      :refunded_amount_cents,
+      :transaction_fee_cents,
+      :gross_amount_cents,
+      :net_amount_cents,
       :inserted_at,
       :updated_at
     ]
@@ -122,14 +127,38 @@ defmodule BlueJet.Billing.Payment do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    # |> put_status()
+    |> put_gross_amount_cents()
+    |> put_transaction_fee_cents()
+    |> put_net_amount_cents()
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  # defp put_status(changeset = %Changeset{ data: %{ status: "authorized", gateway: "online", paid_amount_cents: nil }, changes: %{ paid_amount_cents: paid_amount_cents } }) do
-  #   put_change(changeset, :status, "paid")
-  # end
-  # defp put_status(changeset), do: changeset
+  defp put_transaction_fee_cents(changeset = %Changeset{ data: %{ transaction_fee_cents: nil, amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
+    if get_field(changeset, :gateway) == "online" do
+      stripe_account = Repo.get_by!(StripeAccount, account_id: get_field(changeset, :account_id))
+      tf_cents = Payment.transaction_fee_cents(amount_cents, stripe_account)
+
+      put_change(changeset, :transaction_fee_cents, tf_cents)
+    else
+      changeset
+    end
+  end
+  defp put_transaction_fee_cents(changeset), do: changeset
+
+  def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+    refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
+    put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
+  end
+  def put_gross_amount_cents(changeset), do: changeset
+
+  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+    gross_amount_cents = get_field(changeset, :gross_amount_cents)
+    transaction_fee_cents = get_field(changeset, :transaction_fee_cents)
+    refunded_transaction_fee_cents = get_field(changeset, :refunded_transaction_fee_cents)
+
+    put_change(changeset, :net_amount_cents, gross_amount_cents - transaction_fee_cents + refunded_transaction_fee_cents)
+  end
+  def put_net_amount_cents(changeset), do: changeset
 
   def query() do
     from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])
@@ -157,13 +186,13 @@ defmodule BlueJet.Billing.Payment do
 
   alias BlueJet.Identity.Customer
 
-  def destination_amount(total_amount, payment, stripe_account) do
-    total_amount - transaction_fee_cents(total_amount, payment, stripe_account)
+  def transaction_fee_cents(amount_cents, stripe_account) do
+    rate = stripe_account.transaction_fee_percentage |> D.div(D.new(100))
+    D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
   end
 
-  def transaction_fee_cents(total_amount, payment, stripe_account) do
-    rate = stripe_account.transaction_fee_percentage |> D.div(D.new(100))
-    D.new(total_amount) |> D.mult(rate) |> D.round() |> D.to_integer
+  def net_amount_cents(payment) do
+    payment.amount_cents - payment.refunded_amount_cents
   end
 
   @doc """
@@ -186,25 +215,14 @@ defmodule BlueJet.Billing.Payment do
   """
   @spec process(Payment.t, Payment.t) :: {:ok, Payment.t} | {:error. map}
   def process(
-    payment = %{ gateway: "online" },
-    %{ data: %{ pending_amount_cents: nil }, changes: %{ pending_amount_cents: pending_amount_cents } }
+    payment = %{ gateway: "online", source: nil },
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
   ) do
     send_paylink(payment)
   end
   def process(
-    payment = %{ gateway: "online" },
-    %{ data: %{ status: "authorized", paid_amount_cents: nil }, changes: %{ paid_amount_cents: paid_amount_cents } }
-  ) do
-    with {:ok, payment} <- capture(payment) do
-      changeset = Payment.changeset(payment, %{ status: "paid" })
-      {:ok, Repo.update!(changeset)}
-    else
-      other -> other
-    end
-  end
-  def process(
-    payment = %{ gateway: "online" },
-    %{ data: %{ authorized_amount_cents: nil }, changes: %{ authorized_amount_cents: authorized_amount_cents } }
+    payment = %{ gateway: "online", capture: false },
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
   ) do
     with {:ok, payment} <- charge(payment) do
       changeset = Payment.changeset(payment, %{ status: "authorized" })
@@ -214,10 +232,21 @@ defmodule BlueJet.Billing.Payment do
     end
   end
   def process(
-    payment = %{ gateway: "online" },
-    %{ data: %{ paid_amount_cents: nil }, changes: %{ paid_amount_cents: paid_amount_cents } }
+    payment = %{ gateway: "online", capture: true },
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
   ) do
     with {:ok, payment} <- charge(payment) do
+      changeset = Payment.changeset(payment, %{ status: "paid" })
+      {:ok, Repo.update!(changeset)}
+    else
+      other -> other
+    end
+  end
+  def process(
+    payment = %{ gateway: "online" },
+    %{ data: %{ status: "authorized", capture_amount: nil }, changes: %{ capture_amount: capture_amount } }
+  ) do
+    with {:ok, payment} <- capture(payment) do
       changeset = Payment.changeset(payment, %{ status: "paid" })
       {:ok, Repo.update!(changeset)}
     else
@@ -290,40 +319,16 @@ defmodule BlueJet.Billing.Payment do
 
   @spec create_stripe_charge(Payment.t, String.t, StripeAccount.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
-    payment = %{ paid_amount_cents: paid_amount_cents, stripe_customer_id: stripe_customer_id },
+    payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
     source,
     stripe_account
-  ) when not is_nil(paid_amount_cents) do
-    destination_amount = Payment.destination_amount(paid_amount_cents, payment, stripe_account)
+  ) do
+    destination_amount = payment.amount_cents - payment.transaction_fee_cents
 
     stripe_request = %{
-      amount: paid_amount_cents,
+      amount: payment.amount_cents,
       source: source,
-      capture: true,
-      currency: "USD",
-      metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
-      destination: %{ account: stripe_account.stripe_user_id, amount: destination_amount }
-    }
-
-    stripe_request = if stripe_customer_id do
-      Map.put(stripe_request, :customer, stripe_customer_id)
-    else
-      stripe_request
-    end
-
-    StripeClient.post("/charges", stripe_request)
-  end
-  defp create_stripe_charge(
-    payment = %{ authorized_amount_cents: authorized_amount_cents, stripe_customer_id: stripe_customer_id },
-    source,
-    stripe_account
-  ) when not is_nil(authorized_amount_cents) do
-    destination_amount = Payment.destination_amount(authorized_amount_cents, payment, stripe_account)
-
-    stripe_request = %{
-      amount: authorized_amount_cents,
-      source: source,
-      capture: false,
+      capture: capture,
       currency: "USD",
       metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
       destination: %{ account: stripe_account.stripe_user_id, amount: destination_amount }
@@ -347,7 +352,7 @@ defmodule BlueJet.Billing.Payment do
 
   @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
-    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.paid_amount_cents })
+    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount })
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
@@ -361,6 +366,10 @@ defmodule BlueJet.Billing.Payment do
 
     def for_account(query, account_id) do
       from(p in query, where: p.account_id == ^account_id)
+    end
+
+    def for_target(query, target_type, target_id) do
+      from(p in query, where: p.target_type == ^target_type, where: p.target_id == ^target_id)
     end
 
     def preloads(:refunds) do
