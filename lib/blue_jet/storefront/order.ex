@@ -18,6 +18,7 @@ defmodule BlueJet.Storefront.Order do
   schema "orders" do
     field :code, :string
     field :status, :string, default: "cart"
+    field :payment_status, :string, default: "pending"
     field :system_tag, :string
     field :label, :string
     field :is_payment_balanced, :boolean, default: false
@@ -205,6 +206,35 @@ defmodule BlueJet.Storefront.Order do
   def balance!(struct) do
     changeset = changeset_for_balance(struct)
     Repo.update!(changeset)
+  end
+
+  def payment_status(order) do
+    payments = Billing.list_payment_for_target("Order", order.id)
+
+    total_paid_amount_cents =
+      payments
+      |> Enum.filter(fn(payment) -> payment.status == "paid" || payment.status == "partially_refunded" || payment.status == "refunded" end)
+      |> Enum.reduce(0, fn(payment, acc) -> acc + payment.amount_cents end)
+
+    total_gross_amount_cents =
+      payments
+      |> Enum.filter(fn(payment) -> payment.status == "paid" || payment.status == "partially_refunded" || payment.status == "refunded" end)
+      |> Enum.reduce(0, fn(payment, acc) -> acc + payment.gross_amount_cents end)
+
+    total_authorized_amount_cents =
+      payments
+      |> Enum.filter(fn(payment) -> payment.status == "authorized" end)
+      |> Enum.reduce(0, fn(payment, acc) -> acc + payment.amount_cents end)
+
+    cond do
+      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
+      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
+      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents >= order.grand_total_cents -> "paid"
+      total_paid_amount_cents > 0 -> "partially_paid"
+      total_authorized_amount_cents >= order.authorization_cents -> "authorized"
+      total_authorized_amount_cents > 0 -> "partially_authorized"
+      true -> "pending"
+    end
   end
 
   def is_payment_balanced(struct = %Order{ status: "cart" }), do: false

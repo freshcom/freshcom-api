@@ -226,10 +226,11 @@ defmodule BlueJet.Storefront do
 
   def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
-    order_changeset = Changeset.change(order, status: "opened")
+    payment_status = Order.payment_status(order)
+    changeset = Changeset.change(order, status: "opened", payment_status: payment_status)
 
-    order = Repo.update!(order_changeset)
-    Order.process(order, order_changeset)
+    Repo.update!(changeset)
+    |> Order.process(changeset)
   end
   def handle_event(_, data) do
     {:ok, nil}

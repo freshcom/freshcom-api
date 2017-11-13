@@ -7,6 +7,7 @@ defmodule BlueJetWeb.OrderView do
   attributes [
     :code,
     :status,
+    :payment_status,
     :system_tag,
     :label,
     :is_payment_balanced,

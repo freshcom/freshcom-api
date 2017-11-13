@@ -6,7 +6,9 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :code, :string
-      add :status, :string, null: false
+      add :status, :string, null: false, default: "cart"
+      add :payment_status, :string, null: false, default: "pending"
+
       add :system_tag, :string
       add :label, :string
       add :is_payment_balanced, :boolean, null: false, default: false
