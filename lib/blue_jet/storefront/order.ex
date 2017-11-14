@@ -165,7 +165,7 @@ defmodule BlueJet.Storefront.Order do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def changeset_for_balance(struct) do
+  defp changeset_for_balance(struct) do
     query = Ecto.assoc(struct, :root_line_items) |> OrderLineItem.root()
 
     sub_total_cents = Repo.aggregate(query, :sum, :sub_total_cents) || 0
@@ -192,7 +192,6 @@ defmodule BlueJet.Storefront.Order do
 
     Changeset.change(
       struct,
-      is_payment_balanced: is_payment_balanced(%{ struct | authorization_cents: authorization_cents, grand_total_cents: grand_total_cents }),
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,
       tax_two_cents: tax_two_cents,
@@ -203,7 +202,7 @@ defmodule BlueJet.Storefront.Order do
     )
   end
 
-  def balance!(struct) do
+  def balance(struct) do
     changeset = changeset_for_balance(struct)
     Repo.update!(changeset)
   end
@@ -292,19 +291,18 @@ defmodule BlueJet.Storefront.Order do
   #####
 
   @doc """
-  Process the given `order`.
+  Process the given `order` so that other related resource can be created/updated.
 
-  This function may change the order in the database.
+  This function may change the order in database.
   """
+  def process(order), do: {:ok, order}
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     order = Repo.preload(order, :customer)
+
     leaf_line_items = Order.leaf_line_items(order)
     Enum.each(leaf_line_items, fn(line_item) ->
       OrderLineItem.process(line_item, order, changeset, order.customer)
     end)
-
-    changeset = Changeset.change(order, opened_at: Ecto.DateTime.utc())
-    order = Repo.update!(changeset)
 
     {:ok, order}
   end

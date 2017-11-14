@@ -158,7 +158,10 @@ defmodule BlueJet.Storefront do
          end)
       |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
           order = Repo.get!(Order, balanced_oli.order_id)
-          {:ok, Order.balance!(order)}
+          {:ok, Order.balance(order)}
+         end)
+      |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
+          Order.process(balanced_order)
          end)
 
     case Repo.transaction(statements) do
@@ -226,11 +229,21 @@ defmodule BlueJet.Storefront do
 
   def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
-    payment_status = Order.payment_status(order)
-    changeset = Changeset.change(order, status: "opened", payment_status: payment_status)
 
-    Repo.update!(changeset)
-    |> Order.process(changeset)
+    case order.status do
+      "cart" ->
+        changeset = Changeset.change(order, status: "opened", payment_status: Order.payment_status(order))
+
+        changeset
+        |> Repo.update!()
+        |> Order.process(changeset)
+      other ->
+        Changeset.change(order, payment_status: Order.payment_status(order))
+        |> Repo.update!()
+    end
+  end
+  def handle_event("billing.refund.created", %{}) do
+    # TODO: update order payment status
   end
   def handle_event(_, data) do
     {:ok, nil}
