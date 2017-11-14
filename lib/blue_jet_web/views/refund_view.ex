@@ -11,6 +11,8 @@ defmodule BlueJetWeb.RefundView do
   ]
 
   has_one :payment, serializer: BlueJetWeb.PaymentView, identifiers: :always
+  has_one :target, serializer: BlueJetWeb.IdentifierView, identifiers: :always
+  has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type(_, _) do
     "Refund"
@@ -24,5 +26,19 @@ defmodule BlueJetWeb.RefundView do
         |> Repo.one()
       other -> other
     end
+  end
+
+  def owner(struct, _) do
+    %{
+      id: struct.owner_id,
+      type: struct.owner_type
+    }
+  end
+
+  def target(struct, _) do
+    %{
+      id: struct.target_id,
+      type: struct.target_type
+    }
   end
 end

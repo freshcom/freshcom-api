@@ -147,22 +147,23 @@ defmodule BlueJet.Billing do
     owner = %{ id: fields["owner_id"], type: fields["owner_type"] }
     target = %{ id: fields["target_id"], type: fields["target_type"]}
 
-    statements = Multi.new()
-    |> Multi.run(:fields, fn(_) ->
-        run_payment_before_create(fields, owner, target)
-       end)
-    |> Multi.run(:changeset, fn(%{ fields: fields }) ->
-        {:ok, Payment.changeset(%Payment{}, fields)}
-       end)
-    |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
-        Repo.insert(changeset)
-       end)
-    |> Multi.run(:processed_payment, fn(%{ payment: payment, changeset: changeset }) ->
-        Payment.process(payment, changeset)
-       end)
-    |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-        run_event_handler("billing.payment.created", %{ payment: payment })
-       end)
+    statements =
+      Multi.new()
+      |> Multi.run(:fields, fn(_) ->
+          run_payment_before_create(fields, owner, target)
+         end)
+      |> Multi.run(:changeset, fn(%{ fields: fields }) ->
+          {:ok, Payment.changeset(%Payment{}, fields)}
+         end)
+      |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
+          Repo.insert(changeset)
+         end)
+      |> Multi.run(:processed_payment, fn(%{ payment: payment, changeset: changeset }) ->
+          Payment.process(payment, changeset)
+         end)
+      |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
+          run_event_handler("billing.payment.created", %{ payment: payment })
+         end)
 
     case Repo.transaction(statements) do
       {:ok, %{ processed_payment: payment }} ->
@@ -240,39 +241,82 @@ defmodule BlueJet.Billing do
   ######
   # Refund
   ######
-  def create_refund(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-
-    with changeset = %Changeset{ valid?: true } <- Refund.changeset(%Refund{}, fields),
-      {:ok, refund} <- Repo.transaction(fn ->
-
-        refund = Repo.insert!(changeset) |> Repo.preload(:payment)
-        new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
-        new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
-          "refunded"
-        else
-          "partially_refunded"
-        end
-
-        payment_changeset = Changeset.change(refund.payment, %{ refunded_amount_cents: new_refunded_amount_cents, status: new_payment_status })
-        payment = Repo.update!(payment_changeset)
-
-        with {:ok, refund} <- process_refund(refund, payment) do
-          refund
-        else
-          {:error, errors} -> Repo.rollback(errors)
-        end
-
-      end)
-    do
-      {:ok, refund}
+  def create_refund(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.create_refund") do
+      do_create_refund(request)
     else
-      {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
-      changeset = %Changeset{} -> {:error, changeset.errors}
-      other -> other
+      {:error, reason} -> {:error, :access_denied}
     end
+  end
+  def do_create_refund(request = %{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = Refund.changeset(%Refund{}, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:refund, changeset)
+      |> Multi.run(:payment, fn(%{ refund: refund }) ->
+          payment = Repo.get!(Payment, refund.payment_id)
+          payment_refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
+          payment_status = if payment_refunded_amount_cents >= payment.amount_cents do
+            "refunded"
+          else
+            "partially_refunded"
+          end
+
+          payment
+          |> Changeset.change(
+              status: payment_status,
+              refunded_amount_cents: payment_refunded_amount_cents,
+              gross_amount_cents: payment.amount_cents - payment_refunded_amount_cents
+             )
+          |> Repo.update!()
+
+          {:ok, payment}
+         end)
+      |> Multi.run(:processed_refund, fn(%{ refund: refund }) ->
+          Refund.process(refund, changeset)
+         end)
+      |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
+          run_event_handler("billing.refund.created", %{ refund: refund })
+          {:ok, refund}
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_refund: refund }} ->
+        {:ok, %AccessResponse{ data: refund }}
+      {:error, _, errors, _} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+
+    # with changeset = %Changeset{ valid?: true } <- Refund.changeset(%Refund{}, fields),
+    #   {:ok, refund} <- Repo.transaction(fn ->
+
+    #     refund = Repo.insert!(changeset) |> Repo.preload(:payment)
+    #     new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
+    #     new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
+    #       "refunded"
+    #     else
+    #       "partially_refunded"
+    #     end
+
+    #     payment_changeset = Changeset.change(refund.payment, %{ refunded_amount_cents: new_refunded_amount_cents, status: new_payment_status })
+    #     payment = Repo.update!(payment_changeset)
+
+    #     with {:ok, refund} <- process_refund(refund, payment) do
+    #       refund
+    #     else
+    #       {:error, errors} -> Repo.rollback(errors)
+    #     end
+
+    #   end)
+    # do
+    #   {:ok, refund}
+    # else
+    #   {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
+    #   changeset = %Changeset{} -> {:error, changeset.errors}
+    #   other -> other
+    # end
   end
 
   defp process_refund(refund, payment = %Payment{ gateway: "online", processor: "stripe" }) do

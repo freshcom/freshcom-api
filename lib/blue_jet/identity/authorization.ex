@@ -93,6 +93,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.create_payment",
       "billing.get_payment",
       "billing.list_card",
+      "billing.create_refund",
 
       "storefront.create_order_line_item"
     ],
@@ -178,6 +179,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.create_payment",
       "billing.get_payment",
       "billing.list_card",
+      "billing.create_refund",
 
       "storefront.create_order_line_item"
     ],
@@ -231,6 +233,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.get_payment",
       "billing.list_card",
       "billing.create_stripe_account",
+      "billing.create_refund",
 
       "storefront.create_order_line_item"
     ]

@@ -213,7 +213,7 @@ defmodule BlueJet.Billing.Payment do
 
   The given `payment` should be a payment that is just created/updated using the `changeset`.
   """
-  @spec process(Payment.t, Payment.t) :: {:ok, Payment.t} | {:error. map}
+  @spec process(Payment.t, Changeset.t) :: {:ok, Payment.t} | {:error. map}
   def process(
     payment = %{ gateway: "online", source: nil },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }

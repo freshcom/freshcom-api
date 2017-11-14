@@ -52,6 +52,14 @@ defmodule BlueJetWeb.OrderView do
     "Order"
   end
 
+  def status(order, _) do
+    Inflex.camelize(order.status, :lower)
+  end
+
+  def payment_status(order, _) do
+    Inflex.camelize(order.payment_status, :lower)
+  end
+
   def customer(struct, conn) do
     case struct.customer do
       %Ecto.Association.NotLoaded{} ->

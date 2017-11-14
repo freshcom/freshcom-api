@@ -5,6 +5,7 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
     create table(:refunds, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :status, :string
       add :gateway, :string
       add :processor, :string
       add :method, :string
@@ -12,9 +13,16 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
       add :amount_cents, :integer
       add :transaction_fee_cents, :integer
 
-      add :payment_id, references(:payments, type: :binary_id, on_delete: :delete_all), null: false
+      add :notes, :text
 
+      add :payment_id, references(:payments, type: :binary_id, on_delete: :delete_all), null: false
       add :stripe_refund_id, :string
+
+      add :owner_id, :binary_id
+      add :owner_type, :string
+
+      add :target_id, :binary_id
+      add :target_type, :string
 
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"

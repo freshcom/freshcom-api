@@ -2,24 +2,25 @@ defmodule BlueJetWeb.RefundController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Storefront
+  alias BlueJet.Billing
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) when map_size(vas) == 2 do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "payment_id" => payment_id })
-    request = %{
+    request = %AccessRequest{
       vas: assigns[:vas],
+      params: %{ payment_id: payment_id },
       fields: fields,
       preloads: assigns[:preloads]
     }
 
-    case Storefront.create_refund(request) do
-      {:ok, refund} ->
+    case Billing.create_refund(request) do
+      {:ok, %AccessResponse{ data: refund }} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: refund, opts: [include: conn.query_params["include"]])
-      {:error, errors} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
