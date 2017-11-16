@@ -13,10 +13,15 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
 
       add :amount_cents, :integer, null: false
       add :refunded_amount_cents, :integer, null: false, default: 0
-      add :gross_amount_cents, :integer, null: false
-      add :transaction_fee_cents, :integer, null: false, default: 0
-      add :refunded_transaction_fee_cents, :integer, null: false, default: 0
-      add :net_amount_cents, :integer, null: false
+      add :gross_amount_cents, :integer, null: false, default: 0
+
+      add :processor_fee_cents, :integer, null: false, default: 0
+      add :refunded_processor_fee_cents, :integer, null: false, default: 0
+
+      add :freshcom_fee_cents, :integer, null: false, default: 0
+      add :refunded_freshcom_fee_cents, :integer, null: false, default: 0
+
+      add :net_amount_cents, :integer, null: false, default: 0
 
       add :billing_address_line_one, :string
       add :billing_address_line_two, :string
@@ -26,6 +31,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :billing_address_postal_code, :string
 
       add :stripe_charge_id, :string
+      add :stripe_transfer_id, :string
       add :stripe_customer_id, :string
 
       add :custom_data, :map, null: false, default: "{}"

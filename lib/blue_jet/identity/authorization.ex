@@ -232,7 +232,8 @@ defmodule BlueJet.Identity.Authorization do
       "billing.create_payment",
       "billing.get_payment",
       "billing.list_card",
-      "billing.create_stripe_account",
+      "billing.get_settings",
+      "billing.update_settings",
       "billing.create_refund",
 
       "storefront.create_order_line_item"

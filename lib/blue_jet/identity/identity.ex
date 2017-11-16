@@ -11,10 +11,14 @@ defmodule BlueJet.Identity do
 
   defmodule Query do
     alias Ecto.Multi
+    alias BlueJet.Identity
 
     def create_account(fields) do
       Multi.new()
       |> Multi.insert(:account, Account.changeset(%Account{}, fields))
+      |> Multi.run(:after_account_create, fn(%{ account: account }) ->
+          Identity.run_event_handler("identity.account.created", %{ account: account })
+         end)
     end
 
     def create_global_user(fields) do
@@ -62,6 +66,20 @@ defmodule BlueJet.Identity do
           Repo.insert(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account_id, user_id: user.id }))
         end)
     end
+  end
+
+  def run_event_handler(name, data) do
+    listeners = Map.get(Application.get_env(:blue_jet, :identity, %{}), :listeners, [])
+
+    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
+      with {:ok, result} <- listener.handle_event(name, data) do
+        {:ok, acc_result} = acc
+        {:cont, {:ok, acc_result ++ [{listener, result}]}}
+      else
+        {:error, errors} -> {:halt, {:error, errors}}
+        other -> {:halt, other}
+      end
+    end)
   end
 
   def authorize(vas = %{}, endpoint) do

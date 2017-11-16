@@ -9,7 +9,7 @@ defmodule BlueJet.Billing do
   alias BlueJet.Billing.Payment
   alias BlueJet.Billing.Refund
   alias BlueJet.Billing.Card
-  alias BlueJet.Billing.StripeAccount
+  alias BlueJet.Billing.BillingSettings
 
   alias BlueJet.FileStorage.ExternalFile
 
@@ -27,29 +27,51 @@ defmodule BlueJet.Billing do
     end)
   end
 
-  def create_stripe_account(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.create_stripe_account") do
-      do_create_stripe_account(request)
+  def handle_event("identity.account.created", %{ account: account }) do
+    IO.inspect "xxxxx"
+    changeset = BillingSettings.changeset(%BillingSettings{}, %{ account_id: account.id })
+    billing_settings = Repo.insert!(changeset)
+
+    {:ok, billing_settings}
+  end
+  def handle_event(_, data), do: {:ok, nil}
+
+  def update_billing_settings(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.update_settings") do
+      do_update_billing_settings(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_create_stripe_account(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = StripeAccount.changeset(%StripeAccount{}, fields)
+  def do_update_billing_settings(request = %AccessRequest{ vas: vas }) do
+    billing_settings = Repo.get_by!(BillingSettings, account_id: vas[:account_id])
+    changeset = BillingSettings.changeset(billing_settings, request.fields)
 
     statements = Multi.new()
-    |> Multi.insert(:stripe_account, changeset)
-    |> Multi.run(:processed_stripe_account, fn(%{ stripe_account: stripe_account }) ->
-        StripeAccount.process(stripe_account, changeset)
+    |> Multi.update(:billing_settings, changeset)
+    |> Multi.run(:processed_billing_settings, fn(%{ billing_settings: billing_settings }) ->
+        BillingSettings.process(billing_settings, changeset)
        end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_stripe_account: stripe_account }} ->
-        {:ok, %AccessResponse{ data: stripe_account }}
+      {:ok, %{ processed_billing_settings: billing_settings }} ->
+        {:ok, %AccessResponse{ data: billing_settings }}
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
     end
+  end
+
+  def get_billing_settings(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.get_settings") do
+      do_get_billing_settings(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_billing_settings(request = %AccessRequest{ vas: vas }) do
+    billing_settings = Repo.get_by!(BillingSettings, account_id: vas[:account_id])
+
+    {:ok, %AccessResponse{ data: billing_settings }}
   end
 
   def list_card(request = %AccessRequest{ vas: vas }) do
@@ -196,6 +218,7 @@ defmodule BlueJet.Billing do
   def do_get_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
     payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
 
+    IO.inspect payment
     if payment do
       payment =
         payment
@@ -255,10 +278,19 @@ defmodule BlueJet.Billing do
     statements =
       Multi.new()
       |> Multi.insert(:refund, changeset)
-      |> Multi.run(:payment, fn(%{ refund: refund }) ->
+      |> Multi.run(:processed_refund, fn(%{ refund: refund }) ->
+          Refund.process(refund, changeset)
+         end)
+      |> Multi.run(:payment, fn(%{ processed_refund: refund }) ->
           payment = Repo.get!(Payment, refund.payment_id)
-          payment_refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
-          payment_status = if payment_refunded_amount_cents >= payment.amount_cents do
+          IO.inspect refund
+          refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
+          refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
+          refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
+          gross_amount_cents = payment.amount_cents - refunded_amount_cents
+          net_amount_cents = gross_amount_cents - payment.processor_fee_cents - payment.freshcom_fee_cents + refunded_processor_fee_cents + refunded_freshcom_fee_cents
+
+          payment_status = if refunded_amount_cents >= payment.amount_cents do
             "refunded"
           else
             "partially_refunded"
@@ -267,15 +299,15 @@ defmodule BlueJet.Billing do
           payment
           |> Changeset.change(
               status: payment_status,
-              refunded_amount_cents: payment_refunded_amount_cents,
-              gross_amount_cents: payment.amount_cents - payment_refunded_amount_cents
+              refunded_amount_cents: refunded_amount_cents,
+              refunded_processor_fee_cents: refunded_processor_fee_cents,
+              refunded_freshcom_fee_cents: refunded_freshcom_fee_cents,
+              gross_amount_cents: gross_amount_cents,
+              net_amount_cents: net_amount_cents
              )
           |> Repo.update!()
 
           {:ok, payment}
-         end)
-      |> Multi.run(:processed_refund, fn(%{ refund: refund }) ->
-          Refund.process(refund, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
           run_event_handler("billing.refund.created", %{ refund: refund })

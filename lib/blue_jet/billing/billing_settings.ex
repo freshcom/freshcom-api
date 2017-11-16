@@ -1,12 +1,12 @@
-defmodule BlueJet.Billing.StripeAccount do
+defmodule BlueJet.Billing.BillingSettings do
   use BlueJet, :data
 
   alias Ecto.Changeset
-  alias BlueJet.Billing.StripeAccount
+  alias BlueJet.Billing.BillingSettings
 
   @type t :: Ecto.Schema.t
 
-  schema "stripe_accounts" do
+  schema "billing_settings" do
     field :account_id, Ecto.UUID
 
     field :stripe_user_id, :string
@@ -15,9 +15,15 @@ defmodule BlueJet.Billing.StripeAccount do
     field :stripe_refresh_token, :string
     field :stripe_publishable_key, :string
     field :stripe_scope, :string
-    field :transaction_fee_percentage, :decimal, default: Decimal.new(4.49)
 
-    field :auth_code, :string, virtual: true
+    field :country, :string, default: "CA"
+    field :default_currency, :string, default: "CAD"
+
+    field :stripe_variable_fee_percentage, :decimal, default: Decimal.new(2.90)
+    field :stripe_fixed_fee_cents, :integer, default: 30
+    field :freshcom_transaction_fee_percentage, :decimal, default: Decimal.new(1.59)
+
+    field :stripe_auth_code, :string, virtual: true
 
     timestamps()
   end
@@ -31,7 +37,7 @@ defmodule BlueJet.Billing.StripeAccount do
   end
 
   def writable_fields do
-    (StripeAccount.__schema__(:fields) -- system_fields()) ++ [:auth_code]
+    (BillingSettings.__schema__(:fields) -- system_fields()) ++ [:stripe_auth_code]
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -55,10 +61,10 @@ defmodule BlueJet.Billing.StripeAccount do
 
   The given `account` should be a account that is just created/updated using the `changeset`.
   """
-  @spec process(StripeAccount.t, Changeset.t) :: {:ok, StripeAccount.t} | {:error. map}
-  def process(stripe_account, %{ data: %{ auth_code: nil }, changes: %{ auth_code: auth_code }}) do
-    with {:ok, data} <- create_stripe_access_token(auth_code) do
-      changeset = Changeset.change(stripe_account, %{
+  @spec process(BillingSettings.t, Changeset.t) :: {:ok, BillingSettings.t} | {:error. map}
+  def process(billing_settings, %{ data: %{ stripe_auth_code: nil }, changes: %{ stripe_auth_code: stripe_auth_code }}) do
+    with {:ok, data} <- create_stripe_access_token(stripe_auth_code) do
+      changeset = Changeset.change(billing_settings, %{
         stripe_user_id: data["stripe_user_id"],
         stripe_livemode: data["stripe_livemode"],
         stripe_access_token: data["access_token"],
@@ -67,17 +73,17 @@ defmodule BlueJet.Billing.StripeAccount do
         stripe_scope: data["scope"]
       })
 
-      stripe_account = Repo.update!(changeset)
-      {:ok, stripe_account}
+      billing_settings = Repo.update!(changeset)
+      {:ok, billing_settings}
     else
-      {:error, errors} -> {:error, [auth_code: { errors["error_description"], [code: errors["error"], full_error_message: true] }]}
+      {:error, errors} -> {:error, [stripe_auth_code: { errors["error_description"], [code: errors["error"], full_error_message: true] }]}
     end
   end
-  def process(stripe_account, _), do: {:ok, stripe_account}
+  def process(billing_settings, _), do: {:ok, billing_settings}
 
   @spec create_stripe_access_token(string) :: {:ok, map} | {:error, map}
-  defp create_stripe_access_token(auth_code) do
+  defp create_stripe_access_token(stripe_auth_code) do
     key = System.get_env("STRIPE_SECRET_KEY")
-    OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: auth_code, grant_type: "authorization_code" })
+    OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_auth_code, grant_type: "authorization_code" })
   end
 end

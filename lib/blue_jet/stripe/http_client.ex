@@ -17,7 +17,7 @@ defmodule StripeHttpClient do
   end
 
   defp process_request_body(body = %{}) do
-    body |> UriQuery.params |> URI.encode_query
+    body |> UriQuery.params(add_indices_to_lists: false) |> URI.encode_query
   end
   defp process_request_body(body), do: body
 

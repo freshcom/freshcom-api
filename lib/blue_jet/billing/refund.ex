@@ -3,6 +3,7 @@ defmodule BlueJet.Billing.Refund do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  alias Decimal, as: D
   alias Ecto.Changeset
   alias BlueJet.Translation
 
@@ -14,8 +15,13 @@ defmodule BlueJet.Billing.Refund do
   schema "refunds" do
     field :account_id, Ecto.UUID
     field :status, :string
+
     field :amount_cents, :integer
+    field :processor_fee_cents, :integer
+    field :freshcom_fee_cents, :integer
+
     field :stripe_refund_id, :string
+    field :stripe_transfer_reversal_id, :string
 
     field :owner_id, Ecto.UUID
     field :owner_type, :string
@@ -93,19 +99,30 @@ defmodule BlueJet.Billing.Refund do
 
   @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
   def process(refund, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
-    with {:ok, stripe_refund} = create_stripe_refund(refund) do
-      sync_with_stripe_refund(refund, stripe_refund)
+    with {:ok, stripe_refund} = create_stripe_refund(refund),
+         {:ok, stripe_transfer_reversal} = create_stripe_transfer_reversal(refund, stripe_refund)
+    do
+      sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
     else
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
   def process(refund, _), do: {:ok, refund}
 
-  @spec sync_with_stripe_refund(Refund.t, map) :: {:ok, Refund.t}
-  defp sync_with_stripe_refund(refund, %{ "id" => stripe_refund_id, "status" => status }) do
-    refund
+  @spec sync_with_stripe_refund_and_transfer_reversal(Refund.t, map, map) :: {:ok, Refund.t}
+  defp sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal) do
+    processor_fee_cents = -stripe_refund["balance_transaction"]["fee"]
+    freshcom_fee_cents = refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
+
+    refund =
       refund
-      |> Changeset.change(stripe_refund_id: stripe_refund_id, status: status)
+      |> Changeset.change(
+          stripe_refund_id: stripe_refund["id"],
+          stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
+          processor_fee_cents: processor_fee_cents,
+          freshcom_fee_cents: freshcom_fee_cents,
+          status: stripe_refund["status"]
+         )
       |> Repo.update!()
 
     {:ok, refund}
@@ -114,7 +131,33 @@ defmodule BlueJet.Billing.Refund do
   def create_stripe_refund(refund) do
     refund = refund |> Repo.preload(:payment)
     stripe_charge_id = refund.payment.stripe_charge_id
-    StripeClient.post("/refunds", %{ charge: stripe_charge_id, amount: refund.amount_cents, metadata: %{ fc_refund_id: refund.id }  })
+    StripeClient.post("/refunds", %{
+      charge: stripe_charge_id,
+      amount: refund.amount_cents,
+      metadata: %{ fc_refund_id: refund.id },
+      expand: ["balance_transaction", "charge.balance_transaction"]
+    })
+  end
+
+  def create_stripe_transfer_reversal(refund, stripe_refund) do
+    IO.inspect "stripe refund balance transaction"
+    IO.inspect stripe_refund["balance_transaction"]
+
+    IO.inspect "stripe refund charge balance transaction"
+    IO.inspect stripe_refund["charge"]["balance_transaction"]
+
+    refund = refund |> Repo.preload(:payment)
+
+    stripe_fee_cents = -stripe_refund["balance_transaction"]["fee"]
+    freshcom_fee_rate = D.new(refund.payment.freshcom_fee_cents) |> D.div(D.new(refund.payment.amount_cents))
+    freshcom_fee_cents = freshcom_fee_rate |> D.mult(D.new(refund.amount_cents)) |> D.round() |> D.to_integer()
+
+    transfer_reversal_amount_cents = refund.amount_cents - stripe_fee_cents - freshcom_fee_cents
+
+    StripeClient.post("/transfers/#{refund.payment.stripe_transfer_id}/reversals", %{
+      amount: transfer_reversal_amount_cents,
+      metadata: %{ fc_refund_id: refund.id }
+    })
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do

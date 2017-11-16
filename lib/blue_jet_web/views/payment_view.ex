@@ -48,17 +48,25 @@ defmodule BlueJetWeb.PaymentView do
     "Payment"
   end
 
-  def owner(struct, _) do
+  def owner(payment, _) do
     %{
-      id: struct.owner_id,
-      type: struct.owner_type
+      id: payment.owner_id,
+      type: payment.owner_type
     }
   end
 
-  def target(struct, _) do
+  def target(payment, _) do
     %{
-      id: struct.target_id,
-      type: struct.target_type
+      id: payment.target_id,
+      type: payment.target_type
     }
+  end
+
+  def transaction_fee_cents(payment, _) do
+    payment.processor_fee_cents + payment.freshcom_fee_cents
+  end
+
+  def refunded_transaction_fee_cents(payment, _) do
+    payment.refunded_processor_fee_cents + payment.refunded_freshcom_fee_cents
   end
 end

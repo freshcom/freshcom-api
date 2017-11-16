@@ -10,7 +10,7 @@ defmodule BlueJet.Billing.Payment do
   alias BlueJet.Billing.Payment
   alias BlueJet.Billing.Refund
   alias BlueJet.Billing.Card
-  alias BlueJet.Billing.StripeAccount
+  alias BlueJet.Billing.BillingSettings
 
   @type t :: Ecto.Schema.t
 
@@ -24,10 +24,15 @@ defmodule BlueJet.Billing.Payment do
 
     field :amount_cents, :integer
     field :refunded_amount_cents, :integer, default: 0
-    field :gross_amount_cents, :integer
-    field :transaction_fee_cents, :integer, default: 0
-    field :refunded_transaction_fee_cents, :integer, default: 0
-    field :net_amount_cents, :integer
+    field :gross_amount_cents, :integer, default: 0
+
+    field :processor_fee_cents, :integer, default: 0
+    field :refunded_processor_fee_cents, :integer, default: 0
+
+    field :freshcom_fee_cents, :integer, default: 0
+    field :refunded_freshcom_fee_cents, :integer, default: 0
+
+    field :net_amount_cents, :integer, default: 0
 
     field :billing_address_line_one, :string
     field :billing_address_line_two, :string
@@ -37,6 +42,7 @@ defmodule BlueJet.Billing.Payment do
     field :billing_address_postal_code, :string
 
     field :stripe_charge_id, :string
+    field :stripe_transfer_id, :string
     field :stripe_customer_id, :string
 
     field :owner_id, Ecto.UUID
@@ -83,12 +89,6 @@ defmodule BlueJet.Billing.Payment do
   end
   def castable_fields(payment = %Payment{ __meta__: %{ state: :loaded }}) do
     fields = writable_fields() -- [:account_id]
-
-    fields = if payment.paid_amount_cents do
-      fields -- [:authorized_amount_cents]
-    else
-      fields
-    end
   end
 
   def required_fields(changeset) do
@@ -127,38 +127,37 @@ defmodule BlueJet.Billing.Payment do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> put_gross_amount_cents()
-    |> put_transaction_fee_cents()
-    |> put_net_amount_cents()
+    # |> put_gross_amount_cents()
+    # |> put_net_amount_cents()
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  defp put_transaction_fee_cents(changeset = %Changeset{ data: %{ transaction_fee_cents: nil, amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
-    if get_field(changeset, :gateway) == "online" do
-      stripe_account = Repo.get_by!(StripeAccount, account_id: get_field(changeset, :account_id))
-      tf_cents = Payment.transaction_fee_cents(amount_cents, stripe_account)
+  # defp put_transaction_fee_cents(changeset = %Changeset{ data: %{ transaction_fee_cents: 0, amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
+  #   if get_field(changeset, :gateway) == "online" do
+  #     billing_settings = Repo.get_by!(BillingSettings, account_id: get_field(changeset, :account_id))
+  #     tf_cents = Payment.transaction_fee_cents(amount_cents, billing_settings)
 
-      put_change(changeset, :transaction_fee_cents, tf_cents)
-    else
-      changeset
-    end
-  end
-  defp put_transaction_fee_cents(changeset), do: changeset
+  #     put_change(changeset, :transaction_fee_cents, tf_cents)
+  #   else
+  #     changeset
+  #   end
+  # end
+  # defp put_transaction_fee_cents(changeset), do: changeset
 
-  def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
-    refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
-    put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
-  end
-  def put_gross_amount_cents(changeset), do: changeset
+  # def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+  #   refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
+  #   put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
+  # end
+  # def put_gross_amount_cents(changeset), do: changeset
 
-  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
-    gross_amount_cents = get_field(changeset, :gross_amount_cents)
-    transaction_fee_cents = get_field(changeset, :transaction_fee_cents)
-    refunded_transaction_fee_cents = get_field(changeset, :refunded_transaction_fee_cents)
+  # def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+  #   gross_amount_cents = get_field(changeset, :gross_amount_cents)
+  #   transaction_fee_cents = get_field(changeset, :transaction_fee_cents)
+  #   refunded_transaction_fee_cents = get_field(changeset, :refunded_transaction_fee_cents)
 
-    put_change(changeset, :net_amount_cents, gross_amount_cents - transaction_fee_cents + refunded_transaction_fee_cents)
-  end
-  def put_net_amount_cents(changeset), do: changeset
+  #   put_change(changeset, :net_amount_cents, gross_amount_cents - transaction_fee_cents + refunded_transaction_fee_cents)
+  # end
+  # def put_net_amount_cents(changeset), do: changeset
 
   def query() do
     from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])
@@ -186,8 +185,18 @@ defmodule BlueJet.Billing.Payment do
 
   alias BlueJet.Identity.Customer
 
-  def transaction_fee_cents(amount_cents, stripe_account) do
-    rate = stripe_account.transaction_fee_percentage |> D.div(D.new(100))
+  def destination_amount_cents(payment, billing_settings) do
+    payment.amount_cents - processor_fee_cents(payment, billing_settings) - freshcom_fee_cents(payment, billing_settings)
+  end
+
+  def processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, billing_settings) do
+    variable_rate = billing_settings.stripe_variable_fee_percentage |> D.div(D.new(100))
+    variable_fee_cents = D.new(amount_cents) |> D.mult(variable_rate) |> D.round() |> D.to_integer
+    variable_fee_cents + billing_settings.stripe_fixed_fee_cents
+  end
+
+  def freshcom_fee_cents(%{ amount_cents: amount_cents }, billing_settings) do
+    rate = billing_settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
     D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
   end
 
@@ -225,7 +234,7 @@ defmodule BlueJet.Billing.Payment do
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
   ) do
     with {:ok, payment} <- charge(payment) do
-      changeset = Payment.changeset(payment, %{ status: "authorized" })
+      changeset = Changeset.change(payment, status: "authorized")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -236,7 +245,7 @@ defmodule BlueJet.Billing.Payment do
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
   ) do
     with {:ok, payment} <- charge(payment) do
-      changeset = Payment.changeset(payment, %{ status: "paid" })
+      changeset = Changeset.change(payment, status: "paid")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -247,7 +256,7 @@ defmodule BlueJet.Billing.Payment do
     %{ data: %{ status: "authorized", capture_amount: nil }, changes: %{ capture_amount: capture_amount } }
   ) do
     with {:ok, payment} <- capture(payment) do
-      changeset = Payment.changeset(payment, %{ status: "paid" })
+      changeset = Changeset.change(payment, status: "paid")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -280,7 +289,7 @@ defmodule BlueJet.Billing.Payment do
   """
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
-    stripe_account = Repo.get_by!(StripeAccount, account_id: payment.account_id)
+    billing_settings = Repo.get_by!(BillingSettings, account_id: payment.account_id)
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
     card_fields = %{
@@ -291,7 +300,7 @@ defmodule BlueJet.Billing.Payment do
     }
 
     with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields),
-         {:ok, stripe_charge} <- create_stripe_charge(payment, source, stripe_account)
+         {:ok, stripe_charge} <- create_stripe_charge(payment, source, billing_settings)
     do
       sync_with_stripe_charge(payment, stripe_charge)
     else
@@ -300,10 +309,24 @@ defmodule BlueJet.Billing.Payment do
   end
 
   @spec sync_with_stripe_charge(Payment.t, map) :: {:ok, Payment.t}
-  defp sync_with_stripe_charge(payment, %{ "captured" => true, "id" => stripe_charge_id, "amount" => paid_amount_cents }) do
+  defp sync_with_stripe_charge(payment, stripe_charge = %{ "captured" => true, "amount" => amount_cents }) do
+    processor_fee_cents = stripe_charge["balance_transaction"]["fee"]
+    freshcom_fee_cents = stripe_charge["amount"] - stripe_charge["transfer"]["amount"] - processor_fee_cents
+    gross_amount_cents = amount_cents - payment.refunded_amount_cents
+    net_amount_cents = stripe_charge["transfer"]["amount"]
+
     payment =
       payment
-      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "paid", paid_amount_cents: paid_amount_cents)
+      |> Changeset.change(
+          stripe_charge_id: stripe_charge["id"],
+          stripe_transfer_id: stripe_charge["transfer"]["id"],
+          status: "paid",
+          amount_cents: amount_cents,
+          gross_amount_cents: gross_amount_cents,
+          processor_fee_cents: processor_fee_cents,
+          freshcom_fee_cents: freshcom_fee_cents,
+          net_amount_cents: net_amount_cents
+         )
       |> Repo.update!()
 
     {:ok, payment}
@@ -317,21 +340,22 @@ defmodule BlueJet.Billing.Payment do
     {:ok, payment}
   end
 
-  @spec create_stripe_charge(Payment.t, String.t, StripeAccount.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_charge(Payment.t, String.t, BillingSettings.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
     payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
     source,
-    stripe_account
+    billing_settings
   ) do
-    destination_amount = payment.amount_cents - payment.transaction_fee_cents
+    destination_amount_cents = destination_amount_cents(payment, billing_settings)
 
     stripe_request = %{
       amount: payment.amount_cents,
       source: source,
       capture: capture,
-      currency: "USD",
+      currency: "CAD",
       metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
-      destination: %{ account: stripe_account.stripe_user_id, amount: destination_amount }
+      destination: %{ account: billing_settings.stripe_user_id, amount: destination_amount_cents },
+      expand: ["transfer", "balance_transaction"]
     }
 
     stripe_request = if stripe_customer_id do

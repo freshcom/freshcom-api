@@ -8,6 +8,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :code, :string
       add :status, :string, null: false, default: "cart"
       add :payment_status, :string, null: false, default: "pending"
+      add :fulfillment_status, :string, null: false, default: "pending"
 
       add :system_tag, :string
       add :label, :string

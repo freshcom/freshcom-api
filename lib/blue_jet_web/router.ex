@@ -64,10 +64,12 @@ defmodule BlueJetWeb.Router do
     #####
     # Billing
     #####
-    resources "/stripe_accounts", StripeAccountController, only: [:create]
     resources "/cards", CardController, only: [:index, :create]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
     end
+
+    get "/billing_settings", BillingSettingsController, :show
+    patch "/billing_settings", BillingSettingsController, :update
   end
 end

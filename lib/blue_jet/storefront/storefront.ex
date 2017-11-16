@@ -232,7 +232,7 @@ defmodule BlueJet.Storefront do
 
     case order.status do
       "cart" ->
-        changeset = Changeset.change(order, status: "opened", payment_status: Order.payment_status(order))
+        changeset = Changeset.change(order, status: "opened", payment_status: Order.payment_status(order), opened_at: Ecto.DateTime.utc())
 
         changeset
         |> Repo.update!()

@@ -55,6 +55,10 @@ config :blue_jet, :billing, %{
   listeners: [BlueJet.Storefront]
 }
 
+config :blue_jet, :identity, %{
+  listeners: [BlueJet.Billing]
+}
+
 config :ex_aws,
   region: [{:system, "AWS_REGION"}, :instance_role]
 

@@ -35,7 +35,7 @@ defmodule BlueJetWeb.OrderView do
 
     :fulfillment_method,
 
-    :placed_at,
+    :opened_at,
     :confirmation_email_sent_at,
     :receipt_email_sent_at,
 

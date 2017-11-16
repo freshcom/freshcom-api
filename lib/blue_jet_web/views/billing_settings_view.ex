@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.StripeAccountView do
+defmodule BlueJetWeb.BillingSettingsView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -15,7 +15,7 @@ defmodule BlueJetWeb.StripeAccountView do
   ]
 
   def type(_, _) do
-    "StripeAccount"
+    "BillingSettings"
   end
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
