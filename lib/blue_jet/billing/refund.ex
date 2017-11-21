@@ -15,10 +15,11 @@ defmodule BlueJet.Billing.Refund do
   schema "refunds" do
     field :account_id, Ecto.UUID
     field :status, :string
+    field :gateway, :string
 
     field :amount_cents, :integer
-    field :processor_fee_cents, :integer
-    field :freshcom_fee_cents, :integer
+    field :processor_fee_cents, :integer, default: 0
+    field :freshcom_fee_cents, :integer, default: 0
 
     field :stripe_refund_id, :string
     field :stripe_transfer_reversal_id, :string
@@ -98,7 +99,7 @@ defmodule BlueJet.Billing.Refund do
   end
 
   @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
-  def process(refund, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
+  def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
     with {:ok, stripe_refund} = create_stripe_refund(refund),
          {:ok, stripe_transfer_reversal} = create_stripe_transfer_reversal(refund, stripe_refund)
     do

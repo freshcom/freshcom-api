@@ -5,6 +5,7 @@ defmodule BlueJetWeb.RefundView do
   alias BlueJet.Repo
 
   attributes [
+    :gateway,
     :amount_cents,
     :custom_data,
     :inserted_at

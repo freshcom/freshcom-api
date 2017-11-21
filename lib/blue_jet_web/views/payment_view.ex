@@ -48,6 +48,7 @@ defmodule BlueJetWeb.PaymentView do
     "Payment"
   end
 
+  def owner(%{ owner_id: nil }, _), do: nil
   def owner(payment, _) do
     %{
       id: payment.owner_id,
@@ -55,6 +56,7 @@ defmodule BlueJetWeb.PaymentView do
     }
   end
 
+  def target(%{ target_id: nil }, _), do: nil
   def target(payment, _) do
     %{
       id: payment.target_id,

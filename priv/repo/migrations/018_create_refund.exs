@@ -6,13 +6,13 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string
-      add :gateway, :string
+      add :gateway, :string, null: false
       add :processor, :string
       add :method, :string
 
       add :amount_cents, :integer
-      add :processor_fee_cents, :integer
-      add :freshcom_fee_cents, :integer
+      add :processor_fee_cents, :integer, null: false, default: 0
+      add :freshcom_fee_cents, :integer, null: false, default: 0
 
       add :notes, :text
 
