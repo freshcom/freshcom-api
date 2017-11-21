@@ -21,7 +21,6 @@ defmodule BlueJet.Storefront.Order do
     field :payment_status, :string, default: "pending"
     field :system_tag, :string
     field :label, :string
-    field :is_payment_balanced, :boolean, default: false
 
     field :email, :string
     field :first_name, :string
@@ -69,7 +68,6 @@ defmodule BlueJet.Storefront.Order do
   def system_fields do
     [
       :system_tag,
-      :is_payment_balanced,
       :sub_total_cents,
       :tax_one_cents,
       :tax_two_cents,
@@ -207,7 +205,12 @@ defmodule BlueJet.Storefront.Order do
     Repo.update!(changeset)
   end
 
-  def payment_status(order) do
+  def refresh_payment_status(order) do
+    order
+    |> Changeset.change(payment_status: payment_status(order))
+    |> Repo.update!()
+  end
+  defp payment_status(order) do
     payments = Billing.list_payment_for_target("Order", order.id)
 
     total_paid_amount_cents =
@@ -228,24 +231,12 @@ defmodule BlueJet.Storefront.Order do
     cond do
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
-      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents >= order.grand_total_cents -> "paid"
+      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
+      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
       total_paid_amount_cents > 0 -> "partially_paid"
       total_authorized_amount_cents >= order.authorization_cents -> "authorized"
       total_authorized_amount_cents > 0 -> "partially_authorized"
       true -> "pending"
-    end
-  end
-
-  def is_payment_balanced(struct = %Order{ status: "cart" }), do: false
-  def is_payment_balanced(struct) do
-    payments = Billing.list_payment_for_target("Order", struct.id)
-    gross_amount_cents = Enum.reduce(payments, 0, fn(payment, acc) ->
-      acc + payment.gross_amount_cents
-    end)
-
-    case struct.is_estimate do
-      true -> gross_amount_cents == struct.authorization_cents
-      false -> gross_amount_cents == struct.grand_total_cents
     end
   end
 

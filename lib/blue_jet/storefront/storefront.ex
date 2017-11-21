@@ -163,6 +163,9 @@ defmodule BlueJet.Storefront do
       |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
           Order.process(balanced_order)
          end)
+      |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
+          {:ok, Order.refresh_payment_status(order)}
+         end)
 
     case Repo.transaction(statements) do
       {:ok, %{ oli: oli }} ->
@@ -171,52 +174,75 @@ defmodule BlueJet.Storefront do
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
     end
-
-    # with changeset = %{valid?: true} <- OrderLineItem.changeset(%OrderLineItem{}, fields) do
-
-    #   Repo.transaction(fn ->
-    #     order_line_item = Repo.insert!(changeset)
-
-    #     order = Repo.get!(Order, Changeset.get_field(changeset, :order_id))
-
-    #     OrderLineItem.balance!(order_line_item)
-    #     Order.balance!(order)
-    #     order_line_item
-    #   end)
-    # else
-    #   other -> {:error, other}
-    # end
   end
 
-  def update_order_line_item(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-
-    order_line_item = Repo.get_by!(OrderLineItem, account_id: vas[:account_id], id: order_line_item_id) |> Repo.preload(:order)
-
-    with changeset = %{valid?: true} <- OrderLineItem.changeset(order_line_item, request.fields) do
-      Repo.transaction(fn ->
-        order_line_item = Repo.update!(changeset)
-        OrderLineItem.balance!(order_line_item)
-        Order.balance!(order_line_item.order)
-        order_line_item
-      end)
+  def update_order_line_item(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.update_order_line_item") do
+      do_update_order_line_item(request)
     else
-      other -> {:error, other}
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_order_line_item(request = %AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
+    oli = OrderLineItem |> OrderLineItem.Query.for_account(vas[:account_id]) |> Repo.get(oli_id)
+
+    with %OrderLineItem{} <- oli,
+         changeset = %{valid?: true} <- OrderLineItem.changeset(oli, request.fields)
+    do
+      statements =
+        Multi.new()
+        |> Multi.update(:oli, changeset)
+        |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+            {:ok, OrderLineItem.balance!(oli)}
+           end)
+        |> Multi.run(:balanced_order, fn(%{ balanced_oli: oli }) ->
+            order = Repo.get!(Order, oli.order_id)
+            {:ok, Order.balance(order)}
+           end)
+        |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
+            {:ok, Order.refresh_payment_status(order)}
+           end)
+
+      {:ok, %{ balanced_oli: oli }} = Repo.transaction(statements)
+      {:ok, %AccessResponse{ data: oli }}
+    else
+      nil -> {:error, :not_found}
+      changeset ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def delete_order_line_item!(request = %{ vas: vas, order_line_item_id: order_line_item_id }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
+  def delete_order_line_item(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order_line_item") do
+      do_delete_order_line_item(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_order_line_item(request = %AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
+    oli = OrderLineItem |> OrderLineItem.Query.for_account(vas[:account_id]) |> Repo.get(oli_id)
 
-    order_line_item = Repo.get_by!(OrderLineItem, account_id: vas[:account_id], id: order_line_item_id)
-    order = Repo.get_by!(Order, account_id: vas[:account_id], id: order_line_item.order_id)
+    statements =
+      Multi.new()
+      |> Multi.run(:processed_oli, fn(_) ->
+          oli = oli |> Repo.preload(:order)
+          OrderLineItem.process(oli, :delete)
+         end)
+      |> Multi.delete(:oli, oli)
+      |> Multi.run(:balanced_order, fn(%{ processed_oli: oli }) ->
+          {:ok, Order.balance(oli.order)}
+         end)
+      |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
+          {:ok, Order.refresh_payment_status(order)}
+         end)
 
-    Repo.transaction(fn ->
-      Repo.delete!(order_line_item)
-      Order.balance!(order)
-    end)
+    if oli do
+      {:ok, _} = Repo.transaction(statements)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 
   def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
@@ -232,22 +258,21 @@ defmodule BlueJet.Storefront do
 
     case order.status do
       "cart" ->
-        changeset = Changeset.change(order, status: "opened", payment_status: Order.payment_status(order), opened_at: Ecto.DateTime.utc())
+        changeset =
+          order
+          |> Order.refresh_payment_status()
+          |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
 
         changeset
         |> Repo.update!()
         |> Order.process(changeset)
       other ->
-        Changeset.change(order, payment_status: Order.payment_status(order))
-        |> Repo.update!()
+        Order.refresh_payment_status(order)
     end
   end
   def handle_event("billing.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id)
-
-    order
-    |> Changeset.change(payment_status: Order.payment_status(order))
-    |> Repo.update!()
+    Repo.get!(Order, order_id)
+    |> Order.refresh_payment_status()
   end
   def handle_event(_, data) do
     {:ok, nil}

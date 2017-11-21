@@ -28,7 +28,6 @@ defmodule BlueJet.Billing do
   end
 
   def handle_event("identity.account.created", %{ account: account }) do
-    IO.inspect "xxxxx"
     changeset = BillingSettings.changeset(%BillingSettings{}, %{ account_id: account.id })
     billing_settings = Repo.insert!(changeset)
 
@@ -218,7 +217,6 @@ defmodule BlueJet.Billing do
   def do_get_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
     payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
 
-    IO.inspect payment
     if payment do
       payment =
         payment
@@ -283,7 +281,6 @@ defmodule BlueJet.Billing do
          end)
       |> Multi.run(:payment, fn(%{ processed_refund: refund }) ->
           payment = Repo.get!(Payment, refund.payment_id)
-          IO.inspect refund
           refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
           refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
           refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
@@ -320,47 +317,6 @@ defmodule BlueJet.Billing do
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
     end
-
-    # with changeset = %Changeset{ valid?: true } <- Refund.changeset(%Refund{}, fields),
-    #   {:ok, refund} <- Repo.transaction(fn ->
-
-    #     refund = Repo.insert!(changeset) |> Repo.preload(:payment)
-    #     new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
-    #     new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
-    #       "refunded"
-    #     else
-    #       "partially_refunded"
-    #     end
-
-    #     payment_changeset = Changeset.change(refund.payment, %{ refunded_amount_cents: new_refunded_amount_cents, status: new_payment_status })
-    #     payment = Repo.update!(payment_changeset)
-
-    #     with {:ok, refund} <- process_refund(refund, payment) do
-    #       refund
-    #     else
-    #       {:error, errors} -> Repo.rollback(errors)
-    #     end
-
-    #   end)
-    # do
-    #   {:ok, refund}
-    # else
-    #   {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
-    #   changeset = %Changeset{} -> {:error, changeset.errors}
-    #   other -> other
-    # end
   end
 
-  defp process_refund(refund, payment = %Payment{ gateway: "online", processor: "stripe" }) do
-    with {:ok, stripe_refund} <- create_stripe_refund(refund, payment) do
-      {:ok, refund}
-    else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-    end
-  end
-  defp process_refund(refund, _), do: {:ok, refund}
-
-  defp create_stripe_refund(refund, payment) do
-    StripeClient.post("/refunds", %{ charge: payment.stripe_charge_id, amount: refund.amount_cents, metadata: %{ fc_refund_id: refund.id }  })
-  end
 end

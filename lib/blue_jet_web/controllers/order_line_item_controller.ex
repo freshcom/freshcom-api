@@ -59,32 +59,32 @@ defmodule BlueJetWeb.OrderLineItemController do
     render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_line_item_id, "data" => data = %{"type" => "OrderLineItem" } }) when map_size(vas) == 2 do
-    request = %{
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => oli_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      order_line_item_id: order_line_item_id,
+      params: %{ order_line_item_id: oli_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Storefront.update_order_line_item(request) do
-      {:ok, order} ->
-        render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:ok, %AccessResponse{ data: oli }} ->
+        render(conn, "show.json-api", data: oli, opts: [include: conn.query_params["include"]])
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => order_line_item_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => oli_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      order_line_item_id: order_line_item_id
+      params: %{ order_line_item_id: oli_id }
     }
 
-    Storefront.delete_order_line_item!(request)
+    Storefront.delete_order_line_item(request)
 
     send_resp(conn, :no_content, "")
   end

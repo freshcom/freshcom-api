@@ -432,79 +432,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     struct
   end
 
-  # def balance!(struct = %OrderLineItem{ product_item_id: product_item_id }) when not is_nil(product_item_id) do
-  #   product_item = Repo.get!(ProductItem, product_item_id)
-  #   source = cond do
-  #     product_item.sku_id -> Repo.get!(Sku, product_item.sku_id)
-  #     product_item.unlockable_id ->  Repo.get!(Unlockable, product_item.unlockable_id)
-  #   end
-  #   source_order_quantity = product_item.source_quantity * struct.order_quantity
-  #   # TODO: Change to Repo.one() since oli with product item should ever only have one child
-  #   children = assoc(struct, :children) |> Repo.all()
-
-  #   child_fields = %{
-  #     account_id: struct.account_id,
-  #     order_id: struct.order_id,
-  #     sku_id: product_item.sku_id,
-  #     unlockable_id: product_item.unlockable_id,
-  #     parent_id: struct.id,
-  #     is_leaf: true,
-  #     name: source.name,
-  #     order_quantity: source_order_quantity,
-  #     charge_quantity: struct.charge_quantity,
-  #     sub_total_cents: struct.sub_total_cents,
-  #     tax_one_cents: struct.tax_one_cents,
-  #     tax_two_cents: struct.tax_two_cents,
-  #     tax_three_cents: struct.tax_three_cents,
-  #     grand_total_cents: struct.grand_total_cents,
-  #     authorization_cents: struct.authorization_cents,
-  #     translations: Translation.merge_translations(%{}, source.translations, ["name"])
-  #   }
-  #   case length(children) do
-  #     0 -> Repo.insert!(Changeset.change(%OrderLineItem{}, child_fields))
-  #     _ ->
-  #       Enum.at(children, 0)
-  #       |> Changeset.change(child_fields)
-  #       |> Repo.update!()
-  #   end
-
-  #   struct
-  # end
-  # def balance!(struct = %OrderLineItem{ product_id: product_id, parent_id: nil }) when not is_nil(product_id) do
-  #   product = Repo.get!(Product, product_id)
-  #   price = Repo.get!(Price, struct.price_id) |> Repo.preload(:children)
-  #   product_items = assoc(product, :items) |> Repo.all()
-
-  #   Enum.each(product_items, fn(product_item) ->
-  #     existing_child = Repo.get_by(OrderLineItem, parent_id: struct.id, product_item_id: product_item.id)
-  #     child = case existing_child do
-  #       nil -> %OrderLineItem{}
-  #       _ -> existing_child
-  #     end
-
-  #     target_price = Enum.find(price.children, fn(child_price) ->
-  #       child_price.product_item_id == product_item.id
-  #     end)
-  #     changeset = OrderLineItem.changeset(child, %{
-  #       "account_id" => struct.account_id,
-  #       "order_id" => struct.order_id,
-  #       "product_item_id" => product_item.id,
-  #       "order_quantity" => struct.order_quantity,
-  #       "parent_id" => struct.id,
-  #       "price_id" => target_price.id
-  #     })
-
-  #     updated_child = case existing_child do
-  #       nil -> Repo.insert!(changeset)
-  #       _ -> Repo.update!(changeset)
-  #     end
-
-  #     OrderLineItem.balance!(updated_child)
-  #   end)
-
-  #   struct
-  # end
-
   def query() do
     from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
   end
@@ -528,6 +455,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     Repo.insert!(changeset)
   end
   def process(line_item, _, _, _) do
+    {:ok, line_item}
+  end
+  def process(line_item, :delete) do
     {:ok, line_item}
   end
 

@@ -12,7 +12,6 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
 
       add :system_tag, :string
       add :label, :string
-      add :is_payment_balanced, :boolean, null: false, default: false
 
       add :email, :string
       add :first_name, :string
