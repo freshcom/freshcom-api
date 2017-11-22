@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront do
   alias Ecto.Multi
 
   alias BlueJet.Identity
+  alias BlueJet.Billing
 
   alias BlueJet.Identity.Customer
   alias BlueJet.Storefront.Order
@@ -131,9 +132,29 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def delete_order!(%{ vas: vas, order_id: order_id }) do
-    order = Repo.get_by!(Order, account_id: vas[:account_id], id: order_id)
-    Repo.delete!(order)
+  def delete_order(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order") do
+      do_delete_order(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_order(%AccessRequest{ vas: vas, params: %{ order_id: order_id } }) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(order_id)
+
+    if order do
+      payments = Billing.list_payment_for_target("Order", order_id)
+      case length(payments) do
+        0 ->
+          Repo.delete!(order)
+          {:ok, %AccessResponse{}}
+        other ->
+          errors = %{ id: {"Order with existing payment can not be deleted", [code: :order_with_payment_cannot_be_deleted, full_error_message: true]} }
+          {:error, %AccessResponse{ errors: errors }}
+      end
+    else
+      {:error, :not_found}
+    end
   end
 
   ####

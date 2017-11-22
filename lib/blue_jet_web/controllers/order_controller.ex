@@ -72,15 +72,19 @@ defmodule BlueJetWeb.OrderController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => order_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      order_id: order_id
+      params: %{ order_id: order_id }
     }
 
-    Storefront.delete_order!(request)
-
-    send_resp(conn, :no_content, "")
+    case Storefront.delete_order(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
+      {:error, %AccessResponse{ errors: errors }} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
+    end
   end
 
 end
