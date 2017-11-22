@@ -127,37 +127,28 @@ defmodule BlueJet.Billing.Payment do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    # |> put_gross_amount_cents()
+    |> put_gross_amount_cents()
     # |> put_net_amount_cents()
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  # defp put_transaction_fee_cents(changeset = %Changeset{ data: %{ transaction_fee_cents: 0, amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
-  #   if get_field(changeset, :gateway) == "online" do
-  #     billing_settings = Repo.get_by!(BillingSettings, account_id: get_field(changeset, :account_id))
-  #     tf_cents = Payment.transaction_fee_cents(amount_cents, billing_settings)
+  def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+    refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
+    put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
+  end
+  def put_gross_amount_cents(changeset), do: changeset
 
-  #     put_change(changeset, :transaction_fee_cents, tf_cents)
-  #   else
-  #     changeset
-  #   end
-  # end
-  # defp put_transaction_fee_cents(changeset), do: changeset
+  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+    gross_amount_cents = get_field(changeset, :gross_amount_cents)
+    processor_fee_cents = get_field(changeset, :processor_fee_cents)
+    refunded_processor_fee_cents = get_field(changeset, :refunded_processor_fee_cents)
+    refreshcom_fee_cents = get_field(changeset, :refreshcom_fee_cents)
+    refunded_refreshcom_fee_cents = get_field(changeset, :refunded_refreshcom_fee_cents)
+    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - refreshcom_fee_cents + refunded_refreshcom_fee_cents
 
-  # def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
-  #   refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
-  #   put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
-  # end
-  # def put_gross_amount_cents(changeset), do: changeset
-
-  # def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
-  #   gross_amount_cents = get_field(changeset, :gross_amount_cents)
-  #   transaction_fee_cents = get_field(changeset, :transaction_fee_cents)
-  #   refunded_transaction_fee_cents = get_field(changeset, :refunded_transaction_fee_cents)
-
-  #   put_change(changeset, :net_amount_cents, gross_amount_cents - transaction_fee_cents + refunded_transaction_fee_cents)
-  # end
-  # def put_net_amount_cents(changeset), do: changeset
+    put_change(changeset, :net_amount_cents, net_amount_cents)
+  end
+  def put_net_amount_cents(changeset), do: changeset
 
   def query() do
     from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])

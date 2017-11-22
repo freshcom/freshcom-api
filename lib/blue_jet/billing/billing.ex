@@ -227,28 +227,62 @@ defmodule BlueJet.Billing do
     else
       {:error, :not_found}
     end
-
   end
 
-  def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-    payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-    update_payment(Payment.changeset(payment, request.fields), request.fields)
+  # TODO: need to update the gross_amount_cents when updating
+  def update_payment(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.update_payment") do
+      do_update_payment(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
   end
-  def update_payment(changeset = %Changeset{ valid?: true }, options) do
-    Repo.transaction(fn ->
-      payment = Repo.update!(changeset)
-      with {:ok, payment} <- Payment.process(payment, changeset) do
-        payment
-      else
-        {:error, errors} -> Repo.rollback(errors)
-      end
-    end)
+  def do_update_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
+    payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
+
+    with %Payment{} <- payment,
+         changeset = %{valid?: true} <- Payment.changeset(payment, request.fields)
+    do
+      statements =
+        Multi.new()
+        |> Multi.update(:payment, changeset)
+        |> Multi.run(:processed_payment, fn(%{ payment: payment }) ->
+            Payment.process(payment, changeset)
+           end)
+        |> Multi.run(:after_update, fn(%{ processed_payment: payment}) ->
+            run_event_handler("billing.payment.updated", %{ payment: payment })
+           end)
+
+      {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
+      {:ok, %AccessResponse{ data: payment }}
+    else
+      nil -> {:error, :not_found}
+      changeset ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
+    end
   end
-  def update_payment(changeset, _) do
-    {:error, changeset.errors}
-  end
+
+  # def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
+  #   defaults = %{ preloads: [], fields: %{} }
+  #   request = Map.merge(defaults, request)
+  #   payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
+  #   update_payment(Payment.changeset(payment, request.fields), request.fields)
+  # end
+  # def update_payment(changeset = %Changeset{ valid?: true }, options) do
+  #   Repo.transaction(fn ->
+  #     payment = Repo.update!(changeset)
+  #     run_event_handler("billing.payment.updated", %{ payment: payment })
+  #     with {:ok, payment} <- Payment.process(payment, changeset) do
+  #       payment
+  #     else
+  #       {:error, errors} -> Repo.rollback(errors)
+  #     end
+  #   end)
+  # end
+  # def update_payment(changeset, _) do
+  #   {:error, changeset.errors}
+  # end
 
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
@@ -285,12 +319,12 @@ defmodule BlueJet.Billing do
           refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
           refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
           gross_amount_cents = payment.amount_cents - refunded_amount_cents
-          net_amount_cents = gross_amount_cents - payment.processor_fee_cents - payment.freshcom_fee_cents + refunded_processor_fee_cents + refunded_freshcom_fee_cents
+          net_amount_cents = gross_amount_cents - payment.processor_fee_cents + refunded_processor_fee_cents - payment.freshcom_fee_cents + refunded_freshcom_fee_cents
 
-          payment_status = if refunded_amount_cents >= payment.amount_cents do
-            "refunded"
-          else
-            "partially_refunded"
+          payment_status = cond do
+            refunded_amount_cents >= payment.amount_cents -> "refunded"
+            refunded_amount_cents > 0 -> "partially_refunded"
+            true -> payment.status
           end
 
           payment

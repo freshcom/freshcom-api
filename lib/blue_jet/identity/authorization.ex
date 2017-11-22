@@ -96,6 +96,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
+      "billing.update_payment",
       "billing.list_card",
       "billing.create_refund",
 
@@ -184,6 +185,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
+      "billing.update_payment",
       "billing.list_card",
       "billing.create_refund",
 
@@ -239,6 +241,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
+      "billing.update_payment",
       "billing.list_card",
       "billing.get_settings",
       "billing.update_settings",

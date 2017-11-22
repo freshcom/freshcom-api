@@ -16,6 +16,8 @@ defmodule BlueJet.Billing.Refund do
     field :account_id, Ecto.UUID
     field :status, :string
     field :gateway, :string
+    field :processor, :string
+    field :method, :string
 
     field :amount_cents, :integer
     field :processor_fee_cents, :integer, default: 0
@@ -63,9 +65,20 @@ defmodule BlueJet.Billing.Refund do
     writable_fields -- [:amount_cents]
   end
 
+  def required_fields(changeset) do
+    gateway = get_field(changeset, :gateway)
+    common = [:amount_cents, :payment_id, :account_id, :gateway]
+
+    case gateway do
+      "online" -> common ++ [:processor]
+      "offline" -> common ++ [:method]
+    end
+  end
+
   def validate(changeset) do
     changeset
-    |> validate_required([:amount_cents, :payment_id])
+    |> validate_required(required_fields(changeset))
+    |> validate_number(:amount_cents, greater_than: 0)
     |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope(:payment)
     |> validate_amount_cents()
@@ -141,12 +154,6 @@ defmodule BlueJet.Billing.Refund do
   end
 
   def create_stripe_transfer_reversal(refund, stripe_refund) do
-    IO.inspect "stripe refund balance transaction"
-    IO.inspect stripe_refund["balance_transaction"]
-
-    IO.inspect "stripe refund charge balance transaction"
-    IO.inspect stripe_refund["charge"]["balance_transaction"]
-
     refund = refund |> Repo.preload(:payment)
 
     stripe_fee_cents = -stripe_refund["balance_transaction"]["fee"]
