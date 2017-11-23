@@ -11,8 +11,6 @@ defmodule BlueJet.Billing do
   alias BlueJet.Billing.Card
   alias BlueJet.Billing.BillingSettings
 
-  alias BlueJet.FileStorage.ExternalFile
-
   def run_event_handler(name, data) do
     listeners = Map.get(Application.get_env(:blue_jet, :billing, %{}), :listeners, [])
 
@@ -229,7 +227,6 @@ defmodule BlueJet.Billing do
     end
   end
 
-  # TODO: need to update the gross_amount_cents when updating
   def update_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.update_payment") do
       do_update_payment(request)
@@ -262,27 +259,6 @@ defmodule BlueJet.Billing do
         {:error, %AccessResponse{ errors: errors }}
     end
   end
-
-  # def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-  #   update_payment(Payment.changeset(payment, request.fields), request.fields)
-  # end
-  # def update_payment(changeset = %Changeset{ valid?: true }, options) do
-  #   Repo.transaction(fn ->
-  #     payment = Repo.update!(changeset)
-  #     run_event_handler("billing.payment.updated", %{ payment: payment })
-  #     with {:ok, payment} <- Payment.process(payment, changeset) do
-  #       payment
-  #     else
-  #       {:error, errors} -> Repo.rollback(errors)
-  #     end
-  #   end)
-  # end
-  # def update_payment(changeset, _) do
-  #   {:error, changeset.errors}
-  # end
 
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]

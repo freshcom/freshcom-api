@@ -5,19 +5,22 @@ defmodule BlueJet.Storefront.Unlock do
 
   alias Ecto.Changeset
   alias BlueJet.Translation
+  alias BlueJet.AccessRequest
+
+  alias BlueJet.Inventory
   alias BlueJet.Storefront.Unlock
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.Customer
-  alias BlueJet.Inventory.Unlockable
+  alias BlueJet.Storefront.Customer
 
   schema "unlocks" do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
+    field :account_id, Ecto.UUID
+    field :unlockable_id, Ecto.UUID
+    field :unlockable, :map, virtual: true
+
     timestamps()
 
-    belongs_to :account, Account
-    belongs_to :unlockable, Unlockable
     belongs_to :customer, Customer
   end
 
@@ -69,11 +72,25 @@ defmodule BlueJet.Storefront.Unlock do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def query() do
-    from(u in Unlock, order_by: [desc: u.inserted_at])
+  def put_external_resources(unlock, :unlockable) do
+    IO.inspect unlock
+    unlockable = Inventory.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: unlock.account_id },
+      params: %{ id: unlock.unlockable_id }
+    })
+
+    %{ unlock | unlockable: unlockable }
   end
 
-  def preload_keyword(:unlockable) do
-    [unlockable: Unlockable.query()]
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(u in query, where: u.account_id == ^account_id)
+    end
+
+    def default() do
+      from(u in Unlock, order_by: [desc: u.inserted_at])
+    end
   end
 end

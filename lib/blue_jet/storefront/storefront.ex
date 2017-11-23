@@ -16,7 +16,42 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Storefront.Refund
   alias BlueJet.Storefront.Card
 
-  alias BlueJet.FileStorage.ExternalFile
+  def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
+    customer = Repo.get!(Customer, customer_id)
+    customer = Customer.preprocess(customer, payment_processor: "stripe")
+    fields = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
+    {:ok, fields}
+  end
+  def handle_event("billing.payment.before_create", %{ fields: fields }), do: {:ok, fields}
+
+  def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+    order = Repo.get!(Order, order_id)
+
+    case order.status do
+      "cart" ->
+        changeset =
+          order
+          |> Order.refresh_payment_status()
+          |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
+
+        changeset
+        |> Repo.update!()
+        |> Order.process(changeset)
+      other ->
+        {:ok, Order.refresh_payment_status(order)}
+    end
+  end
+  def handle_event("billing.payment.updated", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+    order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
+    {:ok, order}
+  end
+  def handle_event("billing.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+    order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
+    {:ok, order}
+  end
+  def handle_event(_, data) do
+    {:ok, nil}
+  end
 
   ####
   # Order
@@ -37,8 +72,8 @@ defmodule BlueJet.Storefront do
 
     query =
       Order.Query.default()
-      |> Order.Query.not_cart()
       |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      |> Order.Query.not_cart()
       |> filter_by(
         status: filter[:status],
         label: filter[:label],
@@ -70,38 +105,46 @@ defmodule BlueJet.Storefront do
     {:ok, response}
   end
 
-  def create_order(request = %{ vas: vas }) do
-    defaults = %{ preloads: [], fields: %{} }
-    request = Map.merge(defaults, request)
-
+  def create_order(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.create_order") do
+      do_create_order(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_order(request = %{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] || request.fields["customer_id"] })
     changeset = Order.changeset(%Order{}, fields)
 
     with {:ok, order} <- Repo.insert(changeset) do
-      order = Repo.preload(order, request.preloads)
-      {:ok, order}
+      order = Repo.preload(order, Order.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: order }}
     else
-      other -> other
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_order!(request = %{ vas: vas, order_id: order_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
+  def get_order(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.get_order") do
+      do_get_order(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_order(request = %AccessRequest{ vas: vas, params: %{ order_id: order_id } }) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(order_id)
 
-    order_scope =
-      case vas[:customer_id] do
-        nil -> Order
-        customer_id -> from(o in Order, where: o.customer_id == ^customer_id)
-      end
-
-    order =
-      order_scope
-      |> Repo.get_by!(account_id: vas[:account_id], id: order_id)
-      |> Order.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    order
+    if order do
+      order =
+        order
+        |> Repo.preload(Order.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+      {:ok, %AccessResponse{ data: order }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_order(request = %AccessRequest{ vas: vas }) do
@@ -266,218 +309,45 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
-    customer = Repo.get!(Customer, customer_id)
-    customer = Customer.preprocess(customer, payment_processor: "stripe")
-    fields = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
-    {:ok, fields}
-  end
-  def handle_event("billing.payment.before_create", %{ fields: fields }), do: {:ok, fields}
-
-  def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id)
-
-    case order.status do
-      "cart" ->
-        changeset =
-          order
-          |> Order.refresh_payment_status()
-          |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
-
-        changeset
-        |> Repo.update!()
-        |> Order.process(changeset)
-      other ->
-        {:ok, Order.refresh_payment_status(order)}
-    end
-  end
-  def handle_event("billing.payment.updated", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
-    {:ok, order}
-  end
-  def handle_event("billing.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
-    {:ok, order}
-  end
-  def handle_event(_, data) do
-    {:ok, nil}
-  end
-
-  # def list_cards(request = %{ vas: vas, customer_id: target_customer_id }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   customer_id = vas[:customer_id] || target_customer_id
-  #   account_id = vas[:account_id]
-
-  #   query =
-  #     Card
-  #     |> filter_by(status: "saved_by_customer")
-  #     |> where([c], c.account_id == ^account_id)
-  #     |> where([c], c.customer_id == ^customer_id)
-
-  #   result_count = Repo.aggregate(query, :count, :id)
-
-  #   total_query = Card |> where([s], s.account_id == ^account_id)
-  #   total_count = Repo.aggregate(total_query, :count, :id)
-
-  #   query = paginate(query, size: request.page_size, number: request.page_number)
-
-  #   cards =
-  #     Repo.all(query)
-  #     |> Translation.translate(request.locale)
-
-  #   %{
-  #     total_count: total_count,
-  #     result_count: result_count,
-  #     cards: cards
-  #   }
-  # end
-
-  ####
-  # Payment
-  ####
-
-  # def get_payment!(request = %{ vas: vas, payment_id: payment_id }) do
-  #   defaults = %{ locale: "en", preloads: [] }
-  #   request = Map.merge(defaults, request)
-
-  #   payment =
-  #     Payment
-  #     |> Repo.get_by!(account_id: vas[:account_id], id: payment_id)
-  #     |> Payment.preload(request.preloads)
-  #     |> Translation.translate(request.locale)
-
-  #   payment
-  # end
-
-  # def create_payment(request = %{ vas: vas }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-  #   changeset = Payment.changeset(%Payment{}, fields)
-
-  #   # TODO: remove options
-  #   order =
-  #     Order
-  #     |> Repo.get_by!(account_id: vas[:account_id], id: request.fields["order_id"])
-  #     |> Repo.preload(:customer)
-
-  #   Customer.preprocess(order.customer, payment_processor: request.fields["processor"])
-
-  #   # TODO: handle stock and shipping errors
-  #   create_payment(changeset)
-  # end
-  # def create_payment(changeset = %Changeset{ valid?: true }) do
-  #   # We create the charge first so that stripe_charge can have a reference to the charge,
-  #   # since stripe_charge can't be rolled back this avoid an orphan stripe_charge
-  #   # so we need to make sure what the stripe_charge is for and refund manually if needed
-  #   Repo.transaction(fn ->
-  #     payment = Repo.insert!(changeset) |> Repo.preload(:order)
-
-  #     order_changeset = Changeset.change(payment.order, status: "opened")
-  #     order = Repo.update!(order_changeset)
-
-  #     with {:ok, _} <- Order.lock_stock(payment.order_id),
-  #          {:ok, _} <- Order.lock_shipping_date(payment.order_id),
-  #          {:ok, payment} <- Payment.process(payment, changeset),
-  #          {:ok, order} <- Order.process(order, order_changeset)
-  #     do
-  #       payment
-  #     else
-  #       {:error, errors} -> Repo.rollback(errors)
-  #     end
-  #   end)
-  # end
-  # def create_payment(changeset, _) do
-  #   {:error, changeset.errors}
-  # end
-
-  # def update_payment(request = %{ vas: vas, payment_id: payment_id }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-  #   update_payment(Payment.changeset(payment, request.fields), request.fields)
-  # end
-  # def update_payment(changeset = %Changeset{ valid?: true }, options) do
-  #   Repo.transaction(fn ->
-  #     payment = Repo.update!(changeset)
-  #     with {:ok, payment} <- Payment.process(payment, changeset) do
-  #       payment
-  #     else
-  #       {:error, errors} -> Repo.rollback(errors)
-  #     end
-  #   end)
-  # end
-  # def update_payment(changeset, _) do
-  #   {:error, changeset.errors}
-  # end
-
-  # defp format_stripe_errors(stripe_errors) do
-  #   [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
-  # end
-
-  # def delete_payment!(request = %{ vas: vas, payment_id: payment_id }) do
-  #   payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-  #   Repo.delete!(payment)
-  # end
-
-  # ######
-  # # Refund
-  # ######
-  # def create_refund(request = %{ vas: vas }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
-  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-
-  #   with changeset = %Changeset{ valid?: true } <- Refund.changeset(%Refund{}, fields),
-  #     {:ok, refund} <- Repo.transaction(fn ->
-
-  #       refund = Repo.insert!(changeset) |> Repo.preload(:payment)
-  #       new_refunded_amount_cents = refund.payment.refunded_amount_cents + refund.amount_cents
-  #       new_payment_status = if new_refunded_amount_cents >= refund.payment.paid_amount_cents do
-  #         "refunded"
-  #       else
-  #         "partially_refunded"
-  #       end
-
-  #       payment_changeset = Changeset.change(refund.payment, %{ refunded_amount_cents: new_refunded_amount_cents, status: new_payment_status })
-  #       payment = Repo.update!(payment_changeset)
-
-  #       with {:ok, refund} <- process_refund(refund, payment) do
-  #         refund
-  #       else
-  #         {:error, errors} -> Repo.rollback(errors)
-  #       end
-
-  #     end)
-  #   do
-  #     {:ok, refund}
-  #   else
-  #     {:error, changeset = %Changeset{}} -> {:error, changeset.errors}
-  #     changeset = %Changeset{} -> {:error, changeset.errors}
-  #     other -> other
-  #   end
-  # end
-
-  # defp process_refund(refund, payment = %Payment{ gateway: "online", processor: "stripe" }) do
-  #   with {:ok, stripe_refund} <- create_stripe_refund(refund, payment) do
-  #     {:ok, refund}
-  #   else
-  #     {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-  #   end
-  # end
-  # defp process_refund(refund, _), do: {:ok, refund}
-
-  # defp create_stripe_refund(refund, payment) do
-  #   StripeClient.post("/refunds", %{ charge: payment.stripe_charge_id, amount: refund.amount_cents, metadata: %{ fc_refund_id: refund.id }  })
-  # end
-
-
-
-
   ####
   # Customer
   ####
+  def list_customer(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.list_customer") do
+      do_list_customer(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      Customer
+      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
+      |> Customer.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Customer |> Customer.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    customers =
+      Repo.all(query)
+      |> Repo.preload(Customer.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: customers
+    }
+
+    {:ok, response}
+  end
+
   def create_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.create_customer") do
       do_create_customer(request)
@@ -499,17 +369,27 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def get_customer!(request = %{ vas: vas, customer_id: customer_id }) do
-    defaults = %{ locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
+  def get_customer(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.get_customer") do
+      do_get_customer(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
 
-    customer =
-      Customer
-      |> Repo.get_by!(account_id: vas[:account_id], id: customer_id)
-      |> Customer.preload(request.preloads)
-      |> Translation.translate(request.locale)
+    if customer do
+      customer =
+        customer
+        |> Repo.preload(Customer.Query.preloads(request.preloads))
+        |> Customer.put_external_resources(request.preloads)
+        |> Translation.translate(request.locale)
 
-    customer
+      {:ok, %AccessResponse{ data: customer }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_customer(request = %{ vas: vas, customer_id: customer_id }) do
@@ -537,35 +417,6 @@ defmodule BlueJet.Storefront do
     else
       other -> other
     end
-  end
-
-  def list_customers(request = %{ vas: vas }) do
-    defaults = %{ search_keyword: "", filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-    request = Map.merge(defaults, request)
-    account_id = vas[:account_id]
-
-    query =
-      Customer
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search_keyword, request.locale)
-      |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
-      |> where([s], s.account_id == ^account_id)
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = Customer |> where([s], s.account_id == ^account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: request.page_size, number: request.page_number)
-
-    customers =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
-
-    %{
-      total_count: total_count,
-      result_count: result_count,
-      customers: customers
-    }
   end
 
   def delete_customer!(%{ vas: vas, customer_id: customer_id }) do

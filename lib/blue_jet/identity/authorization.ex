@@ -52,6 +52,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
+      "storefront.get_customer",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -98,18 +99,19 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
+      "storefront.list_customer",
       "storefront.create_customer",
+      "storefront.get_customer",
+      "storefront.create_order_line_item",
+      "storefront.update_order_line_item",
+      "storefront.delete_order_line_item",
 
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
       "billing.update_payment",
       "billing.list_card",
-      "billing.create_refund",
-
-      "storefront.create_order_line_item",
-      "storefront.update_order_line_item",
-      "storefront.delete_order_line_item"
+      "billing.create_refund"
     ],
 
     "inventory_specialist" => [
@@ -190,18 +192,19 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
+      "storefront.list_customer",
       "storefront.create_customer",
+      "storefront.get_customer",
+      "storefront.create_order_line_item",
+      "storefront.update_order_line_item",
+      "storefront.delete_order_line_item",
 
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
       "billing.update_payment",
       "billing.list_card",
-      "billing.create_refund",
-
-      "storefront.create_order_line_item",
-      "storefront.update_order_line_item",
-      "storefront.delete_order_line_item"
+      "billing.create_refund"
     ],
 
     "administrator" => [
@@ -249,7 +252,12 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
+      "storefront.list_customer",
       "storefront.create_customer",
+      "storefront.get_customer",
+      "storefront.create_order_line_item",
+      "storefront.update_order_line_item",
+      "storefront.delete_order_line_item",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -258,11 +266,7 @@ defmodule BlueJet.Identity.Authorization do
       "billing.list_card",
       "billing.get_settings",
       "billing.update_settings",
-      "billing.create_refund",
-
-      "storefront.create_order_line_item",
-      "storefront.update_order_line_item",
-      "storefront.delete_order_line_item"
+      "billing.create_refund"
     ]
   }
 

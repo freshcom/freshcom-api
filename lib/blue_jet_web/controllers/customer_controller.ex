@@ -7,25 +7,19 @@ defmodule BlueJetWeb.CustomerController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, params) do
-    request = %{
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      search_keyword: params["search"],
+      search: params["search"],
       filter: assigns[:filter],
-      page_size: assigns[:page_size],
-      page_number: assigns[:page_number],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    %{ customers: customers, total_count: total_count, result_count: result_count } = Storefront.list_customers(request)
+    {:ok, %AccessResponse{ data: customers, meta: meta }} = Storefront.list_customer(request)
 
-    meta = %{
-      totalCount: total_count,
-      resultCount: result_count
-    }
-
-    render(conn, "index.json-api", data: customers, opts: [meta: meta, include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Sku" } }) do
@@ -47,14 +41,15 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) when map_size(vas) == 2 do
-    request = %{
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      customer_id: vas[:customer_id] || params["id"],
+      params: %{ customer_id: customer_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    customer = Identity.get_customer!(request)
+
+    {:ok, %AccessResponse{ data: customer }} = Storefront.get_customer(request)
 
     render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
   end

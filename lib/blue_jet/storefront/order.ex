@@ -319,6 +319,9 @@ defmodule BlueJet.Storefront.Order do
     def not_cart(query) do
       from(o in query, where: o.status != "cart")
     end
+    def not_cart() do
+      from(o in Order, where: o.status != "cart")
+    end
 
     def default() do
       from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])

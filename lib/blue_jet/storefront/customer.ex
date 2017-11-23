@@ -38,9 +38,7 @@ defmodule BlueJet.Identity.Customer do
 
     belongs_to :account, Account
     has_one :refresh_token, RefreshToken
-    has_many :external_file_collections, ExternalFileCollection
     has_many :unlocks, Unlock
-    has_many :unlockables, through: [:unlocks, :unlockable]
     has_many :orders, Order
   end
 
@@ -100,6 +98,14 @@ defmodule BlueJet.Identity.Customer do
     put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
   end
   defp put_encrypted_password(changeset), do: changeset
+
+  def put_external_resources(customer, {:unlocks, unlock_targets}) do
+    unlocks = Unlock.put_external_resources(customer.unlocks, unlock_targets)
+    %{ customer | unlocks: unlocks }
+  end
+  def put_external_resources(customer, _) do
+    customer
+  end
 
   def preload(struct_or_structs, targets) when length(targets) == 0 do
     struct_or_structs
@@ -165,6 +171,16 @@ defmodule BlueJet.Identity.Customer do
 
     def for_account(query, account_id) do
       from(c in query, where: c.account_id == ^account_id)
+    end
+
+    def preloads(:unlocks) do
+      [unlocks: Unlock.Query.default()]
+    end
+    def preloads({:unlocks, unlock_preloads}) do
+      [unlocks: Unlock.Query.default()]
+    end
+    def preloads(:orders) do
+      [orders: Order.Query.not_cart()]
     end
 
     def default() do
