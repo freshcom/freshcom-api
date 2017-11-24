@@ -248,7 +248,7 @@ defmodule BlueJet.Billing.Card do
     end
 
     def not_primary(query) do
-      from(c in query, where: c.primary == true)
+      from(c in query, where: c.primary != true)
     end
 
     def not_id(query, id) do
