@@ -18,6 +18,7 @@ defmodule BlueJet.Billing.Card do
     field :fingerprint, :string
     field :cardholder_name, :string
     field :brand, :string
+    # field :country, :string
     field :stripe_card_id, :string
     field :stripe_customer_id, :string
     field :primary, :boolean, default: false
@@ -122,7 +123,7 @@ defmodule BlueJet.Billing.Card do
            nil <- Repo.get_by(Card, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
            # Create the new card
            card <- Repo.insert!(%Card{ status: status, source: token, stripe_customer_id: stripe_customer_id, account_id: fields[:account_id], owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
-           {:ok, card} <- Card.process(card)
+           {:ok, card} <- process(card)
       do
         card.stripe_card_id
       else
@@ -132,9 +133,10 @@ defmodule BlueJet.Billing.Card do
         # If there is existing card with different status then we update the card
         card = %Card{ stripe_card_id: stripe_card_id } ->
           card
-          |> Card.changeset(%{ status: status })
+          |> changeset(%{ status: status })
           |> Repo.update!()
-          |> Card.update_stripe_card(%{ fc_status: status, fc_account_id: card.account_id })
+          |> update_stripe_card(%{ metadata: %{ fc_status: status, fc_account_id: card.account_id } })
+
           stripe_card_id
 
         {:error, errors} -> Repo.rollback(errors)
@@ -145,7 +147,7 @@ defmodule BlueJet.Billing.Card do
   def keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
   @spec process(Card.t, Map.t) :: {:ok, Card.t} | {:error, map}
-  def process(card = %Card{ source: source }) do
+  def process(card = %Card{ source: source }) when not is_nil(source) do
     with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
         last_four_digit: stripe_card["last4"],
@@ -154,12 +156,13 @@ defmodule BlueJet.Billing.Card do
         fingerprint: stripe_card["fingerprint"],
         cardholder_name: stripe_card["name"],
         brand: stripe_card["brand"],
+        country: stripe_card["country"],
         stripe_card_id: stripe_card["id"]
       }
 
       card =
         card
-        |> Card.changeset(changes)
+        |> changeset(changes)
         |> Repo.update!()
 
       {:ok, card}
@@ -167,15 +170,51 @@ defmodule BlueJet.Billing.Card do
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
+  @spec process(Card.t, Changeset.t) :: {:ok, Card.t} | {:error, map}
+  def process(card, changeset = %Changeset{}) do
+    if Changeset.get_change(changeset, :exp_month) || Changeset.get_change(changeset, :exp_year) do
+      update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
+    end
+
+    {:ok, card}
+  end
+  def process(card = %Card{ primary: true }, :delete) do
+    last_inserted_card =
+      Card.Query.default()
+      |> Card.Query.for_account(card.account_id)
+      |> Card.Query.with_owner(card.owner_type, card.owner_id)
+      |> Card.Query.not_primary()
+      |> first()
+      |> Repo.one()
+
+    if last_inserted_card do
+      Changeset.change(last_inserted_card, %{ primary: true })
+      |> Repo.update!()
+    end
+
+    delete_stripe_card(card)
+
+    {:ok, card}
+  end
+  def process(card = %Card{ primary: false }, :delete) do
+    delete_stripe_card(card)
+
+    {:ok, card}
+  end
   def process(card, _), do: {:ok, card}
 
-  defp update_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, metadata) do
-    StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", %{ metadata: metadata })
+  defp update_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
+    StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields)
   end
 
   @spec create_stripe_card(Cart.t, Map.t) :: {:ok, map} | {:error, map}
   defp create_stripe_card(%Card{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
     StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata })
+  end
+
+  @spec delete_stripe_card(Cart.t) :: {:ok, map} | {:error, map}
+  defp delete_stripe_card(%Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
+    StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}")
   end
 
   @spec retrieve_stripe_token(String.t) :: {:ok, map} | {:error, map}
@@ -194,8 +233,16 @@ defmodule BlueJet.Billing.Card do
       from(c in query, where: c.account_id == ^account_id)
     end
 
+    def not_primary(query) do
+      from(c in query, where: c.primary == true)
+    end
+
+    def with_owner(query, owner_type, owner_id) do
+      from(c in query, where: c.owner_type == ^owner_type, where: c.owner_id == ^owner_id)
+    end
+
     def default() do
-      from(c in Card, order_by: [desc: :updated_at])
+      from(c in Card, order_by: [desc: :inserted_at])
     end
   end
 end

@@ -9,8 +9,8 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Translation
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.Customer
   alias BlueJet.Identity.Account
-  alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
 
   @type t :: Ecto.Schema.t
@@ -318,9 +318,6 @@ defmodule BlueJet.Storefront.Order do
 
     def not_cart(query) do
       from(o in query, where: o.status != "cart")
-    end
-    def not_cart() do
-      from(o in Order, where: o.status != "cart")
     end
 
     def default() do

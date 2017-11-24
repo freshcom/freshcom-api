@@ -4,6 +4,11 @@ defmodule StripeClient do
     unwrap_response(response)
   end
 
+  def delete(path) do
+    {:ok, response} = StripeHttpClient.delete(path)
+    unwrap_response(response)
+  end
+
   def get(path) do
     {:ok, response} = StripeHttpClient.get(path)
     unwrap_response(response)

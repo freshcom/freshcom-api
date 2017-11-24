@@ -107,6 +107,58 @@ defmodule BlueJet.Billing do
     {:ok, response}
   end
 
+  def update_card(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.update_card") do
+      do_update_card(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_card(request = %AccessRequest{ vas: vas, params: %{ card_id: card_id }}) do
+    card = Card |> Card.Query.for_account(vas[:account_id]) |> Repo.get(card_id)
+
+    with %Card{} <- card,
+         changeset = %{valid?: true} <- Card.changeset(card, request.fields)
+
+    do
+      statements =
+        Multi.new()
+        |> Multi.update(:card, changeset)
+        |> Multi.run(:processed_card, fn(%{ card: card }) ->
+            Card.process(card, changeset)
+           end)
+
+      {:ok, %{ processed_card: card }} = Repo.transaction(statements)
+      {:ok, %AccessResponse{ data: card }}
+    else
+      {:error, changeset} ->
+        errors = Enum.into(changeset.errors, %{})
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def delete_card(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "billing.delete_card") do
+      do_delete_card(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_card(%AccessRequest{ vas: vas, params: %{ card_id: card_id } }) do
+    card = Card |> Card.Query.for_account(vas[:account_id]) |> Repo.get!(card_id)
+
+    if card do
+      Repo.transaction(fn ->
+        Card.process(card, :delete)
+        Repo.delete!(card)
+      end)
+
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
+  end
+
   ####
   # Payment
   ####
@@ -192,6 +244,7 @@ defmodule BlueJet.Billing do
     end
   end
 
+  # Allow other services to change the fields of payment
   defp run_payment_before_create(fields, owner, target) do
     with {:ok, results} <- run_event_handler("billing.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
       values = Keyword.values(results)

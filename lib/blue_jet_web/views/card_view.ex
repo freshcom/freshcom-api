@@ -12,6 +12,7 @@ defmodule BlueJetWeb.CardView do
     :fingerprint,
     :cardholder_name,
     :brand,
+    :country,
     :stripe_card_id,
     :primary,
     :inserted_at,

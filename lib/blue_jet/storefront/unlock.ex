@@ -59,7 +59,7 @@ defmodule BlueJet.Storefront.Unlock do
     changeset
     |> validate_required(required_fields())
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:unlockable, :customer])
+    |> validate_assoc_account_scope([:customer])
   end
 
   @doc """
@@ -73,10 +73,9 @@ defmodule BlueJet.Storefront.Unlock do
   end
 
   def put_external_resources(unlock, :unlockable) do
-    IO.inspect unlock
-    unlockable = Inventory.do_get_unlockable(%AccessRequest{
+    {:ok, %{ data: unlockable }} = Inventory.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: unlock.account_id },
-      params: %{ id: unlock.unlockable_id }
+      params: %{ unlockable_id: unlock.unlockable_id }
     })
 
     %{ unlock | unlockable: unlockable }

@@ -58,6 +58,8 @@ defmodule BlueJet.Identity.Authorization do
       "billing.create_payment",
       "billing.get_payment",
       "billing.list_card",
+      "billing.update_card",
+      "billing.delete_card",
 
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
@@ -111,6 +113,8 @@ defmodule BlueJet.Identity.Authorization do
       "billing.get_payment",
       "billing.update_payment",
       "billing.list_card",
+      "billing.update_card",
+      "billing.delete_card",
       "billing.create_refund"
     ],
 
@@ -204,6 +208,8 @@ defmodule BlueJet.Identity.Authorization do
       "billing.get_payment",
       "billing.update_payment",
       "billing.list_card",
+      "billing.update_card",
+      "billing.delete_card",
       "billing.create_refund"
     ],
 
@@ -264,6 +270,8 @@ defmodule BlueJet.Identity.Authorization do
       "billing.get_payment",
       "billing.update_payment",
       "billing.list_card",
+      "billing.update_card",
+      "billing.delete_card",
       "billing.get_settings",
       "billing.update_settings",
       "billing.create_refund"

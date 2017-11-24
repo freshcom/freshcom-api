@@ -1,4 +1,4 @@
-defmodule BlueJet.Identity.Customer do
+defmodule BlueJet.Storefront.Customer do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
@@ -8,7 +8,7 @@ defmodule BlueJet.Identity.Customer do
   alias BlueJet.Translation
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
-  alias BlueJet.Identity.Customer
+  alias BlueJet.Storefront.Customer
   alias BlueJet.Storefront.Unlock
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.Card
@@ -180,7 +180,7 @@ defmodule BlueJet.Identity.Customer do
       [unlocks: Unlock.Query.default()]
     end
     def preloads(:orders) do
-      [orders: Order.Query.not_cart()]
+      [orders: Order.Query.default() |> Order.Query.not_cart() |> limit(5)]
     end
 
     def default() do

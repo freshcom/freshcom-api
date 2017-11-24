@@ -64,7 +64,7 @@ defmodule BlueJetWeb.Router do
     #####
     # Billing
     #####
-    resources "/cards", CardController, only: [:index, :create]
+    resources "/cards", CardController, only: [:index, :create, :update, :delete]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
     end

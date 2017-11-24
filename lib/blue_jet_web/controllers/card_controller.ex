@@ -55,32 +55,32 @@ defmodule BlueJetWeb.CardController do
     render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => payment_id, "data" => data = %{"type" => "Payment" } }) when map_size(vas) == 2 do
-    request = %{
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => card_id, "data" => data = %{ "type" => "Card" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      payment_id: payment_id,
+      params: %{ card_id: card_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Storefront.update_payment(request) do
-      {:ok, payment} ->
-        render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
-      {:error, errors} ->
+    case Billing.update_card(request) do
+      {:ok, %AccessResponse{ data: card }} ->
+        render(conn, "show.json-api", data: card, opts: [include: conn.query_params["include"]])
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => payment_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => card_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      payment_id: payment_id
+      params: %{ card_id: card_id }
     }
 
-    Storefront.delete_payment!(request)
+    Billing.delete_card(request)
 
     send_resp(conn, :no_content, "")
   end

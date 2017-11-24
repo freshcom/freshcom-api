@@ -25,12 +25,6 @@ defmodule BlueJetWeb.PaymentView do
     :billing_address_country_code,
     :billing_address_postal_code,
 
-    :target_id,
-    :target_type,
-
-    :owner_id,
-    :owner_type,
-
     :authorized_at,
     :captured_at,
     :refunded_at,

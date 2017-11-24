@@ -7,7 +7,7 @@ defmodule BlueJet.Storefront do
   alias BlueJet.Identity
   alias BlueJet.Billing
 
-  alias BlueJet.Identity.Customer
+  alias BlueJet.Storefront.Customer
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Payment
