@@ -107,33 +107,6 @@ defmodule BlueJet.Storefront.Customer do
     customer
   end
 
-  def preload(struct_or_structs, targets) when length(targets) == 0 do
-    struct_or_structs
-  end
-  def preload(struct_or_structs, targets) when is_list(targets) do
-    [target | rest] = targets
-
-    struct_or_structs
-    |> Repo.preload(preload_keyword(target))
-    |> Customer.preload(rest)
-  end
-
-  def preload_keyword(:cards) do
-    [cards: Card.query()]
-  end
-  def preload_keyword(:orders) do
-    [orders: Order.query()]
-  end
-  def preload_keyword(:unlocks) do
-    [unlocks: Unlock.query()]
-  end
-  def preload_keyword({:unlocks, unlock_preloads}) do
-    [unlocks: {Unlock.query(), Unlock.preload_keyword(unlock_preloads)}]
-  end
-  def preload_keyword(:external_file_collections) do
-    [external_file_collections: ExternalFileCollection.query()]
-  end
-
   @doc """
   Preprocess the customer to be ready for its first payment
   """

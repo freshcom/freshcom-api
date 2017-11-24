@@ -78,11 +78,17 @@ defmodule BlueJet.Billing.Card do
     from(c in Card, order_by: [desc: c.inserted_at, desc: c.updated_at])
   end
 
+  def put_primary(changeset = %{ changes: %{ primary: true } }) do
+    changeset
+  end
+  def put_primary(changeset = %{ changes: %{ primary: false } }) do
+    Changeset.delete_change(changeset, :primary)
+  end
   def put_primary(changeset) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 
-    existing_primary_card = Repo.get_by(Card, owner_id: owner_id, owner_type: owner_type, status: "saved_by_customer", primary: true)
+    existing_primary_card = Repo.get_by(Card, owner_id: owner_id, owner_type: owner_type, status: "saved_by_owner", primary: true)
 
     if !existing_primary_card do
       put_change(changeset, :primary, true)
@@ -176,6 +182,14 @@ defmodule BlueJet.Billing.Card do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
 
+    if Changeset.get_change(changeset, :primary) do
+      Card
+      |> Card.Query.for_account(card.account_id)
+      |> Card.Query.with_owner(card.owner_type, card.owner_id)
+      |> Card.Query.not_id(card.id)
+      |> Repo.update_all(set: [primary: false])
+    end
+
     {:ok, card}
   end
   def process(card = %Card{ primary: true }, :delete) do
@@ -235,6 +249,10 @@ defmodule BlueJet.Billing.Card do
 
     def not_primary(query) do
       from(c in query, where: c.primary == true)
+    end
+
+    def not_id(query, id) do
+      from(c in query, where: c.id != ^id)
     end
 
     def with_owner(query, owner_type, owner_id) do
