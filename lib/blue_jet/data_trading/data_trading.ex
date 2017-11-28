@@ -40,43 +40,43 @@ defmodule BlueJet.DataTrading do
       |> Stream.chunk_every(3)
       |> Enum.each(fn(chunk) ->
           Enum.each(chunk, fn({:ok, row}) ->
-            enroller_id = if row["enroller_id"] && row["enroller_id"] != "" do
-              result = Storefront.do_get_customer(%AccessRequest{
-                vas: %{ account_id: import_data.account_id },
-                params: %{ customer_id: row["enroller_id"] }
-              })
+            enroller_id = cond do
+              row["enroller_id"] && row["enroller_id"] != "" -> row["enroller_id"]
+              row["enroller_code"] && row["enroller_code"] != "" ->
+                result = Storefront.do_get_customer(%AccessRequest{
+                  vas: %{ account_id: import_data.account_id },
+                  params: %{ code: row["enroller_code"] }
+                })
 
-              case result do
-                {:ok, %{ data: enroller}} -> enroller.id
-                other -> nil
-              end
-            else
-              nil
+                case result do
+                  {:ok, %{ data: enroller}} -> enroller.id
+                  other -> nil
+                end
             end
 
-            sponsor_id = if row["sponsor_id"] && row["sponsor_id"] != "" do
-              result = Storefront.do_get_customer(%AccessRequest{
-                vas: %{ account_id: import_data.account_id },
-                params: %{ customer_id: row["sponsor_id"] }
-              })
+            sponsor_id = cond do
+              row["sponsor_id"] && row["sponsor_id"] != "" -> row["sponsor_id"]
+              row["sponsor_code"] && row["sponsor_code"] != "" ->
+                result = Storefront.do_get_customer(%AccessRequest{
+                  vas: %{ account_id: import_data.account_id },
+                  params: %{ code: row["sponsor_code"] }
+                })
 
-              case result do
-                {:ok, %{ data: sponsor}} -> sponsor.id
-                other -> nil
-              end
-            else
-              nil
+                case result do
+                  {:ok, %{ data: sponsor}} -> sponsor.id
+                  other -> nil
+                end
             end
 
             customer = if row["id"] && row["id"] != "" do
               {:ok, %{ data: sponsor}} = Storefront.do_get_customer(%AccessRequest{
                 vas: %{ account_id: import_data.account_id },
-                params: %{ customer_id: row["id"] }
+                params: %{ id: row["id"] }
               })
             else
               result = Storefront.do_get_customer(%AccessRequest{
                 vas: %{ account_id: import_data.account_id },
-                params: %{ customer_id: row["code"] }
+                params: %{ code: row["code"] }
               })
 
               case result do

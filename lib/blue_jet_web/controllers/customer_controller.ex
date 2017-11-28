@@ -41,10 +41,10 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ customer_id: customer_id },
+      params: %{ id: id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }

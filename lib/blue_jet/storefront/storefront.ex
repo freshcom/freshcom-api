@@ -394,25 +394,42 @@ defmodule BlueJet.Storefront do
 
   def get_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.get_customer") do
-      do_get_customer(request)
+      do_get_customer(%{ request | role: role })
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Customer.Query.with_id_or_code(customer_id) |> Repo.one()
+  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    do_get_customer_response(customer, request)
+  end
+  def do_get_customer(request = %AccessRequest{ role: "guest", vas: vas, params: params = %{ code: code } }) when map_size(params) >= 2 do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
 
-    if customer do
-      customer =
-        customer
-        |> Repo.preload(Customer.Query.preloads(request.preloads))
-        |> Customer.put_external_resources(request.preloads)
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: customer }}
+    if Customer.match?(customer, params) do
+      do_get_customer_response(customer, request)
     else
       {:error, :not_found}
     end
+  end
+  def do_get_customer(%AccessRequest{ role: "guest" }), do: {:error, :not_found}
+  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ code: code } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_customer_response(customer, request)
+  end
+  def do_get_customer(_), do: {:error, :not_found}
+
+  defp do_get_customer_response(nil, _) do
+    {:error, :not_found}
+  end
+  defp do_get_customer_response(customer, request) do
+    customer =
+      customer
+      |> Repo.preload(Customer.Query.preloads(request.preloads))
+      |> Customer.put_external_resources(request.preloads)
+      |> Translation.translate(request.locale)
+
+    {:ok, %AccessResponse{ data: customer }}
   end
 
   def update_customer(request = %AccessRequest{ vas: vas }) do

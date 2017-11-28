@@ -2,7 +2,9 @@ defmodule BlueJetWeb.AccountView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  attributes [:name, :stripe_user_id, :inserted_at, :updated_at]
+  attributes [:name]
 
-
+  def type(_, _) do
+    "Account"
+  end
 end

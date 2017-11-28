@@ -11,7 +11,7 @@ defmodule BlueJetWeb.CustomerView do
     :last_name,
     :email,
     :label,
-    :display_name,
+    :other_name,
     :phone_number,
     :delivery_address_line_one,
     :delivery_address_line_two,

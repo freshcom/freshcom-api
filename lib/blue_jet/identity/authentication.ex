@@ -93,7 +93,7 @@ defmodule BlueJet.Identity.Authentication do
     {:error, %{ error: :invalid_grant, error_description: "Refresh Token is invalid." }}
   end
   def create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: nil, account_id: account_id }) when not is_nil(account_id) do
-    token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: "account_id", typ: "storefront" })
+    token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id, typ: "storefront" })
     {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token_id }}
   end
   def create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: user_id, account_id: account_id }) do

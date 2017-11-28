@@ -1,5 +1,6 @@
 defmodule BlueJet.AccessRequest do
   defstruct vas: %{},
+            role: nil,
 
             params: %{},
             fields: %{},

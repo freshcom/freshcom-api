@@ -23,7 +23,7 @@ defmodule BlueJet.Storefront.Customer do
     field :last_name, :string
     field :email, :string
     field :label, :string
-    field :display_name, :string
+    field :other_name, :string
     field :phone_number, :string
 
     field :stripe_customer_id, :string
@@ -71,8 +71,8 @@ defmodule BlueJet.Storefront.Customer do
     case status do
       "guest" -> [:account_id, :status]
       "internal" -> [:account_id, :status]
-      "registered" -> writable_fields() -- [:enroller_id, :sponsor_id, :display_name, :code, :phone_number, :label]
-      "suspended" -> writable_fields() -- [:enroller_id, :sponsor_id, :display_name, :code, :phone_number, :label, :user_id]
+      "registered" -> writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :code, :phone_number, :label]
+      "suspended" -> writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :code, :phone_number, :label, :user_id]
     end
   end
 
@@ -97,6 +97,41 @@ defmodule BlueJet.Storefront.Customer do
   end
   def put_external_resources(customer, _) do
     customer
+  end
+
+  def match?(nil, params) do
+    false
+  end
+  def match?(customer, params) do
+    leftover = Enum.reject(params, fn({k, v}) ->
+      case k do
+        "first_name" ->
+          String.downcase(v) == downcase(customer.first_name)
+        "last_name" ->
+          String.downcase(v) == downcase(customer.last_name)
+        "other_name" ->
+          String.downcase(v) == downcase(customer.other_name)
+        "phone_number" ->
+          digit_only(v) == digit_only(customer.other_name)
+      end
+    end)
+
+    case map_size(leftover) do
+      0 -> true
+      other -> false
+    end
+  end
+  defp downcase(nil) do
+    nil
+  end
+  defp downcase(value) do
+    String.downcase(value)
+  end
+  defp digit_only(nil) do
+    nil
+  end
+  defp digit_only(value) do
+    String.replace(value, ~r/[^0-9]/, "")
   end
 
   @doc """

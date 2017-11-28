@@ -17,7 +17,7 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
       add :last_name, :string
       add :email, :string
       add :label, :string
-      add :display_name, :string
+      add :other_name, :string
       add :phone_number, :string
 
       add :delivery_address_line_one, :string
