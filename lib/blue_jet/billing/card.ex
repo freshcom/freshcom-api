@@ -18,7 +18,7 @@ defmodule BlueJet.Billing.Card do
     field :fingerprint, :string
     field :cardholder_name, :string
     field :brand, :string
-    # field :country, :string
+    field :country, :string
     field :stripe_card_id, :string
     field :stripe_customer_id, :string
     field :primary, :boolean, default: false

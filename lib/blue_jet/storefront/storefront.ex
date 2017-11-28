@@ -121,8 +121,7 @@ defmodule BlueJet.Storefront do
       {:ok, %AccessResponse{ data: order }}
     else
       {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
@@ -147,6 +146,7 @@ defmodule BlueJet.Storefront do
     end
   end
 
+  # TODO: Check if customer already have unlock
   def update_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.update_order") do
       do_update_order(request)
@@ -170,8 +170,7 @@ defmodule BlueJet.Storefront do
       {:ok, %AccessResponse{ data: order }}
     else
       {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
@@ -271,8 +270,7 @@ defmodule BlueJet.Storefront do
       {:ok, %AccessResponse{ data: oli }}
     else
       nil -> {:error, :not_found}
-      changeset ->
-        errors = Enum.into(changeset.errors, %{})
+      %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -322,7 +320,7 @@ defmodule BlueJet.Storefront do
   def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       Customer
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      |> search([:first_name, :last_name, :display_name, :code, :email, :phone_number, :id], request.search, request.locale)
       |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
       |> Customer.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
@@ -356,16 +354,41 @@ defmodule BlueJet.Storefront do
     end
   end
   def do_create_customer(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Customer.changeset(%Customer{}, fields)
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "role" => "customer" })
 
-    with {:ok, customer} <- Repo.insert(changeset) do
-      customer = Repo.preload(customer, Customer.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: customer }}
-    else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
-        {:error, %AccessResponse{ errors: errors }}
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) ->
+          if fields["status"] == "registered" do
+            case Identity.create_user(%AccessRequest{ vas: vas, fields: fields}) do
+              {:ok, %{ data: user }} -> {:ok, user}
+              other -> other
+            end
+          else
+            {:ok, nil}
+          end
+         end)
+      |> Multi.run(:changeset, fn(%{ user: user }) ->
+          fields = if user do
+            fields = Map.merge(fields, %{ "user_id" => user.id })
+          else
+            fields
+          end
+
+          changeset = Customer.changeset(%Customer{}, fields)
+          {:ok, changeset}
+         end)
+      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
+          Repo.insert(changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ customer: customer }} ->
+        customer = Repo.preload(customer, Customer.Query.preloads(request.preloads))
+        {:ok, %AccessResponse{ data: customer }}
+      {:error, :user, response, _} ->
+        {:error, response}
+      {:error, :customer, changeset, _} -> {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
@@ -377,7 +400,7 @@ defmodule BlueJet.Storefront do
     end
   end
   def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Customer.Query.with_id_or_code(customer_id) |> Repo.one()
 
     if customer do
       customer =
@@ -392,35 +415,61 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def update_customer(request = %{ vas: vas, customer_id: customer_id }) do
-    defaults = %{ preloads: [], fields: %{}, locale: "en" }
-    request = Map.merge(defaults, request)
-
-    vas_customer_id = vas[:customer_id]
-
-    customer_scope = if vas_customer_id do
-      from(c in Customer, where: c.id == ^vas_customer_id)
+  def update_customer(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.update_customer") do
+      do_update_customer(request)
     else
-      Customer
+      {:error, reason} -> {:error, :access_denied}
     end
-    customer = Repo.get_by!(customer_scope, account_id: vas[:account_id], id: customer_id)
+  end
+  def do_update_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
 
-    changeset = Customer.changeset(customer, request.fields, request.locale)
-
-    with {:ok, customer} <- Repo.update(changeset) do
+    with %Customer{} <- customer,
+         changeset <- Customer.changeset(customer, request.fields, request.locale),
+         {:ok, customer} <- Repo.update(changeset)
+    do
       customer =
         customer
-        |> Repo.preload(request.preloads)
+        |> Repo.preload(Customer.Query.preloads(request.preloads))
+        |> Customer.put_external_resources(request.preloads)
         |> Translation.translate(request.locale)
 
-      {:ok, customer}
+      {:ok, %AccessResponse{ data: customer }}
     else
-      other -> other
+      {:error, changeset} ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
+      nil ->
+        {:error, :not_found}
     end
   end
 
-  def delete_customer!(%{ vas: vas, customer_id: customer_id }) do
-    customer = Repo.get_by!(Customer, account_id: vas[:account_id], id: customer_id)
-    Repo.delete!(customer)
+  def delete_customer(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_customer") do
+      do_delete_customer(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:delete_user, fn(_) ->
+          if customer.user_id do
+            Identity.delete_user(%AccessRequest{ vas: vas, params: %{ user_id: customer.user_id } })
+          else
+            {:ok, nil}
+          end
+         end)
+      |> Multi.delete(:deleted_customer, customer)
+
+    if customer do
+      {:ok, _} = Repo.transaction(statements)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 end

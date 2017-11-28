@@ -71,8 +71,7 @@ defmodule BlueJet.Catalogue do
       product = Repo.preload(product, Product.Query.preloads(request.preloads))
       {:ok, %AccessResponse{ data: product }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -130,8 +129,7 @@ defmodule BlueJet.Catalogue do
       {:ok, %AccessResponse{ data: product }}
     else
       nil -> {:error, :not_found}
-      changeset = %Changeset{} ->
-        errors = Enum.into(changeset.errors, %{})
+      %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -216,8 +214,7 @@ defmodule BlueJet.Catalogue do
       price = Repo.preload(price, Price.Query.preloads(request.preloads))
       {:ok, %AccessResponse{ data: price }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -274,8 +271,7 @@ defmodule BlueJet.Catalogue do
       {:ok, %AccessResponse{ data: price }}
     else
       nil -> {:error, :not_found}
-      changeset = %Changeset{} ->
-        errors = Enum.into(changeset.errors, %{})
+      %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end

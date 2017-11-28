@@ -44,6 +44,7 @@ defmodule BlueJet.Storefront.Order do
     field :is_estimate, :boolean, default: false
 
     field :fulfillment_method, :string # ship, pickup
+    field :fulfillment_status, :string, default: "pending"
 
     field :opened_at, :utc_datetime
     field :confirmation_email_sent_at, :utc_datetime

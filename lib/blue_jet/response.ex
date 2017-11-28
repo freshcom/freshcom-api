@@ -1,3 +1,3 @@
 defmodule BlueJet.AccessResponse do
-  defstruct meta: %{}, data: %{}, errors: %{}
+  defstruct meta: %{}, data: %{}, errors: []
 end

@@ -131,8 +131,7 @@ defmodule BlueJet.Billing do
       {:ok, %{ processed_card: card }} = Repo.transaction(statements)
       {:ok, %AccessResponse{ data: card }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -239,6 +238,8 @@ defmodule BlueJet.Billing do
     case Repo.transaction(statements) do
       {:ok, %{ processed_payment: payment }} ->
         {:ok, %AccessResponse{ data: payment }}
+      {:error, :payment, %{ errors: errors}, _ } ->
+        {:error, %AccessResponse{ errors: errors }}
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
     end
@@ -307,8 +308,7 @@ defmodule BlueJet.Billing do
       {:ok, %AccessResponse{ data: payment }}
     else
       nil -> {:error, :not_found}
-      changeset ->
-        errors = Enum.into(changeset.errors, %{})
+      %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end

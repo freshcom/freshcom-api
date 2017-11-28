@@ -4,7 +4,8 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
   def change do
     create table(:users, primary_key: false) do
       add :id, :binary_id, primary_key: true
-      add :email, :string
+      add :username, :string
+      add :email, :string, null: false
       add :encrypted_password, :string
       add :first_name, :string
       add :last_name, :string

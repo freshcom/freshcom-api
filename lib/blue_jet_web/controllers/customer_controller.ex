@@ -22,7 +22,7 @@ defmodule BlueJetWeb.CustomerController do
     render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Sku" } }) do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Customer" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -54,34 +54,33 @@ defmodule BlueJetWeb.CustomerController do
     render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id, "data" => data = %{ "type" => "Customer" } }) when map_size(vas) == 2 do
-    request = %{
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id, "data" => data = %{ "type" => "Customer" } }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      customer_id: customer_id,
+      params: %{ customer_id: customer_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Identity.update_customer(request) do
-      {:ok, customer} ->
+    case Storefront.update_customer(request) do
+      {:ok, %AccessResponse{ data: customer }} ->
         render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
-      {:error, changeset} ->
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => customer_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      customer_id: customer_id
+      params: %{ customer_id: customer_id }
     }
 
-    Identity.delete_customer!(request)
+    Storefront.delete_customer(request)
 
     send_resp(conn, :no_content, "")
   end
-
 end

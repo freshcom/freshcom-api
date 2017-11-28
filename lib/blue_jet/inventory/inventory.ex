@@ -59,8 +59,7 @@ defmodule BlueJet.Inventory do
       sku = Repo.preload(sku, Sku.Query.preloads(request.preloads))
       {:ok, %AccessResponse{ data: sku }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -108,9 +107,10 @@ defmodule BlueJet.Inventory do
 
       {:ok, %AccessResponse{ data: sku }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+      nil ->
+        {:error, :not_found}
     end
   end
 
@@ -186,8 +186,7 @@ defmodule BlueJet.Inventory do
       unlockable = Repo.preload(unlockable, Unlockable.Query.preloads(request.preloads))
       {:ok, %AccessResponse{ data: unlockable }}
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -237,8 +236,7 @@ defmodule BlueJet.Inventory do
       {:ok, %AccessResponse{ data: unlockable }}
     else
       nil -> {:error, :not_found}
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end

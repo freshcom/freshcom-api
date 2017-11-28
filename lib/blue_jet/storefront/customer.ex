@@ -6,7 +6,6 @@ defmodule BlueJet.Storefront.Customer do
   alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Translation
-  alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Storefront.Customer
   alias BlueJet.Storefront.Unlock
@@ -17,35 +16,34 @@ defmodule BlueJet.Storefront.Customer do
   @type t :: Ecto.Schema.t
 
   schema "customers" do
+    field :account_id, Ecto.UUID
     field :code, :string
     field :status, :string, default: "guest"
     field :first_name, :string
     field :last_name, :string
     field :email, :string
-    field :encrypted_password, :string
     field :label, :string
     field :display_name, :string
     field :phone_number, :string
 
-    field :password, :string, virtual: true
-
     field :stripe_customer_id, :string
+
+    field :user_id, Ecto.UUID
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
     timestamps()
 
-    belongs_to :account, Account
-    has_one :refresh_token, RefreshToken
     has_many :unlocks, Unlock
     has_many :orders, Order
+    belongs_to :enroller, Customer
+    belongs_to :sponsor, Customer
   end
 
   def system_fields do
     [
       :id,
-      :encrypted_password,
       :stripe_customer_id,
       :inserted_at,
       :updated_at
@@ -53,7 +51,7 @@ defmodule BlueJet.Storefront.Customer do
   end
 
   def writable_fields do
-    (Customer.__schema__(:fields) -- system_fields()) ++ [:password]
+    Customer.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
@@ -73,14 +71,14 @@ defmodule BlueJet.Storefront.Customer do
     case status do
       "guest" -> [:account_id, :status]
       "internal" -> [:account_id, :status]
-      "registered" -> writable_fields() -- [:display_name, :code, :phone_number, :label]
+      "registered" -> writable_fields() -- [:enroller_id, :sponsor_id, :display_name, :code, :phone_number, :label]
+      "suspended" -> writable_fields() -- [:enroller_id, :sponsor_id, :display_name, :code, :phone_number, :label, :user_id]
     end
   end
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
-    |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:account_id)
     |> unique_constraint(:email)
@@ -90,14 +88,8 @@ defmodule BlueJet.Storefront.Customer do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> put_encrypted_password()
     |> Translation.put_change(translatable_fields(), locale)
   end
-
-  defp put_encrypted_password(changeset = %Ecto.Changeset{ valid?: true, changes: %{ password: password } })  do
-    put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
-  end
-  defp put_encrypted_password(changeset), do: changeset
 
   def put_external_resources(customer, {:unlocks, unlock_targets}) do
     unlocks = Unlock.put_external_resources(customer.unlocks, unlock_targets)
@@ -144,6 +136,13 @@ defmodule BlueJet.Storefront.Customer do
 
     def for_account(query, account_id) do
       from(c in query, where: c.account_id == ^account_id)
+    end
+
+    def with_id_or_code(query, id_or_code) do
+      case Ecto.UUID.dump(id_or_code) do
+        :error -> from(c in query, where: c.code == ^id_or_code)
+        other -> from(c in query, where: (c.id == ^id_or_code) or (c.code == ^id_or_code))
+      end
     end
 
     def preloads(:unlocks) do

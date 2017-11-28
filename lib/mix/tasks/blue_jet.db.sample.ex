@@ -34,7 +34,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       }
     })
 
-    {:ok, _} = Storefront.create_customer(%AccessRequest{
+
+    {:ok, %{ data: customer }} = Storefront.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
       fields: %{
         "first_name" => "Tiffany",
@@ -44,6 +45,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         "password" => "test1234"
       }
     })
+
+    # {:ok, _} = Storefront.create_customer(%AccessRequest{
+    #   vas: %{ account_id: account1_id },
+    #   fields: %{
+    #     "first_name" => "Tiffany",
+    #     "last_name" => "Wang",
+    #     "email" => "customer1@example.com",
+    #     "status" => "registered",
+    #     "password" => "test1234"
+    #   }
+    # })
 
     # {:ok, _} = Identity.create_customer(%{
     #   vas: %{ account_id: account1_id },

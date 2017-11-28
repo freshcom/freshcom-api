@@ -40,7 +40,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :confirmation_email_sent_at, :utc_datetime
       add :receipt_email_sent_at, :utc_datetime
 
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :delete_all)
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
       add :created_by_id, references(:users, type: :binary_id)
 
       add :custom_data, :map, null: false, default: "{}"

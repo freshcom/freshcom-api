@@ -48,7 +48,6 @@ defmodule BlueJetWeb.Router do
     # Storefront
     #####
     resources "/customers", CustomerController, except: [:new, :edit]
-
     get "/customer", CustomerController, :show
 
     resources "/products", ProductController, except: [:new, :edit] do
@@ -71,5 +70,11 @@ defmodule BlueJetWeb.Router do
 
     get "/billing_settings", BillingSettingsController, :show
     patch "/billing_settings", BillingSettingsController, :update
+
+    ####
+    # Data Trading
+    ####
+    resources "/data_imports", DataImportController, only: [:index, :create, :show, :delete]
+
   end
 end

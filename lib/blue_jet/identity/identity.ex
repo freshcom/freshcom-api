@@ -50,13 +50,13 @@ defmodule BlueJet.Identity do
 
     def create_account_user(account_id, fields) do
       Multi.new()
-      |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ default_account_id: account_id, account_id: account_id })))
+      |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account_id, "account_id" => account_id })))
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
           account_membership = Repo.insert!(
             AccountMembership.changeset(%AccountMembership{}, %{
               account_id: account_id,
               user_id: user.id,
-              role: Map.get(fields, :role)
+              role: Map.get(fields, "role")
             })
           )
 
@@ -169,7 +169,7 @@ defmodule BlueJet.Identity do
     do_create_user_response(result, preloads)
   end
   defp do_create_user(request = %{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
-    fields = Map.merge(fields, %{ role: "customer" })
+    fields = Map.merge(fields, %{ "role" => "customer" })
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
@@ -180,7 +180,6 @@ defmodule BlueJet.Identity do
   defp do_create_user_response({:error, failed_operation, failed_value, _}, _) do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
-
 
   def get_user(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.get_user") do
@@ -197,5 +196,24 @@ defmodule BlueJet.Identity do
       |> Translation.translate(locale)
 
     {:ok, %AccessResponse{ data: user }}
+  end
+
+  def delete_user(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- authorize(vas, "identity.delete_user") do
+      cond do
+        role == "customer" && vas[:user_id] == request.params.user_id -> do_delete_user(request)
+        role == "customer" -> {:error, :access_denied}
+        true -> do_delete_user(request)
+      end
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_user(request = %AccessRequest{ vas: vas, params: %{ user_id: user_id } }) do
+    user = User |> User.Query.member_of_account(vas[:account_id]) |> Repo.get(user_id)
+
+    Repo.delete!(user)
+
+    {:ok, %AccessResponse{}}
   end
 end

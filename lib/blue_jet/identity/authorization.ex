@@ -39,6 +39,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.delete_user",
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
@@ -53,6 +54,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.get_order",
       "storefront.update_order",
       "storefront.get_customer",
+      "storefront.update_customer",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -104,6 +106,8 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_customer",
       "storefront.create_customer",
       "storefront.get_customer",
+      "storefront.update_customer",
+      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
@@ -199,6 +203,8 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_customer",
       "storefront.create_customer",
       "storefront.get_customer",
+      "storefront.update_customer",
+      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
@@ -219,6 +225,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_account",
       "identity.create_user",
       "identity.get_user",
+      "identity.delete_user",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -261,6 +268,8 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_customer",
       "storefront.create_customer",
       "storefront.get_customer",
+      "storefront.update_customer",
+      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
@@ -274,7 +283,9 @@ defmodule BlueJet.Identity.Authorization do
       "billing.delete_card",
       "billing.get_settings",
       "billing.update_settings",
-      "billing.create_refund"
+      "billing.create_refund",
+
+      "data_trading.create_data_import"
     ]
   }
 

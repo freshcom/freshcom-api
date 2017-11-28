@@ -63,8 +63,7 @@ defmodule BlueJet.FileStorage do
 
       {:ok, %AccessResponse{ data: external_file } }
     else
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -103,8 +102,7 @@ defmodule BlueJet.FileStorage do
       {:ok, %AccessResponse{ data: external_file }}
     else
       nil -> {:error, :not_found}
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -190,8 +188,7 @@ defmodule BlueJet.FileStorage do
 
       {:ok, %AccessResponse{ data: efc }}
     else
-      changeset ->
-        errors = Enum.into(changeset.errors, %{})
+      %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
@@ -279,8 +276,7 @@ defmodule BlueJet.FileStorage do
       {:ok, %AccessResponse{ data: efc }}
     else
       nil -> {:error, :not_found}
-      {:error, changeset} ->
-        errors = Enum.into(changeset.errors, %{})
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
