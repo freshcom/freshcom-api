@@ -46,7 +46,7 @@ defmodule BlueJet.Identity.User do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:email, :password, :first_name, :last_name, :default_account_id])
+    |> validate_required([:email, :password, :default_account_id])
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:default_account_id)

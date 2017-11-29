@@ -27,6 +27,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order",
       "storefront.get_customer",
       "storefront.create_customer",
+      "storefront.update_customer",
 
       "billing.create_payment",
       "billing.get_payment",

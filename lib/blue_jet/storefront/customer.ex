@@ -67,12 +67,25 @@ defmodule BlueJet.Storefront.Customer do
 
   def required_fields(changeset) do
     status = get_field(changeset, :status)
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
+    other_name = get_field(changeset, :other_name)
+
+    IO.inspect other_name
+    required_name_fields = if !first_name && !last_name && !other_name do
+      [:first_name, :last_name]
+    else
+      []
+    end
+
+    common = writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :first_name, :last_name, :code, :phone_number, :label]
+    common = common ++ required_name_fields
 
     case status do
       "guest" -> [:account_id, :status]
       "internal" -> [:account_id, :status]
-      "registered" -> writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :code, :phone_number, :label]
-      "suspended" -> writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :code, :phone_number, :label, :user_id]
+      "registered" -> common
+      "suspended" -> common -- [:user_id]
     end
   end
 
@@ -103,20 +116,24 @@ defmodule BlueJet.Storefront.Customer do
     false
   end
   def match?(customer, params) do
+    params = Map.take(params, ["first_name", "last_name", "other_name", "phone_number"])
+
     leftover = Enum.reject(params, fn({k, v}) ->
       case k do
         "first_name" ->
-          String.downcase(v) == downcase(customer.first_name)
+          String.downcase(v) == remove_space(downcase(customer.first_name))
         "last_name" ->
-          String.downcase(v) == downcase(customer.last_name)
+          String.downcase(v) == remove_space(downcase(customer.last_name))
         "other_name" ->
-          String.downcase(v) == downcase(customer.other_name)
+          String.downcase(v) == remove_space(downcase(customer.other_name))
         "phone_number" ->
-          digit_only(v) == digit_only(customer.other_name)
+          digit_only(v) == digit_only(customer.phone_number)
+        "email" ->
+          downcase(v) == downcase(customer.email)
       end
     end)
 
-    case map_size(leftover) do
+    case length(leftover) do
       0 -> true
       other -> false
     end
@@ -132,6 +149,12 @@ defmodule BlueJet.Storefront.Customer do
   end
   defp digit_only(value) do
     String.replace(value, ~r/[^0-9]/, "")
+  end
+  defp remove_space(nil) do
+    nil
+  end
+  defp remove_space(value) do
+    String.replace(value, " ", "")
   end
 
   @doc """

@@ -5,6 +5,8 @@ defmodule BlueJetWeb.CustomerController do
   alias BlueJet.Identity
   alias BlueJet.Storefront
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -41,23 +43,24 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+    params = Map.drop(params, ["locale"])
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: params,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: customer }} = Storefront.get_customer(request)
-
-    render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
+    with {:ok, %AccessResponse{ data: customer }} <- Storefront.get_customer(request) do
+      render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
+    end
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id, "data" => data = %{ "type" => "Customer" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Customer" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ customer_id: customer_id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]

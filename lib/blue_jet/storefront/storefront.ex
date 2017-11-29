@@ -370,7 +370,7 @@ defmodule BlueJet.Storefront do
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
           fields = if user do
-            fields = Map.merge(fields, %{ "user_id" => user.id })
+            Map.merge(fields, %{ "user_id" => user.id })
           else
             fields
           end
@@ -388,7 +388,8 @@ defmodule BlueJet.Storefront do
         {:ok, %AccessResponse{ data: customer }}
       {:error, :user, response, _} ->
         {:error, response}
-      {:error, :customer, changeset, _} -> {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, :customer, changeset, _} ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
@@ -399,13 +400,14 @@ defmodule BlueJet.Storefront do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
     do_get_customer_response(customer, request)
   end
-  def do_get_customer(request = %AccessRequest{ role: "guest", vas: vas, params: params = %{ code: code } }) when map_size(params) >= 2 do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+  def do_get_customer(request = %AccessRequest{ role: "guest", vas: vas, params: params = %{ "code" => code } }) when map_size(params) >= 2 do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code, status: "guest")
 
+    params = Map.drop(params, ["code"])
     if Customer.match?(customer, params) do
       do_get_customer_response(customer, request)
     else
@@ -434,17 +436,48 @@ defmodule BlueJet.Storefront do
 
   def update_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.update_customer") do
-      do_update_customer(request)
+      do_update_customer(%{ request | role: role })
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
+  def do_update_customer(request = %AccessRequest{ role: role, vas: vas, params: %{ "id" => id } }) do
+    customer_query = Customer |> Customer.Query.for_account(vas[:account_id])
+
+    customer = case role do
+      "guest" -> Repo.get_by(customer_query, id: id, status: "guest")
+      "customer" -> Repo.get(customer_query, id) # TODO: only find the customer of the user
+      other -> Repo.get(customer_query, id)
+    end
+
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) ->
+          cond do
+            customer.status == "guest" && request.fields["status"] == "registered" ->
+              case Identity.create_user(%AccessRequest{ vas: vas, fields: request.fields}) do
+                {:ok, %{ data: user }} -> {:ok, user}
+                other -> other
+              end
+            true -> {:ok, nil}
+          end
+         end)
+      |> Multi.run(:changeset, fn(%{ user: user }) ->
+          fields = if user do
+            Map.merge(request.fields, %{ "user_id" => user.id })
+          else
+            request.fields
+          end
+
+          changeset = Customer.changeset(%Customer{}, fields)
+          {:ok, changeset}
+         end)
+      |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
+          Repo.update(changeset)
+         end)
 
     with %Customer{} <- customer,
-         changeset <- Customer.changeset(customer, request.fields, request.locale),
-         {:ok, customer} <- Repo.update(changeset)
+         {:ok, %{ customer: customer }} <- Repo.transaction(statements)
     do
       customer =
         customer
@@ -454,10 +487,12 @@ defmodule BlueJet.Storefront do
 
       {:ok, %AccessResponse{ data: customer }}
     else
-      {:error, changeset} ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
       nil ->
         {:error, :not_found}
+      {:error, :user, response, _} ->
+        {:error, response}
+      {:error, :customer, changeset, _} ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
