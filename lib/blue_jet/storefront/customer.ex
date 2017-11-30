@@ -71,7 +71,6 @@ defmodule BlueJet.Storefront.Customer do
     last_name = get_field(changeset, :last_name)
     other_name = get_field(changeset, :other_name)
 
-    IO.inspect other_name
     required_name_fields = if !first_name && !last_name && !other_name do
       [:first_name, :last_name]
     else

@@ -464,12 +464,12 @@ defmodule BlueJet.Storefront do
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
           fields = if user do
-            Map.merge(request.fields, %{ "user_id" => user.id })
+            Map.merge(request.fields, %{ "user_id" => user.id, "account_id" => vas[:account_id] })
           else
             request.fields
           end
 
-          changeset = Customer.changeset(%Customer{}, fields)
+          changeset = Customer.changeset(customer, fields)
           {:ok, changeset}
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset}) ->

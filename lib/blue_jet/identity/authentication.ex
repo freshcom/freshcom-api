@@ -44,13 +44,13 @@ defmodule BlueJet.Identity.Authentication do
     create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token })
   end
 
-  def create_token(%{ grant_type: "password", username: username, password: password }) do
-    user = User |> User.Query.global() |> Repo.get_by(email: username)
-    create_token_by_password(user, password)
-  end
   def create_token(%{ grant_type: "password", username: username, password: password, scope: %{ account_id: account_id } }) do
-    user = User |> User.Query.member_of_account(account_id) |> Repo.get_by(email: username)
+    user = User |> User.Query.member_of_account(account_id) |> Repo.get_by(username: username)
     create_token_by_password(user, password, account_id)
+  end
+  def create_token(%{ grant_type: "password", username: username, password: password }) do
+    user = User |> User.Query.global() |> Repo.get_by(username: username)
+    create_token_by_password(user, password)
   end
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id }) do
     refresh_token = Repo.get(RefreshToken, refresh_token_id)

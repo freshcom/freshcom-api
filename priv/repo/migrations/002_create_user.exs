@@ -4,6 +4,7 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
   def change do
     create table(:users, primary_key: false) do
       add :id, :binary_id, primary_key: true
+      add :status, :string
       add :username, :string
       add :email, :string, null: false
       add :encrypted_password, :string
@@ -16,5 +17,6 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
     end
 
     create unique_index(:users, [:account_id, :email])
+    create unique_index(:users, [:account_id, :username])
   end
 end

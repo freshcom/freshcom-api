@@ -9,6 +9,8 @@ defmodule BlueJet.Identity.User do
   alias BlueJet.Identity.AccountMembership
 
   schema "users" do
+    field :status, :string
+    field :username, :string
     field :email, :string
     field :encrypted_password, :string
     field :first_name, :string
@@ -61,6 +63,7 @@ defmodule BlueJet.Identity.User do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> put_username()
     |> put_encrypted_password()
   end
 
@@ -69,6 +72,11 @@ defmodule BlueJet.Identity.User do
   end
   defp put_encrypted_password(changeset), do: changeset
 
+  defp put_username(changeset = %Changeset{ changes: %{ username: username } }), do: changeset
+  defp put_username(changeset = %Changeset{ valid?: true }) do
+    put_change(changeset, :username, get_field(changeset, :email))
+  end
+  defp put_username(changeset), do: changeset
 
   defmodule Query do
     use BlueJet, :query
