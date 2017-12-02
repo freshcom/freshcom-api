@@ -43,6 +43,7 @@ defmodule BlueJetWeb.Router do
     #####
     resources "/skus", SkuController, except: [:new, :edit]
     resources "/unlockables", UnlockableController, except: [:new, :edit]
+    resources "/point_deposits", PointDepositController, except: [:new, :edit]
 
     #####
     # Storefront
@@ -75,6 +76,5 @@ defmodule BlueJetWeb.Router do
     # Data Trading
     ####
     resources "/data_imports", DataImportController, only: [:index, :create, :show, :delete]
-
   end
 end

@@ -14,5 +14,7 @@ defmodule BlueJet.Repo.Migrations.CreateDataImport do
 
       timestamps()
     end
+
+    create index(:data_imports, [:account_id])
   end
 end

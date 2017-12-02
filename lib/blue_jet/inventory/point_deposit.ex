@@ -1,20 +1,21 @@
-defmodule BlueJet.Inventory.Unlockable do
+defmodule BlueJet.Inventory.PointDeposit do
   use BlueJet, :data
 
   use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Inventory.Unlockable
+  alias BlueJet.Inventory.PointDeposit
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
 
-  schema "unlockables" do
+  schema "point_deposits" do
     field :account_id, Ecto.UUID
 
     field :code, :string
     field :status, :string
     field :name, :string
     field :print_name, :string
+    field :amount, :integer
 
     field :caption, :string
     field :description, :string
@@ -37,11 +38,11 @@ defmodule BlueJet.Inventory.Unlockable do
   end
 
   def writable_fields do
-    Unlockable.__schema__(:fields) -- system_fields()
+    PointDeposit.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    Unlockable.__trans__(:fields)
+    PointDeposit.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -53,7 +54,7 @@ defmodule BlueJet.Inventory.Unlockable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name, :print_name])
+    |> validate_required([:account_id, :status, :name, :print_name, :amount])
     |> foreign_key_constraint(:account_id)
     |> validate_assoc_account_scope(:avatar)
   end
@@ -69,14 +70,14 @@ defmodule BlueJet.Inventory.Unlockable do
   end
 
   def query() do
-    from(u in Unlockable, order_by: [desc: u.updated_at])
+    from(u in PointDeposit, order_by: [desc: u.updated_at])
   end
 
   defmodule Query do
     use BlueJet, :query
 
     def for_account(query, account_id) do
-      from(u in query, where: u.account_id == ^account_id)
+      from(pd in query, where: pd.account_id == ^account_id)
     end
 
     def preloads(:avatar) do
@@ -84,11 +85,11 @@ defmodule BlueJet.Inventory.Unlockable do
     end
 
     def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("unlockable")]
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("PointDeposit")]
     end
 
     def default() do
-      from(u in Unlockable, order_by: [desc: :updated_at])
+      from(pd in PointDeposit, order_by: [desc: :updated_at])
     end
   end
 end

@@ -4,6 +4,7 @@ defmodule BlueJet.Inventory do
   alias BlueJet.Identity
   alias BlueJet.Inventory.Sku
   alias BlueJet.Inventory.Unlockable
+  alias BlueJet.Inventory.PointDeposit
 
   ####
   # Sku
@@ -258,4 +259,84 @@ defmodule BlueJet.Inventory do
     end
   end
 
+  ####
+  # Point Deposit
+  ####
+  def list_point_deposit(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.list_point_deposit") do
+      do_list_point_deposit(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_point_deposit(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      PointDeposit
+      |> search([:name, :print_name, :code, :id], request.search, request.locale)
+      |> filter_by(status: filter[:status])
+      |> PointDeposit.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = PointDeposit |> PointDeposit.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    point_deposits =
+      Repo.all(query)
+      |> Repo.preload(request.preloads)
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: point_deposits
+    }
+
+    {:ok, response}
+  end
+
+  def create_point_deposit(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.create_point_deposit") do
+      do_create_point_deposit(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_point_deposit(request = %AccessRequest{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = PointDeposit.changeset(%PointDeposit{}, fields)
+
+    with {:ok, point_deposit} <- Repo.insert(changeset) do
+      point_deposit = Repo.preload(point_deposit, PointDeposit.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: point_deposit }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def get_point_deposit(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.get_point_deposit") do
+      do_get_point_deposit(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_point_deposit(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+    point_deposit = PointDeposit |> PointDeposit.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    if point_deposit do
+      point_deposit =
+        point_deposit
+        |> Repo.preload(PointDeposit.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: point_deposit }}
+    else
+      {:error, :not_found}
+    end
+  end
 end
