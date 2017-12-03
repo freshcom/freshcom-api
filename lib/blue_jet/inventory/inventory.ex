@@ -339,4 +339,49 @@ defmodule BlueJet.Inventory do
       {:error, :not_found}
     end
   end
+
+  def update_point_deposit(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.update_point_deposit") do
+      do_update_point_deposit(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_point_deposit(request = %{ vas: vas, params: %{ point_deposit_id: point_deposit_id }}) do
+    point_deposit = PointDeposit |> PointDeposit.Query.for_account(vas[:account_id]) |> Repo.get(point_deposit_id)
+    changeset = PointDeposit.changeset(point_deposit, request.fields, request.locale)
+
+    with %PointDeposit{} <- point_deposit,
+         changeset <- PointDeposit.changeset(point_deposit, request.fields, request.locale),
+        {:ok, point_deposit} <- Repo.update(changeset)
+    do
+      point_deposit =
+        point_deposit
+        |> Repo.preload(PointDeposit.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: point_deposit }}
+    else
+      nil -> {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def delete_point_deposit(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.delete_point_deposit") do
+      do_delete_point_deposit(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_point_deposit(%AccessRequest{ vas: vas, params: %{ point_deposit_id: point_deposit_id } }) do
+    point_deposit = PointDeposit |> PointDeposit.Query.for_account(vas[:account_id]) |> Repo.get!(point_deposit_id)
+    if point_deposit do
+      Repo.delete!(point_deposit)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
+  end
 end
