@@ -1,8 +1,8 @@
-defmodule BlueJetWeb.SkuController do
+defmodule BlueJetWeb.StockableController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -18,23 +18,23 @@ defmodule BlueJetWeb.SkuController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: skus, meta: meta }} = Inventory.list_sku(request)
+    {:ok, %AccessResponse{ data: stockables, meta: meta }} = Goods.list_stockable(request)
 
-    render(conn, "index.json-api", data: skus, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Sku" } }) do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Stockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Inventory.create_sku(request) do
-      {:ok, %AccessResponse{ data: sku }} ->
+    case Goods.create_stockable(request) do
+      {:ok, %AccessResponse{ data: stockable }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: sku, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -42,31 +42,31 @@ defmodule BlueJetWeb.SkuController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ sku_id: sku_id },
+      params: %{ stockable_id: stockable_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: sku }} = Inventory.get_sku(request)
+    {:ok, %AccessResponse{ data: stockable }} = Goods.get_stockable(request)
 
-    render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
+    render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id, "data" => data = %{ "type" => "Sku" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id, "data" => data = %{ "type" => "Stockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ sku_id: sku_id },
+      params: %{ stockable_id: stockable_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Inventory.update_sku(request) do
-      {:ok, %AccessResponse{ data: sku }} ->
-        render(conn, "show.json-api", data: sku, opts: [include: conn.query_params["include"]])
+    case Goods.update_stockable(request) do
+      {:ok, %AccessResponse{ data: stockable }} ->
+        render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -74,13 +74,13 @@ defmodule BlueJetWeb.SkuController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => sku_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ sku_id: sku_id }
+      params: %{ stockable_id: stockable_id }
     }
 
-    Inventory.delete_sku(request)
+    Goods.delete_stockable(request)
 
     send_resp(conn, :no_content, "")
   end

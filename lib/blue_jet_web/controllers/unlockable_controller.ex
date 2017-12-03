@@ -2,7 +2,7 @@ defmodule BlueJetWeb.UnlockableController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -17,7 +17,7 @@ defmodule BlueJetWeb.UnlockableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: unlockables, meta: meta }} = Inventory.list_unlockable(request)
+    {:ok, %AccessResponse{ data: unlockables, meta: meta }} = Goods.list_unlockable(request)
 
     render(conn, "index.json-api", data: unlockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -29,7 +29,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
       preloads: assigns[:preloads]
     }
 
-    case Inventory.create_unlockable(request) do
+    case Goods.create_unlockable(request) do
       {:ok, %AccessResponse{ data: unlockable }} ->
         conn
         |> put_status(:created)
@@ -49,7 +49,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: unlockable }} = Inventory.get_unlockable(request)
+    {:ok, %AccessResponse{ data: unlockable }} = Goods.get_unlockable(request)
 
     render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
   end
@@ -63,7 +63,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
       locale: assigns[:locale]
     }
 
-    case Inventory.update_unlockable(request) do
+    case Goods.update_unlockable(request) do
       {:ok, %AccessResponse{ data: unlockable }} ->
         render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
@@ -79,7 +79,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
       params: %{ unlockable_id: unlockable_id }
     }
 
-    Inventory.delete_unlockable(request)
+    Goods.delete_unlockable(request)
 
     send_resp(conn, :no_content, "")
   end

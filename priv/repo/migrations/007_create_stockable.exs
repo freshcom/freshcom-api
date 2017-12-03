@@ -1,8 +1,8 @@
-defmodule BlueJet.Repo.Migrations.CreateSku do
+defmodule BlueJet.Repo.Migrations.CreateStockable do
   use Ecto.Migration
 
   def change do
-    create table(:skus, primary_key: false) do
+    create table(:stockables, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :avatar_id, references(:external_files, type: :binary_id, on_delete: :nilify_all)
@@ -28,9 +28,9 @@ defmodule BlueJet.Repo.Migrations.CreateSku do
       timestamps()
     end
 
-    create unique_index(:skus, [:account_id, :code], where: "code IS NOT NULL")
-    create unique_index(:skus, [:account_id, :print_name])
-    create index(:skus, [:account_id, :name])
-    create index(:skus, [:account_id, :status])
+    create unique_index(:stockables, [:account_id, :code], where: "code IS NOT NULL")
+    create unique_index(:stockables, [:account_id, :print_name])
+    create index(:stockables, [:account_id, :name])
+    create index(:stockables, [:account_id, :status])
   end
 end

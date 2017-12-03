@@ -9,7 +9,7 @@ defmodule BlueJetWeb.ProductItemView do
     :primary, :print_name, :custom_data, :locale, :inserted_at, :updated_at]
 
   has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
-  has_one :sku, serializer: BlueJetWeb.SkuView, identifiers: :always
+  has_one :stockable, serializer: BlueJetWeb.StockableView, identifiers: :always
   has_one :unlockable, serializer: BlueJetWeb.UnlockableView, identifiers: :always
   has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included
@@ -30,11 +30,11 @@ defmodule BlueJetWeb.ProductItemView do
     end
   end
 
-  def sku(struct, conn) do
-    case struct.sku do
+  def stockable(struct, conn) do
+    case struct.stockable do
       %Ecto.Association.NotLoaded{} ->
         struct
-        |> Ecto.assoc(:sku)
+        |> Ecto.assoc(:stockable)
         |> Repo.one()
       other -> other
     end

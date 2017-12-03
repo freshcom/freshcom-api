@@ -1,31 +1,24 @@
-defmodule BlueJet.Inventory.Sku do
+defmodule BlueJet.Goods.PointDeposit do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :print_name, :caption, :description, :specification, :storage_description, :custom_data], container: :translations
+  use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Inventory.Sku
+  alias BlueJet.Goods.PointDeposit
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
 
-  schema "skus" do
+  schema "point_deposits" do
     field :account_id, Ecto.UUID
 
     field :code, :string
     field :status, :string
     field :name, :string
     field :print_name, :string
-    field :unit_of_measure, :string
-    field :variable_weight, :boolean, default: false
-
-    field :storage_type, :string
-    field :storage_size, :integer
-    field :stackable, :boolean, default: false
+    field :amount, :integer
 
     field :caption, :string
     field :description, :string
-    field :specification, :string
-    field :storage_description, :string
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
@@ -45,11 +38,11 @@ defmodule BlueJet.Inventory.Sku do
   end
 
   def writable_fields do
-    Sku.__schema__(:fields) -- system_fields()
+    PointDeposit.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    Sku.__trans__(:fields)
+    PointDeposit.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -59,22 +52,32 @@ defmodule BlueJet.Inventory.Sku do
     writable_fields() -- [:account_id]
   end
 
+  def validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :status, :name, :print_name, :amount])
+    |> foreign_key_constraint(:account_id)
+    |> validate_assoc_account_scope(:avatar)
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(struct, params \\ %{}, locale \\ "en") do
     struct
     |> cast(params, castable_fields(struct))
-    |> validate_length(:print_name, min: 3)
-    |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
+    |> validate()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  def query() do
+    from(u in PointDeposit, order_by: [desc: u.updated_at])
   end
 
   defmodule Query do
     use BlueJet, :query
 
     def for_account(query, account_id) do
-      from(s in query, where: s.account_id == ^account_id)
+      from(pd in query, where: pd.account_id == ^account_id)
     end
 
     def preloads(:avatar) do
@@ -82,11 +85,11 @@ defmodule BlueJet.Inventory.Sku do
     end
 
     def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("Sku")]
+      [external_file_collections: ExternalFileCollection.Query.for_owner_type("PointDeposit")]
     end
 
     def default() do
-      from(s in Sku, order_by: [desc: :updated_at])
+      from(pd in PointDeposit, order_by: [desc: :updated_at])
     end
   end
 end

@@ -7,7 +7,7 @@ defmodule BlueJet.Storefront.Unlock do
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
 
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
   alias BlueJet.Storefront.Unlock
   alias BlueJet.Storefront.Customer
 
@@ -25,7 +25,7 @@ defmodule BlueJet.Storefront.Unlock do
   end
 
   def source(struct) do
-    struct.sku || struct.unlockable
+    struct.stockable || struct.unlockable
   end
 
   def system_fields do
@@ -73,7 +73,7 @@ defmodule BlueJet.Storefront.Unlock do
   end
 
   def put_external_resources(unlock, :unlockable) do
-    {:ok, %{ data: unlockable }} = Inventory.do_get_unlockable(%AccessRequest{
+    {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: unlock.account_id },
       params: %{ unlockable_id: unlock.unlockable_id }
     })

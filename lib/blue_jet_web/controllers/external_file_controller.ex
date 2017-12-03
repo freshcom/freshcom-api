@@ -17,9 +17,9 @@ defmodule BlueJetWeb.ExternalFileController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: skus, meta: meta }} = FileStorage.list_external_file(request)
+    {:ok, %AccessResponse{ data: stockables, meta: meta }} = FileStorage.list_external_file(request)
 
-    render(conn, "index.json-api", data: skus, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) do

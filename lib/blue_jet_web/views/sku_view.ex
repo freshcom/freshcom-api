@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.SkuView do
+defmodule BlueJetWeb.StockableView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -26,7 +26,7 @@ defmodule BlueJetWeb.SkuView do
   has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
 
   def type(_, _) do
-    "Sku"
+    "Stockable"
   end
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale

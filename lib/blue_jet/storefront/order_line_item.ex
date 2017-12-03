@@ -10,7 +10,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.AccessResponse
   alias BlueJet.Translation
 
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
 
@@ -68,19 +68,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
     has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  def source(account_id, source_id, "Sku") do
-    response = Inventory.do_get_sku(%AccessRequest{
+  def source(account_id, source_id, "Stockable") do
+    response = Goods.do_get_stockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ sku_id: source_id }
+      params: %{ stockable_id: source_id }
     })
 
     case response do
-      {:ok, %{ data: sku }} -> sku
+      {:ok, %{ data: stockable }} -> stockable
       {:error, _} -> nil
     end
   end
   def source(account_id, source_id, "Unlockable") do
-    response = Inventory.do_get_unlockable(%AccessRequest{
+    response = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: account_id },
       params: %{ unlockable_id: source_id }
     })

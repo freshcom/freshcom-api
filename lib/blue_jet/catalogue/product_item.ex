@@ -9,8 +9,8 @@
 #   alias BlueJet.Catalogue.Product
 #   alias BlueJet.Catalogue.Price
 #   alias BlueJet.Identity.Account
-#   alias BlueJet.Inventory.Sku
-#   alias BlueJet.Inventory.Unlockable
+#   alias BlueJet.Goods.Stockable
+#   alias BlueJet.Goods.Unlockable
 
 #   schema "product_items" do
 #     field :code, :string
@@ -30,14 +30,14 @@
 
 #     belongs_to :account, Account
 #     belongs_to :product, Product
-#     belongs_to :sku, Sku
+#     belongs_to :stockable, Stockable
 #     belongs_to :unlockable, Unlockable
 #     has_many :prices, Price, on_delete: :delete_all
 #     has_one :default_price, Price
 #   end
 
 #   def source(struct) do
-#     struct.sku || struct.unlockable
+#     struct.stockable || struct.unlockable
 #   end
 
 #   def system_fields do
@@ -73,8 +73,8 @@
 #   def validate(changeset) do
 #     changeset
 #     |> validate_required(required_fields())
-#     |> validate_required_exactly_one([:sku_id, :unlockable_id], :relationships)
-#     |> validate_assoc_account_scope([:product, :sku, :unlockable])
+#     |> validate_required_exactly_one([:stockable_id, :unlockable_id], :relationships)
+#     |> validate_assoc_account_scope([:product, :stockable, :unlockable])
 #     |> validate_status()
 #   end
 
@@ -160,8 +160,8 @@
 #   end
 
 #   def put_name(changeset = %Changeset{ valid?: true, changes: %{ name_sync: "sync_with_source" } }, _) do
-#     source = if get_field(changeset, :sku_id) do
-#       Repo.get!(Sku, get_field(changeset, :sku_id))
+#     source = if get_field(changeset, :stockable_id) do
+#       Repo.get!(Stockable, get_field(changeset, :stockable_id))
 #     else
 #       Repo.get!(Unlockable, get_field(changeset, :unlockable_id))
 #     end
@@ -229,8 +229,8 @@
 #     |> ProductItem.preload(rest)
 #   end
 
-#   def preload_keyword({:sku, sku_preloads}) do
-#     [sku: {Sku.query(), Sku.preload_keyword(sku_preloads)}]
+#   def preload_keyword({:stockable, stockable_preloads}) do
+#     [stockable: {Stockable.query(), Stockable.preload_keyword(stockable_preloads)}]
 #   end
 #   def preload_keyword(:product) do
 #     [product: Product.query()]
@@ -258,8 +258,8 @@
 #     def preloads({:product, product_preloads}) do
 #       [product: {Product.Query.default(), Product.Query.preloads(product_preloads)}]
 #     end
-#     def preloads({:sku, sku_preloads}) do
-#       [sku: {Sku.Query.default(), Sku.Query.preloads(sku_preloads)}]
+#     def preloads({:stockable, stockable_preloads}) do
+#       [stockable: {Stockable.Query.default(), Stockable.Query.preloads(stockable_preloads)}]
 #     end
 #     def preloads(:prices) do
 #       [prices: Price.Query.default()]

@@ -14,8 +14,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     Mix.Tasks.Ecto.Migrate.run(args)
 
     alias BlueJet.Repo
-    alias BlueJet.Inventory.Sku
-    alias BlueJet.Inventory.Unlockable
+    alias BlueJet.Goods.Stockable
+    alias BlueJet.Goods.Unlockable
     alias BlueJet.Catalogue.Product
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
@@ -71,7 +71,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     ########################
     # 李锦记熊猫蚝油
     ########################
-    changeset = Sku.changeset(%Sku{}, %{
+    changeset = Stockable.changeset(%Stockable{}, %{
       "account_id" => account1_id,
       "code" => "100504",
       "status" => "active",
@@ -83,9 +83,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "510g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
     }, "en")
-    sku_oyster_sauce = Repo.insert!(changeset)
+    stockable_oyster_sauce = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku_oyster_sauce, %{
+    changeset = Stockable.changeset(stockable_oyster_sauce, %{
       "name" => "李锦记熊猫蚝油",
       "specification" => "每瓶510克。",
       "storage_description" => "常温保存，避免爆嗮。"
@@ -95,7 +95,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     ########################
     # 老干妈豆豉辣椒油
     ########################
-    changeset = Sku.changeset(%Sku{}, %{
+    changeset = Stockable.changeset(%Stockable{}, %{
       "account_id" => account1_id,
       "code" => "100502",
       "status" => "active",
@@ -107,9 +107,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "280g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light. After open keep refrigerated."
     }, "en")
-    sku_chili_oil = Repo.insert!(changeset)
+    stockable_chili_oil = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku_chili_oil, %{
+    changeset = Stockable.changeset(stockable_chili_oil, %{
       "name" => "老干妈豆豉辣椒油",
       "specification" => "每瓶280克。",
       "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
@@ -119,7 +119,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     ########################
     # 李锦记蒸鱼豉油
     ########################
-    changeset = Sku.changeset(%Sku{}, %{
+    changeset = Stockable.changeset(%Stockable{}, %{
       "account_id" => account1_id,
       "code" => "100503",
       "status" => "active",
@@ -131,9 +131,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "410ml per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
     }, "en")
-    sku_seasoned_soy_sauce = Repo.insert!(changeset)
+    stockable_seasoned_soy_sauce = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku_seasoned_soy_sauce, %{
+    changeset = Stockable.changeset(stockable_seasoned_soy_sauce, %{
       "name" => "李锦记蒸鱼豉油",
       "specification" => "每瓶410毫升。",
       "storage_description" => "常温保存，避免爆嗮。"
@@ -143,7 +143,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     ########################
     # 鱼
     ########################
-    changeset = Sku.changeset(%Sku{}, %{
+    changeset = Stockable.changeset(%Stockable{}, %{
       "account_id" => account1_id,
       "code" => "100508",
       "status" => "active",
@@ -155,9 +155,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "specification" => "About 2lb per fish",
       "storage_description" => "Keep refrigerated"
     }, "en")
-    sku_fish = Repo.insert!(changeset)
+    stockable_fish = Repo.insert!(changeset)
 
-    changeset = Sku.changeset(sku_fish, %{
+    changeset = Stockable.changeset(stockable_fish, %{
       "name" => "鱼",
       "specification" => "每条约2磅",
       "storage_description" => "冷藏保存"
@@ -177,8 +177,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "kind" => "variant",
       "parent_id" => product.id,
-      "source_id" => sku_seasoned_soy_sauce.id,
-      "source_type" => "Sku",
+      "source_id" => stockable_seasoned_soy_sauce.id,
+      "source_type" => "Stockable",
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
@@ -191,8 +191,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "kind" => "variant",
       "parent_id" => product.id,
-      "source_id" => sku_oyster_sauce.id,
-      "source_type" => "Sku",
+      "source_id" => stockable_oyster_sauce.id,
+      "source_type" => "Stockable",
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
@@ -240,8 +240,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "status" => "draft",
-      "source_id" => sku_fish.id,
-      "source_type" => "Sku",
+      "source_id" => stockable_fish.id,
+      "source_type" => "Stockable",
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
@@ -282,8 +282,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "parent_id" => product.id,
-      "source_id" => sku_oyster_sauce.id,
-      "source_type" => "Sku",
+      "source_id" => stockable_oyster_sauce.id,
+      "source_type" => "Stockable",
       "status" => "active",
       "kind" => "item",
       "name_sync" => "sync_with_source",
@@ -295,8 +295,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = Product.changeset(%Product{}, %{
       "account_id" => account1_id,
       "parent_id" => product.id,
-      "source_id" => sku_chili_oil.id,
-      "source_type" => "Sku",
+      "source_id" => stockable_chili_oil.id,
+      "source_type" => "Stockable",
       "status" => "active",
       "kind" => "item",
       "name_sync" => "sync_with_source",

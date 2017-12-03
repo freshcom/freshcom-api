@@ -2,7 +2,7 @@ defmodule BlueJetWeb.PointDepositController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -18,7 +18,7 @@ defmodule BlueJetWeb.PointDepositController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_deposits, meta: meta }} = Inventory.list_point_deposit(request)
+    {:ok, %AccessResponse{ data: point_deposits, meta: meta }} = Goods.list_point_deposit(request)
 
     render(conn, "index.json-api", data: point_deposits, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -30,7 +30,7 @@ defmodule BlueJetWeb.PointDepositController do
       preloads: assigns[:preloads]
     }
 
-    case Inventory.create_point_deposit(request) do
+    case Goods.create_point_deposit(request) do
       {:ok, %AccessResponse{ data: point_deposit }} ->
         conn
         |> put_status(:created)
@@ -50,7 +50,7 @@ defmodule BlueJetWeb.PointDepositController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_deposit }} = Inventory.get_point_deposit(request)
+    {:ok, %AccessResponse{ data: point_deposit }} = Goods.get_point_deposit(request)
 
     render(conn, "show.json-api", data: point_deposit, opts: [include: conn.query_params["include"]])
   end
@@ -64,7 +64,7 @@ defmodule BlueJetWeb.PointDepositController do
       locale: assigns[:locale]
     }
 
-    case Inventory.update_point_deposit(request) do
+    case Goods.update_point_deposit(request) do
       {:ok, %AccessResponse{ data: point_deposit }} ->
         render(conn, "show.json-api", data: point_deposit, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
@@ -80,7 +80,7 @@ defmodule BlueJetWeb.PointDepositController do
       params: %{ point_deposit_id: point_deposit_id }
     }
 
-    Inventory.delete_point_deposit(request)
+    Goods.delete_point_deposit(request)
 
     send_resp(conn, :no_content, "")
   end

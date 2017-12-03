@@ -19,7 +19,7 @@ defmodule BlueJet.Repo.Migrations.CreateProductItem do
       add :translations, :map, null: false, default: "{}"
 
       add :product_id, references(:products, type: :binary_id, on_delete: :delete_all), null: false
-      add :sku_id, references(:skus, type: :binary_id, on_delete: :nilify_all)
+      add :stockable_id, references(:stockables, type: :binary_id, on_delete: :nilify_all)
       add :unlockable_id, references(:unlockables, type: :binary_id, on_delete: :nilify_all)
 
       timestamps()

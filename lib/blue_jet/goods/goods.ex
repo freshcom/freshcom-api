@@ -1,37 +1,37 @@
-defmodule BlueJet.Inventory do
+defmodule BlueJet.Goods do
   use BlueJet, :context
 
   alias BlueJet.Identity
-  alias BlueJet.Inventory.Sku
-  alias BlueJet.Inventory.Unlockable
-  alias BlueJet.Inventory.PointDeposit
+  alias BlueJet.Goods.Stockable
+  alias BlueJet.Goods.Unlockable
+  alias BlueJet.Goods.PointDeposit
 
   ####
-  # Sku
+  # Stockable
   ####
-  def list_sku(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.list_sku") do
-      do_list_sku(request)
+  def list_stockable(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.list_stockable") do
+      do_list_stockable(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_list_sku(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+  def do_list_stockable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
-      Sku
+      Stockable
       |> search([:name, :print_name, :code, :id], request.search, request.locale)
       |> filter_by(status: filter[:status])
-      |> Sku.Query.for_account(account_id)
+      |> Stockable.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = Sku |> Sku.Query.for_account(account_id)
+    total_query = Stockable |> Stockable.Query.for_account(account_id)
     total_count = Repo.aggregate(total_query, :count, :id)
 
     query = paginate(query, size: pagination[:size], number: pagination[:number])
 
-    skus =
+    stockables =
       Repo.all(query)
-      |> Repo.preload(Sku.Query.preloads(request.preloads))
+      |> Repo.preload(Stockable.Query.preloads(request.preloads))
       |> Translation.translate(request.locale)
 
     response = %AccessResponse{
@@ -39,74 +39,74 @@ defmodule BlueJet.Inventory do
         total_count: total_count,
         result_count: result_count,
       },
-      data: skus
+      data: stockables
     }
 
     {:ok, response}
   end
 
-  def create_sku(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.create_sku") do
-      do_create_sku(request)
+  def create_stockable(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.create_stockable") do
+      do_create_stockable(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_create_sku(request = %AccessRequest{ vas: vas }) do
+  def do_create_stockable(request = %AccessRequest{ vas: vas }) do
     fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Sku.changeset(%Sku{}, fields)
+    changeset = Stockable.changeset(%Stockable{}, fields)
 
-    with {:ok, sku} <- Repo.insert(changeset) do
-      sku = Repo.preload(sku, Sku.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: sku }}
+    with {:ok, stockable} <- Repo.insert(changeset) do
+      stockable = Repo.preload(stockable, Stockable.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_sku(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.get_sku") do
-      do_get_sku(request)
+  def get_stockable(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.get_stockable") do
+      do_get_stockable(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_sku(request = %AccessRequest{ vas: vas, params: %{ sku_id: sku_id } }) do
-    sku = Sku |> Sku.Query.for_account(vas[:account_id]) |> Repo.get(sku_id)
+  def do_get_stockable(request = %AccessRequest{ vas: vas, params: %{ stockable_id: stockable_id } }) do
+    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(stockable_id)
 
-    if sku do
-      sku =
-        sku
-        |> Repo.preload(Sku.Query.preloads(request.preloads))
+    if stockable do
+      stockable =
+        stockable
+        |> Repo.preload(Stockable.Query.preloads(request.preloads))
         |> Translation.translate(request.locale)
 
-      {:ok, %AccessResponse{ data: sku }}
+      {:ok, %AccessResponse{ data: stockable }}
     else
       {:error, :not_found}
     end
   end
 
-  def update_sku(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.update_sku") do
-      do_update_sku(request)
+  def update_stockable(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.update_stockable") do
+      do_update_stockable(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_sku(request = %AccessRequest{ vas: vas, params: %{ sku_id: sku_id }}) do
-    sku = Sku |> Sku.Query.for_account(vas[:account_id]) |> Repo.get(sku_id)
+  def do_update_stockable(request = %AccessRequest{ vas: vas, params: %{ stockable_id: stockable_id }}) do
+    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(stockable_id)
 
-    with %Sku{} <- sku,
-         changeset <- Sku.changeset(sku, request.fields, request.locale),
-        {:ok, sku} <- Repo.update(changeset)
+    with %Stockable{} <- stockable,
+         changeset <- Stockable.changeset(stockable, request.fields, request.locale),
+        {:ok, stockable} <- Repo.update(changeset)
     do
-      sku =
-        sku
-        |> Repo.preload(Sku.Query.preloads(request.preloads))
+      stockable =
+        stockable
+        |> Repo.preload(Stockable.Query.preloads(request.preloads))
         |> Translation.translate(request.locale)
 
-      {:ok, %AccessResponse{ data: sku }}
+      {:ok, %AccessResponse{ data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -115,18 +115,18 @@ defmodule BlueJet.Inventory do
     end
   end
 
-  def delete_sku(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.delete_sku") do
-      do_delete_sku(request)
+  def delete_stockable(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "inventory.delete_stockable") do
+      do_delete_stockable(request)
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_sku(%AccessRequest{ vas: vas, params: %{ sku_id: sku_id } }) do
-    sku = Sku |> Sku.Query.for_account(vas[:account_id]) |> Repo.get!(sku_id)
+  def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ stockable_id: stockable_id } }) do
+    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get!(stockable_id)
 
-    if sku do
-      Repo.delete!(sku)
+    if stockable do
+      Repo.delete!(stockable)
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found}

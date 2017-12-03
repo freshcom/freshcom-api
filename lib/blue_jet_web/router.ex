@@ -39,9 +39,9 @@ defmodule BlueJetWeb.Router do
     # resources "/external_file_collection_memberships", ExternalFileCollectionMembershipController, only: [:index, :update, :delete]
 
     #####
-    # Inventory
+    # Goods
     #####
-    resources "/skus", SkuController, except: [:new, :edit]
+    resources "/stockables", StockableController, except: [:new, :edit]
     resources "/unlockables", UnlockableController, except: [:new, :edit]
     resources "/point_deposits", PointDepositController, except: [:new, :edit]
 

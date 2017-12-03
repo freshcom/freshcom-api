@@ -16,7 +16,7 @@ defmodule BlueJet.Catalogue.Product do
   alias BlueJet.AccessResponse
   alias BlueJet.Translation
 
-  alias BlueJet.Inventory
+  alias BlueJet.Goods
 
   alias BlueJet.Catalogue.ProductItem
   alias BlueJet.Catalogue.Product
@@ -224,19 +224,19 @@ defmodule BlueJet.Catalogue.Product do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def source(account_id, source_id, "Sku") do
-    response = Inventory.do_get_sku(%AccessRequest{
+  def source(account_id, source_id, "Stockable") do
+    response = Goods.do_get_stockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ sku_id: source_id }
+      params: %{ stockable_id: source_id }
     })
 
     case response do
-      {:ok, %{ data: sku }} -> sku
+      {:ok, %{ data: stockable }} -> stockable
       {:error, _} -> nil
     end
   end
   def source(account_id, source_id, "Unlockable") do
-    response = Inventory.do_get_unlockable(%AccessRequest{
+    response = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: account_id },
       params: %{ unlockable_id: source_id }
     })
