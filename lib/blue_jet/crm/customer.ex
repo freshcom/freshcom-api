@@ -6,12 +6,8 @@ defmodule BlueJet.CRM.Customer do
   alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Translation
-  alias BlueJet.Identity.RefreshToken
+
   alias BlueJet.CRM.Customer
-  alias BlueJet.Storefront.Unlock
-  alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.Card
-  alias BlueJet.FileStorage.ExternalFileCollection
 
   @type t :: Ecto.Schema.t
 
@@ -35,8 +31,6 @@ defmodule BlueJet.CRM.Customer do
 
     timestamps()
 
-    has_many :unlocks, Unlock
-    has_many :orders, Order
     belongs_to :enroller, Customer
     belongs_to :sponsor, Customer
   end
@@ -101,14 +95,6 @@ defmodule BlueJet.CRM.Customer do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
-  end
-
-  def put_external_resources(customer, {:unlocks, unlock_targets}) do
-    unlocks = Unlock.put_external_resources(customer.unlocks, unlock_targets)
-    %{ customer | unlocks: unlocks }
-  end
-  def put_external_resources(customer, _) do
-    customer
   end
 
   def match?(nil, params) do
@@ -202,14 +188,8 @@ defmodule BlueJet.CRM.Customer do
       end
     end
 
-    def preloads(:unlocks) do
-      [unlocks: Unlock.Query.default()]
-    end
-    def preloads({:unlocks, unlock_preloads}) do
-      [unlocks: Unlock.Query.default()]
-    end
-    def preloads(:orders) do
-      [orders: Order.Query.default() |> Order.Query.not_cart() |> limit(5)]
+    def preloads(_) do
+      []
     end
 
     def default() do

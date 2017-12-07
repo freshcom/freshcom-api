@@ -1,0 +1,23 @@
+defmodule BlueJetWeb.UnlockController do
+  use BlueJetWeb, :controller
+
+  alias JaSerializer.Params
+  alias BlueJet.Storefront
+
+  plug :scrub_params, "data" when action in [:create, :update]
+
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      search: params["search"],
+      filter: assigns[:filter],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+   {:ok, %AccessResponse{ data: unlocks, meta: meta }} = Storefront.list_unlock(request)
+
+    render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  end
+end

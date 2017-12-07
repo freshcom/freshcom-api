@@ -25,7 +25,7 @@ defmodule BlueJet.CRM do
   # Customer
   ####
   def list_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.list_customer") do
+    with {:ok, role} <- Identity.authorize(vas, "crm.list_customer") do
       do_list_customer(request)
     else
       {:error, reason} -> {:error, :access_denied}
@@ -61,7 +61,7 @@ defmodule BlueJet.CRM do
   end
 
   def create_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.create_customer") do
+    with {:ok, role} <- Identity.authorize(vas, "crm.create_customer") do
       do_create_customer(request)
     else
       {:error, reason} -> {:error, :access_denied}
@@ -108,7 +108,7 @@ defmodule BlueJet.CRM do
   end
 
   def get_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.get_customer") do
+    with {:ok, role} <- Identity.authorize(vas, "crm.get_customer") do
       do_get_customer(%{ request | role: role })
     else
       {:error, reason} -> {:error, :access_denied}
@@ -146,14 +146,13 @@ defmodule BlueJet.CRM do
     customer =
       customer
       |> Repo.preload(Customer.Query.preloads(request.preloads))
-      |> Customer.put_external_resources(request.preloads)
       |> Translation.translate(request.locale)
 
     {:ok, %AccessResponse{ data: customer }}
   end
 
   def update_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.update_customer") do
+    with {:ok, role} <- Identity.authorize(vas, "crm.update_customer") do
       do_update_customer(%{ request | role: role })
     else
       {:error, reason} -> {:error, :access_denied}
@@ -215,7 +214,7 @@ defmodule BlueJet.CRM do
   end
 
   def delete_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_customer") do
+    with {:ok, role} <- Identity.authorize(vas, "crm.delete_customer") do
       do_delete_customer(request)
     else
       {:error, reason} -> {:error, :access_denied}

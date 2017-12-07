@@ -22,12 +22,13 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_price",
       "catalogue.get_price",
 
+      "crm.get_customer",
+      "crm.create_customer",
+      "crm.update_customer",
+
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
-      "storefront.get_customer",
-      "storefront.create_customer",
-      "storefront.update_customer",
 
       "billing.create_payment",
       "billing.get_payment",
@@ -51,12 +52,13 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_price",
       "catalogue.get_price",
 
+      "crm.get_customer",
+      "crm.update_customer",
+
       "storefront.list_order",
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
-      "storefront.get_customer",
-      "storefront.update_customer",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -67,7 +69,8 @@ defmodule BlueJet.Identity.Authorization do
 
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
-      "storefront.delete_order_line_item"
+      "storefront.delete_order_line_item",
+      "storefront.list_unlock"
     ],
 
     "support_specialist" => [
@@ -100,19 +103,21 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.update_price",
       "catalogue.delete_price",
 
+      "crm.list_customer",
+      "crm.create_customer",
+      "crm.get_customer",
+      "crm.update_customer",
+      "crm.delete_customer",
+
       "storefront.list_order",
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
-      "storefront.list_customer",
-      "storefront.create_customer",
-      "storefront.get_customer",
-      "storefront.update_customer",
-      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
+      "storefront.list_unlock",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -207,19 +212,21 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.update_price",
       "catalogue.delete_price",
 
+      "crm.list_customer",
+      "crm.create_customer",
+      "crm.get_customer",
+      "crm.update_customer",
+      "crm.delete_customer",
+
       "storefront.list_order",
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
-      "storefront.list_customer",
-      "storefront.create_customer",
-      "storefront.get_customer",
-      "storefront.update_customer",
-      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
+      "storefront.list_unlock",
 
       "billing.list_payment",
       "billing.create_payment",
@@ -277,19 +284,21 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.update_price",
       "catalogue.delete_price",
 
+      "crm.list_customer",
+      "crm.create_customer",
+      "crm.get_customer",
+      "crm.update_customer",
+      "crm.delete_customer",
+
       "storefront.list_order",
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
       "storefront.delete_order",
-      "storefront.list_customer",
-      "storefront.create_customer",
-      "storefront.get_customer",
-      "storefront.update_customer",
-      "storefront.delete_customer",
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
+      "storefront.list_unlock",
 
       "billing.list_payment",
       "billing.create_payment",

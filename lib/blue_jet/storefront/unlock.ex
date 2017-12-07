@@ -96,6 +96,10 @@ defmodule BlueJet.Storefront.Unlock do
       from(u in query, where: u.account_id == ^account_id)
     end
 
+    def preloads(_) do
+      []
+    end
+
     def default() do
       from(u in Unlock, order_by: [desc: u.inserted_at])
     end

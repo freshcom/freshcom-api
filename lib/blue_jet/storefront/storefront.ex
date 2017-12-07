@@ -9,6 +9,7 @@ defmodule BlueJet.Storefront do
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.Unlock
 
   def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
@@ -292,5 +293,44 @@ defmodule BlueJet.Storefront do
     else
       {:error, :not_found}
     end
+  end
+
+  #
+  # Unlock
+  #
+  def list_unlock(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.list_unlock") do
+      do_list_unlock(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_unlock(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      Unlock.Query.default()
+      |> filter_by(customer_id: filter[:customer_id])
+      |> Unlock.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = Unlock |> Unlock.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    unlocks =
+      Repo.all(query)
+      |> Repo.preload(Unlock.Query.preloads(request.preloads))
+      |> Unlock.put_external_resources(request.preloads)
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: unlocks
+    }
+
+    {:ok, response}
   end
 end
