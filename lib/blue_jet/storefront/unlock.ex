@@ -8,8 +8,9 @@ defmodule BlueJet.Storefront.Unlock do
   alias BlueJet.AccessRequest
 
   alias BlueJet.Goods
+  alias BlueJet.CRM
+
   alias BlueJet.Storefront.Unlock
-  alias BlueJet.Storefront.Customer
 
   schema "unlocks" do
     field :custom_data, :map, default: %{}
@@ -18,10 +19,10 @@ defmodule BlueJet.Storefront.Unlock do
     field :account_id, Ecto.UUID
     field :unlockable_id, Ecto.UUID
     field :unlockable, :map, virtual: true
+    field :customer_id, Ecto.UUID
+    field :customer, :map, virtual: true
 
     timestamps()
-
-    belongs_to :customer, Customer
   end
 
   def source(struct) do
@@ -59,7 +60,6 @@ defmodule BlueJet.Storefront.Unlock do
     changeset
     |> validate_required(required_fields())
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:customer])
   end
 
   @doc """
@@ -75,10 +75,18 @@ defmodule BlueJet.Storefront.Unlock do
   def put_external_resources(unlock, :unlockable) do
     {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: unlock.account_id },
-      params: %{ unlockable_id: unlock.unlockable_id }
+      params: %{ id: unlock.unlockable_id }
     })
 
     %{ unlock | unlockable: unlockable }
+  end
+  def put_external_resources(unlock, :customer) do
+    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
+      vas: %{ account_id: unlock.account_id },
+      params: %{ id: unlock.customer_id }
+    })
+
+    %{ unlock | customer: customer }
   end
 
   defmodule Query do

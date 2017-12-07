@@ -250,7 +250,11 @@ defmodule BlueJet.Billing do
     with {:ok, results} <- run_event_handler("billing.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
       values = Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
-        Map.merge(acc, fields)
+        if fields do
+          Map.merge(acc, fields)
+        else
+          acc
+        end
       end)
 
       {:ok, fields}

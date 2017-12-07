@@ -1,4 +1,4 @@
-defmodule BlueJet.Storefront.Customer do
+defmodule BlueJet.CRM.Customer do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
@@ -7,7 +7,7 @@ defmodule BlueJet.Storefront.Customer do
   alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.Identity.RefreshToken
-  alias BlueJet.Storefront.Customer
+  alias BlueJet.CRM.Customer
   alias BlueJet.Storefront.Unlock
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.Card

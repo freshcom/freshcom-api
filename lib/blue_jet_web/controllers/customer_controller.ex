@@ -3,7 +3,7 @@ defmodule BlueJetWeb.CustomerController do
 
   alias JaSerializer.Params
   alias BlueJet.Identity
-  alias BlueJet.Storefront
+  alias BlueJet.CRM
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -19,7 +19,7 @@ defmodule BlueJetWeb.CustomerController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: customers, meta: meta }} = Storefront.list_customer(request)
+    {:ok, %AccessResponse{ data: customers, meta: meta }} = CRM.list_customer(request)
 
     render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -31,7 +31,7 @@ defmodule BlueJetWeb.CustomerController do
       preloads: assigns[:preloads]
     }
 
-    case Storefront.create_customer(request) do
+    case CRM.create_customer(request) do
       {:ok, %AccessResponse{ data: customer }} ->
         conn
         |> put_status(:created)
@@ -52,7 +52,7 @@ defmodule BlueJetWeb.CustomerController do
       locale: assigns[:locale]
     }
 
-    with {:ok, %AccessResponse{ data: customer }} <- Storefront.get_customer(request) do
+    with {:ok, %AccessResponse{ data: customer }} <- CRM.get_customer(request) do
       render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
     end
   end
@@ -66,7 +66,7 @@ defmodule BlueJetWeb.CustomerController do
       locale: assigns[:locale]
     }
 
-    case Storefront.update_customer(request) do
+    case CRM.update_customer(request) do
       {:ok, %AccessResponse{ data: customer }} ->
         render(conn, "show.json-api", data: customer, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
@@ -82,7 +82,7 @@ defmodule BlueJetWeb.CustomerController do
       params: %{ customer_id: customer_id }
     }
 
-    Storefront.delete_customer(request)
+    CRM.delete_customer(request)
 
     send_resp(conn, :no_content, "")
   end

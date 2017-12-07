@@ -45,12 +45,15 @@ defmodule BlueJetWeb.Router do
     resources "/unlockables", UnlockableController, except: [:new, :edit]
     resources "/depositables", DepositableController, except: [:new, :edit]
 
-    #####
-    # Storefront
-    #####
+    #
+    # CRM
+    #
     resources "/customers", CustomerController, except: [:new, :edit]
     get "/customer", CustomerController, :show
 
+    #####
+    # Storefront
+    #####
     resources "/products", ProductController, except: [:new, :edit] do
       resources "/items", ProductItemController, only: [:create]
     end

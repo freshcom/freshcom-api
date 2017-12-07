@@ -4,18 +4,20 @@ defmodule BlueJet.Storefront.Order do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
-  alias BlueJet.Billing
-
+  alias BlueJet.AccessRequest
   alias BlueJet.Translation
+  alias BlueJet.Billing
+  alias BlueJet.CRM
+
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Customer
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.User
 
   @type t :: Ecto.Schema.t
 
   schema "orders" do
+    field :account_id, Ecto.UUID
     field :code, :string
     field :status, :string, default: "cart"
     field :payment_status, :string, default: "pending"
@@ -53,11 +55,12 @@ defmodule BlueJet.Storefront.Order do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
+    field :created_by_id, Ecto.UUID
+    field :customer_id, Ecto.UUID
+    field :customer, :map, virtual: true
+
     timestamps()
 
-    belongs_to :account, Account
-    belongs_to :customer, Customer
-    belongs_to :created_by, User
     has_many :line_items, OrderLineItem
     has_many :root_line_items, OrderLineItem
   end
@@ -132,7 +135,6 @@ defmodule BlueJet.Storefront.Order do
     |> validate_required(required_fields(changeset))
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:customer, :created_by])
     |> validate_customer_id()
   end
 
@@ -253,29 +255,19 @@ defmodule BlueJet.Storefront.Order do
     {:ok, nil}
   end
 
-  def query() do
-    from(o in Order, where: o.status != "cart", order_by: [desc: o.opened_at, desc: o.inserted_at])
-  end
+  def customer(%{ customer_id: nil }), do: nil
+  def customer(order = %{ customer: nil }) do
+    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
+      vas: %{ account_id: order.account_id },
+      params: %{ id: order.customer_id }
+    })
 
-  def preload(struct_or_structs, targets) when length(targets) == 0 do
-    struct_or_structs
+    customer
   end
-  def preload(struct_or_structs, targets) when is_list(targets) do
-    [target | rest] = targets
+  def customer(%{ customer: customer }), do: customer
 
-    struct_or_structs
-    |> Repo.preload(preload_keyword(target))
-    |> Order.preload(rest)
-  end
-
-  def preload_keyword(:line_items) do
-    [line_items: OrderLineItem.query()]
-  end
-  def preload_keyword(:root_line_items) do
-    [root_line_items: OrderLineItem.query(:root)]
-  end
-  def preload_keyword({:root_line_items, line_item_preloads}) do
-    [root_line_items: {OrderLineItem.query(:root), OrderLineItem.preload_keyword(line_item_preloads)}]
+  def put_external_resources(order, :customer) do
+    %{ order | customer: customer(order) }
   end
 
   #####
@@ -289,7 +281,7 @@ defmodule BlueJet.Storefront.Order do
   """
   def process(order), do: {:ok, order}
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = Repo.preload(order, :customer)
+    order = put_external_resources(order, :customer)
 
     leaf_line_items = Order.leaf_line_items(order)
     Enum.each(leaf_line_items, fn(line_item) ->
@@ -313,8 +305,8 @@ defmodule BlueJet.Storefront.Order do
     def preloads({:root_line_items, root_line_item_preloads}) do
       [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads)}]
     end
-    def preloads(:customer) do
-      [customer: Customer.Query.default()]
+    def preloads(_) do
+      []
     end
 
     def not_cart(query) do

@@ -52,7 +52,7 @@ config :ja_serializer,
 config :blue_jet, :s3, prefix: 'uploads'
 
 config :blue_jet, :billing, %{
-  listeners: [BlueJet.Storefront]
+  listeners: [BlueJet.Storefront, BlueJet.CRM]
 }
 
 config :blue_jet, :identity, %{
