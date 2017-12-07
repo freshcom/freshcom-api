@@ -16,6 +16,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     field :owner_id, Ecto.UUID
     field :owner_type, :string
+
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
 

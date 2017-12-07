@@ -72,7 +72,7 @@ defmodule BlueJet.Storefront do
 
     query =
       Order.Query.default()
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale, account_id)
       |> Order.Query.not_cart()
       |> filter_by(
         status: filter[:status],
@@ -319,8 +319,8 @@ defmodule BlueJet.Storefront do
   end
   def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
-      Customer
-      |> search([:first_name, :last_name, :display_name, :code, :email, :phone_number, :id], request.search, request.locale)
+      Customer.Query.default()
+      |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account_id)
       |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
       |> Customer.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)

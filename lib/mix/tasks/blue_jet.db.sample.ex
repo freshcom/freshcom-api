@@ -16,6 +16,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Repo
     alias BlueJet.Goods.Stockable
     alias BlueJet.Goods.Unlockable
+    alias BlueJet.Goods.Depositable
     alias BlueJet.Catalogue.Product
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
@@ -30,7 +31,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         last_name: "Bao",
         email: "user1@example.com",
         password: "test1234",
-        account_name: "Outersky"
+        account_name: "Outersky",
+        default_locale: "zh-CN"
       }
     })
 
@@ -46,27 +48,80 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       }
     })
 
-    # {:ok, _} = Storefront.create_customer(%AccessRequest{
-    #   vas: %{ account_id: account1_id },
-    #   fields: %{
-    #     "first_name" => "Tiffany",
-    #     "last_name" => "Wang",
-    #     "email" => "customer1@example.com",
-    #     "status" => "registered",
-    #     "password" => "test1234"
-    #   }
-    # })
+    changeset = Depositable.changeset(%Depositable{}, %{
+      "account_id" => account1_id,
+      "code" => "60050",
+      "status" => "active",
+      "name" => "充值$50",
+      "print_name" => "充值$50",
+      "amount" => 5000
+    }, "en")
+    deposit_50 = Repo.insert!(changeset)
 
-    # {:ok, _} = Identity.create_customer(%{
-    #   vas: %{ account_id: account1_id },
-    #   fields: %{
-    #     "first_name" => "Tiffany",
-    #     "last_name" => "Wang",
-    #     "status" => "registered",
-    #     "email" => "customer1@example.com",
-    #     "password" => "test1234"
-    #   }
-    # })
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "source_id" => deposit_50.id,
+      "source_type" => "Depositable",
+      "name_sync" => "sync_with_source",
+      "maximum_public_order_quantity" => 9999,
+      "source_quantity" => 1
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 5000,
+      "charge_unit" => "EA",
+      "order_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+    #######
+    changeset = Depositable.changeset(%Depositable{}, %{
+      "account_id" => account1_id,
+      "code" => "60100",
+      "status" => "active",
+      "name" => "充值$100",
+      "print_name" => "充值$100",
+      "amount" => 10000
+    }, "en")
+    deposit_100 = Repo.insert!(changeset)
+
+    changeset = Product.changeset(%Product{}, %{
+      "account_id" => account1_id,
+      "source_id" => deposit_100.id,
+      "source_type" => "Depositable",
+      "name_sync" => "sync_with_source",
+      "maximum_public_order_quantity" => 9999,
+      "source_quantity" => 1
+    })
+    product = Repo.insert!(changeset)
+
+    changeset = Price.changeset(%Price{}, %{
+      "account_id" => account1_id,
+      "product_id" => product.id,
+      "status" => "active",
+      "label" => "regular",
+      "charge_cents" => 10000,
+      "charge_unit" => "EA",
+      "order_unit" => "EA"
+    })
+    price = Repo.insert!(changeset)
+
+    changeset = Product.changeset(product, %{
+      "status" => "active"
+    })
+    Repo.update!(changeset)
+
+
 
     ########################
     # 李锦记熊猫蚝油

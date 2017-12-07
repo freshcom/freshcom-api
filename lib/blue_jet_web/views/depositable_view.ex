@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.PointDepositView do
+defmodule BlueJetWeb.DepositableView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -10,6 +10,6 @@ defmodule BlueJetWeb.PointDepositView do
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
   def type(_, _) do
-    "PointDeposit"
+    "Depositable"
   end
 end

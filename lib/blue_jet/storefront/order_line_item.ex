@@ -71,7 +71,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def source(account_id, source_id, "Stockable") do
     response = Goods.do_get_stockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ stockable_id: source_id }
+      params: %{ id: source_id }
     })
 
     case response do
@@ -82,11 +82,22 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def source(account_id, source_id, "Unlockable") do
     response = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ unlockable_id: source_id }
+      params: %{ id: source_id }
     })
 
     case response do
       {:ok, %{ data: unlockable }} -> unlockable
+      {:error, _} -> nil
+    end
+  end
+  def source(account_id, source_id, "Depositable") do
+    response = Goods.do_get_depositable(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ id: source_id }
+    })
+
+    case response do
+      {:ok, %{ data: depositable }} -> depositable
       {:error, _} -> nil
     end
   end

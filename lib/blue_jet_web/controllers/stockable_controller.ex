@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.PointDepositController do
+defmodule BlueJetWeb.StockableController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -18,23 +18,23 @@ defmodule BlueJetWeb.PointDepositController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_deposits, meta: meta }} = Goods.list_point_deposit(request)
+    {:ok, %AccessResponse{ data: stockables, meta: meta }} = Goods.list_stockable(request)
 
-    render(conn, "index.json-api", data: point_deposits, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "PointDeposit" } }) do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Stockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Goods.create_point_deposit(request) do
-      {:ok, %AccessResponse{ data: point_deposit }} ->
+    case Goods.create_stockable(request) do
+      {:ok, %AccessResponse{ data: stockable }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: point_deposit, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -50,23 +50,23 @@ defmodule BlueJetWeb.PointDepositController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_deposit }} = Goods.get_point_deposit(request)
+    {:ok, %AccessResponse{ data: stockable }} = Goods.get_stockable(request)
 
-    render(conn, "show.json-api", data: point_deposit, opts: [include: conn.query_params["include"]])
+    render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => point_deposit_id, "data" => data = %{ "type" => "PointDeposit" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Stockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ point_deposit_id: point_deposit_id },
+      params: %{ id: id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Goods.update_point_deposit(request) do
-      {:ok, %AccessResponse{ data: point_deposit }} ->
-        render(conn, "show.json-api", data: point_deposit, opts: [include: conn.query_params["include"]])
+    case Goods.update_stockable(request) do
+      {:ok, %AccessResponse{ data: stockable }} ->
+        render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -74,13 +74,13 @@ defmodule BlueJetWeb.PointDepositController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => point_deposit_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ point_deposit_id: point_deposit_id }
+      params: %{ id: id }
     }
 
-    Goods.delete_point_deposit(request)
+    Goods.delete_stockable(request)
 
     send_resp(conn, :no_content, "")
   end

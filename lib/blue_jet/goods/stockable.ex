@@ -4,9 +4,10 @@ defmodule BlueJet.Goods.Stockable do
   use Trans, translates: [:name, :print_name, :caption, :description, :specification, :storage_description, :custom_data], container: :translations
 
   alias BlueJet.Translation
+  alias BlueJet.AccessRequest
+  alias BlueJet.FileStorage
+
   alias BlueJet.Goods.Stockable
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "stockables" do
     field :account_id, Ecto.UUID
@@ -30,10 +31,11 @@ defmodule BlueJet.Goods.Stockable do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    timestamps()
+    field :avatar_id, Ecto.UUID
+    field :avatar, :map, virtual: true
+    field :external_file_collections, {:array, :map}, virtual: true, default: []
 
-    belongs_to :avatar, ExternalFile
-    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
+    timestamps()
   end
 
   def system_fields do
@@ -70,6 +72,27 @@ defmodule BlueJet.Goods.Stockable do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  def put_external_resources(stockable = %Stockable{ avatar_id: nil }, :avatar) do
+    stockable
+  end
+  def put_external_resources(stockable, :avatar) do
+    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
+      vas: %{ account_id: stockable.account_id },
+      params: %{ id: stockable.avatar_id }
+    })
+
+    %{ stockable | avatar: avatar }
+  end
+  def put_external_resources(stockable, :external_file_collections) do
+    {:ok, %{ data: efcs }} = FileStorage.do_list_external_file_collection(%AccessRequest{
+      vas: %{ account_id: stockable.account_id },
+      filter: %{ owner_id: stockable.id, owner_type: "Stockable" },
+      pagination: %{ size: 5, number: 1 }
+    })
+
+    %{ stockable | external_file_collections: efcs }
+  end
+
   defmodule Query do
     use BlueJet, :query
 
@@ -77,12 +100,8 @@ defmodule BlueJet.Goods.Stockable do
       from(s in query, where: s.account_id == ^account_id)
     end
 
-    def preloads(:avatar) do
-      [avatar: ExternalFile.Query.default()]
-    end
-
-    def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("Stockable")]
+    def preloads(_) do
+      []
     end
 
     def default() do

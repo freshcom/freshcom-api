@@ -1,6 +1,8 @@
 defmodule BlueJet.ContextHelpers do
   import Ecto.Query
 
+  alias BlueJet.Translation
+
   def paginate(query, size: size, number: number) do
     limit = size
     offset = size * (number - 1)
@@ -10,16 +12,24 @@ defmodule BlueJet.ContextHelpers do
     |> offset(^offset)
   end
 
-  def search(model, _, nil, _), do: model
-  def search(model, _, "", _), do: model
-  def search(model, columns, keyword, "en") do
+  def search(model, _, nil, _, _), do: model
+  def search(model, _, "", _, _), do: model
+  def search(model, columns, keyword, locale, account_id) do
+    default_locale = Translation.default_locale(%{ account_id: account_id })
+    if locale == default_locale do
+      search_default_locale(model, columns, keyword)
+    else
+      search_translations(model, columns, keyword, locale)
+    end
+  end
+  def search_default_locale(model, columns, keyword) do
     keyword = "%#{keyword}%"
 
     Enum.reduce(columns, model, fn(column, query) ->
       from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
     end)
   end
-  def search(model, columns, keyword, locale) do
+  def search_translations(model, columns, keyword, locale) do
     keyword = "%#{keyword}%"
 
     Enum.reduce(columns, model, fn(column, query) ->

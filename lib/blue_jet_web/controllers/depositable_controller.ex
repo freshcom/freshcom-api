@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.StockableController do
+defmodule BlueJetWeb.DepositableController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -18,23 +18,23 @@ defmodule BlueJetWeb.StockableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockables, meta: meta }} = Goods.list_stockable(request)
+    {:ok, %AccessResponse{ data: depositables, meta: meta }} = Goods.list_depositable(request)
 
-    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: depositables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Stockable" } }) do
+  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Depositable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Goods.create_stockable(request) do
-      {:ok, %AccessResponse{ data: stockable }} ->
+    case Goods.create_depositable(request) do
+      {:ok, %AccessResponse{ data: depositable }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -42,31 +42,31 @@ defmodule BlueJetWeb.StockableController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ stockable_id: stockable_id },
+      params: %{ id: id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockable }} = Goods.get_stockable(request)
+    {:ok, %AccessResponse{ data: depositable }} = Goods.get_depositable(request)
 
-    render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+    render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id, "data" => data = %{ "type" => "Stockable" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => depositable_id, "data" => data = %{ "type" => "Depositable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ stockable_id: stockable_id },
+      params: %{ depositable_id: depositable_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    case Goods.update_stockable(request) do
-      {:ok, %AccessResponse{ data: stockable }} ->
-        render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+    case Goods.update_depositable(request) do
+      {:ok, %AccessResponse{ data: depositable }} ->
+        render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -74,13 +74,13 @@ defmodule BlueJetWeb.StockableController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => stockable_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => depositable_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ stockable_id: stockable_id }
+      params: %{ depositable_id: depositable_id }
     }
 
-    Goods.delete_stockable(request)
+    Goods.delete_depositable(request)
 
     send_resp(conn, :no_content, "")
   end

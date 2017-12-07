@@ -43,7 +43,7 @@ defmodule BlueJetWeb.Router do
     #####
     resources "/stockables", StockableController, except: [:new, :edit]
     resources "/unlockables", UnlockableController, except: [:new, :edit]
-    resources "/point_deposits", PointDepositController, except: [:new, :edit]
+    resources "/depositables", DepositableController, except: [:new, :edit]
 
     #####
     # Storefront

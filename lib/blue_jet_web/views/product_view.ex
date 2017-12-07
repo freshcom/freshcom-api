@@ -20,6 +20,8 @@ defmodule BlueJetWeb.ProductView do
 
   has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
   has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
+  has_one :parent, serializer: BlueJetWeb.ProductView, identifiers: :always
+
   has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :variants, serializer: BlueJetWeb.ProductView, identifiers: :when_included
@@ -30,6 +32,14 @@ defmodule BlueJetWeb.ProductView do
   def type(_, _) do
     "Product"
   end
+
+  def parent(product = %{ parent: %Ecto.Association.NotLoaded{} }, _) do
+    case product.parent_id do
+      nil -> nil
+      _ -> %{ type: "Product", id: product.parent_id }
+    end
+  end
+  def parent(product, _), do: product.parent
 
   def kind(struct, _) do
     Inflex.camelize(struct.kind, :lower)

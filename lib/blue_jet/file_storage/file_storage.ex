@@ -19,7 +19,7 @@ defmodule BlueJet.FileStorage do
   def do_list_external_file(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       ExternalFile.Query.default()
-      |> search([:name, :id], request.search, request.locale)
+      |> search([:name, :id], request.search, request.locale, account_id)
       |> filter_by(status: filter[:status])
       |> ExternalFile.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
@@ -65,6 +65,28 @@ defmodule BlueJet.FileStorage do
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def get_external_file(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "file_storage.get_external_file") do
+      do_get_external_file(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_external_file(request = %AccessRequest{ vas: vas, params: %{ id: id }}) do
+    external_file = ExternalFile |> ExternalFile.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    if external_file do
+      external_file =
+        external_file
+        |> ExternalFile.put_url()
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: external_file }}
+    else
+      {:error, :not_found}
     end
   end
 
@@ -139,8 +161,13 @@ defmodule BlueJet.FileStorage do
   def do_list_external_file_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       ExternalFileCollection.Query.default()
-      |> search([:name, :label, :id], request.search, request.locale)
-      |> filter_by(label: filter[:label], content_type: filter[:content_type])
+      |> search([:name, :label, :id], request.search, request.locale, account_id)
+      |> filter_by(
+          owner_id: filter[:owner_id],
+          owner_type: filter[:owner_type],
+          label: filter[:label],
+          content_type: filter[:content_type]
+         )
       |> ExternalFileCollection.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
 

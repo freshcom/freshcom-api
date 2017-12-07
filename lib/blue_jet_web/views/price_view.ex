@@ -37,13 +37,11 @@ defmodule BlueJetWeb.PriceView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def product(struct, %{ assigns: %{ locale: locale } }) do
-    case struct.product do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:product)
-        |> Repo.one()
-      other -> other
+  def product(price = %{ product: %Ecto.Association.NotLoaded{} }, _) do
+    case price.product_id do
+      nil -> nil
+      _ -> %{ type: "Product", id: price.product_id }
     end
   end
+  def product(price, _), do: price.product
 end

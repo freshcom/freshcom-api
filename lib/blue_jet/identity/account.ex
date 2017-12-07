@@ -7,6 +7,7 @@ defmodule BlueJet.Identity.Account do
 
   schema "accounts" do
     field :name, :string
+    field :default_locale, :string
 
     timestamps()
 
@@ -21,7 +22,7 @@ defmodule BlueJet.Identity.Account do
   """
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, [:name])
+    |> cast(params, [:name, :default_locale])
   end
 
   defmodule Query do

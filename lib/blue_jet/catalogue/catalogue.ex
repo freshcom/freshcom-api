@@ -22,7 +22,7 @@ defmodule BlueJet.Catalogue do
   def do_list_product(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       Product.Query.default()
-      |> search([:name], request.search, request.locale)
+      |> search([:name], request.search, request.locale, account_id)
       |> filter_by(status: filter[:status], item_mode: filter[:item_mode], parent_id: filter[:parent_id])
 
     query = if filter[:parent_id] do
@@ -173,7 +173,7 @@ defmodule BlueJet.Catalogue do
   def do_list_price(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       Price.Query.default()
-      |> search([:name, :id], request.search, request.locale)
+      |> search([:name, :id], request.search, request.locale, account_id)
       |> filter_by(product_id: filter[:product_id], label: filter[:label])
       |> Price.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)

@@ -23,7 +23,7 @@ defmodule BlueJet.Identity do
 
     def create_global_user(fields) do
       Multi.new()
-      |> Multi.append(create_account(%{ name: fields.account_name }))
+      |> Multi.append(create_account(%{ name: fields.account_name, default_locale: fields.default_locale }))
       |> Multi.run(:user, fn(%{ account: account }) ->
           Repo.insert(User.changeset(%User{}, Map.merge(fields, %{ default_account_id: account.id })))
         end)

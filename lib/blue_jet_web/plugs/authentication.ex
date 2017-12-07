@@ -20,7 +20,6 @@ defmodule BlueJet.Plugs.Authentication do
   end
 
   def verify_access_token(access_token) do
-    IO.inspect access_token
     with {true, %{ "prn" => _, "exp" => exp } = fields} <- BlueJet.Identity.Jwt.verify_token(access_token),
          true <- exp >= System.system_time(:second)
     do

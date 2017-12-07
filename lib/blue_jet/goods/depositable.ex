@@ -1,14 +1,15 @@
-defmodule BlueJet.Goods.PointDeposit do
+defmodule BlueJet.Goods.Depositable do
   use BlueJet, :data
 
   use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.Goods.PointDeposit
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
+  alias BlueJet.AccessRequest
+  alias BlueJet.FileStorage
 
-  schema "point_deposits" do
+  alias BlueJet.Goods.Depositable
+
+  schema "depositables" do
     field :account_id, Ecto.UUID
 
     field :code, :string
@@ -23,10 +24,11 @@ defmodule BlueJet.Goods.PointDeposit do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    timestamps()
+    field :avatar_id, Ecto.UUID
+    field :avatar, :map, virtual: true
+    field :external_file_collections, {:array, :map}, virtual: true, default: []
 
-    belongs_to :avatar, ExternalFile
-    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id
+    timestamps()
   end
 
   def system_fields do
@@ -38,11 +40,11 @@ defmodule BlueJet.Goods.PointDeposit do
   end
 
   def writable_fields do
-    PointDeposit.__schema__(:fields) -- system_fields()
+    Depositable.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    PointDeposit.__trans__(:fields)
+    Depositable.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -56,7 +58,6 @@ defmodule BlueJet.Goods.PointDeposit do
     changeset
     |> validate_required([:account_id, :status, :name, :print_name, :amount])
     |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope(:avatar)
   end
 
   @doc """
@@ -69,8 +70,25 @@ defmodule BlueJet.Goods.PointDeposit do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def query() do
-    from(u in PointDeposit, order_by: [desc: u.updated_at])
+  def put_external_resources(depositable = %Depositable{ avatar_id: nil }, :avatar) do
+    depositable
+  end
+  def put_external_resources(depositable, :avatar) do
+    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
+      vas: %{ account_id: depositable.account_id },
+      params: %{ id: depositable.avatar_id }
+    })
+
+    %{ depositable | avatar: avatar }
+  end
+  def put_external_resources(depositable, :external_file_collections) do
+    {:ok, %{ data: efcs }} = FileStorage.do_list_external_file_collection(%AccessRequest{
+      vas: %{ account_id: depositable.account_id },
+      filter: %{ owner_id: depositable.id, owner_type: "Depositable" },
+      pagination: %{ size: 5, number: 1 }
+    })
+
+    %{ depositable | external_file_collections: efcs }
   end
 
   defmodule Query do
@@ -80,16 +98,12 @@ defmodule BlueJet.Goods.PointDeposit do
       from(pd in query, where: pd.account_id == ^account_id)
     end
 
-    def preloads(:avatar) do
-      [avatar: ExternalFile.Query.default()]
-    end
-
-    def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("PointDeposit")]
+    def preloads(_) do
+      []
     end
 
     def default() do
-      from(pd in PointDeposit, order_by: [desc: :updated_at])
+      from(pd in Depositable, order_by: [desc: :updated_at])
     end
   end
 end
