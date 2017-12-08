@@ -6,6 +6,8 @@ defmodule BlueJet.Catalogue do
   alias BlueJet.FileStorage
 
   alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.ProductCollection
+  alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.Price
 
   ######
@@ -22,7 +24,7 @@ defmodule BlueJet.Catalogue do
     query =
       Product.Query.default()
       |> search([:name], request.search, request.locale, account_id)
-      |> filter_by(status: filter[:status], item_mode: filter[:item_mode], parent_id: filter[:parent_id])
+      |> filter_by(status: filter[:status], kind: filter[:kind], parent_id: filter[:parent_id])
 
     query = if filter[:parent_id] do
       query |> Product.Query.for_account(account_id)
@@ -156,6 +158,111 @@ defmodule BlueJet.Catalogue do
         Repo.delete!(product)
       !product ->
         {:error, :not_found}
+    end
+  end
+
+
+  ######
+  # ProductCollection
+  ######
+  def list_product_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product_collection") do
+      do_list_product_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_product_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+    query =
+      ProductCollection.Query.default()
+      |> search([:name], request.search, request.locale, account_id)
+      |> filter_by(status: filter[:status], label: filter[:label])
+      |> ProductCollection.Query.for_account(account_id)
+    result_count = Repo.aggregate(query, :count, :id)
+
+    total_query = ProductCollection |> ProductCollection.Query.for_account(account_id)
+    total_count = Repo.aggregate(total_query, :count, :id)
+
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    product_collections =
+      Repo.all(query)
+      |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        total_count: total_count,
+        result_count: result_count,
+      },
+      data: product_collections
+    }
+
+    {:ok, response}
+  end
+
+  def create_product_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection") do
+      do_create_product_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_product_collection(request = %{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = ProductCollection.changeset(%ProductCollection{}, fields)
+
+    with {:ok, product_collection} <- Repo.insert(changeset) do
+      product_collection = Repo.preload(product_collection, ProductCollection.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: product_collection }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def get_product_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product_collection") do
+      do_get_product_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    if product_collection do
+      product_collection =
+        product_collection
+        |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: product_collection }}
+    else
+      {:error, :not_found}
+    end
+  end
+
+  #
+  # ProductCollectionMembership
+  #
+  def create_product_collection_membership(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection_membership") do
+      do_create_product_collection_membership(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_product_collection_membership(request = %{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = ProductCollectionMembership.changeset(%ProductCollectionMembership{}, fields)
+
+    with {:ok, product_collection_membership} <- Repo.insert(changeset) do
+      product_collection_membership = Repo.preload(product_collection_membership, ProductCollection.Query.preloads(request.preloads))
+      {:ok, %AccessResponse{ data: product_collection_membership }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 

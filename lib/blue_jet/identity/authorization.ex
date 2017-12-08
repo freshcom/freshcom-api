@@ -21,6 +21,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_product_item",
       "catalogue.list_price",
       "catalogue.get_price",
+      "catalogue.list_product_collection",
 
       "crm.get_customer",
       "crm.create_customer",
@@ -46,11 +47,14 @@ defmodule BlueJet.Identity.Authorization do
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
+
       "catalogue.get_product",
       "catalogue.list_product_item",
       "catalogue.get_product_item",
       "catalogue.list_price",
       "catalogue.get_price",
+      "catalogue.list_product_collection",
+      "catalogue.get_product_collection",
 
       "crm.get_customer",
       "crm.update_customer",
@@ -59,18 +63,21 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.create_order",
       "storefront.get_order",
       "storefront.update_order",
+      "storefront.create_order_line_item",
+      "storefront.update_order_line_item",
+      "storefront.delete_order_line_item",
+      "storefront.list_unlock",
 
       "billing.list_payment",
       "billing.create_payment",
       "billing.get_payment",
       "billing.list_card",
       "billing.update_card",
-      "billing.delete_card",
+      "billing.delete_card"
+    ],
 
-      "storefront.create_order_line_item",
-      "storefront.update_order_line_item",
-      "storefront.delete_order_line_item",
-      "storefront.list_unlock"
+    "marketing_specialist" => [
+
     ],
 
     "support_specialist" => [
@@ -102,6 +109,10 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
       "catalogue.update_price",
       "catalogue.delete_price",
+      "catalogue.list_product_collection",
+      "catalogue.create_product_collection",
+      "catalogue.get_product_collection",
+      "catalogue.create_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
@@ -166,7 +177,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_product",
       "catalogue.get_product_item",
       "catalogue.list_price",
-      "catalogue.get_price"
+      "catalogue.get_price",
+      "catalogue.list_product_collection",
+      "catalogue.get_product_collection"
     ],
 
     "developer" => [
@@ -211,6 +224,10 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
       "catalogue.update_price",
       "catalogue.delete_price",
+      "catalogue.list_product_collection",
+      "catalogue.create_product_collection",
+      "catalogue.get_product_collection",
+      "catalogue.create_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
@@ -283,6 +300,10 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
       "catalogue.update_price",
       "catalogue.delete_price",
+      "catalogue.list_product_collection",
+      "catalogue.create_product_collection",
+      "catalogue.get_product_collection",
+      "catalogue.create_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
