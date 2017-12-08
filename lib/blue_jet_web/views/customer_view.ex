@@ -25,9 +25,12 @@ defmodule BlueJetWeb.CustomerView do
     :updated_at
   ]
 
-  has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
   has_one :enroller, serializer: BlueJetWeb.CustomerView, identifiers: :always
   has_one :sponsor, serializer: BlueJetWeb.CustomerView, identifiers: :always
+
+  has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
+  has_one :point_account, serializer: BlueJetWeb.PointAccountView, identifiers: :when_included
+
   has_many :unlocks, serializer: BlueJetWeb.UnlockView, identifiers: :when_included
   has_many :orders, serializer: BlueJetWeb.OrderView, identifiers: :when_included
   has_many :cards, serializer: BlueJetWeb.CardView, identifiers: :when_included
@@ -38,25 +41,20 @@ defmodule BlueJetWeb.CustomerView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def enroller(%{ enroller_id: nil }, conn) do
-    nil
-  end
-  def enroller(struct = %{ enroller_id: enroller_id }, conn) do
-    case struct.enroller do
-      %Ecto.Association.NotLoaded{} ->
-        %{ id: enroller_id, type: "Customer" }
-      other -> other
+  def enroller(customer = %{ enroller: %Ecto.Association.NotLoaded{} }, _) do
+    case customer.enroller_id do
+      nil -> nil
+      _ -> %{ type: "Customer", id: customer.enroller_id }
     end
   end
+  def enroller(customer, _), do: Map.get(customer, :enroller)
 
-  def sponsor(%{ sponsor_id: nil }, conn) do
-    nil
-  end
-  def sponsor(struct = %{ sponsor_id: sponsor_id }, conn) do
-    case struct.sponsor do
-      %Ecto.Association.NotLoaded{} ->
-        %{ id: sponsor_id, type: "Customer" }
-      other -> other
+  def sponsor(customer = %{ sponsor: %Ecto.Association.NotLoaded{} }, _) do
+    case customer.sponsor_id do
+      nil -> nil
+      _ -> %{ type: "Customer", id: customer.sponsor_id }
     end
   end
+  def sponsor(customer, _), do: Map.get(customer, :spnosor)
+
 end

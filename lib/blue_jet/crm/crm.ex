@@ -8,6 +8,8 @@ defmodule BlueJet.CRM do
   alias BlueJet.Billing
 
   alias BlueJet.CRM.Customer
+  alias BlueJet.CRM.PointAccount
+  alias BlueJet.CRM.PointTransaction
 
   def handle_event("billing.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
     customer = Repo.get!(Customer, customer_id)
@@ -95,6 +97,10 @@ defmodule BlueJet.CRM do
       |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)
          end)
+      |> Multi.run(:point_account, fn(%{ customer: customer }) ->
+          changeset = PointAccount.changeset(%PointAccount{}, %{ customer_id: customer.id, account_id: customer.account_id })
+          Repo.insert(changeset)
+         end)
 
     case Repo.transaction(statements) do
       {:ok, %{ customer: customer }} ->
@@ -135,6 +141,10 @@ defmodule BlueJet.CRM do
   def do_get_customer(%AccessRequest{ role: "guest" }), do: {:error, :not_found}
   def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ code: code } }) do
     customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_customer_response(customer, request)
+  end
+  def do_get_customer(request = %AccessRequest{ role: "customer", vas: %{ account_id: account_id, user_id: user_id } }) do
+    customer = Customer |> Customer.Query.for_account(account_id) |> Repo.get_by(user_id: user_id)
     do_get_customer_response(customer, request)
   end
   def do_get_customer(_), do: {:error, :not_found}
@@ -239,6 +249,44 @@ defmodule BlueJet.CRM do
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found}
+    end
+  end
+
+  #
+  # PointTransaction
+  #
+  def create_point_transaction(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "crm.create_point_transaction") do
+      do_create_point_transaction(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_create_point_transaction(request = %AccessRequest{ vas: vas }) do
+    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    changeset = PointTransaction.changeset(%PointTransaction{}, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:point_transaction, changeset)
+      |> Multi.run(:point_account, fn(%{ point_transaction: point_transaction }) ->
+          case point_transaction.status do
+            "committed" ->
+              point_transaction = Repo.preload(point_transaction, :point_account)
+              new_balance = point_transaction.point_account.balance + point_transaction.amount
+
+              changeset = Changeset.change(point_transaction.point_account, %{ balance: new_balance })
+              Repo.update(changeset)
+            other -> {:ok, nil}
+          end
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ point_transaction: point_transaction }} ->
+        point_transaction = Repo.preload(point_transaction, PointTransaction.Query.preloads(request.preloads))
+        {:ok, %AccessResponse{ data: point_transaction }}
+      {:error, :point_transaction, changeset, _} ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 end

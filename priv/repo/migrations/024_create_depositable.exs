@@ -18,6 +18,8 @@ defmodule BlueJet.Repo.Migrations.CreatePointDeposit do
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
+      add :target_type, :string, null: false
+
       timestamps()
     end
 

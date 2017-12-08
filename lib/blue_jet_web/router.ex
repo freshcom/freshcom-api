@@ -54,9 +54,7 @@ defmodule BlueJetWeb.Router do
     #
     # Catalogue
     #
-    resources "/products", ProductController, except: [:new, :edit] do
-      resources "/items", ProductItemController, only: [:create]
-    end
+    resources "/products", ProductController, except: [:new, :edit]
     resources "/prices", PriceController, except: [:new, :edit]
 
     #####

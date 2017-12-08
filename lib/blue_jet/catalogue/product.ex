@@ -18,7 +18,6 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Goods
 
-  alias BlueJet.Catalogue.ProductItem
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
   alias BlueJet.FileStorage.ExternalFile

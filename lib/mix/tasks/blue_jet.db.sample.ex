@@ -22,6 +22,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
     alias BlueJet.Storefront
+    alias BlueJet.CRM
 
     ensure_started(Repo, [])
 
@@ -37,7 +38,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
 
 
-    {:ok, %{ data: customer }} = Storefront.create_customer(%AccessRequest{
+    {:ok, %{ data: customer }} = CRM.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
       fields: %{
         "first_name" => "Tiffany",
@@ -52,6 +53,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "60050",
       "status" => "active",
+      "target_type" => "PointAccount",
       "name" => "充值$50",
       "print_name" => "充值$50",
       "amount" => 5000
@@ -89,6 +91,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "60100",
       "status" => "active",
+      "target_type" => "PointAccount",
       "name" => "充值$100",
       "print_name" => "充值$100",
       "amount" => 10000

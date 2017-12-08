@@ -149,6 +149,7 @@ defmodule BlueJet.Storefront.Order do
         from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: oli.source_type == "Unlockable")
         |> Repo.aggregate(:count, :id)
 
+      # TODO: Also need to consider depositable
       case ordered_unlockable_count do
         0 -> changeset
         _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: "order_with_unlockable_must_associate_customer", full_error_message: true])

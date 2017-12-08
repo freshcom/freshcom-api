@@ -24,6 +24,8 @@ defmodule BlueJet.Goods.Depositable do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
+    field :target_type, :string
+
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
     field :external_file_collections, {:array, :map}, virtual: true, default: []
@@ -95,7 +97,7 @@ defmodule BlueJet.Goods.Depositable do
     use BlueJet, :query
 
     def for_account(query, account_id) do
-      from(pd in query, where: pd.account_id == ^account_id)
+      from(d in query, where: d.account_id == ^account_id)
     end
 
     def preloads(_) do
@@ -103,7 +105,7 @@ defmodule BlueJet.Goods.Depositable do
     end
 
     def default() do
-      from(pd in Depositable, order_by: [desc: :updated_at])
+      from(d in Depositable, order_by: [desc: :updated_at])
     end
   end
 end

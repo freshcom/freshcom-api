@@ -2,7 +2,7 @@ defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
   alias BlueJet.Identity
-  alias BlueJet.Storefront
+  alias BlueJet.CRM
 
   alias BlueJet.DataTrading.DataImport
 
@@ -43,7 +43,7 @@ defmodule BlueJet.DataTrading do
             enroller_id = cond do
               row["enroller_id"] && row["enroller_id"] != "" -> row["enroller_id"]
               row["enroller_code"] && row["enroller_code"] != "" ->
-                result = Storefront.do_get_customer(%AccessRequest{
+                result = CRM.do_get_customer(%AccessRequest{
                   vas: %{ account_id: import_data.account_id },
                   params: %{ code: row["enroller_code"] }
                 })
@@ -57,7 +57,7 @@ defmodule BlueJet.DataTrading do
             sponsor_id = cond do
               row["sponsor_id"] && row["sponsor_id"] != "" -> row["sponsor_id"]
               row["sponsor_code"] && row["sponsor_code"] != "" ->
-                result = Storefront.do_get_customer(%AccessRequest{
+                result = CRM.do_get_customer(%AccessRequest{
                   vas: %{ account_id: import_data.account_id },
                   params: %{ code: row["sponsor_code"] }
                 })
@@ -69,12 +69,12 @@ defmodule BlueJet.DataTrading do
             end
 
             customer = if row["id"] && row["id"] != "" do
-              {:ok, %{ data: sponsor}} = Storefront.do_get_customer(%AccessRequest{
+              {:ok, %{ data: sponsor}} = CRM.do_get_customer(%AccessRequest{
                 vas: %{ account_id: import_data.account_id },
                 params: %{ id: row["id"] }
               })
             else
-              result = Storefront.do_get_customer(%AccessRequest{
+              result = CRM.do_get_customer(%AccessRequest{
                 vas: %{ account_id: import_data.account_id },
                 params: %{ code: row["code"] }
               })
@@ -107,12 +107,12 @@ defmodule BlueJet.DataTrading do
 
             case customer do
               nil ->
-                {:ok, response} = Storefront.do_create_customer(%AccessRequest{
+                {:ok, response} = CRM.do_create_customer(%AccessRequest{
                   vas: %{ account_id: import_data.account_id },
                   fields: fields
                 })
               customer ->
-                {:ok, response} = Storefront.do_update_customer(%AccessRequest{
+                {:ok, response} = CRM.do_update_customer(%AccessRequest{
                   vas: %{ account_id: import_data.account_id },
                   params: %{ customer_id: customer.id },
                   fields: fields

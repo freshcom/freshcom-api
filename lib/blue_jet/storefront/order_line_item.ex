@@ -11,6 +11,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Translation
 
   alias BlueJet.Goods
+  alias BlueJet.CRM
+
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
 
@@ -464,6 +466,28 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     changeset = Unlock.changeset(%Unlock{}, %{ account_id: line_item.account_id, unlockable_id: source_id, customer_id: customer.id })
     Repo.insert!(changeset)
+  end
+  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+    {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
+      vas: %{ account_id: line_item.account_id },
+      params: %{ id: source_id }
+    })
+
+    if depositable.target_type == "PointAccount" do
+      {:ok, _} = CRM.do_create_point_transaction(%AccessRequest{
+        vas: %{ account_id: line_item.account_id },
+        fields: %{
+          "status" => "committed",
+          "customer_id" => customer.id,
+          "amount" => line_item.order_quantity * depositable.amount,
+          "reason_label" => "self_deposit",
+          "source_id" => line_item.id,
+          "source_type" => "OrderLineItem"
+        }
+      })
+    else
+      line_item
+    end
   end
   def process(line_item, _, _, _) do
     {:ok, line_item}

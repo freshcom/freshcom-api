@@ -42,7 +42,7 @@ defmodule BlueJetWeb.OrderLineItemView do
   ]
 
   has_many :children, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
-  has_one :product, serializer: BlueJetWeb.ProductItemView, identifiers: :always
+  has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_one :price, serializer: BlueJetWeb.PriceView, identifiers: :always
   has_one :order, serializer: BlueJetWeb.OrderView, identifiers: :always
 

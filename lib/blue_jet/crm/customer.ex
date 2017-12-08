@@ -8,6 +8,7 @@ defmodule BlueJet.CRM.Customer do
   alias BlueJet.Translation
 
   alias BlueJet.CRM.Customer
+  alias BlueJet.CRM.PointAccount
 
   @type t :: Ecto.Schema.t
 
@@ -31,6 +32,7 @@ defmodule BlueJet.CRM.Customer do
 
     timestamps()
 
+    has_one :point_account, PointAccount
     belongs_to :enroller, Customer
     belongs_to :sponsor, Customer
   end
@@ -188,6 +190,12 @@ defmodule BlueJet.CRM.Customer do
       end
     end
 
+    def preloads(:point_account) do
+      [point_account: PointAccount.Query.default()]
+    end
+    def preloads({:point_account, point_account_preloads}) do
+      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads)}]
+    end
     def preloads(_) do
       []
     end
