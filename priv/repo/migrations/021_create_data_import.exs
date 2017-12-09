@@ -6,7 +6,7 @@ defmodule BlueJet.Repo.Migrations.CreateDataImport do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string
-      add :data_url, :string
+      add :data_url, :text
       add :data_type, :string
 
       add :data_count, :integer

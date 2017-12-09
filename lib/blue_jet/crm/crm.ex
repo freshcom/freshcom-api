@@ -120,10 +120,6 @@ defmodule BlueJet.CRM do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    do_get_customer_response(customer, request)
-  end
   def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
     do_get_customer_response(customer, request)
@@ -139,12 +135,13 @@ defmodule BlueJet.CRM do
     end
   end
   def do_get_customer(%AccessRequest{ role: "guest" }), do: {:error, :not_found}
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ code: code } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
-    do_get_customer_response(customer, request)
-  end
   def do_get_customer(request = %AccessRequest{ role: "customer", vas: %{ account_id: account_id, user_id: user_id } }) do
     customer = Customer |> Customer.Query.for_account(account_id) |> Repo.get_by(user_id: user_id)
+    do_get_customer_response(customer, request)
+  end
+  def do_get_customer(%AccessRequest{ role: "customer" }), do: {:error, :not_found}
+  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
     do_get_customer_response(customer, request)
   end
   def do_get_customer(_), do: {:error, :not_found}
@@ -230,8 +227,8 @@ defmodule BlueJet.CRM do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_customer(request = %AccessRequest{ vas: vas, params: %{ customer_id: customer_id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(customer_id)
+  def do_delete_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     statements =
       Multi.new()

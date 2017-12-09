@@ -55,7 +55,7 @@ defmodule BlueJet.Goods.Unlockable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name, :print_name])
+    |> validate_required([:account_id, :status, :name])
     |> foreign_key_constraint(:account_id)
   end
 
@@ -66,8 +66,15 @@ defmodule BlueJet.Goods.Unlockable do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+  def put_print_name(changeset), do: changeset
 
   def put_external_resources(unlockable = %Unlockable{ avatar_id: nil }, :avatar) do
     unlockable

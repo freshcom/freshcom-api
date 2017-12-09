@@ -76,10 +76,10 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => customer_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ customer_id: customer_id }
+      params: params
     }
 
     CRM.delete_customer(request)

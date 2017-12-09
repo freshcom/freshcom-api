@@ -41,10 +41,10 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: params,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
@@ -57,7 +57,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
   def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Unlockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -73,10 +73,10 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id }
+      params: params
     }
 
     Goods.delete_unlockable(request)

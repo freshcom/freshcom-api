@@ -199,21 +199,25 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
-
-    if unlockable do
-      unlockable =
-        unlockable
-        |> Repo.preload(Unlockable.Query.preloads(request.preloads))
-        |> Unlockable.put_external_resources(request.preloads)
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: unlockable }}
-    else
-      {:error, :not_found}
-    end
+    do_get_unlockable_response(unlockable, request)
   end
+  def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
+    unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_unlockable_response(unlockable, request)
+  end
+  def do_get_unlockable_response(nil, _), do: {:error, :not_found}
+  def do_get_unlockable_response(unlockable, request) do
+    unlockable =
+      unlockable
+      |> Repo.preload(Unlockable.Query.preloads(request.preloads))
+      |> Unlockable.put_external_resources(request.preloads)
+      |> Translation.translate(request.locale)
+
+    {:ok, %AccessResponse{ data: unlockable }}
+  end
+
 
   def update_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.update_unlockable") do
@@ -222,7 +226,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_unlockable(request = %{ vas: vas, params: %{ id: id }}) do
+  def do_update_unlockable(request = %{ vas: vas, params: %{ "id" => id }}) do
     unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
     changeset = Unlockable.changeset(unlockable, request.fields, request.locale)
 
@@ -250,7 +254,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_unlockable(%AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_delete_unlockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get!(id)
     if unlockable do
       Repo.delete!(unlockable)
