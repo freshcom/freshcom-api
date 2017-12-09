@@ -72,7 +72,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_stockable(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_get_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     if stockable do
@@ -94,7 +94,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_stockable(request = %AccessRequest{ vas: vas, params: %{ id: id }}) do
+  def do_update_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
     stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     with %Stockable{} <- stockable,
@@ -122,7 +122,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get!(id)
 
     if stockable do
@@ -217,7 +217,6 @@ defmodule BlueJet.Goods do
 
     {:ok, %AccessResponse{ data: unlockable }}
   end
-
 
   def update_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.update_unlockable") do
@@ -330,7 +329,7 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_depositable(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_get_depositable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     if depositable do
@@ -353,8 +352,8 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_depositable(request = %{ vas: vas, params: %{ depositable_id: depositable_id }}) do
-    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(depositable_id)
+  def do_update_depositable(request = %{ vas: vas, params: %{ "id" => id }}) do
+    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(id)
     changeset = Depositable.changeset(depositable, request.fields, request.locale)
 
     with %Depositable{} <- depositable,
@@ -381,8 +380,8 @@ defmodule BlueJet.Goods do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_depositable(%AccessRequest{ vas: vas, params: %{ depositable_id: depositable_id } }) do
-    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get!(depositable_id)
+  def do_delete_depositable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get!(id)
     if depositable do
       Repo.delete!(depositable)
       {:ok, %AccessResponse{}}

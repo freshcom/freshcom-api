@@ -45,7 +45,7 @@ defmodule BlueJetWeb.DepositableController do
   def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: %{ "id" => id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
@@ -55,10 +55,10 @@ defmodule BlueJetWeb.DepositableController do
     render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => depositable_id, "data" => data = %{ "type" => "Depositable" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Depositable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ depositable_id: depositable_id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -74,10 +74,10 @@ defmodule BlueJetWeb.DepositableController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => depositable_id }) do
+  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ depositable_id: depositable_id }
+      params: %{ "id" => id }
     }
 
     Goods.delete_depositable(request)

@@ -4,6 +4,7 @@ defmodule BlueJetWeb.ProductView do
 
   attributes [
     :status,
+    :code,
     :kind,
     :name_sync,
     :name,

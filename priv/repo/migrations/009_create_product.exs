@@ -5,6 +5,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
     create table(:products, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :code, :string
       add :kind, :string, null: false, default: "simple"
       add :status, :string, null: false
 
@@ -14,7 +15,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :print_name, :string
 
       add :sort_index, :integer
-      add :source_quantity, :integer
+      add :source_quantity, :integer, null: false
       add :primary, :boolean, null: false, default: false
       add :maximum_public_order_quantity, :integer
 
@@ -33,8 +34,9 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       timestamps()
     end
 
+    create unique_index(:products, [:account_id, :code], where: "code IS NOT NULL")
+    create unique_index(:products, [:account_id, :print_name])
     create index(:products, [:account_id, :name])
     create index(:products, [:account_id, :status])
-    create unique_index(:products, [:account_id, :print_name])
   end
 end

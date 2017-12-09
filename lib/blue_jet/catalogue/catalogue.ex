@@ -84,19 +84,22 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_product(request = %AccessRequest{ vas: vas, params: %{ product_id: product_id } }) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(product_id)
+  def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    do_get_product_response(product, request)
+  end
+  def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
+    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_product_response(product, request)
+  end
+  defp do_get_product_response(nil, _), do: {:error, :not_found}
+  defp do_get_product_response(product, request) do
+    product =
+      product
+      |> Repo.preload(Product.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
 
-    if product do
-      product =
-        product
-        |> Repo.preload(Product.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: product }}
-    else
-      {:error, :not_found}
-    end
+    {:ok, %AccessResponse{ data: product }}
   end
 
   def update_product(request = %AccessRequest{ vas: vas }) do
@@ -106,8 +109,8 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_product(request = %AccessRequest{ vas: vas, params: %{ product_id: product_id }}) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(product_id)
+  def do_update_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
+    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     with %Product{} <- product,
          changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale)

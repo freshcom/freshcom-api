@@ -7,7 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateUnlockable do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :avatar_id, references(:external_files, type: :binary_id, on_delete: :nilify_all)
       add :code, :string
-      add :status, :string
+      add :status, :string, null: false
       add :name, :string
       add :print_name, :string
 

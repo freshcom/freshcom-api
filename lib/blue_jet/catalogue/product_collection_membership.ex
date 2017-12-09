@@ -38,6 +38,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     changeset
     |> validate_required([:account_id, :collection_id, :product_id])
     |> foreign_key_constraint(:account_id)
+    |> unique_constraint(:product_id, name: :product_collection_memberships_product_id_collection_id_index)
     |> validate_assoc_account_scope([:collection, :product])
   end
 
@@ -62,7 +63,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     end
 
     def default() do
-      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index])
+      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index], limit: 10)
     end
   end
 end

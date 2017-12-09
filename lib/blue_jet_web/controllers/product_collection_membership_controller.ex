@@ -22,13 +22,9 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
-    fields =
-      Params.to_attributes(data)
-      |> underscore_value(["kind", "name_sync"])
-
     request = %AccessRequest{
       vas: assigns[:vas],
-      fields: fields,
+      fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 

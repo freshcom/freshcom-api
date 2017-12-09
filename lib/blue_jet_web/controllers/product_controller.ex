@@ -44,10 +44,10 @@ defmodule BlueJetWeb.ProductController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => product_id }) do
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ product_id: product_id },
+      params: %{ "id" => id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
@@ -57,14 +57,14 @@ defmodule BlueJetWeb.ProductController do
     render(conn, "show.json-api", data: product, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => product_id, "data" => data = %{ "type" => "Product" } }) do
+  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Product" } }) do
     fields =
       Params.to_attributes(data)
       |> underscore_value(["kind", "name_sync"])
 
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ product_id: product_id },
+      params: %{ "id" => id },
       fields: fields,
       preloads: assigns[:preloads],
       locale: assigns[:locale]

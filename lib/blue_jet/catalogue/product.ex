@@ -28,6 +28,7 @@ defmodule BlueJet.Catalogue.Product do
 
     field :kind, :string, default: "simple"
     field :status, :string, default: "draft"
+    field :code, :string
 
     field :name_sync, :string, default: "disabled"
     field :name, :string
@@ -35,7 +36,7 @@ defmodule BlueJet.Catalogue.Product do
     field :print_name, :string
 
     field :sort_index, :integer
-    field :source_quantity, :integer
+    field :source_quantity, :integer, default: 1
     field :maximum_public_order_quantity, :integer
     field :primary, :boolean, default: false
 
@@ -226,7 +227,7 @@ defmodule BlueJet.Catalogue.Product do
   def source(account_id, source_id, "Stockable") do
     response = Goods.do_get_stockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ id: source_id }
+      params: %{ "id" => source_id }
     })
 
     case response do
@@ -237,7 +238,7 @@ defmodule BlueJet.Catalogue.Product do
   def source(account_id, source_id, "Unlockable") do
     response = Goods.do_get_unlockable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ id: source_id }
+      params: %{ "id" => source_id }
     })
 
     case response do
@@ -248,7 +249,7 @@ defmodule BlueJet.Catalogue.Product do
   def source(account_id, source_id, "Depositable") do
     response = Goods.do_get_depositable(%AccessRequest{
       vas: %{ account_id: account_id },
-      params: %{ id: source_id }
+      params: %{ "id" => source_id }
     })
 
     case response do

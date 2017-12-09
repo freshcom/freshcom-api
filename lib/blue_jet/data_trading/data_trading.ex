@@ -4,6 +4,7 @@ defmodule BlueJet.DataTrading do
   alias BlueJet.Identity
   alias BlueJet.CRM
   alias BlueJet.Goods
+  alias BlueJet.Catalogue
 
   alias BlueJet.DataTrading.DataImport
 
@@ -47,20 +48,13 @@ defmodule BlueJet.DataTrading do
   def import_resource(row, account_id, "Customer") do
     enroller_id = extract_customer_id(row, account_id, "enroller")
     sponsor_id = extract_customer_id(row, account_id, "sponsor")
-    custom_data = extract_customer_data(row["custom_data"])
 
-    fields = if custom_data do
-      Map.merge(row, %{
-        "sponsor_id" => sponsor_id,
-        "enroller_id" => enroller_id,
-        "custom_data" => custom_data
-      })
-    else
-      Map.merge(row, %{
-        "sponsor_id" => sponsor_id,
-        "enroller_id" => enroller_id
-      })
-    end
+    fields =
+      merge_custom_data(row, row["custom_data"])
+      |> Map.merge(%{
+          "sponsor_id" => sponsor_id,
+          "enroller_id" => enroller_id
+        })
 
     customer = get_customer(row, account_id)
     case customer do
@@ -78,15 +72,7 @@ defmodule BlueJet.DataTrading do
     end
   end
   def import_resource(row, account_id, "Unlockable") do
-    custom_data = extract_customer_data(row["custom_data"])
-
-    fields = if custom_data do
-      Map.merge(row, %{
-        "custom_data" => custom_data
-      })
-    else
-      row
-    end
+    fields = merge_custom_data(row, row["custom_data"])
 
     unlockable = get_unlockable(row, account_id)
     case unlockable do
@@ -103,39 +89,50 @@ defmodule BlueJet.DataTrading do
         })
     end
   end
+  def import_resource(row, account_id, "Product") do
+    source_id = extract_product_source_id(row, account_id)
+    collection_id = extract_product_collection_id(row, account_id, "collection")
 
-  defp get_customer(row, account_id) do
-    if row["id"] && row["id"] != "" do
-      {:ok, %{ data: sponsor}} = CRM.do_get_customer(%AccessRequest{
-        vas: %{ account_id: account_id },
-        params: %{ "id" => row["id"] }
-      })
-    else
-      result = CRM.do_get_customer(%AccessRequest{
-        vas: %{ account_id: account_id },
-        params: %{ "code" => row["code"] }
-      })
+    fields =
+      merge_custom_data(row, row["custom_data"])
+      |> Map.merge(%{ "source_id" => source_id })
 
-      case result do
-        {:ok, %{ data: customer }} ->
-          customer
-        {:error, :not_found} -> nil
-      end
+    product =
+      get_product(row, account_id)
+      |> update_or_create_product(account_id, fields)
+
+    if collection_id do
+      Catalogue.do_create_product_collection_membership(%AccessRequest{
+        vas: %{ account_id: account_id },
+        fields: %{ "product_id" => product.id, "collection_id" => collection_id, "sort_index" => row["collection_sort_index"] }
+      })
     end
   end
 
-  defp extract_customer_id(row, account_id, relationship_name \\ nil) do
-    id_key = if relationship_name do
-      "#{relationship_name}_id"
-    else
-      "id"
-    end
+  defp extract_product_source_id(%{ "source_id" => source_id }, account_id) when byte_size(source_id) > 0 do
+    source_id
+  end
+  defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account_id) when byte_size(code) > 0 do
+    result = Goods.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
 
-     code_key = if relationship_name do
-      "#{relationship_name}_code"
-    else
-      "code"
+    case result do
+      {:ok, %{ data: unlockable }} ->
+        unlockable.id
+      {:error, :not_found} -> nil
     end
+  end
+
+  defp rel_id_key(nil), do: "id"
+  defp rel_id_key(rel_name), do: "#{rel_name}_id"
+  defp rel_code_key(nil), do: "code"
+  defp rel_code_key(rel_name), do: "#{rel_name}_code"
+
+  defp extract_customer_id(row, account_id, rel_name \\ nil) do
+    id_key = rel_id_key(rel_name)
+    code_key = rel_code_key(rel_name)
 
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
@@ -149,30 +146,131 @@ defmodule BlueJet.DataTrading do
           {:ok, %{ data: customer}} -> customer.id
           other -> nil
         end
+      true -> nil
     end
   end
 
-  defp get_unlockable(row, account_id) do
-    if row["id"] && row["id"] != "" do
-      {:ok, %{ data: sponsor}} = Goods.do_get_unlockable(%AccessRequest{
-        vas: %{ account_id: account_id },
-        params: %{ "id" => row["id"] }
-      })
-    else
-      result = Goods.do_get_unlockable(%AccessRequest{
-        vas: %{ account_id: account_id },
-        params: %{ "code" => row["code"] }
-      })
+  defp extract_product_collection_id(row, account_id, rel_name \\ nil) do
+    id_key = rel_id_key(rel_name)
+    code_key = rel_code_key(rel_name)
 
-      case result do
-        {:ok, %{ data: unlockable }} ->
-          unlockable
-        {:error, :not_found} -> nil
-      end
+    cond do
+      row[id_key] && row[id_key] != "" -> row[id_key]
+      row[code_key] && row[code_key] != "" ->
+        result = Catalogue.do_get_product_collection(%AccessRequest{
+          vas: %{ account_id: account_id },
+          params: %{ "code" => row[code_key] }
+        })
+
+        case result do
+          {:ok, %{ data: product_collection}} -> product_collection.id
+          other -> nil
+        end
+      true -> nil
     end
   end
 
-  defp extract_customer_data(nil), do: nil
-  defp extract_customer_data(""), do: %{}
-  defp extract_customer_data(json), do: Poison.decode!(json)
+  defp get_customer(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+    {:ok, %{ data: customer}} = CRM.do_get_customer(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => id }
+    })
+
+    customer
+  end
+  defp get_customer(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+    result = CRM.do_get_customer(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
+
+    case result do
+      {:ok, %{ data: customer }} ->
+        customer
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp get_unlockable(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+    {:ok, %{ data: unlockable}} = Goods.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => id }
+    })
+
+    unlockable
+  end
+  defp get_unlockable(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+    result = Goods.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
+
+    case result do
+      {:ok, %{ data: unlockable }} ->
+        unlockable
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp get_product(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+    {:ok, %{ data: product}} = Catalogue.do_get_product(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => id }
+    })
+
+    product
+  end
+  defp get_product(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+    result = Catalogue.do_get_product(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
+
+    case result do
+      {:ok, %{ data: product }} ->
+        product
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp get_product_collection(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+    {:ok, %{ data: product_collection}} = Catalogue.do_get_product_collection(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => id }
+    })
+
+    product_collection
+  end
+  defp get_product_collection(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+    result = Catalogue.do_get_product_collection(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
+
+    case result do
+      {:ok, %{ data: product_collection }} ->
+        product_collection
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp update_or_create_product(nil, account_id, fields) do
+    {:ok, %{ data: product }} = Catalogue.do_create_product(%AccessRequest{
+      vas: %{ account_id: account_id },
+      fields: fields
+    })
+    product
+  end
+  defp update_or_create_product(product, account_id, fields) do
+    {:ok, %{ data: product }} = Catalogue.do_update_product(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => product.id },
+      fields: fields
+    })
+    product
+  end
+
+  defp merge_custom_data(row, nil), do: row
+  defp merge_custom_data(row, ""), do: Map.merge(row, %{ "custom_data" => %{} })
+  defp merge_custom_data(json), do: Map.merge(row, %{ "custom_data" => Poison.decode!(json) })
 end

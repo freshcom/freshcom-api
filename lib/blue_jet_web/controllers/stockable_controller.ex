@@ -45,7 +45,7 @@ defmodule BlueJetWeb.StockableController do
   def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: %{ "id" => id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
@@ -58,7 +58,7 @@ defmodule BlueJetWeb.StockableController do
   def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Stockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -77,7 +77,7 @@ defmodule BlueJetWeb.StockableController do
   def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id }
+      params: %{ "id" => id }
     }
 
     Goods.delete_stockable(request)

@@ -13,7 +13,7 @@ defmodule BlueJet.Goods.Stockable do
     field :account_id, Ecto.UUID
 
     field :code, :string
-    field :status, :string
+    field :status, :string, default: "active"
     field :name, :string
     field :print_name, :string
     field :unit_of_measure, :string
