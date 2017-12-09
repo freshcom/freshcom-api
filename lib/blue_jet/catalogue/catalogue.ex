@@ -228,10 +228,40 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ id: id } }) do
+  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    do_get_product_collection_response(product_collection, request)
+  end
+  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_product_collection_response(product_collection, request)
+  end
 
-    if product_collection do
+  defp do_get_product_collection_response(nil, _), do: {:error, :not_found}
+  defp do_get_product_collection_response(product_collection, request) do
+    product_collection =
+      product_collection
+      |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    {:ok, %AccessResponse{ data: product_collection }}
+  end
+
+  def update_product_collection(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product_collection") do
+      do_update_product_collection(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_product_collection(request = %{ vas: vas, params: %{ id: id }}) do
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    changeset = ProductCollection.changeset(product_collection, request.fields, request.locale)
+
+    with %ProductCollection{} <- product_collection,
+         changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale),
+        {:ok, product_collection} <- Repo.update(changeset)
+    do
       product_collection =
         product_collection
         |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
@@ -239,7 +269,9 @@ defmodule BlueJet.Catalogue do
 
       {:ok, %AccessResponse{ data: product_collection }}
     else
-      {:error, :not_found}
+      nil -> {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -263,6 +295,24 @@ defmodule BlueJet.Catalogue do
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  def delete_product_collection_membership(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_collection_membership") do
+      do_delete_product_collection_membership(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_delete_product_collection_membership(%AccessRequest{ vas: vas, params: %{ id: id } }) do
+    pcm = ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    if pcm do
+      Repo.delete!(pcm)
+      {:ok, %AccessRequest{}}
+    else
+      {:error, :not_found}
     end
   end
 

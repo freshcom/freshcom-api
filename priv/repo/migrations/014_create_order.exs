@@ -16,6 +16,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :email, :string
       add :first_name, :string
       add :last_name, :string
+      add :other_name, :string
       add :phone_number, :string
 
       add :delivery_address_line_one, :string

@@ -27,6 +27,7 @@ defmodule BlueJet.Storefront.Order do
     field :email, :string
     field :first_name, :string
     field :last_name, :string
+    field :other_name, :string
     field :phone_number, :string
 
     field :delivery_address_line_one, :string
@@ -106,23 +107,32 @@ defmodule BlueJet.Storefront.Order do
     writable_fields() -- [:account_id]
   end
 
-  def required_fields do
-    [
-      :account_id,
-      :status,
-      :email,
-      :first_name,
-      :last_name
-    ]
+  def required_name_fields(first_name, last_name, other_name) do
+    if other_name do
+      []
+    else
+      [:first_name, :last_name]
+    end
   end
 
   def required_fields(changeset) do
+    id = get_field(changeset, :id)
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
+    other_name = get_field(changeset, :other_name)
+
+    required_name_fields = required_name_fields(first_name, last_name, other_name)
+
     fulfillment_method = get_field(changeset, :fulfillment_method)
 
-    if fulfillment_method == "ship" do
-      required_fields() ++ (delivery_address_fields() -- [:delivery_address_line_two])
-    else
-      required_fields()
+    common_fields = [:account_id, :status, :fulfillment_status, :payment_status]
+    common_fields_for_update = common_fields ++ [:email, :fulfillment_method] ++ required_name_fields
+    cond do
+      id && fulfillment_method == "ship" ->
+        common_fields_for_update ++ (delivery_address_fields() -- [:delivery_address_line_two])
+      id ->
+        common_fields_for_update
+      true -> common_fields
     end
   end
 

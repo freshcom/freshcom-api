@@ -94,7 +94,7 @@ defmodule BlueJet.Billing.Payment do
   def required_fields(changeset) do
     status = get_field(changeset, :status)
     gateway = get_field(changeset, :gateway)
-    common = [:account_id, :gateway]
+    common = [:account_id, :gateway, :amount_cents]
 
     cond do
       gateway == "online" -> common ++ [:processor]

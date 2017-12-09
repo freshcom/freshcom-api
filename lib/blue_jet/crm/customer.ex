@@ -61,17 +61,21 @@ defmodule BlueJet.CRM.Customer do
     writable_fields() -- [:account_id]
   end
 
+  def required_name_fields(first_name, last_name, other_name) do
+    if other_name do
+      []
+    else
+      [:first_name, :last_name]
+    end
+  end
+
   def required_fields(changeset) do
     status = get_field(changeset, :status)
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
     other_name = get_field(changeset, :other_name)
 
-    required_name_fields = if !first_name && !last_name && !other_name do
-      [:first_name, :last_name]
-    else
-      []
-    end
+    required_name_fields = required_name_fields(first_name, last_name, other_name)
 
     common = writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :first_name, :last_name, :code, :phone_number, :label]
     common = common ++ required_name_fields

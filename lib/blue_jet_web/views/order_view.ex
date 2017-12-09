@@ -14,6 +14,7 @@ defmodule BlueJetWeb.OrderView do
     :email,
     :first_name,
     :last_name,
+    :other_name,
     :phone_number,
 
     :delivery_address_line_one,

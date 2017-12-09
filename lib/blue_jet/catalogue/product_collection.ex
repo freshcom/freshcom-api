@@ -22,8 +22,8 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
     timestamps()
 
-    has_many :product_memberships, ProductCollectionMembership, foreign_key: :collection_id
-    has_many :products, through: [:product_memberships, :product]
+    has_many :memberships, ProductCollectionMembership, foreign_key: :collection_id
+    has_many :products, through: [:memberships, :product]
   end
 
   def system_fields do
@@ -74,6 +74,9 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
     def preloads(:products) do
       [products: Product.Query.default()]
+    end
+    def preloads({:memberships, membership_preloads}) do
+      [memberships: {ProductCollectionMembership.Query.default(), ProductCollectionMembership.Query.preloads(membership_preloads)}]
     end
 
     def default() do

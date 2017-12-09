@@ -25,11 +25,17 @@ defmodule BlueJetWeb.RefreshTokenController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    jwt = Repo.get!(RefreshToken, id)
-    render(conn, "show.json-api", data: jwt)
-  end
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
+    {:ok, %AccessResponse{ data: refresh_token }} = Identity.get_refresh_token(request)
+
+    render(conn, "show.json-api", data: refresh_token, opts: [include: conn.query_params["include"]])
+  end
   def update(conn, %{"id" => id, "data" => data = %{"type" => "jwt", "attributes" => _jwt_params}}) do
     jwt = Repo.get!(RefreshToken, id)
     changeset = RefreshToken.changeset(jwt, Params.to_attributes(data))

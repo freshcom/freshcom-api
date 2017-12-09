@@ -49,4 +49,20 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     |> cast(params, castable_fields(struct))
     |> validate()
   end
+
+  defmodule Query do
+    use BlueJet, :query
+
+    def for_account(query, account_id) do
+      from(pcm in query, where: pcm.account_id == ^account_id)
+    end
+
+    def preloads(:product) do
+      [product: Product.Query.default()]
+    end
+
+    def default() do
+      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index])
+    end
+  end
 end

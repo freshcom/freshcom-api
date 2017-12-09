@@ -216,4 +216,22 @@ defmodule BlueJet.Identity do
 
     {:ok, %AccessResponse{}}
   end
+
+  #
+  # RefreshToken
+  #
+  def get_refresh_token(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- authorize(vas, "identity.get_refresh_token") do
+      do_get_refresh_token(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_refresh_token(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
+    refresh_token =
+      RefreshToken.Query.storefront()
+      |> Repo.get_by(account_id: account_id)
+
+    {:ok, %AccessResponse{ data: refresh_token }}
+  end
 end

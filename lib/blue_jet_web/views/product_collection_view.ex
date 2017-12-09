@@ -5,6 +5,7 @@ defmodule BlueJetWeb.ProductCollectionView do
   alias BlueJet.Repo
 
   attributes [
+    :code,
     :name,
     :status,
     :label,
@@ -15,6 +16,7 @@ defmodule BlueJetWeb.ProductCollectionView do
     :updated_at
   ]
 
+  has_many :memberships, serializer: BlueJetWeb.ProductCollectionMembershipView, identifiers: :when_included
   has_many :products, serializer: BlueJetWeb.ProductView, identifiers: :when_included
 
   def type(_, _conn) do

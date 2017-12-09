@@ -86,7 +86,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
       params: %{ id: id }
     }
 
-    Catalogue.delete_product_collection_membership(request)
+    {:ok, _} = Catalogue.delete_product_collection_membership(request)
 
     send_resp(conn, :no_content, "")
   end

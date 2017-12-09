@@ -30,6 +30,7 @@ defmodule BlueJetWeb.Router do
     resources "/members", AccountMemberController, except: [:new, :edit]
     resources "/users", UserController, except: [:new, :edit]
     get "/user", UserController, :show
+    get "/refresh_token", RefreshTokenController, :show
 
     ####
     # File Storage
@@ -56,9 +57,11 @@ defmodule BlueJetWeb.Router do
     #
     resources "/products", ProductController, except: [:new, :edit]
     resources "/prices", PriceController, except: [:new, :edit]
+    get "/product_collection", ProductCollectionController, :show
     resources "/product_collections", ProductCollectionController, except: [:new, :edit] do
-      resources "/memberships", ProductCollectionMembershipController, only: [:create]
+      resources "/memberships", ProductCollectionMembershipController, only: [:index, :create]
     end
+    resources "/product_collection_memberships", ProductCollectionMembershipController, only: [:show, :update, :delete]
 
     #####
     # Storefront

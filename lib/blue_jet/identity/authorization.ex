@@ -112,7 +112,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_product_collection",
       "catalogue.create_product_collection",
       "catalogue.get_product_collection",
+      "catalogue.update_product_collection",
       "catalogue.create_product_collection_membership",
+      "catalogue.delete_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
@@ -186,6 +188,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.get_refresh_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -227,7 +230,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_product_collection",
       "catalogue.create_product_collection",
       "catalogue.get_product_collection",
+      "catalogue.update_product_collection",
       "catalogue.create_product_collection_membership",
+      "catalogue.delete_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
@@ -262,6 +267,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_user",
       "identity.get_user",
       "identity.delete_user",
+      "identity.get_refresh_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -303,7 +309,9 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_product_collection",
       "catalogue.create_product_collection",
       "catalogue.get_product_collection",
+      "catalogue.update_product_collection",
       "catalogue.create_product_collection_membership",
+      "catalogue.delete_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",

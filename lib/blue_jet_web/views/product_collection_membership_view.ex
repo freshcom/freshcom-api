@@ -10,8 +10,8 @@ defmodule BlueJetWeb.ProductCollectionMembershipView do
     :updated_at
   ]
 
-  has_one :collection, serializer: BlueJetWeb.ProductCollectionView
-  has_one :product, serializer: BlueJetWeb.ProductView
+  has_one :collection, serializer: BlueJetWeb.ProductCollectionView, identifiers: :always
+  has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
 
   def collection(membership = %{ collection: %Ecto.Association.NotLoaded{} }, _) do
     case membership.collection_id do
