@@ -61,6 +61,9 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     def preloads(:product) do
       [product: Product.Query.default()]
     end
+    def preloads({:product, product_preloads}) do
+      [product: {Product.Query.default(), Product.Query.preloads(product_preloads)}]
+    end
 
     def default() do
       from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index], limit: 10)
