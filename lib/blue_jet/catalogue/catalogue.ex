@@ -301,6 +301,26 @@ defmodule BlueJet.Catalogue do
     end
   end
 
+  def do_get_product_collection_membership(request = %{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(request = %{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
+    membership =
+      ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas[:account_id])
+      |> Repo.get_by(collection_id: collection_id, product_id: product_id)
+
+    if membership do
+      membership =
+        membership
+        |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: membership }}
+    else
+      {:error, :not_found}
+    end
+  end
+  def do_get_product_collection_membership(_), do: {:error, :not_found}
+
   def delete_product_collection_membership(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_collection_membership") do
       do_delete_product_collection_membership(request)
@@ -385,19 +405,22 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_price(request = %AccessRequest{ vas: vas, params: %{ price_id: price_id } }) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id)
+  def do_get_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    do_get_price_response(price, request)
+  end
+  def do_get_price(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    do_get_price_response(price, request)
+  end
+  def do_get_price_response(nil, _), do: {:error, :not_found}
+  def do_get_price_response(price, request) do
+    price =
+      price
+      |> Repo.preload(Price.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
 
-    if price do
-      price =
-        price
-        |> Repo.preload(Price.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: price }}
-    else
-      {:error, :not_found}
-    end
+    {:ok, %AccessResponse{ data: price }}
   end
 
   def update_price(request = %AccessRequest{ vas: vas }) do
@@ -407,8 +430,8 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_price(request = %AccessRequest{ vas: vas, params: %{ price_id: price_id }}) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id) |> Repo.preload(:parent)
+  def do_update_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id) |> Repo.preload(:parent)
 
     with %Price{} <- price,
          changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale)
@@ -442,8 +465,8 @@ defmodule BlueJet.Catalogue do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_price(%AccessRequest{ vas: vas, params: %{ price_id: price_id } }) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(price_id)
+  def do_delete_price(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     case price.status do
       "disabled" ->

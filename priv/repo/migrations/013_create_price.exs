@@ -4,6 +4,7 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
   def change do
     create table(:prices, primary_key: false) do
       add :id, :binary_id, primary_key: true
+      add :code, :string
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string, null: false
       add :name, :string
@@ -32,6 +33,7 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       timestamps()
     end
 
+    create unique_index(:prices, [:account_id, :code], where: "code IS NOT NULL")
     create index(:prices, [:account_id])
   end
 end

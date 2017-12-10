@@ -12,7 +12,8 @@ defmodule BlueJet.Catalogue.Price do
 
   schema "prices" do
     field :account_id, Ecto.UUID
-    field :status, :string
+    field :code, :string
+    field :status, :string, default: "active"
     field :name, :string
     field :label, :string
     field :caption, :string

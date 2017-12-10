@@ -101,12 +101,31 @@ defmodule BlueJet.DataTrading do
       get_product(row, account_id)
       |> update_or_create_product(account_id, fields)
 
-    if collection_id do
-      Catalogue.do_create_product_collection_membership(%AccessRequest{
-        vas: %{ account_id: account_id },
-        fields: %{ "product_id" => product.id, "collection_id" => collection_id, "sort_index" => row["collection_sort_index"] }
-      })
+    result = Catalogue.do_get_product_collection_membership(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "collection_id" => collection_id, "product_id" => product.id }
+    })
+
+    case result do
+      {:ok, response} -> {:ok, response}
+      {:error, :not_found} ->
+        Catalogue.do_create_product_collection_membership(%AccessRequest{
+          vas: %{ account_id: account_id },
+          fields: %{ "product_id" => product.id, "collection_id" => collection_id, "sort_index" => row["collection_sort_index"] }
+        })
     end
+  end
+  def import_resource(row, account_id, "Price") do
+    product_id = extract_product_id(row, account_id, "product")
+
+    fields =
+      merge_custom_data(row, row["custom_data"])
+      |> Map.merge(%{ "product_id" => product_id })
+
+    IO.inspect fields
+    price =
+      get_price(row, account_id)
+      |> update_or_create_price(account_id, fields)
   end
 
   defp extract_product_source_id(%{ "source_id" => source_id }, account_id) when byte_size(source_id) > 0 do
@@ -144,6 +163,26 @@ defmodule BlueJet.DataTrading do
 
         case result do
           {:ok, %{ data: customer}} -> customer.id
+          other -> nil
+        end
+      true -> nil
+    end
+  end
+
+  defp extract_product_id(row, account_id, rel_name \\ nil) do
+    id_key = rel_id_key(rel_name)
+    code_key = rel_code_key(rel_name)
+
+    cond do
+      row[id_key] && row[id_key] != "" -> row[id_key]
+      row[code_key] && row[code_key] != "" ->
+        result = Catalogue.do_get_product(%AccessRequest{
+          vas: %{ account_id: account_id },
+          params: %{ "code" => row[code_key] }
+        })
+
+        case result do
+          {:ok, %{ data: product}} -> product.id
           other -> nil
         end
       true -> nil
@@ -233,6 +272,27 @@ defmodule BlueJet.DataTrading do
     end
   end
 
+  defp get_price(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+    {:ok, %{ data: price}} = Catalogue.do_get_price(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => id }
+    })
+
+    price
+  end
+  defp get_price(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+    result = Catalogue.do_get_price(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "code" => code }
+    })
+
+    case result do
+      {:ok, %{ data: price }} ->
+        price
+      {:error, :not_found} -> nil
+    end
+  end
+
   defp get_product_collection(%{ "id" => id }, account_id) when byte_size(id) > 0 do
     {:ok, %{ data: product_collection}} = Catalogue.do_get_product_collection(%AccessRequest{
       vas: %{ account_id: account_id },
@@ -268,6 +328,22 @@ defmodule BlueJet.DataTrading do
       fields: fields
     })
     product
+  end
+
+  defp update_or_create_price(nil, account_id, fields) do
+    {:ok, %{ data: price }} = Catalogue.do_create_price(%AccessRequest{
+      vas: %{ account_id: account_id },
+      fields: fields
+    })
+    price
+  end
+  defp update_or_create_price(price, account_id, fields) do
+    {:ok, %{ data: price }} = Catalogue.do_update_price(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => price.id },
+      fields: fields
+    })
+    price
   end
 
   defp merge_custom_data(row, nil), do: row

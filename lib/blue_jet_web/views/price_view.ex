@@ -5,6 +5,7 @@ defmodule BlueJetWeb.PriceView do
   alias BlueJet.Repo
 
   attributes [
+    :code,
     :status,
     :name,
     :label,
