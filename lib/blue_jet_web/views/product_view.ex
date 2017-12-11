@@ -22,6 +22,7 @@ defmodule BlueJetWeb.ProductView do
   has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
   has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
   has_one :parent, serializer: BlueJetWeb.ProductView, identifiers: :always
+  has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductView, identifiers: :when_included
@@ -41,6 +42,13 @@ defmodule BlueJetWeb.ProductView do
     end
   end
   def parent(product, _), do: product.parent
+
+  def source(%{ source_id: nil }, _) do
+    nil
+  end
+  def source(%{ source_id: source_id, source_type: source_type }, _) do
+    %{ id: source_id, type: source_type }
+  end
 
   def kind(struct, _) do
     Inflex.camelize(struct.kind, :lower)

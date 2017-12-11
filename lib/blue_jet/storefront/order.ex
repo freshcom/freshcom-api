@@ -270,7 +270,7 @@ defmodule BlueJet.Storefront.Order do
   def customer(order = %{ customer: nil }) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
       vas: %{ account_id: order.account_id },
-      params: %{ id: order.customer_id }
+      params: %{ "id" => order.customer_id }
     })
 
     customer
