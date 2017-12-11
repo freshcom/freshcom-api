@@ -51,6 +51,7 @@ defmodule BlueJetWeb.Router do
     #
     resources "/customers", CustomerController, except: [:new, :edit]
     get "/customer", CustomerController, :show
+    resources "/point_transactions", PointTransactionController, only: [:create, :delete]
 
     #
     # Catalogue

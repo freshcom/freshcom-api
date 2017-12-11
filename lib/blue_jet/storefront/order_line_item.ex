@@ -103,6 +103,17 @@ defmodule BlueJet.Storefront.OrderLineItem do
       {:error, _} -> nil
     end
   end
+  def source(account_id, source_id, "PointTransaction") do
+    response = CRM.do_get_point_transaction(%AccessRequest{
+      vas: %{ account_id: account_id },
+      params: %{ "id" => source_id }
+    })
+
+    case response do
+      {:ok, %{ data: point_transaction }} -> point_transaction
+      {:error, _} -> nil
+    end
+  end
   def source(_, _, _), do: nil
   def source(%OrderLineItem{ account_id: account_id, source_id: source_id, source_type: source_type }) do
     source(account_id, source_id, source_type)
@@ -124,8 +135,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
       :price_tax_three_percentage,
       :price_end_time,
       :grand_total_cents,
-      :source_id,
-      :source_type,
       :inserted_at,
       :updated_at
     ]
@@ -147,11 +156,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def require_fields(changeset) do
-    common = [:account_id, :order_id]
-    if get_field(changeset, :product_id) do
-      common ++ [:order_quantity]
-    else
-      common ++ [:sub_total_cents]
+    common = [:account_id, :order_id, :order_quantity]
+
+    cond do
+      get_field(changeset, :product_id) ->
+        common
+      get_field(changeset, :source_type) == "PointTransaction" ->
+        common
+      true ->
+        common ++ [:sub_total_cents]
     end
   end
 
@@ -300,6 +313,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
   def put_amount_fields(changeset), do: changeset
 
+  defp refresh_amount_fields(changeset = %Changeset{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }) do
+    account_id = get_field(changeset, :account_id)
+    point_transaction = source(account_id, source_id, "PointTransaction")
+    sub_total_cents = point_transaction.amount
+
+    changeset
+    |> put_change(:sub_total_cents, sub_total_cents)
+    |> put_change(:tax_one_cents, 0)
+    |> put_change(:tax_two_cents, 0)
+    |> put_change(:tax_three_cents, 0)
+    |> put_change(:grand_total_cents, sub_total_cents)
+    |> put_change(:authorization_cents, sub_total_cents)
+  end
   defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
     tax_one_cents = get_field(changeset, :tax_one_cents)
@@ -470,7 +496,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
-      params: %{ id: source_id }
+      params: %{ "id" => source_id }
     })
 
     if depositable.target_type == "PointAccount" do
