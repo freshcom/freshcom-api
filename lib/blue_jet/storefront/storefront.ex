@@ -413,4 +413,28 @@ defmodule BlueJet.Storefront do
 
     {:ok, response}
   end
+
+  # TODO: If customer should scope by customer
+  def get_unlock(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.get_unlock") do
+      do_get_unlock(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_get_unlock(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    unlock = Unlock |> Unlock.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    if unlock do
+      unlock =
+        unlock
+        |> Repo.preload(Unlock.Query.preloads(request.preloads))
+        |> Unlock.put_external_resources(request.preloads)
+        |> Translation.translate(request.locale)
+
+      {:ok, %AccessResponse{ data: unlock }}
+    else
+      {:error, :not_found}
+    end
+  end
 end

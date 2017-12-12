@@ -80,6 +80,15 @@ defmodule BlueJet.Storefront.Unlock do
 
     %{ unlock | unlockable: unlockable }
   end
+  def put_external_resources(unlock, {:unlockable, unlockable_preloads}) do
+    {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
+      vas: %{ account_id: unlock.account_id },
+      params: %{ "id" => unlock.unlockable_id },
+      preloads: [unlockable_preloads]
+    })
+
+    %{ unlock | unlockable: unlockable }
+  end
   def put_external_resources(unlock, :customer) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
       vas: %{ account_id: unlock.account_id },

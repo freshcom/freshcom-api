@@ -20,4 +20,17 @@ defmodule BlueJetWeb.UnlockController do
 
     render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
+
+  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id },
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    {:ok, %AccessResponse{ data: unlock }} = Storefront.get_unlock(request)
+
+    render(conn, "show.json-api", data: unlock, opts: [include: conn.query_params["include"]])
+  end
 end

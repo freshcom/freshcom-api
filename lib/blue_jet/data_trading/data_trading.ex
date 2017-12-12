@@ -73,6 +73,7 @@ defmodule BlueJet.DataTrading do
   end
   def import_resource(row, account_id, "Unlockable") do
     fields = merge_custom_data(row, row["custom_data"])
+    {:ok, %{ data: account }} = Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } })
 
     unlockable = get_unlockable(row, account_id)
     case unlockable do
@@ -85,7 +86,8 @@ defmodule BlueJet.DataTrading do
         {:ok, response} = Goods.do_update_unlockable(%AccessRequest{
           vas: %{ account_id: account_id },
           params: %{ "id" => unlockable.id },
-          fields: fields
+          fields: fields,
+          locale: account.default_locale
         })
     end
   end
@@ -348,5 +350,8 @@ defmodule BlueJet.DataTrading do
 
   defp merge_custom_data(row, nil), do: row
   defp merge_custom_data(row, ""), do: Map.merge(row, %{ "custom_data" => %{} })
-  defp merge_custom_data(json), do: Map.merge(row, %{ "custom_data" => Poison.decode!(json) })
+  defp merge_custom_data(row, json) do
+    IO.inspect json
+    Map.merge(row, %{ "custom_data" => Poison.decode!(json) })
+  end
 end

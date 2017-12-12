@@ -96,6 +96,16 @@ defmodule BlueJet.Goods.Unlockable do
 
     %{ unlockable | external_file_collections: efcs }
   end
+  def put_external_resources(unlockable, {:external_file_collections, efc_preloads}) do
+    {:ok, %{ data: efcs }} = FileStorage.do_list_external_file_collection(%AccessRequest{
+      vas: %{ account_id: unlockable.account_id },
+      filter: %{ owner_id: unlockable.id, owner_type: "Unlockable" },
+      pagination: %{ size: 5, number: 1 },
+      preloads: [efc_preloads]
+    })
+
+    %{ unlockable | external_file_collections: efcs }
+  end
 
   defmodule Query do
     use BlueJet, :query

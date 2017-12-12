@@ -71,7 +71,7 @@ defmodule BlueJetWeb.Router do
       resources "/line_items", OrderLineItemController, only: [:create]
     end
     resources "/order_line_items", OrderLineItemController, only: [:index, :update, :delete]
-    resources "/unlocks", UnlockController, only: [:index]
+    resources "/unlocks", UnlockController, only: [:show, :index]
 
     #####
     # Billing
