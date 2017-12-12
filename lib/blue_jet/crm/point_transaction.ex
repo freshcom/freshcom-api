@@ -3,6 +3,9 @@ defmodule BlueJet.CRM.PointTransaction do
 
   use Trans, translates: [:description, :custom_data], container: :translations
 
+  alias Ecto.Changeset
+  alias Ecto.Multi
+
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
 
@@ -77,6 +80,27 @@ defmodule BlueJet.CRM.PointTransaction do
     |> validate()
     |> put_point_account_id()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  # TODO: Check there is enough point to commit the transaction
+  def commit(point_transaction = %{ status: "pending" }) do
+    point_account = Repo.get(PointAccount, point_transaction.point_account_id)
+    changeset = change(point_transaction, %{ status: "committed" })
+
+    statements = Multi.new()
+    |> Multi.update(:point_transaction, changeset)
+    |> Multi.run(:point_account, fn(%{ point_transaction: point_transaction }) ->
+        new_balance = point_account.balance + point_transaction.amount
+        changeset = Changeset.change(point_account, %{ balance: new_balance })
+        Repo.update(changeset)
+       end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ point_transaction: point_transaction }} ->
+        {:ok, point_transaction}
+      {:error, :point_account, changeset, _} ->
+        {:error, changeset.errors}
+    end
   end
 
   defmodule Query do

@@ -6,6 +6,7 @@ defmodule BlueJet.Storefront do
 
   alias BlueJet.Identity
   alias BlueJet.Billing
+  alias BlueJet.CRM
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -120,8 +121,8 @@ defmodule BlueJet.Storefront do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_get_order(request = %AccessRequest{ vas: vas, params: %{ order_id: order_id } }) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(order_id)
+  def do_get_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     if order do
       order =
@@ -137,29 +138,60 @@ defmodule BlueJet.Storefront do
   # TODO: Check if customer already have unlock
   def update_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.update_order") do
-      do_update_order(request)
+      do_update_order(%{ request | role: role })
     else
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_update_order(request = %AccessRequest{ vas: vas, params: %{ order_id: order_id }}) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(order_id)
+  def do_update_order(request = %AccessRequest{ role: "customer", vas: vas, params: %{ "id" => id }}) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    fields = cond do
+      order.status == "cart" && order.grand_total_cents == 0 && request.fields["status"] == "opened" ->
+        request.fields
+      true ->
+        Map.merge(request.fields, %{ "status" => order.status })
+    end
+
+    with %Order{} <- order,
+         changeset = %{valid?: true} <- Order.changeset(order, fields, request.locale)
+    do
+      statements =
+        Multi.new()
+        |> Multi.update(:order, changeset)
+        |> Multi.run(:processed_order, fn(%{ order: order }) ->
+            Order.process(order, changeset)
+           end)
+
+      {:ok, %{ processed_order: order }} = Repo.transaction(statements)
+      do_update_order_response(order, request)
+    else
+      nil ->
+        {:error, :not_found}
+      changeset ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
+    end
+  end
+  def do_update_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
     changeset = Order.changeset(order, request.fields, request.locale)
 
     with %Order{} <- order,
          changeset <- Order.changeset(order, request.fields, request.locale),
           {:ok, order} <- Repo.update(changeset)
     do
-      order =
-        order
-        |> Repo.preload(Order.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: order }}
+      do_update_order_response(order, request)
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
     end
+  end
+  def do_update_order_response(order, request) do
+    order =
+      order
+      |> Repo.preload(Order.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    {:ok, %AccessResponse{ data: order }}
   end
 
   def delete_order(request = %AccessRequest{ vas: vas }) do
@@ -169,11 +201,11 @@ defmodule BlueJet.Storefront do
       {:error, reason} -> {:error, :access_denied}
     end
   end
-  def do_delete_order(%AccessRequest{ vas: vas, params: %{ order_id: order_id } }) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(order_id)
+  def do_delete_order(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     if order do
-      payments = Billing.list_payment_for_target("Order", order_id)
+      payments = Billing.list_payment_for_target("Order", id)
       case length(payments) do
         0 ->
           Repo.delete!(order)
@@ -190,6 +222,51 @@ defmodule BlueJet.Storefront do
   ####
   # Order Line Item
   ####
+  ######## NOT TESTED AND NOT USED ######
+  def list_order_line_item(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "storefront.list_order_line_item") do
+      do_list_order_line_item(%{ request | role: role })
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
+    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
+
+    filter = Map.merge(filter, %{ customer_id: customer.id })
+    query =
+      OrderLineItem.Query.default()
+      |> filter_by(
+          label: filter[:label],
+          product_id: filter[:product_id],
+          source_id: filter[:source_id],
+          source_type: filter[:source_type],
+          is_leaf: filter[:is_leaf]
+         )
+      |> OrderLineItem.Query.for_account(vas[:account_id])
+      |> OrderLineItem.Query.with_order(
+          fulfillment_status: filter[:fulfillment_status],
+          customer_id: filter[:customer_id]
+         )
+
+    result_count = Repo.aggregate(query, :count, :id)
+    query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+    order_line_items =
+      Repo.all(query)
+      |> Repo.preload(OrderLineItem.Query.preloads(request.preloads))
+      |> Translation.translate(request.locale)
+
+    response = %AccessResponse{
+      meta: %{
+        result_count: result_count,
+      },
+      data: order_line_items
+    }
+
+    {:ok, response}
+  end
+
   def create_order_line_item(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.create_order_line_item") do
       do_create_order_line_item(request)
@@ -308,7 +385,10 @@ defmodule BlueJet.Storefront do
   def do_list_unlock(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
     query =
       Unlock.Query.default()
-      |> filter_by(customer_id: filter[:customer_id])
+      |> filter_by(
+          customer_id: filter[:customer_id],
+          unlockable_id: filter[:unlockable_id]
+        )
       |> Unlock.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
 

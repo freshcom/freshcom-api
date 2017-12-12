@@ -13,6 +13,10 @@ defmodule BlueJetWeb.ProductCollectionMembershipView do
   has_one :collection, serializer: BlueJetWeb.ProductCollectionView, identifiers: :always
   has_one :product, serializer: BlueJetWeb.ProductView, identifiers: :always
 
+  def type(_, _conn) do
+    "ProductCollectionMembership"
+  end
+
   def collection(membership = %{ collection: %Ecto.Association.NotLoaded{} }, _) do
     case membership.collection_id do
       nil -> nil

@@ -174,8 +174,14 @@ defmodule BlueJet.Storefront.Order do
     struct
     |> cast(params, castable_fields(struct))
     |> validate(struct)
+    |> put_opened_at()
     |> Translation.put_change(translatable_fields(), locale)
   end
+
+  defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    Changeset.put_change(changeset, :opened_at, Ecto.DateTime.utc())
+  end
+  defp put_opened_at(changeset), do: changeset
 
   defp changeset_for_balance(struct) do
     query = Ecto.assoc(struct, :root_line_items) |> OrderLineItem.root()
@@ -243,6 +249,7 @@ defmodule BlueJet.Storefront.Order do
       |> Enum.reduce(0, fn(payment, acc) -> acc + payment.amount_cents end)
 
     cond do
+      order.grand_total_cents == 0 -> "paid"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
@@ -302,6 +309,10 @@ defmodule BlueJet.Storefront.Order do
     {:ok, order}
   end
   def process(order, changeset), do: {:ok, order}
+
+  def open(order) do
+
+  end
 
   defmodule Query do
     use BlueJet, :query

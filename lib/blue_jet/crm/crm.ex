@@ -326,4 +326,25 @@ defmodule BlueJet.CRM do
       {:error, :not_found}
     end
   end
+
+  # TODO
+  def update_point_transaction(request = %AccessRequest{ vas: vas }) do
+    with {:ok, role} <- Identity.authorize(vas, "crm.update_point_transaction") do
+      do_update_point_transaction(request)
+    else
+      {:error, reason} -> {:error, :access_denied}
+    end
+  end
+  def do_update_point_transaction(request = %AccessRequest{ vas: vas, params: %{ "id" => id }, fields: %{ "status" => "committed" } }) do
+    point_transaction = PointTransaction |> PointTransaction.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+    with %PointTransaction{} <- point_transaction,
+         {:ok, point_transaction} <- PointTransaction.commit(point_transaction)
+    do
+      {:ok, %AccessResponse{ data: point_transaction }}
+    else
+      nil -> {:error, :not_found}
+      {:error, errors} -> {:error, %AccessResponse{ errors: errors }}
+    end
+  end
 end

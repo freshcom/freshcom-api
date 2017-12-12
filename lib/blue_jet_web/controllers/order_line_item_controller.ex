@@ -6,24 +6,19 @@ defmodule BlueJetWeb.OrderLineItemController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, params) do
-    request = %{
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      search_keyword: params["search"],
+      search: params["search"],
       filter: assigns[:filter],
-      page_size: assigns[:page_size],
-      page_number: assigns[:page_number],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
-    %{ orders: orders, total_count: total_count, result_count: result_count } = Storefront.list_order_line_items(request)
 
-    meta = %{
-      totalCount: total_count,
-      resultCount: result_count
-    }
+    {:ok, %AccessResponse{ data: order_line_items, meta: meta }} = Storefront.list_order_line_item(request)
 
-    render(conn, "index.json-api", data: orders, opts: [meta: meta, include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: order_line_items, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) do

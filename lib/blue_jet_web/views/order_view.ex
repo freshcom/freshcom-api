@@ -8,6 +8,7 @@ defmodule BlueJetWeb.OrderView do
     :code,
     :status,
     :payment_status,
+    :fulfillment_status,
     :system_tag,
     :label,
 

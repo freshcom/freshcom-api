@@ -515,6 +515,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
       line_item
     end
   end
+  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "PointTransaction" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+    {:ok, %{ data: point_transaction }} = CRM.do_update_point_transaction(%AccessRequest{
+      vas: %{ account_id: line_item.account_id },
+      params: %{ "id" => source_id },
+      fields: %{
+        "status" => "committed"
+      }
+    })
+  end
   def process(line_item, _, _, _) do
     {:ok, line_item}
   end
@@ -545,6 +554,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     def default() do
       from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
+    end
+
+    def with_order(query, filter) do
+      from(
+        oli in query,
+        join: o in Order, where: oli.order_id == o.id,
+        where: o.fulfillment_status == ^filter[:fulfillment_status],
+        where: o.customer_id == ^filter[:customer_id]
+      )
     end
   end
 end
