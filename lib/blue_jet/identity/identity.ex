@@ -15,9 +15,21 @@ defmodule BlueJet.Identity do
 
     def create_account(fields) do
       Multi.new()
-      |> Multi.insert(:account, Account.changeset(%Account{}, fields))
-      |> Multi.run(:after_account_create, fn(%{ account: account }) ->
-          Identity.run_event_handler("identity.account.created", %{ account: account })
+      |> Multi.insert(:account, Account.changeset(%Account{ mode: "live" }, fields))
+      |> Multi.run(:test_account, fn(%{ account: account }) ->
+          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
+          Repo.insert(changeset)
+        end)
+      |> Multi.run(:prt_live, fn(%{ account: account }) ->
+          prt_live = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id }))
+          {:ok, prt_live}
+         end)
+      |> Multi.run(:prt_test, fn(%{ test_account: test_account }) ->
+          prt_test = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id }))
+          {:ok, prt_test}
+         end)
+      |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
+          Identity.run_event_handler("identity.account.created", %{ account: account, test_account: test_account })
          end)
     end
 
@@ -38,17 +50,19 @@ defmodule BlueJet.Identity do
 
           {:ok, account_membership}
         end)
-      |> Multi.run(:refresh_tokens, fn(%{ account: account, user: user}) ->
-          refresh_tokens = [
-            Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id })),
-            Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id, user_id: user.id }))
-          ]
-
-          {:ok, refresh_tokens}
+      |> Multi.run(:urt_live, fn(%{ account: account, user: user}) ->
+          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id, user_id: user.id }))
+          {:ok, refresh_token}
+        end)
+      |> Multi.run(:urt_test, fn(%{ test_account: test_account, user: user}) ->
+          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id, user_id: user.id }))
+          {:ok, refresh_token}
         end)
     end
 
     def create_account_user(account_id, fields) do
+      test_account = Repo.get_by!(Account, mode: "test", live_account_id: account_id)
+
       Multi.new()
       |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account_id, "account_id" => account_id })))
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
@@ -62,8 +76,13 @@ defmodule BlueJet.Identity do
 
           {:ok, account_membership}
         end)
-      |> Multi.run(:user_refresh_token, fn(%{ user: user }) ->
-          Repo.insert(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account_id, user_id: user.id }))
+      |> Multi.run(:urt_live, fn(%{ user: user }) ->
+          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account_id, user_id: user.id }))
+          {:ok, refresh_token}
+        end)
+      |> Multi.run(:urt_test, fn(%{ user: user }) ->
+          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id, user_id: user.id }))
+          {:ok, refresh_token}
         end)
     end
   end
@@ -125,6 +144,7 @@ defmodule BlueJet.Identity do
     account =
       Account
       |> Repo.get!(account_id)
+      |> Account.put_test_account_id()
       |> Translation.translate(locale)
 
     {:ok, %AccessResponse{ data: account }}

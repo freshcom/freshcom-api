@@ -1,6 +1,7 @@
 defmodule BlueJet.Identity.Authorization do
 
   alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.Account
   alias BlueJet.Repo
 
   @role_endpoints %{
@@ -360,6 +361,14 @@ defmodule BlueJet.Identity.Authorization do
     authorize("anonymous", endpoint)
   end
   def authorize(%{ user_id: user_id, account_id: account_id }, endpoint) do
+    account = Repo.get!(Account, account_id)
+
+    account_id = if account.mode == "live" do
+      account.id
+    else
+      account.live_account_id
+    end
+
     with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
          {:ok, role} <- authorize(role, endpoint)
     do

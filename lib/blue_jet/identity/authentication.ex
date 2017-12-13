@@ -31,6 +31,7 @@ defmodule BlueJet.Identity.Authentication do
 
   alias BlueJet.Repo
   alias BlueJet.Identity.User
+  alias BlueJet.Identity.Account
   alias BlueJet.Identity.Jwt
   alias BlueJet.Identity.RefreshToken
 
@@ -39,6 +40,9 @@ defmodule BlueJet.Identity.Authentication do
   end
   def create_token(request = %{ "grant_type" => "password", "username" => username, "password" => password }) do
     create_token(%{ grant_type: "password", username: username, password: password })
+  end
+  def create_token(request = %{ "grant_type" => "refresh_token", "refresh_token" => refresh_token, "scope" => scope }) do
+    create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token, scope: deserialize_scope(scope) })
   end
   def create_token(request = %{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }) do
     create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token })
@@ -51,6 +55,17 @@ defmodule BlueJet.Identity.Authentication do
   def create_token(%{ grant_type: "password", username: username, password: password }) do
     user = User |> User.Query.global() |> Repo.get_by(username: username)
     create_token_by_password(user, password)
+  end
+  def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id, scope: %{ account_id: account_id } }) do
+    target_account = Repo.get!(Account, account_id)
+    refresh_token = Repo.get(RefreshToken, refresh_token_id)
+
+    if refresh_token.account_id == target_account.live_account_id do
+      target_refresh_token = Repo.get_by(RefreshToken, account_id: target_account.id, user_id: refresh_token.user_id)
+      create_token_by_refresh_token(target_refresh_token)
+    else
+      create_token_by_refresh_token(nil)
+    end
   end
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id }) do
     refresh_token = Repo.get(RefreshToken, refresh_token_id)

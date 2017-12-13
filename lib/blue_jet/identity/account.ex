@@ -1,6 +1,8 @@
 defmodule BlueJet.Identity.Account do
   use BlueJet, :data
 
+  alias BlueJet.Repo
+
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.RefreshToken
@@ -8,9 +10,13 @@ defmodule BlueJet.Identity.Account do
   schema "accounts" do
     field :name, :string
     field :default_locale, :string
+    field :mode, :string
+    field :test_account_id, Ecto.UUID, virtual: true
 
     timestamps()
 
+    belongs_to :live_account, Account
+    has_one :test_account, Account, foreign_key: :live_account_id
     has_many :memberships, AccountMembership
     has_many :refresh_tokens, RefreshToken
   end
@@ -24,6 +30,12 @@ defmodule BlueJet.Identity.Account do
     struct
     |> cast(params, [:name, :default_locale])
   end
+
+  def put_test_account_id(account = %{ id: live_account_id, mode: "live" }) do
+    account = Repo.get_by!(Account, mode: "test", live_account_id: live_account_id)
+    %{ account | test_account_id: account.id }
+  end
+  def put_test_account_id(account), do: account
 
   defmodule Query do
     use BlueJet, :query
