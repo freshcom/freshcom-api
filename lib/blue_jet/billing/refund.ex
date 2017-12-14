@@ -5,6 +5,9 @@ defmodule BlueJet.Billing.Refund do
 
   alias Decimal, as: D
   alias Ecto.Changeset
+
+  alias BlueJet.AccessRequest
+  alias BlueJet.Identity
   alias BlueJet.Translation
 
   alias BlueJet.Billing.Refund
@@ -36,6 +39,8 @@ defmodule BlueJet.Billing.Refund do
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
+
+    field :account, :map, virtual: true
 
     timestamps()
 
@@ -107,12 +112,17 @@ defmodule BlueJet.Billing.Refund do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def query() do
-    from(r in Refund, order_by: [desc: r.updated_at, desc: r.inserted_at])
+  def account(%{ account_id: account_id, account: nil }) do
+    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
+      {:ok, %{ data: account }} -> account
+      {:error, _} -> nil
+    end
   end
+  def account(%{ account: account }), do: account
 
   @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
   def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
+    refund = %{ refund | account: account(refund) }
     with {:ok, stripe_refund} = create_stripe_refund(refund),
          {:ok, stripe_transfer_reversal} = create_stripe_transfer_reversal(refund, stripe_refund)
     do
@@ -145,12 +155,14 @@ defmodule BlueJet.Billing.Refund do
   def create_stripe_refund(refund) do
     refund = refund |> Repo.preload(:payment)
     stripe_charge_id = refund.payment.stripe_charge_id
+
+    account = account(refund)
     StripeClient.post("/refunds", %{
       charge: stripe_charge_id,
       amount: refund.amount_cents,
       metadata: %{ fc_refund_id: refund.id },
       expand: ["balance_transaction", "charge.balance_transaction"]
-    })
+    }, mode: account.mode)
   end
 
   def create_stripe_transfer_reversal(refund, stripe_refund) do
@@ -162,10 +174,11 @@ defmodule BlueJet.Billing.Refund do
 
     transfer_reversal_amount_cents = refund.amount_cents - stripe_fee_cents - freshcom_fee_cents
 
+    account = account(refund)
     StripeClient.post("/transfers/#{refund.payment.stripe_transfer_id}/reversals", %{
       amount: transfer_reversal_amount_cents,
       metadata: %{ fc_refund_id: refund.id }
-    })
+    }, mode: account.mode)
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do

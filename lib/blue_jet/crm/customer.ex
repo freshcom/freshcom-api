@@ -5,7 +5,10 @@ defmodule BlueJet.CRM.Customer do
 
   alias BlueJet.Repo
   alias Ecto.Changeset
+
   alias BlueJet.Translation
+  alias BlueJet.AccessRequest
+  alias BlueJet.Identity
 
   alias BlueJet.CRM.Customer
   alias BlueJet.CRM.PointAccount
@@ -29,6 +32,8 @@ defmodule BlueJet.CRM.Customer do
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
+
+    field :account, :map, virtual: true
 
     timestamps()
 
@@ -103,6 +108,14 @@ defmodule BlueJet.CRM.Customer do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  def account(%{ account_id: account_id, account: nil }) do
+    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
+      {:ok, %{ data: account }} -> account
+      {:error, _} -> nil
+    end
+  end
+  def account(%{ account: account }), do: account
+
   def match?(nil, params) do
     false
   end
@@ -153,6 +166,7 @@ defmodule BlueJet.CRM.Customer do
   """
   @spec preprocess(Customer.t, Keyword.t) :: Customer.t
   def preprocess(customer = %Customer{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
+    customer = %{ customer | account: account(customer) }
     {:ok, stripe_customer} = create_stripe_customer(customer)
 
     customer
@@ -163,6 +177,7 @@ defmodule BlueJet.CRM.Customer do
 
   @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
   defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
+    customer = %{ customer | account: account(customer) }
     with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
       Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
     else
@@ -172,12 +187,14 @@ defmodule BlueJet.CRM.Customer do
 
   @spec create_stripe_customer(Customer.t) :: {:ok, map} | {:error, map}
   defp create_stripe_customer(customer) do
-    StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } })
+    account = account(customer)
+    StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
   end
 
   @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
   defp list_stripe_card(%Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
-    StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100")
+    account = account(customer)
+    StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
   end
 
   defmodule Query do

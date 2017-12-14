@@ -49,7 +49,7 @@ end
 config :ja_serializer,
   key_format: {:custom, JaKeyFormatter, :camelize, :underscore}
 
-config :blue_jet, :s3, prefix: 'uploads'
+config :blue_jet, :s3, prefix: "uploads"
 
 config :blue_jet, :billing, %{
   listeners: [BlueJet.Storefront, BlueJet.CRM]
@@ -59,10 +59,7 @@ config :blue_jet, :identity, %{
   listeners: [BlueJet.Billing]
 }
 
-config :ex_aws,
-  region: [{:system, "AWS_REGION"}, :instance_role]
-
-config :stripity_stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")
+config :ex_aws, region: System.get_env("AWS_REGION")
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")
 

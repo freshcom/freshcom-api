@@ -124,7 +124,6 @@ defmodule BlueJet.DataTrading do
       merge_custom_data(row, row["custom_data"])
       |> Map.merge(%{ "product_id" => product_id })
 
-    IO.inspect fields
     price =
       get_price(row, account_id)
       |> update_or_create_price(account_id, fields)
@@ -351,7 +350,6 @@ defmodule BlueJet.DataTrading do
   defp merge_custom_data(row, nil), do: row
   defp merge_custom_data(row, ""), do: Map.merge(row, %{ "custom_data" => %{} })
   defp merge_custom_data(row, json) do
-    IO.inspect json
     Map.merge(row, %{ "custom_data" => Poison.decode!(json) })
   end
 end

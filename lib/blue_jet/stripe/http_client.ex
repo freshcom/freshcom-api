@@ -6,10 +6,7 @@ defmodule StripeHttpClient do
   end
 
   defp process_request_headers(headers) do
-    key = System.get_env("STRIPE_SECRET_KEY")
-
     headers = headers ++ [
-      {"Authorization", "Bearer #{key}"},
       {"Content-Type", "application/x-www-form-urlencoded"}
     ]
 

@@ -2,6 +2,7 @@ defmodule BlueJet.Billing.BillingSettings do
   use BlueJet, :data
 
   alias Ecto.Changeset
+  alias BlueJet.Repo
   alias BlueJet.Billing.BillingSettings
 
   @type t :: Ecto.Schema.t
@@ -50,6 +51,13 @@ defmodule BlueJet.Billing.BillingSettings do
   def changeset(struct, params \\ %{}) do
     struct
     |> cast(params, castable_fields(struct))
+  end
+
+  def for_account(%{ mode: "test", live_account_id: account_id }) do
+    Repo.get_by!(BillingSettings, account_id: account_id)
+  end
+  def for_account(%{ id: account_id, mode: "live" }) do
+    Repo.get_by!(BillingSettings, account_id: account_id)
   end
 
   @doc """

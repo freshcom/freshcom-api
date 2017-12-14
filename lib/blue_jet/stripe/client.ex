@@ -1,16 +1,19 @@
 defmodule StripeClient do
-  def post(path, body) do
-    {:ok, response} = StripeHttpClient.post(path, body)
+  def post(path, body, options \\ []) do
+    key = stripe_secret_key(options)
+    {:ok, response} = StripeHttpClient.post(path, body, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 
-  def delete(path) do
-    {:ok, response} = StripeHttpClient.delete(path)
+  def delete(path, options \\ []) do
+    key = stripe_secret_key(options)
+    {:ok, response} = StripeHttpClient.delete(path, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 
-  def get(path) do
-    {:ok, response} = StripeHttpClient.get(path)
+  def get(path, options \\ []) do
+    key = stripe_secret_key(options)
+    {:ok, response} = StripeHttpClient.get(path, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 
@@ -22,5 +25,13 @@ defmodule StripeClient do
   end
   def unwrap_response(response) do
     {:error, response.body}
+  end
+
+  defp stripe_secret_key(options) do
+    if options[:mode] == "test" do
+      System.get_env("STRIPE_TEST_SECRET_KEY")
+    else
+      System.get_env("STRIPE_LIVE_SECRET_KEY")
+    end
   end
 end

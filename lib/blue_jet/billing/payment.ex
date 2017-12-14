@@ -4,9 +4,13 @@ defmodule BlueJet.Billing.Payment do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Decimal, as: D
-  alias BlueJet.Repo
   alias Ecto.Changeset
+
+  alias BlueJet.Repo
   alias BlueJet.Translation
+  alias BlueJet.AccessRequest
+  alias BlueJet.Identity
+
   alias BlueJet.Billing.Payment
   alias BlueJet.Billing.Refund
   alias BlueJet.Billing.Card
@@ -54,6 +58,7 @@ defmodule BlueJet.Billing.Payment do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
+    field :account, :map, virtual: true
     field :source, :string, virtual: true
     field :save_source, :boolean, virtual: true
     field :capture, :boolean, virtual: true, default: true
@@ -150,25 +155,13 @@ defmodule BlueJet.Billing.Payment do
   end
   def put_net_amount_cents(changeset), do: changeset
 
-  def query() do
-    from(p in Payment, order_by: [desc: p.updated_at, desc: p.inserted_at])
+  def account(%{ account_id: account_id, account: nil }) do
+    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
+      {:ok, %{ data: account }} -> account
+      {:error, _} -> nil
+    end
   end
-
-  def preload(struct_or_structs, targets) when length(targets) == 0 do
-    struct_or_structs
-  end
-  def preload(struct_or_structs, targets) when is_list(targets) do
-    [target | rest] = targets
-
-    struct_or_structs
-    |> Repo.preload(preload_keyword(target))
-    |> Payment.preload(rest)
-  end
-
-  def preload_keyword(:refunds) do
-    [refunds: Refund.query()]
-  end
-
+  def account(%{ account: account }), do: account
 
   #####
   # Business Logic
@@ -258,20 +251,6 @@ defmodule BlueJet.Billing.Payment do
   end
 
   @doc """
-  This function capture an authorized payment. This function does not check
-  whether the payment is actually authorized, it is up to the caller to make
-  sure the payment is a valid authorized payment before passing it to this function.
-  """
-  @spec capture(Payment.t) :: {:ok, Payment.t} | {:error, map}
-  def capture(payment = %Payment{ processor: "stripe" }) do
-    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
-      {:ok, payment}
-    else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-    end
-  end
-
-  @doc """
   Charge the given payment using its online processor.
 
   This function may change the payment in database.
@@ -280,7 +259,9 @@ defmodule BlueJet.Billing.Payment do
   """
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
-    billing_settings = Repo.get_by!(BillingSettings, account_id: payment.account_id)
+    payment = %{ payment | account: account(payment) }
+    billing_settings = BillingSettings.for_account(payment.account)
+
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
     card_fields = %{
@@ -294,6 +275,20 @@ defmodule BlueJet.Billing.Payment do
          {:ok, stripe_charge} <- create_stripe_charge(payment, source, billing_settings)
     do
       sync_with_stripe_charge(payment, stripe_charge)
+    else
+      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+    end
+  end
+
+  @doc """
+  This function capture an authorized payment. This function does not check
+  whether the payment is actually authorized, it is up to the caller to make
+  sure the payment is a valid authorized payment before passing it to this function.
+  """
+  @spec capture(Payment.t) :: {:ok, Payment.t} | {:error, map}
+  def capture(payment = %Payment{ processor: "stripe" }) do
+    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
+      {:ok, payment}
     else
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
@@ -355,26 +350,20 @@ defmodule BlueJet.Billing.Payment do
       stripe_request
     end
 
-    StripeClient.post("/charges", stripe_request)
+    account = account(payment)
+    StripeClient.post("/charges", stripe_request, mode: account.mode)
   end
-
-  # defp create_stripe_charge(payment = %{ paid_amount_cents: paid_amount_cents }, _, source) when not is_nil(paid_amount_cents) do
-  #   StripeClient.post("/charges", %{ amount: paid_amount_cents, source: source, capture: true, currency: "USD", metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id } })
-  # end
-  # defp create_stripe_charge(payment = %{ authorized_amount_cents: authorized_amount_cents }, _, source) when not is_nil(authorized_amount_cents) do
-  #   StripeClient.post("/charges", %{ amount: authorized_amount_cents, source: source, capture: false, currency: "USD", metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id } })
-  # end
 
   @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
-    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount })
+    account = account(payment)
+    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount }, mode: account.mode)
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
   defp format_stripe_errors(stripe_errors), do: stripe_errors
-
 
   defmodule Query do
     use BlueJet, :query

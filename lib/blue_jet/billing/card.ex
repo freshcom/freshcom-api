@@ -4,7 +4,11 @@ defmodule BlueJet.Billing.Card do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
+
+  alias BlueJet.AccessRequest
   alias BlueJet.Translation
+  alias BlueJet.Identity
+
   alias BlueJet.Billing.Card
 
   @type t :: Ecto.Schema.t
@@ -29,6 +33,8 @@ defmodule BlueJet.Billing.Card do
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
+
+    field :account, :map, virtual: true
 
     timestamps()
   end
@@ -97,6 +103,14 @@ defmodule BlueJet.Billing.Card do
     end
   end
 
+  def account(%{ account_id: account_id, account: nil }) do
+    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
+      {:ok, %{ data: account }} -> account
+      {:error, _} -> nil
+    end
+  end
+  def account(%{ account: account }), do: account
+
   @doc """
   Save the Stripe source as a card associated with the Stripe customer object,
   duplicate card will not be saved.
@@ -123,9 +137,11 @@ defmodule BlueJet.Billing.Card do
   Returns `{:ok, stripe_card_id}` if successful.
   """
   @spec keep_stripe_token_as_card(Map.t, Map.t) :: {:ok, String.t} | {:error, map}
-  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status }) when not is_nil(stripe_customer_id) do
+  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status, account_id: account_id }) when not is_nil(stripe_customer_id) do
+    account = account(%{ account_id: account_id, account: nil })
+
     Repo.transaction(fn ->
-      with {:ok, token_object} <- retrieve_stripe_token(token),
+      with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
            nil <- Repo.get_by(Card, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
            # Create the new card
            card <- Repo.insert!(%Card{ status: status, source: token, stripe_customer_id: stripe_customer_id, account_id: fields[:account_id], owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
@@ -154,6 +170,7 @@ defmodule BlueJet.Billing.Card do
 
   @spec process(Card.t, Map.t) :: {:ok, Card.t} | {:error, map}
   def process(card = %Card{ source: source }) when not is_nil(source) do
+    card = %{ card | account: account(card) }
     with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
         last_four_digit: stripe_card["last4"],
@@ -178,6 +195,7 @@ defmodule BlueJet.Billing.Card do
   end
   @spec process(Card.t, Changeset.t) :: {:ok, Card.t} | {:error, map}
   def process(card, changeset = %Changeset{}) do
+    card = %{ card | account: account(card) }
     if Changeset.get_change(changeset, :exp_month) || Changeset.get_change(changeset, :exp_year) do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
@@ -211,6 +229,7 @@ defmodule BlueJet.Billing.Card do
     {:ok, card}
   end
   def process(card = %Card{ primary: false }, :delete) do
+    card = %{ card | account: account(card) }
     delete_stripe_card(card)
 
     {:ok, card}
@@ -218,22 +237,25 @@ defmodule BlueJet.Billing.Card do
   def process(card, _), do: {:ok, card}
 
   defp update_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
-    StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields)
+    account = account(card)
+    StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
   end
 
   @spec create_stripe_card(Cart.t, Map.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_card(%Card{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
-    StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata })
+  defp create_stripe_card(card = %Card{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
+    account = account(card)
+    StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata }, mode: account.mode)
   end
 
   @spec delete_stripe_card(Cart.t) :: {:ok, map} | {:error, map}
-  defp delete_stripe_card(%Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
-    StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}")
+  defp delete_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
+    account = account(card)
+    StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", mode: account.mode)
   end
 
-  @spec retrieve_stripe_token(String.t) :: {:ok, map} | {:error, map}
-  defp retrieve_stripe_token(token) do
-    StripeClient.get("/tokens/#{token}")
+  @spec retrieve_stripe_token(String.t, Map.t) :: {:ok, map} | {:error, map}
+  defp retrieve_stripe_token(token, options \\ []) do
+    StripeClient.get("/tokens/#{token}", options)
   end
 
   defp format_stripe_errors(stripe_errors) do
