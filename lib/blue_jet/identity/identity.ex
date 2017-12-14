@@ -249,9 +249,10 @@ defmodule BlueJet.Identity do
   end
   def do_get_refresh_token(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
     refresh_token =
-      RefreshToken.Query.storefront()
+      RefreshToken.Query.publishable()
       |> Repo.get_by(account_id: account_id)
 
+    refresh_token = %{ refresh_token | prefixed_id: RefreshToken.prefix_id(refresh_token) }
     {:ok, %AccessResponse{ data: refresh_token }}
   end
 end

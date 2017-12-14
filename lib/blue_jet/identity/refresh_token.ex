@@ -18,6 +18,7 @@ defmodule BlueJet.Identity.RefreshToken do
   """
   use BlueJet, :data
 
+  alias BlueJet.Repo
   alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
   alias BlueJet.Identity.RefreshToken
@@ -27,6 +28,7 @@ defmodule BlueJet.Identity.RefreshToken do
     field :email, :string, virtual: true
     field :password, :string, virtual: true
 
+    field :prefixed_id, :string, virtual: true
     timestamps()
 
     belongs_to :account, Account
@@ -41,6 +43,25 @@ defmodule BlueJet.Identity.RefreshToken do
     |> cast(params, [:account_id, :user_id])
     |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:user_id)
+  end
+
+  def prefix_id(refresh_token = %{ id: id, user_id: nil }) do
+    refresh_token = Repo.preload(refresh_token, :account)
+    mode = refresh_token.account.mode
+    "prt-#{mode}-#{id}"
+  end
+  def prefix_id(refresh_token = %{ id: id }) do
+    refresh_token = Repo.preload(refresh_token, :account)
+    mode = refresh_token.account.mode
+    "urt-#{mode}-#{id}"
+  end
+
+  def unprefix_id(id) do
+    id
+    |> String.replace_prefix("prt-test-", "")
+    |> String.replace_prefix("prt-live-", "")
+    |> String.replace_prefix("urt-test-", "")
+    |> String.replace_prefix("urt-live-", "")
   end
 
   def sign_token(claims) do
@@ -63,7 +84,7 @@ defmodule BlueJet.Identity.RefreshToken do
       from(rt in RefreshToken, where: rt.user_id == ^user_id)
     end
 
-    def storefront() do
+    def publishable() do
       from(rt in RefreshToken, where: is_nil(rt.user_id))
     end
 

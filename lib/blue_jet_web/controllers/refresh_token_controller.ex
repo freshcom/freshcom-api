@@ -7,9 +7,15 @@ defmodule BlueJetWeb.RefreshTokenController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    jwts = Repo.all(RefreshToken)
-    render(conn, "index.json-api", data: jwts)
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      preloads: assigns[:preloads]
+    }
+
+    {:ok, %AccessResponse{ data: refresh_tokens }} = Identity.list_refresh_token(request)
+
+    render(conn, "index.json-api", data: refresh_tokens, opts: [include: conn.query_params["include"]])
   end
 
   def create(conn, params) do

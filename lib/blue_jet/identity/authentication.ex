@@ -58,7 +58,7 @@ defmodule BlueJet.Identity.Authentication do
   end
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id, scope: %{ account_id: account_id } }) do
     target_account = Repo.get!(Account, account_id)
-    refresh_token = Repo.get(RefreshToken, refresh_token_id)
+    refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
 
     if refresh_token.account_id == target_account.live_account_id do
       target_refresh_token = Repo.get_by(RefreshToken, account_id: target_account.id, user_id: refresh_token.user_id)
@@ -68,7 +68,7 @@ defmodule BlueJet.Identity.Authentication do
     end
   end
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id }) do
-    refresh_token = Repo.get(RefreshToken, refresh_token_id)
+    refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
     create_token_by_refresh_token(refresh_token)
   end
 
@@ -81,7 +81,7 @@ defmodule BlueJet.Identity.Authentication do
       refresh_token = RefreshToken.Query.for_user(user_id) |> Repo.get_by!(account_id: account_id)
 
       token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
-      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
+      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.prefix_id(refresh_token) }}
     else
       {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
     end
@@ -98,7 +98,7 @@ defmodule BlueJet.Identity.Authentication do
       refresh_token = RefreshToken.Query.for_user(user_id) |> Repo.get_by!(account_id: account_id)
 
       token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
-      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token.id }}
+      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.prefix_id(refresh_token) }}
     else
       {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
     end
@@ -107,13 +107,13 @@ defmodule BlueJet.Identity.Authentication do
   def create_token_by_refresh_token(nil) do
     {:error, %{ error: :invalid_grant, error_description: "Refresh Token is invalid." }}
   end
-  def create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: nil, account_id: account_id }) when not is_nil(account_id) do
+  def create_token_by_refresh_token(refresh_token = %RefreshToken{ user_id: nil, account_id: account_id }) when not is_nil(account_id) do
     token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, prn: account_id, typ: "storefront" })
-    {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token_id }}
+    {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.prefix_id(refresh_token) }}
   end
-  def create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: user_id, account_id: account_id }) do
+  def create_token_by_refresh_token(refresh_token = %RefreshToken{ user_id: user_id, account_id: account_id }) do
     token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
-    {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: refresh_token_id }}
+    {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.prefix_id(refresh_token) }}
   end
 
   def deserialize_scope(scope_string) do
