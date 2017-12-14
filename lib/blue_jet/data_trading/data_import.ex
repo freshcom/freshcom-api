@@ -35,7 +35,7 @@ defmodule BlueJet.DataTrading.DataImport do
   end
 
   def translatable_fields do
-    DataImport.__trans__(:fields)
+    []
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do

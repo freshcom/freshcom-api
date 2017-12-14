@@ -27,7 +27,7 @@ defmodule BlueJetWeb.ProductCollectionController do
       |> underscore_value(["kind", "name_sync"])
 
     request = %AccessRequest{
-      vas: assigns[:vas],
+      vas: vas,
       fields: fields,
       preloads: assigns[:preloads]
     }
@@ -44,7 +44,7 @@ defmodule BlueJetWeb.ProductCollectionController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+  def show(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: params,
@@ -57,7 +57,7 @@ defmodule BlueJetWeb.ProductCollectionController do
     render(conn, "show.json-api", data: product_collection, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "ProductCollection" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "ProductCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ id: id },
@@ -76,15 +76,15 @@ defmodule BlueJetWeb.ProductCollectionController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
-    request = %AccessRequest{
-      vas: assigns[:vas],
-      params: %{ id: id }
-    }
+  # def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  #   request = %AccessRequest{
+  #     vas: assigns[:vas],
+  #     params: %{ id: id }
+  #   }
 
-    {:ok, _} = Catalogue.delete_product_collection(request)
+  #   {:ok, _} = Catalogue.delete_product_collection(request)
 
-    send_resp(conn, :no_content, "")
-  end
+  #   send_resp(conn, :no_content, "")
+  # end
 
 end

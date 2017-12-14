@@ -41,19 +41,6 @@ defmodule BlueJetWeb.OrderLineItemController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => order_id }) when map_size(vas) == 2 do
-    request = %{
-      vas: assigns[:vas],
-      order_id: order_id,
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-
-    order = Storefront.get_order!(request)
-
-    render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
-  end
-
   def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => oli_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],

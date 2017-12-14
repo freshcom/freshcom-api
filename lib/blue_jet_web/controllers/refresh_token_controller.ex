@@ -7,31 +7,31 @@ defmodule BlueJetWeb.RefreshTokenController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
-      vas: assigns[:vas],
-      preloads: assigns[:preloads]
-    }
+  # def index(conn = %{ assigns: assigns }, params) do
+  #   request = %AccessRequest{
+  #     vas: assigns[:vas],
+  #     preloads: assigns[:preloads]
+  #   }
 
-    {:ok, %AccessResponse{ data: refresh_tokens }} = Identity.list_refresh_token(request)
+  #   {:ok, %AccessResponse{ data: refresh_tokens }} = Identity.list_refresh_token(request)
 
-    render(conn, "index.json-api", data: refresh_tokens, opts: [include: conn.query_params["include"]])
-  end
+  #   render(conn, "index.json-api", data: refresh_tokens, opts: [include: conn.query_params["include"]])
+  # end
 
-  def create(conn, params) do
-    with {:ok, jwt} <- Identity.authenticate(params) do
-      conn
-      |> put_status(:created)
-      |> render("show.json-api", data: jwt)
-    else
-      {:error, errors} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: errors)
-    end
-  end
+  # def create(conn, params) do
+  #   with {:ok, jwt} <- Identity.authenticate(params) do
+  #     conn
+  #     |> put_status(:created)
+  #     |> render("show.json-api", data: jwt)
+  #   else
+  #     {:error, errors} ->
+  #       conn
+  #       |> put_status(:unprocessable_entity)
+  #       |> render(:errors, data: errors)
+  #   end
+  # end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
+  def show(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
       vas: assigns[:vas],
       preloads: assigns[:preloads],
