@@ -17,3 +17,8 @@ Ready to run in production? Please [check our deployment guides](http://www.phoe
   * Docs: https://hexdocs.pm/phoenix
   * Mailing list: http://groups.google.com/group/phoenix-talk
   * Source: https://github.com/phoenixframework/phoenix
+
+## Generate RSA key paris
+`openssl genrsa -out private.pem 2048`
+`openssl rsa -in private.pem -outform PEM -pubout -out public.pem`
+
