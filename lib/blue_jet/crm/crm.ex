@@ -5,7 +5,6 @@ defmodule BlueJet.CRM do
   alias Ecto.Multi
 
   alias BlueJet.Identity
-  alias BlueJet.Billing
 
   alias BlueJet.CRM.Customer
   alias BlueJet.CRM.PointAccount
@@ -28,12 +27,12 @@ defmodule BlueJet.CRM do
   ####
   def list_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "crm.list_customer") do
-      do_list_customer(request)
+      do_list_customer(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+  def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, pagination: pagination }) do
     query =
       Customer.Query.default()
       |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account_id)
@@ -171,7 +170,7 @@ defmodule BlueJet.CRM do
     customer = case role do
       "guest" -> Repo.get_by(customer_query, id: id, status: "guest")
       "customer" -> Repo.get(customer_query, id) # TODO: only find the customer of the user
-      other -> Repo.get(customer_query, id)
+      _ -> Repo.get(customer_query, id)
     end
 
     statements =
@@ -222,12 +221,12 @@ defmodule BlueJet.CRM do
 
   def delete_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "crm.delete_customer") do
-      do_delete_customer(request)
+      do_delete_customer(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+  def do_delete_customer(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
     customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     statements =
@@ -292,7 +291,7 @@ defmodule BlueJet.CRM do
 
               changeset = Changeset.change(point_transaction.point_account, %{ balance: new_balance })
               Repo.update(changeset)
-            other -> {:ok, nil}
+            _ -> {:ok, nil}
           end
          end)
 
@@ -335,7 +334,7 @@ defmodule BlueJet.CRM do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_point_transaction(request = %AccessRequest{ vas: vas, params: %{ "id" => id }, fields: %{ "status" => "committed" } }) do
+  def do_update_point_transaction(%AccessRequest{ vas: vas, params: %{ "id" => id }, fields: %{ "status" => "committed" } }) do
     point_transaction = PointTransaction |> PointTransaction.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
     with %PointTransaction{} <- point_transaction,

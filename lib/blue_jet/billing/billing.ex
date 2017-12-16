@@ -65,7 +65,7 @@ defmodule BlueJet.Billing do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_billing_settings(request = %AccessRequest{ vas: vas }) do
+  def do_get_billing_settings(%AccessRequest{ vas: vas }) do
     billing_settings = Repo.get_by!(BillingSettings, account_id: vas[:account_id])
 
     {:ok, %AccessResponse{ data: billing_settings }}
@@ -317,7 +317,7 @@ defmodule BlueJet.Billing do
     end
   end
 
-  def delete_payment!(request = %{ vas: vas, payment_id: payment_id }) do
+  def delete_payment!(%{ vas: vas, payment_id: payment_id }) do
     payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
     Repo.delete!(payment)
   end

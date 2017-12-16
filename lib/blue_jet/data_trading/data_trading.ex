@@ -78,12 +78,12 @@ defmodule BlueJet.DataTrading do
     unlockable = get_unlockable(row, account_id)
     case unlockable do
       nil ->
-        {:ok, response} = Goods.do_create_unlockable(%AccessRequest{
+        {:ok, _} = Goods.do_create_unlockable(%AccessRequest{
           vas: %{ account_id: account_id },
           fields: fields
         })
       unlockable ->
-        {:ok, response} = Goods.do_update_unlockable(%AccessRequest{
+        {:ok, _} = Goods.do_update_unlockable(%AccessRequest{
           vas: %{ account_id: account_id },
           params: %{ "id" => unlockable.id },
           fields: fields,

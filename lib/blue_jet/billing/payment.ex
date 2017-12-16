@@ -93,7 +93,7 @@ defmodule BlueJet.Billing.Payment do
     writable_fields()
   end
   def castable_fields(%Payment{ __meta__: %{ state: :loaded }}) do
-    fields = writable_fields() -- [:account_id]
+    writable_fields() -- [:account_id]
   end
 
   def required_fields(changeset) do

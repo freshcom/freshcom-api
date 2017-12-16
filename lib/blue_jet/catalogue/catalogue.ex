@@ -59,7 +59,7 @@ defmodule BlueJet.Catalogue do
 
   def create_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product") do
-      do_create_product(request)
+      do_create_product(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -79,7 +79,7 @@ defmodule BlueJet.Catalogue do
 
   def get_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product") do
-      do_get_product(request)
+      do_get_product(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -104,7 +104,7 @@ defmodule BlueJet.Catalogue do
 
   def update_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product") do
-      do_update_product(request)
+      do_update_product(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -140,7 +140,7 @@ defmodule BlueJet.Catalogue do
 
   def delete_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product") do
-      do_delete_product(request)
+      do_delete_product(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -170,7 +170,7 @@ defmodule BlueJet.Catalogue do
   ######
   def list_product_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product_collection") do
-      do_list_product_collection(request)
+      do_list_product_collection(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -206,7 +206,7 @@ defmodule BlueJet.Catalogue do
 
   def create_product_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection") do
-      do_create_product_collection(request)
+      do_create_product_collection(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -226,7 +226,7 @@ defmodule BlueJet.Catalogue do
 
   def get_product_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product_collection") do
-      do_get_product_collection(request)
+      do_get_product_collection(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -252,7 +252,7 @@ defmodule BlueJet.Catalogue do
 
   def update_product_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product_collection") do
-      do_update_product_collection(request)
+      do_update_product_collection(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -282,7 +282,7 @@ defmodule BlueJet.Catalogue do
   #
   def create_product_collection_membership(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection_membership") do
-      do_create_product_collection_membership(request)
+      do_create_product_collection_membership(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -322,7 +322,7 @@ defmodule BlueJet.Catalogue do
 
   def delete_product_collection_membership(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_collection_membership") do
-      do_delete_product_collection_membership(request)
+      do_delete_product_collection_membership(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end

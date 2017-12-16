@@ -139,7 +139,7 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_account(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
+  def do_get_account(%AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
     account =
       Account
       |> Repo.get!(account_id)
@@ -156,7 +156,7 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_account(request = %AccessRequest{ vas: %{ account_id: account_id }, fields: fields }) do
+  def do_update_account(%AccessRequest{ vas: %{ account_id: account_id }, fields: fields }) do
     changeset =
       Account
       |> Repo.get!(account_id)
@@ -172,7 +172,7 @@ defmodule BlueJet.Identity do
   ####
   # User
   ####
-  def create_user(request = %AccessRequest{ vas: vas, fields: fields }) do
+  def create_user(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.create_user") do
       do_create_user(%{ request | role: role })
     else
@@ -183,7 +183,7 @@ defmodule BlueJet.Identity do
     result = Query.create_global_user(fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user(%{ vas: %{ account_id: account_id, user_id: user_id }, fields: fields, preloads: preloads }) do
+  defp do_create_user(%{ vas: %{ account_id: account_id, user_id: _ }, fields: fields, preloads: preloads }) do
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
@@ -202,7 +202,7 @@ defmodule BlueJet.Identity do
 
   def get_user(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.get_user") do
-      do_get_user(request)
+      do_get_user(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -246,7 +246,7 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_refresh_token(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
+  def do_get_refresh_token(%AccessRequest{ vas: %{ account_id: account_id } }) do
     refresh_token =
       RefreshToken.Query.publishable()
       |> Repo.get_by(account_id: account_id)

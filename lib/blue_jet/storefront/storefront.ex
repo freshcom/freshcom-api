@@ -25,7 +25,7 @@ defmodule BlueJet.Storefront do
         changeset
         |> Repo.update!()
         |> Order.process(changeset)
-      other ->
+      _ ->
         {:ok, Order.refresh_payment_status(order)}
     end
   end
@@ -37,7 +37,7 @@ defmodule BlueJet.Storefront do
     order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
     {:ok, order}
   end
-  def handle_event(_, data) do
+  def handle_event(_, _) do
     {:ok, nil}
   end
 
@@ -116,7 +116,7 @@ defmodule BlueJet.Storefront do
 
   def get_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.get_order") do
-      do_get_order(request)
+      do_get_order(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
     end
@@ -209,7 +209,7 @@ defmodule BlueJet.Storefront do
         0 ->
           Repo.delete!(order)
           {:ok, %AccessResponse{}}
-        other ->
+        _ ->
           errors = %{ id: {"Order with existing payment can not be deleted", [code: :order_with_payment_cannot_be_deleted, full_error_message: true]} }
           {:error, %AccessResponse{ errors: errors }}
       end

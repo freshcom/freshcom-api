@@ -471,7 +471,7 @@ defmodule BlueJet.Identity.Authorization do
       _ -> authorize(vas, %{ id: account_id, mode: "live" }, endpoint)
     end
   end
-  def authorize(%{ account_id: account_id }, %{ mode: "live" }, endpoint) do
+  def authorize(%{ account_id: _ }, %{ mode: "live" }, endpoint) do
     authorize("guest", endpoint)
   end
 end
