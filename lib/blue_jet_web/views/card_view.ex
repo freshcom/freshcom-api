@@ -2,8 +2,6 @@ defmodule BlueJetWeb.CardView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :status,
     :last_four_digit,

@@ -19,7 +19,6 @@ defmodule BlueJet.Identity.RefreshToken do
   use BlueJet, :data
 
   alias BlueJet.Repo
-  alias BlueJet.Identity.Customer
   alias BlueJet.Identity.User
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.Account

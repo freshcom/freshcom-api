@@ -21,7 +21,7 @@ defmodule BlueJetWeb.OrderLineItemController do
     render(conn, "index.json-api", data: order_line_items, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "order_id" => order_id })
     request = %AccessRequest{
       vas: assigns[:vas],
@@ -41,7 +41,7 @@ defmodule BlueJetWeb.OrderLineItemController do
     end
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => oli_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => oli_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ order_line_item_id: oli_id },
@@ -60,7 +60,7 @@ defmodule BlueJetWeb.OrderLineItemController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => oli_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => oli_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ order_line_item_id: oli_id }

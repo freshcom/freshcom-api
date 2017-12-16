@@ -23,7 +23,7 @@ defmodule BlueJetWeb.DepositableController do
     render(conn, "index.json-api", data: depositables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Depositable" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Depositable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -42,7 +42,7 @@ defmodule BlueJetWeb.DepositableController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -55,7 +55,7 @@ defmodule BlueJetWeb.DepositableController do
     render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Depositable" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Depositable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -74,7 +74,7 @@ defmodule BlueJetWeb.DepositableController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }

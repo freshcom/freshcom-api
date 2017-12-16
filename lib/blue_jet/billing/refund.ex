@@ -66,8 +66,8 @@ defmodule BlueJet.Billing.Refund do
   def castable_fields(%Refund{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
-  def castable_fields(payment = %Refund{ __meta__: %{ state: :loaded }}) do
-    writable_fields -- [:amount_cents]
+  def castable_fields(%Refund{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:amount_cents]
   end
 
   def required_fields(changeset) do
@@ -100,7 +100,6 @@ defmodule BlueJet.Billing.Refund do
       _ -> changeset
     end
   end
-  defp validate_paid_amount_cents(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -121,10 +120,10 @@ defmodule BlueJet.Billing.Refund do
   def account(%{ account: account }), do: account
 
   @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
-  def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }) do
+  def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do
     refund = %{ refund | account: account(refund) }
-    with {:ok, stripe_refund} = create_stripe_refund(refund),
-         {:ok, stripe_transfer_reversal} = create_stripe_transfer_reversal(refund, stripe_refund)
+    with {:ok, stripe_refund} <- create_stripe_refund(refund),
+         {:ok, stripe_transfer_reversal} <- create_stripe_transfer_reversal(refund, stripe_refund)
     do
       sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
     else

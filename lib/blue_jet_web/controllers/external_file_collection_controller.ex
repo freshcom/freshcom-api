@@ -21,7 +21,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     render(conn, "index.json-api", data: external_file_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ExternalFileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -40,7 +40,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => efc_id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ external_file_collection_id: efc_id },
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ external_file_collection_id: efc_id },
@@ -72,7 +72,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => efc_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ external_file_collection_id: efc_id }

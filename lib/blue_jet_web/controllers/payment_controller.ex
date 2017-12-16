@@ -21,7 +21,7 @@ defmodule BlueJetWeb.PaymentController do
     render(conn, "index.json-api", data: payments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Payment" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Payment" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -40,7 +40,7 @@ defmodule BlueJetWeb.PaymentController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => payment_id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => payment_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ payment_id: payment_id },
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.PaymentController do
     render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => payment_id, "data" => data = %{ "type" => "Payment" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => payment_id, "data" => data = %{ "type" => "Payment" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ payment_id: payment_id },

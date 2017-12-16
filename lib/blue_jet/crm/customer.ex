@@ -66,7 +66,7 @@ defmodule BlueJet.CRM.Customer do
     writable_fields() -- [:account_id]
   end
 
-  def required_name_fields(first_name, last_name, other_name) do
+  def required_name_fields(_, _, other_name) do
     if other_name do
       []
     else
@@ -116,7 +116,7 @@ defmodule BlueJet.CRM.Customer do
   end
   def account(%{ account: account }), do: account
 
-  def match?(nil, params) do
+  def match?(nil, _) do
     false
   end
   def match?(customer, params) do
@@ -139,7 +139,7 @@ defmodule BlueJet.CRM.Customer do
 
     case length(leftover) do
       0 -> true
-      other -> false
+      _ -> false
     end
   end
   defp downcase(nil) do
@@ -175,15 +175,15 @@ defmodule BlueJet.CRM.Customer do
   end
   def preprocess(customer, _), do: customer
 
-  @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
-  defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
-    customer = %{ customer | account: account(customer) }
-    with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
-      Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
-    else
-      other -> other
-    end
-  end
+  # @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
+  # defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
+  #   customer = %{ customer | account: account(customer) }
+  #   with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
+  #     Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
+  #   else
+  #     other -> other
+  #   end
+  # end
 
   @spec create_stripe_customer(Customer.t) :: {:ok, map} | {:error, map}
   defp create_stripe_customer(customer) do
@@ -191,11 +191,11 @@ defmodule BlueJet.CRM.Customer do
     StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
   end
 
-  @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
-  defp list_stripe_card(%Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
-    account = account(customer)
-    StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
-  end
+  # @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
+  # defp list_stripe_card(customer = %Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
+  #   account = account(customer)
+  #   StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
+  # end
 
   defmodule Query do
     use BlueJet, :query
@@ -207,7 +207,7 @@ defmodule BlueJet.CRM.Customer do
     def with_id_or_code(query, id_or_code) do
       case Ecto.UUID.dump(id_or_code) do
         :error -> from(c in query, where: c.code == ^id_or_code)
-        other -> from(c in query, where: (c.id == ^id_or_code) or (c.code == ^id_or_code))
+        _ -> from(c in query, where: (c.id == ^id_or_code) or (c.code == ^id_or_code))
       end
     end
 

@@ -44,10 +44,11 @@ defmodule  BlueJet.Plugs.ContentTypeNegotiation do
   end
 
   def verify_accepts(conn, _opts) do
-    accepts = conn
-              |> get_req_header("accept")
-              |> Enum.flat_map(&(String.split(&1, ",")))
-              |> Enum.map(&String.strip/1)
+    accepts =
+      conn
+      |> get_req_header("accept")
+      |> Enum.flat_map(&(String.split(&1, ",")))
+      |> Enum.map(&String.trim/1)
 
     cond do
       accepts == []                          -> conn

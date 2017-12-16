@@ -50,7 +50,7 @@ defmodule BlueJetWeb.OrderLineItemView do
     "OrderLineItem"
   end
 
-  def order(struct, conn) do
+  def order(struct, _) do
     case struct.order do
       %Ecto.Association.NotLoaded{} ->
         struct
@@ -60,7 +60,7 @@ defmodule BlueJetWeb.OrderLineItemView do
     end
   end
 
-  def product(struct, conn) do
+  def product(struct, _) do
     case struct.product do
       %Ecto.Association.NotLoaded{} ->
         struct
@@ -70,7 +70,7 @@ defmodule BlueJetWeb.OrderLineItemView do
     end
   end
 
-  def price(struct, conn) do
+  def price(struct, _) do
     case struct.price do
       %Ecto.Association.NotLoaded{} ->
         struct

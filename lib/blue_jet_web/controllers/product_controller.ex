@@ -21,7 +21,7 @@ defmodule BlueJetWeb.ProductController do
     render(conn, "index.json-api", data: products, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Product" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Product" } }) do
     fields =
       Params.to_attributes(data)
       |> underscore_value(["kind", "name_sync"])
@@ -44,7 +44,7 @@ defmodule BlueJetWeb.ProductController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -57,7 +57,7 @@ defmodule BlueJetWeb.ProductController do
     render(conn, "show.json-api", data: product, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Product" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Product" } }) do
     fields =
       Params.to_attributes(data)
       |> underscore_value(["kind", "name_sync"])
@@ -80,7 +80,7 @@ defmodule BlueJetWeb.ProductController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => product_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => product_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ product_id: product_id }

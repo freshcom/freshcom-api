@@ -1,7 +1,6 @@
 defmodule BlueJetWeb.UnlockController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.Storefront
 
   plug :scrub_params, "data" when action in [:create, :update]
@@ -21,7 +20,7 @@ defmodule BlueJetWeb.UnlockController do
     render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },

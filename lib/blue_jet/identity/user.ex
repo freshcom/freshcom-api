@@ -72,7 +72,7 @@ defmodule BlueJet.Identity.User do
   end
   defp put_encrypted_password(changeset), do: changeset
 
-  defp put_username(changeset = %Changeset{ changes: %{ username: username } }), do: changeset
+  defp put_username(changeset = %Changeset{ changes: %{ username: _ } }), do: changeset
   defp put_username(changeset = %Changeset{ valid?: true }) do
     put_change(changeset, :username, get_field(changeset, :email))
   end

@@ -4,9 +4,6 @@ defmodule BlueJet.CRM.PointAccount do
   use Trans, translates: [:custom_data], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-
-  alias BlueJet.FileStorage
 
   alias BlueJet.CRM.PointAccount
   alias BlueJet.CRM.PointTransaction

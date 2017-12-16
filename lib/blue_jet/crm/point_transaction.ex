@@ -7,9 +7,6 @@ defmodule BlueJet.CRM.PointTransaction do
   alias Ecto.Multi
 
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-
-  alias BlueJet.FileStorage
 
   alias BlueJet.CRM.PointTransaction
   alias BlueJet.CRM.PointAccount

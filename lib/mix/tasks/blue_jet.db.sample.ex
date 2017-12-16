@@ -21,7 +21,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
-    alias BlueJet.Storefront
     alias BlueJet.CRM
 
     ensure_started(Repo, [])
@@ -38,7 +37,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
 
 
-    {:ok, %{ data: customer }} = CRM.create_customer(%AccessRequest{
+    {:ok, %{ data: _ }} = CRM.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
       fields: %{
         "first_name" => "Tiffany",
@@ -79,7 +78,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "charge_unit" => "EA",
       "order_unit" => "EA"
     })
-    price = Repo.insert!(changeset)
+    Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
       "status" => "active"
@@ -117,7 +116,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "charge_unit" => "EA",
       "order_unit" => "EA"
     })
-    price = Repo.insert!(changeset)
+    Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
       "status" => "active"
@@ -266,7 +265,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "charge_cents" => 599,
       "charge_unit" => "EA"
     })
-    price = Repo.insert!(changeset)
+    Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
@@ -276,7 +275,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "charge_cents" => 1099,
       "charge_unit" => "EA"
     })
-    price = Repo.insert!(changeset)
+    Repo.insert!(changeset)
 
     changeset = Product.changeset(item_seasoned_soy_sauce, %{
       "status" => "active"
@@ -319,7 +318,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "charge_unit" => "LB",
       "order_unit" => "EA"
     })
-    price = Repo.insert!(changeset)
+    Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
       "status" => "active"

@@ -6,7 +6,7 @@ defmodule BlueJetWeb.RefundController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "payment_id" => payment_id })
     request = %AccessRequest{
       vas: assigns[:vas],

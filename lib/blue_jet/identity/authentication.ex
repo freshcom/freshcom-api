@@ -27,24 +27,22 @@ defmodule BlueJet.Identity.Authentication do
 
   """
 
-  import Ecto.Query
-
   alias BlueJet.Repo
   alias BlueJet.Identity.User
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.Jwt
   alias BlueJet.Identity.RefreshToken
 
-  def create_token(request = %{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
+  def create_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
     create_token(%{ grant_type: "password", username: username, password: password, scope: deserialize_scope(scope) })
   end
-  def create_token(request = %{ "grant_type" => "password", "username" => username, "password" => password }) do
+  def create_token(%{ "grant_type" => "password", "username" => username, "password" => password }) do
     create_token(%{ grant_type: "password", username: username, password: password })
   end
-  def create_token(request = %{ "grant_type" => "refresh_token", "refresh_token" => refresh_token, "scope" => scope }) do
+  def create_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token, "scope" => scope }) do
     create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token, scope: deserialize_scope(scope) })
   end
-  def create_token(request = %{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }) do
+  def create_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }) do
     create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token })
   end
 
@@ -73,7 +71,7 @@ defmodule BlueJet.Identity.Authentication do
   end
 
   # No scope
-  def create_token_by_password(nil, password) do
+  def create_token_by_password(nil, _) do
     {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
   end
   def create_token_by_password(%User{ id: user_id, default_account_id: account_id, encrypted_password: encrypted_password }, password) do
@@ -90,7 +88,7 @@ defmodule BlueJet.Identity.Authentication do
   @doc """
   This function assume the given user is either `nil` or part of is a member of `account_id`
   """
-  def create_token_by_password(nil, password, account_id) do
+  def create_token_by_password(nil, _, _) do
     {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
   end
   def create_token_by_password(%User{ id: user_id, encrypted_password: encrypted_password }, password, account_id) do

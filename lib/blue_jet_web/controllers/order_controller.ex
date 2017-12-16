@@ -21,7 +21,7 @@ defmodule BlueJetWeb.OrderController do
     render(conn, "index.json-api", data: orders, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Order" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Order" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -40,7 +40,7 @@ defmodule BlueJetWeb.OrderController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.OrderController do
     render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Order" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Order" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -72,7 +72,7 @@ defmodule BlueJetWeb.OrderController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }

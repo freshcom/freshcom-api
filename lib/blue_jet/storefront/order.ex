@@ -11,8 +11,6 @@ defmodule BlueJet.Storefront.Order do
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
 
   @type t :: Ecto.Schema.t
 
@@ -107,7 +105,7 @@ defmodule BlueJet.Storefront.Order do
     writable_fields() -- [:account_id]
   end
 
-  def required_name_fields(first_name, last_name, other_name) do
+  def required_name_fields(_, _, other_name) do
     if other_name do
       []
     else
@@ -308,11 +306,7 @@ defmodule BlueJet.Storefront.Order do
 
     {:ok, order}
   end
-  def process(order, changeset), do: {:ok, order}
-
-  def open(order) do
-
-  end
+  def process(order, _), do: {:ok, order}
 
   defmodule Query do
     use BlueJet, :query

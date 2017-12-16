@@ -2,8 +2,6 @@ defmodule BlueJetWeb.PointAccountView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :status,
     :balance

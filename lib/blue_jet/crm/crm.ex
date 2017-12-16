@@ -19,7 +19,7 @@ defmodule BlueJet.CRM do
     {:ok, fields}
   end
   def handle_event("billing.payment.before_create", %{ fields: fields }), do: {:ok, fields}
-  def handle_event(_, data) do
+  def handle_event(_, _) do
     {:ok, nil}
   end
 
@@ -30,7 +30,7 @@ defmodule BlueJet.CRM do
     with {:ok, role} <- Identity.authorize(vas, "crm.list_customer") do
       do_list_customer(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -64,9 +64,9 @@ defmodule BlueJet.CRM do
 
   def create_customer(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "crm.create_customer") do
-      do_create_customer(request)
+      do_create_customer(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_customer(request = %{ vas: vas }) do
@@ -117,7 +117,7 @@ defmodule BlueJet.CRM do
     with {:ok, role} <- Identity.authorize(vas, "crm.get_customer") do
       do_get_customer(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -162,7 +162,7 @@ defmodule BlueJet.CRM do
     with {:ok, role} <- Identity.authorize(vas, "crm.update_customer") do
       do_update_customer(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_customer(request = %AccessRequest{ role: role, vas: vas, params: %{ "id" => id } }) do
@@ -224,7 +224,7 @@ defmodule BlueJet.CRM do
     with {:ok, role} <- Identity.authorize(vas, "crm.delete_customer") do
       do_delete_customer(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -256,7 +256,7 @@ defmodule BlueJet.CRM do
     with {:ok, role} <- Identity.authorize(vas, "crm.create_point_transaction") do
       do_create_point_transaction(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_point_transaction(request = %AccessRequest{ role: "customer", vas: vas }) do
@@ -307,9 +307,9 @@ defmodule BlueJet.CRM do
 
   def get_point_transaction(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "crm.get_point_transaction") do
-      do_get_point_transaction(request)
+      do_get_point_transaction(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_point_transaction(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -330,9 +330,9 @@ defmodule BlueJet.CRM do
   # TODO
   def update_point_transaction(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "crm.update_point_transaction") do
-      do_update_point_transaction(request)
+      do_update_point_transaction(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_point_transaction(request = %AccessRequest{ vas: vas, params: %{ "id" => id }, fields: %{ "status" => "committed" } }) do

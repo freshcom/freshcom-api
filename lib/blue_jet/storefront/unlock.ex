@@ -3,7 +3,6 @@ defmodule BlueJet.Storefront.Unlock do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  alias Ecto.Changeset
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
 

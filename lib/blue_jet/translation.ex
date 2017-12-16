@@ -85,7 +85,7 @@ defmodule BlueJet.Translation do
     end)
   end
 
-  defp merge_locale_struct(dst_struct, src_struct, fields, prefix \\ "") do
+  defp merge_locale_struct(dst_struct, src_struct, fields, prefix) do
     Enum.reduce(fields, dst_struct, fn(field, acc) ->
       if Map.has_key?(src_struct, field) do
         Map.put(acc, "#{prefix}#{field}", src_struct[field])

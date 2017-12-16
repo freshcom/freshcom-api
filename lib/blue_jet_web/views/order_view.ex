@@ -2,8 +2,6 @@ defmodule BlueJetWeb.OrderView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :code,
     :status,
@@ -61,10 +59,10 @@ defmodule BlueJetWeb.OrderView do
     Inflex.camelize(order.payment_status, :lower)
   end
 
-  def customer(%{ customer_id: nil }, conn) do
+  def customer(%{ customer_id: nil }, _) do
     nil
   end
-  def customer(order = %{ customer_id: customer_id }, conn) do
+  def customer(order = %{ customer_id: customer_id }, _) do
     case order.customer do
       nil ->
         %{ id: customer_id, type: "Customer" }

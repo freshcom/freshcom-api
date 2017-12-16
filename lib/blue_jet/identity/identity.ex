@@ -1,7 +1,6 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
 
-  alias Ecto.Changeset
   alias BlueJet.Identity.Authorization
   alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.User
@@ -118,9 +117,9 @@ defmodule BlueJet.Identity do
   ####
   def list_account(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.list_account") do
-      do_list_account(request)
+      do_list_account(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_account(%AccessRequest{ vas: %{ user_id: user_id }, locale: locale }) do
@@ -135,9 +134,9 @@ defmodule BlueJet.Identity do
 
   def get_account(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.get_account") do
-      do_get_account(request)
+      do_get_account(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_account(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
@@ -152,9 +151,9 @@ defmodule BlueJet.Identity do
 
   def update_account(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.update_account") do
-      do_update_account(request)
+      do_update_account(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_account(request = %AccessRequest{ vas: %{ account_id: account_id }, fields: fields }) do
@@ -173,22 +172,22 @@ defmodule BlueJet.Identity do
   ####
   # User
   ####
-  def create_user(request = %AccessRequest{ vas: vas, fields: fields, preloads: preloads }) do
+  def create_user(request = %AccessRequest{ vas: vas, fields: fields }) do
     with {:ok, role} <- authorize(vas, "identity.create_user") do
-      do_create_user(request)
+      do_create_user(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
-  defp do_create_user(request = %AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
+  defp do_create_user(%AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
     result = Query.create_global_user(fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user(request = %{ vas: %{ account_id: account_id, user_id: user_id }, fields: fields, preloads: preloads }) do
+  defp do_create_user(%{ vas: %{ account_id: account_id, user_id: user_id }, fields: fields, preloads: preloads }) do
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user(request = %{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
+  defp do_create_user(%{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
     fields = Map.merge(fields, %{ "role" => "customer" })
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
@@ -197,7 +196,7 @@ defmodule BlueJet.Identity do
     user = Repo.preload(user, User.Query.preloads(preloads))
     {:ok, %AccessResponse{ data: user }}
   end
-  defp do_create_user_response({:error, failed_operation, failed_value, _}, _) do
+  defp do_create_user_response({:error, _, failed_value, _}, _) do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
 
@@ -205,7 +204,7 @@ defmodule BlueJet.Identity do
     with {:ok, role} <- authorize(vas, "identity.get_user") do
       do_get_user(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_user(%AccessRequest{ vas: %{ user_id: user_id }, preloads: preloads, locale: locale }) do
@@ -226,10 +225,10 @@ defmodule BlueJet.Identity do
         true -> do_delete_user(request)
       end
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_user(request = %AccessRequest{ vas: vas, params: %{ user_id: user_id } }) do
+  def do_delete_user(%AccessRequest{ vas: vas, params: %{ user_id: user_id } }) do
     user = User |> User.Query.member_of_account(vas[:account_id]) |> Repo.get(user_id)
 
     Repo.delete!(user)
@@ -242,9 +241,9 @@ defmodule BlueJet.Identity do
   #
   def get_refresh_token(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- authorize(vas, "identity.get_refresh_token") do
-      do_get_refresh_token(request)
+      do_get_refresh_token(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_refresh_token(request = %AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do

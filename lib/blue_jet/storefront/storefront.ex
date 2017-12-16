@@ -46,9 +46,9 @@ defmodule BlueJet.Storefront do
   ####
   def list_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.list_order") do
-      do_list_order(request)
+      do_list_order(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_order(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -96,9 +96,9 @@ defmodule BlueJet.Storefront do
 
   def create_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.create_order") do
-      do_create_order(request)
+      do_create_order(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_order(request = %{ vas: vas }) do
@@ -118,7 +118,7 @@ defmodule BlueJet.Storefront do
     with {:ok, role} <- Identity.authorize(vas, "storefront.get_order") do
       do_get_order(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -140,7 +140,7 @@ defmodule BlueJet.Storefront do
     with {:ok, role} <- Identity.authorize(vas, "storefront.update_order") do
       do_update_order(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_order(request = %AccessRequest{ role: "customer", vas: vas, params: %{ "id" => id }}) do
@@ -173,7 +173,6 @@ defmodule BlueJet.Storefront do
   end
   def do_update_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
     order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    changeset = Order.changeset(order, request.fields, request.locale)
 
     with %Order{} <- order,
          changeset <- Order.changeset(order, request.fields, request.locale),
@@ -196,9 +195,9 @@ defmodule BlueJet.Storefront do
 
   def delete_order(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order") do
-      do_delete_order(request)
+      do_delete_order(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_order(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -227,7 +226,7 @@ defmodule BlueJet.Storefront do
     with {:ok, role} <- Identity.authorize(vas, "storefront.list_order_line_item") do
       do_list_order_line_item(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
@@ -269,9 +268,9 @@ defmodule BlueJet.Storefront do
 
   def create_order_line_item(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.create_order_line_item") do
-      do_create_order_line_item(request)
+      do_create_order_line_item(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_order_line_item(request = %AccessRequest{ vas: vas }) do
@@ -306,9 +305,9 @@ defmodule BlueJet.Storefront do
 
   def update_order_line_item(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.update_order_line_item") do
-      do_update_order_line_item(request)
+      do_update_order_line_item(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_order_line_item(request = %AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
@@ -342,12 +341,12 @@ defmodule BlueJet.Storefront do
 
   def delete_order_line_item(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order_line_item") do
-      do_delete_order_line_item(request)
+      do_delete_order_line_item(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_order_line_item(request = %AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
+  def do_delete_order_line_item(%AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
     oli = OrderLineItem |> OrderLineItem.Query.for_account(vas[:account_id]) |> Repo.get(oli_id)
 
     statements =
@@ -377,9 +376,9 @@ defmodule BlueJet.Storefront do
   #
   def list_unlock(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.list_unlock") do
-      do_list_unlock(request)
+      do_list_unlock(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_unlock(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -417,9 +416,9 @@ defmodule BlueJet.Storefront do
   # TODO: If customer should scope by customer
   def get_unlock(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "storefront.get_unlock") do
-      do_get_unlock(request)
+      do_get_unlock(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_unlock(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do

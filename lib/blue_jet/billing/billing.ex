@@ -31,13 +31,13 @@ defmodule BlueJet.Billing do
 
     {:ok, billing_settings}
   end
-  def handle_event(_, data), do: {:ok, nil}
+  def handle_event(_, _), do: {:ok, nil}
 
   def update_billing_settings(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.update_settings") do
-      do_update_billing_settings(request)
+      do_update_billing_settings(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_billing_settings(request = %AccessRequest{ vas: vas }) do
@@ -60,9 +60,9 @@ defmodule BlueJet.Billing do
 
   def get_billing_settings(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.get_settings") do
-      do_get_billing_settings(request)
+      do_get_billing_settings(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_billing_settings(request = %AccessRequest{ vas: vas }) do
@@ -73,9 +73,9 @@ defmodule BlueJet.Billing do
 
   def list_card(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.list_card") do
-      do_list_card(request)
+      do_list_card(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_card(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -109,9 +109,9 @@ defmodule BlueJet.Billing do
 
   def update_card(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.update_card") do
-      do_update_card(request)
+      do_update_card(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_card(request = %AccessRequest{ vas: vas, params: %{ card_id: card_id }}) do
@@ -138,9 +138,9 @@ defmodule BlueJet.Billing do
 
   def delete_card(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.delete_card") do
-      do_delete_card(request)
+      do_delete_card(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_card(%AccessRequest{ vas: vas, params: %{ card_id: card_id } }) do
@@ -163,9 +163,9 @@ defmodule BlueJet.Billing do
   ####
   def list_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.list_payment") do
-      do_list_payment(request)
+      do_list_payment(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_payment(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -206,9 +206,9 @@ defmodule BlueJet.Billing do
 
   def create_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.create_payment") do
-      do_create_payment(request)
+      do_create_payment(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_payment(request = %AccessRequest{ vas: vas }) do
@@ -265,9 +265,9 @@ defmodule BlueJet.Billing do
 
   def get_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.get_payment") do
-      do_get_payment(request)
+      do_get_payment(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
@@ -287,9 +287,9 @@ defmodule BlueJet.Billing do
 
   def update_payment(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.update_payment") do
-      do_update_payment(request)
+      do_update_payment(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
@@ -317,10 +317,6 @@ defmodule BlueJet.Billing do
     end
   end
 
-  defp format_stripe_errors(stripe_errors) do
-    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
-  end
-
   def delete_payment!(request = %{ vas: vas, payment_id: payment_id }) do
     payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
     Repo.delete!(payment)
@@ -331,9 +327,9 @@ defmodule BlueJet.Billing do
   ######
   def create_refund(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "billing.create_refund") do
-      do_create_refund(request)
+      do_create_refund(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_refund(request = %{ vas: vas }) do

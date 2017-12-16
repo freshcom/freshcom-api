@@ -23,7 +23,7 @@ defmodule BlueJetWeb.PriceController do
     render(conn, "index.json-api", data: prices, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Price" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Price" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -55,7 +55,7 @@ defmodule BlueJetWeb.PriceController do
     render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Price" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Price" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -74,7 +74,7 @@ defmodule BlueJetWeb.PriceController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }

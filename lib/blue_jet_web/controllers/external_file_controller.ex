@@ -22,7 +22,7 @@ defmodule BlueJetWeb.ExternalFileController do
     render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ExternalFile" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ExternalFile" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -54,7 +54,7 @@ defmodule BlueJetWeb.ExternalFileController do
     render(conn, "show.json-api", data: external_file)
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ external_file_id: ef_id },
@@ -73,7 +73,7 @@ defmodule BlueJetWeb.ExternalFileController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => ef_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => ef_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ external_file_id: ef_id }

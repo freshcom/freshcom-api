@@ -6,7 +6,7 @@ defmodule BlueJetWeb.DataImportController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "DataImport" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "DataImport" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),

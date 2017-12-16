@@ -10,9 +10,9 @@ defmodule BlueJet.DataTrading do
 
   def create_data_import(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "data_trading.create_data_import") do
-      do_create_data_import(request)
+      do_create_data_import(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_data_import(request = %{ vas: vas }) do
@@ -59,12 +59,12 @@ defmodule BlueJet.DataTrading do
     customer = get_customer(row, account_id)
     case customer do
       nil ->
-        {:ok, response} = CRM.do_create_customer(%AccessRequest{
+        {:ok, _} = CRM.do_create_customer(%AccessRequest{
           vas: %{ account_id: account_id },
           fields: fields
         })
       customer ->
-        {:ok, response} = CRM.do_update_customer(%AccessRequest{
+        {:ok, _} = CRM.do_update_customer(%AccessRequest{
           vas: %{ account_id: account_id },
           params: %{ "id" => customer.id },
           fields: fields
@@ -124,12 +124,11 @@ defmodule BlueJet.DataTrading do
       merge_custom_data(row, row["custom_data"])
       |> Map.merge(%{ "product_id" => product_id })
 
-    price =
-      get_price(row, account_id)
-      |> update_or_create_price(account_id, fields)
+    get_price(row, account_id)
+    |> update_or_create_price(account_id, fields)
   end
 
-  defp extract_product_source_id(%{ "source_id" => source_id }, account_id) when byte_size(source_id) > 0 do
+  defp extract_product_source_id(%{ "source_id" => source_id }, _) when byte_size(source_id) > 0 do
     source_id
   end
   defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account_id) when byte_size(code) > 0 do
@@ -150,7 +149,7 @@ defmodule BlueJet.DataTrading do
   defp rel_code_key(nil), do: "code"
   defp rel_code_key(rel_name), do: "#{rel_name}_code"
 
-  defp extract_customer_id(row, account_id, rel_name \\ nil) do
+  defp extract_customer_id(row, account_id, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -164,13 +163,13 @@ defmodule BlueJet.DataTrading do
 
         case result do
           {:ok, %{ data: customer}} -> customer.id
-          other -> nil
+          _ -> nil
         end
       true -> nil
     end
   end
 
-  defp extract_product_id(row, account_id, rel_name \\ nil) do
+  defp extract_product_id(row, account_id, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -184,13 +183,13 @@ defmodule BlueJet.DataTrading do
 
         case result do
           {:ok, %{ data: product}} -> product.id
-          other -> nil
+          _ -> nil
         end
       true -> nil
     end
   end
 
-  defp extract_product_collection_id(row, account_id, rel_name \\ nil) do
+  defp extract_product_collection_id(row, account_id, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -204,7 +203,7 @@ defmodule BlueJet.DataTrading do
 
         case result do
           {:ok, %{ data: product_collection}} -> product_collection.id
-          other -> nil
+          _ -> nil
         end
       true -> nil
     end
@@ -290,27 +289,6 @@ defmodule BlueJet.DataTrading do
     case result do
       {:ok, %{ data: price }} ->
         price
-      {:error, :not_found} -> nil
-    end
-  end
-
-  defp get_product_collection(%{ "id" => id }, account_id) when byte_size(id) > 0 do
-    {:ok, %{ data: product_collection}} = Catalogue.do_get_product_collection(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => id }
-    })
-
-    product_collection
-  end
-  defp get_product_collection(%{ "code" => code }, account_id) when byte_size(code) > 0 do
-    result = Catalogue.do_get_product_collection(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "code" => code }
-    })
-
-    case result do
-      {:ok, %{ data: product_collection }} ->
-        product_collection
       {:error, :not_found} -> nil
     end
   end

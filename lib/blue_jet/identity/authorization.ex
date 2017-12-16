@@ -444,26 +444,6 @@ defmodule BlueJet.Identity.Authorization do
     account = Repo.get!(Account, account_id)
     authorize(vas, account, endpoint)
   end
-  def authorize(%{ user_id: user_id }, %{ id: account_id, mode: "live" }, endpoint) do
-    with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
-         {:ok, role} <- authorize(role, endpoint)
-    do
-      {:ok, role}
-    else
-      nil -> {:error, :no_membership}
-      {:error, role} -> {:error, :role_not_allowed}
-    end
-  end
-  def authorize(vas, %{ mode: "test", live_account_id: account_id }, endpoint) do
-    # Check if the endpoint is testable
-    case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
-      nil -> {:error, :test_account_not_allowed}
-      other -> authorize(vas, %{ id: account_id, mode: "live" }, endpoint)
-    end
-  end
-  def authorize(%{ account_id: account_id }, %{ mode: "live" }, endpoint) do
-    authorize("guest", endpoint)
-  end
   def authorize(role, target_endpoint) when is_bitstring(role) do
     endpoints = Map.get(@role_endpoints, role)
     found = Enum.any?(endpoints, fn(endpoint) -> endpoint == target_endpoint end)
@@ -474,5 +454,24 @@ defmodule BlueJet.Identity.Authorization do
       {:error, role}
     end
   end
-
+  def authorize(%{ user_id: user_id }, %{ id: account_id, mode: "live" }, endpoint) do
+    with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
+         {:ok, role} <- authorize(role, endpoint)
+    do
+      {:ok, role}
+    else
+      nil -> {:error, :no_membership}
+      {:error, _} -> {:error, :role_not_allowed}
+    end
+  end
+  def authorize(vas, %{ mode: "test", live_account_id: account_id }, endpoint) do
+    # Check if the endpoint is testable
+    case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
+      nil -> {:error, :test_account_not_allowed}
+      _ -> authorize(vas, %{ id: account_id, mode: "live" }, endpoint)
+    end
+  end
+  def authorize(%{ account_id: account_id }, %{ mode: "live" }, endpoint) do
+    authorize("guest", endpoint)
+  end
 end

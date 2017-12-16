@@ -15,9 +15,9 @@ defmodule BlueJet.Catalogue do
   ######
   def list_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product") do
-      do_list_product(request)
+      do_list_product(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_product(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -61,7 +61,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product") do
       do_create_product(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_product(request = %{ vas: vas }) do
@@ -81,7 +81,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product") do
       do_get_product(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -106,7 +106,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product") do
       do_update_product(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
@@ -142,7 +142,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product") do
       do_delete_product(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_product(%AccessRequest{ vas: vas, params: %{ product_id: product_id } }) do
@@ -172,7 +172,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product_collection") do
       do_list_product_collection(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_product_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -208,7 +208,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection") do
       do_create_product_collection(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_product_collection(request = %{ vas: vas }) do
@@ -228,7 +228,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product_collection") do
       do_get_product_collection(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -254,12 +254,11 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product_collection") do
       do_update_product_collection(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_product_collection(request = %{ vas: vas, params: %{ id: id }}) do
     product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    changeset = ProductCollection.changeset(product_collection, request.fields, request.locale)
 
     with %ProductCollection{} <- product_collection,
          changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale),
@@ -285,7 +284,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection_membership") do
       do_create_product_collection_membership(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_product_collection_membership(request = %{ vas: vas }) do
@@ -301,8 +300,8 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  def do_get_product_collection_membership(request = %{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
-  def do_get_product_collection_membership(request = %{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(%{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
   def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
     membership =
       ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas[:account_id])
@@ -325,7 +324,7 @@ defmodule BlueJet.Catalogue do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_collection_membership") do
       do_delete_product_collection_membership(request)
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_product_collection_membership(%AccessRequest{ vas: vas, params: %{ id: id } }) do
@@ -344,9 +343,9 @@ defmodule BlueJet.Catalogue do
   #####
   def list_price(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.list_price") do
-      do_list_price(request)
+      do_list_price(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_price(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -380,9 +379,9 @@ defmodule BlueJet.Catalogue do
 
   def create_price(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_price") do
-      do_create_price(request)
+      do_create_price(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_price(request = %AccessRequest{ vas: vas }) do
@@ -400,9 +399,9 @@ defmodule BlueJet.Catalogue do
 
   def get_price(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.get_price") do
-      do_get_price(request)
+      do_get_price(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -425,9 +424,9 @@ defmodule BlueJet.Catalogue do
 
   def update_price(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.update_price") do
-      do_update_price(request)
+      do_update_price(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
@@ -460,9 +459,9 @@ defmodule BlueJet.Catalogue do
 
   def delete_price(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_price") do
-      do_delete_price(request)
+      do_delete_price(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_price(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do

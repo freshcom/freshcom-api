@@ -11,9 +11,9 @@ defmodule BlueJet.FileStorage do
   ####
   def list_external_file(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.list_external_file") do
-      do_list_external_file(request)
+      do_list_external_file(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_external_file(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -47,9 +47,9 @@ defmodule BlueJet.FileStorage do
 
   def create_external_file(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.create_external_file") do
-      do_create_external_file(request)
+      do_create_external_file(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_external_file(request = %AccessRequest{ vas: vas }) do
@@ -70,9 +70,9 @@ defmodule BlueJet.FileStorage do
 
   def get_external_file(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.get_external_file") do
-      do_get_external_file(request)
+      do_get_external_file(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_external_file(request = %AccessRequest{ vas: vas, params: %{ id: id }}) do
@@ -104,9 +104,9 @@ defmodule BlueJet.FileStorage do
 
   def update_external_file(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.update_external_file") do
-      do_update_external_file(request)
+      do_update_external_file(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_external_file(request = %AccessRequest{ vas: vas, params: %{ external_file_id: external_file_id }}) do
@@ -131,9 +131,9 @@ defmodule BlueJet.FileStorage do
 
   def delete_external_file(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.delete_external_file") do
-      do_delete_external_file(request)
+      do_delete_external_file(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_external_file(%AccessRequest{ vas: vas, params: %{ external_file_id: external_file_id } }) do
@@ -153,9 +153,9 @@ defmodule BlueJet.FileStorage do
   ####
   def list_external_file_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.list_external_file_collection") do
-      do_list_external_file_collection(request)
+      do_list_external_file_collection(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_external_file_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -194,9 +194,9 @@ defmodule BlueJet.FileStorage do
 
   def create_external_file_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.create_external_file_collection") do
-      do_create_external_file_collection(request)
+      do_create_external_file_collection(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_external_file_collection(request = %{ vas: vas }) do
@@ -241,9 +241,9 @@ defmodule BlueJet.FileStorage do
 
   def get_external_file_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.get_external_file_collection") do
-      do_get_external_file_collection(request)
+      do_get_external_file_collection(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_external_file_collection(request = %AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id } }) do
@@ -263,9 +263,9 @@ defmodule BlueJet.FileStorage do
 
   def update_external_file_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.update_external_file_collection") do
-      do_update_external_file_collection(request)
+      do_update_external_file_collection(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_external_file_collection(request = %AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id }}) do
@@ -355,9 +355,9 @@ defmodule BlueJet.FileStorage do
   # TODO: use another process to delete, and also need to remove the files
   def delete_external_file_collection(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "file_storage.delete_external_file_collection") do
-      do_delete_external_file_collection(request)
+      do_delete_external_file_collection(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_external_file_collection(%AccessRequest{ vas: vas, params: %{ external_file_collection_id: efc_id } }) do

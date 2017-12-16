@@ -18,7 +18,7 @@ defmodule BlueJet.Plugs.Include do
     preloads = String.split(preloads_string, ",")
     preloads = Enum.sort_by(preloads, fn(item) -> length(String.split(item, ".")) end)
 
-    preloads = Enum.reduce(preloads, [], fn(item, acc) ->
+    Enum.reduce(preloads, [], fn(item, acc) ->
       preload = to_preload(item)
 
       # If its a chained preload and the root key already exist in acc
@@ -32,11 +32,11 @@ defmodule BlueJet.Plugs.Include do
           is_tuple(item) && elem(item, 0) == key
         end)
 
-        List.update_at(acc, index, fn(index) ->
+        List.update_at(acc, index, fn(_) ->
           {key, List.flatten([existing_value]) ++ value}
         end)
       else
-        other ->
+        _ ->
           acc ++ preload
       end
     end)

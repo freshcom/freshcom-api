@@ -31,7 +31,7 @@ defmodule BlueJet.Identity.Account do
     |> cast(params, [:name, :default_locale])
   end
 
-  def put_test_account_id(account = %{ id: live_account_id, mode: "live" }) do
+  def put_test_account_id(%{ id: live_account_id, mode: "live" }) do
     account = Repo.get_by!(Account, mode: "test", live_account_id: live_account_id)
     %{ account | test_account_id: account.id }
   end

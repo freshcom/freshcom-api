@@ -2,8 +2,6 @@ defmodule BlueJetWeb.PaymentView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :status,
 

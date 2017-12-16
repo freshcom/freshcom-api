@@ -11,9 +11,9 @@ defmodule BlueJet.Goods do
   ####
   def list_stockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.list_stockable") do
-      do_list_stockable(request)
+      do_list_stockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_stockable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -47,9 +47,9 @@ defmodule BlueJet.Goods do
 
   def create_stockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.create_stockable") do
-      do_create_stockable(request)
+      do_create_stockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_stockable(request = %AccessRequest{ vas: vas }) do
@@ -67,9 +67,9 @@ defmodule BlueJet.Goods do
 
   def get_stockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.get_stockable") do
-      do_get_stockable(request)
+      do_get_stockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -89,9 +89,9 @@ defmodule BlueJet.Goods do
 
   def update_stockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.update_stockable") do
-      do_update_stockable(request)
+      do_update_stockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
@@ -117,9 +117,9 @@ defmodule BlueJet.Goods do
 
   def delete_stockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.delete_stockable") do
-      do_delete_stockable(request)
+      do_delete_stockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -138,9 +138,9 @@ defmodule BlueJet.Goods do
   ####
   def list_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.list_unlockable") do
-      do_list_unlockable(request)
+      do_list_unlockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_unlockable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -174,9 +174,9 @@ defmodule BlueJet.Goods do
 
   def create_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.create_unlockable") do
-      do_create_unlockable(request)
+      do_create_unlockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_unlockable(request = %AccessRequest{ vas: vas }) do
@@ -194,9 +194,9 @@ defmodule BlueJet.Goods do
 
   def get_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.get_unlockable") do
-      do_get_unlockable(request)
+      do_get_unlockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -220,14 +220,13 @@ defmodule BlueJet.Goods do
 
   def update_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.update_unlockable") do
-      do_update_unlockable(request)
+      do_update_unlockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_unlockable(request = %{ vas: vas, params: %{ "id" => id }}) do
     unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    changeset = Unlockable.changeset(unlockable, request.fields, request.locale)
 
     with %Unlockable{} <- unlockable,
          changeset <- Unlockable.changeset(unlockable, request.fields, request.locale),
@@ -248,9 +247,9 @@ defmodule BlueJet.Goods do
 
   def delete_unlockable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.delete_unlockable") do
-      do_delete_unlockable(request)
+      do_delete_unlockable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_unlockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -268,9 +267,9 @@ defmodule BlueJet.Goods do
   ####
   def list_depositable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.list_depositable") do
-      do_list_depositable(request)
+      do_list_depositable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_list_depositable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
@@ -304,9 +303,9 @@ defmodule BlueJet.Goods do
 
   def create_depositable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.create_depositable") do
-      do_create_depositable(request)
+      do_create_depositable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_create_depositable(request = %AccessRequest{ vas: vas }) do
@@ -324,9 +323,9 @@ defmodule BlueJet.Goods do
 
   def get_depositable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.get_depositable") do
-      do_get_depositable(request)
+      do_get_depositable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_get_depositable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
@@ -347,14 +346,13 @@ defmodule BlueJet.Goods do
 
   def update_depositable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.update_depositable") do
-      do_update_depositable(request)
+      do_update_depositable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_update_depositable(request = %{ vas: vas, params: %{ "id" => id }}) do
     depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    changeset = Depositable.changeset(depositable, request.fields, request.locale)
 
     with %Depositable{} <- depositable,
          changeset <- Depositable.changeset(depositable, request.fields, request.locale),
@@ -375,9 +373,9 @@ defmodule BlueJet.Goods do
 
   def delete_depositable(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "inventory.delete_depositable") do
-      do_delete_depositable(request)
+      do_delete_depositable(%{ request | role: role })
     else
-      {:error, reason} -> {:error, :access_denied}
+      {:error, _} -> {:error, :access_denied}
     end
   end
   def do_delete_depositable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do

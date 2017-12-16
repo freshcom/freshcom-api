@@ -28,9 +28,9 @@ defmodule BlueJetWeb.AccountController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
+  def show(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
-      vas: vas
+      vas: assigns[:vas]
     }
 
     case Identity.get_account(request) do

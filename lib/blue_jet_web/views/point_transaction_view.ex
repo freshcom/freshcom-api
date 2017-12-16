@@ -2,8 +2,6 @@ defmodule BlueJetWeb.PointTransactionView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :amount,
     :status,
@@ -22,8 +20,8 @@ defmodule BlueJetWeb.PointTransactionView do
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
-  def source(point_transaction = %{ source_id: nil }, _), do: nil
-  def source(point_transaction = %{ source_id: source_id, source_type: source_type }, _) do
+  def source(%{ source_id: nil }, _), do: nil
+  def source(%{ source_id: source_id, source_type: source_type }, _) do
     %{ id: source_id, type: source_type }
   end
 

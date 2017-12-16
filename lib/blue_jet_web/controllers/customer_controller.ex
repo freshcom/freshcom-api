@@ -2,7 +2,6 @@ defmodule BlueJetWeb.CustomerController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Identity
   alias BlueJet.CRM
 
   action_fallback BlueJetWeb.FallbackController
@@ -24,7 +23,7 @@ defmodule BlueJetWeb.CustomerController do
     render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Customer" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Customer" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -43,7 +42,7 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+  def show(conn = %{ assigns: assigns }, params) do
     params = Map.drop(params, ["locale"])
     request = %AccessRequest{
       vas: assigns[:vas],
@@ -57,7 +56,7 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Customer" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Customer" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -76,7 +75,7 @@ defmodule BlueJetWeb.CustomerController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+  def delete(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: params

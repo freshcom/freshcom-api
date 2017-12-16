@@ -19,7 +19,7 @@ defmodule BlueJetWeb.RefundView do
     "Refund"
   end
 
-  def payment(struct, conn) do
+  def payment(struct, _) do
     case struct.payment do
       %Ecto.Association.NotLoaded{} ->
         struct

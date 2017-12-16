@@ -254,7 +254,7 @@ defmodule BlueJet.Billing.Card do
   end
 
   @spec retrieve_stripe_token(String.t, Map.t) :: {:ok, map} | {:error, map}
-  defp retrieve_stripe_token(token, options \\ []) do
+  defp retrieve_stripe_token(token, options) do
     StripeClient.get("/tokens/#{token}", options)
   end
 

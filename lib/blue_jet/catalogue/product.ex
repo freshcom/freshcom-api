@@ -13,7 +13,6 @@ defmodule BlueJet.Catalogue.Product do
   alias Ecto.Changeset
 
   alias BlueJet.AccessRequest
-  alias BlueJet.AccessResponse
   alias BlueJet.Translation
 
   alias BlueJet.Goods
@@ -127,7 +126,6 @@ defmodule BlueJet.Catalogue.Product do
     kind = get_field(changeset, :kind)
     validate_status(changeset, kind)
   end
-  def validate_status(changeset), do: changeset
 
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "variant") do
     validate_status(changeset, "simple")
@@ -211,7 +209,7 @@ defmodule BlueJet.Catalogue.Product do
       true -> changeset
     end
   end
-  defp validate_status(changeset, kind), do: changeset
+  defp validate_status(changeset, _), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

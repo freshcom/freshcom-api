@@ -6,7 +6,7 @@ defmodule BlueJetWeb.BillingSettingsController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, _) do
+  def show(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
       vas: assigns[:vas],
       preloads: assigns[:preloads],
@@ -18,7 +18,7 @@ defmodule BlueJetWeb.BillingSettingsController do
     render(conn, "show.json-api", data: billing_settings, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "BillingSettings" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "BillingSettings" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),

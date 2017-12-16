@@ -2,8 +2,6 @@ defmodule BlueJetWeb.ProductCollectionMembershipView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :sort_index,
     :inserted_at,

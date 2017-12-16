@@ -2,8 +2,6 @@ defmodule BlueJetWeb.CustomerView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Storefront.Customer
-
   attributes [
     :code,
     :status,

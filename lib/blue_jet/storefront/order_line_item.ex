@@ -7,7 +7,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias Ecto.Changeset
 
   alias BlueJet.AccessRequest
-  alias BlueJet.AccessResponse
   alias BlueJet.Translation
 
   alias BlueJet.Goods
@@ -489,11 +488,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
     [price: query()]
   end
 
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     changeset = Unlock.changeset(%Unlock{}, %{ account_id: line_item.account_id, unlockable_id: source_id, customer_id: customer.id })
     Repo.insert!(changeset)
   end
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
       params: %{ "id" => source_id }
@@ -515,8 +514,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
       line_item
     end
   end
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "PointTransaction" }, order, changset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
-    {:ok, %{ data: point_transaction }} = CRM.do_update_point_transaction(%AccessRequest{
+  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, _) when not is_nil(source_id) do
+    {:ok, %{ data: _ }} = CRM.do_update_point_transaction(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
       params: %{ "id" => source_id },
       fields: %{

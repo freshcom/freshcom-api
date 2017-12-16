@@ -1,9 +1,6 @@
 defmodule BlueJet.DataTrading.DataImport do
   use BlueJet, :data
 
-  alias BlueJet.Repo
-  alias Ecto.Changeset
-
   alias BlueJet.DataTrading.DataImport
 
   @type t :: Ecto.Schema.t

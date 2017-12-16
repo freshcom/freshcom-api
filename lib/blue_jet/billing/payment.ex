@@ -92,7 +92,7 @@ defmodule BlueJet.Billing.Payment do
   def castable_fields(%Payment{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
-  def castable_fields(payment = %Payment{ __meta__: %{ state: :loaded }}) do
+  def castable_fields(%Payment{ __meta__: %{ state: :loaded }}) do
     fields = writable_fields() -- [:account_id]
   end
 
@@ -143,7 +143,7 @@ defmodule BlueJet.Billing.Payment do
   end
   def put_gross_amount_cents(changeset), do: changeset
 
-  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: _ } }) do
     gross_amount_cents = get_field(changeset, :gross_amount_cents)
     processor_fee_cents = get_field(changeset, :processor_fee_cents)
     refunded_processor_fee_cents = get_field(changeset, :refunded_processor_fee_cents)
@@ -166,8 +166,6 @@ defmodule BlueJet.Billing.Payment do
   #####
   # Business Logic
   #####
-
-  alias BlueJet.Identity.Customer
 
   def destination_amount_cents(payment, billing_settings) do
     payment.amount_cents - processor_fee_cents(payment, billing_settings) - freshcom_fee_cents(payment, billing_settings)
@@ -209,13 +207,13 @@ defmodule BlueJet.Billing.Payment do
   @spec process(Payment.t, Changeset.t) :: {:ok, Payment.t} | {:error, map}
   def process(
     payment = %{ gateway: "online", source: nil },
-    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     send_paylink(payment)
   end
   def process(
     payment = %{ gateway: "online", capture: false },
-    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
       changeset = Changeset.change(payment, status: "authorized")
@@ -226,7 +224,7 @@ defmodule BlueJet.Billing.Payment do
   end
   def process(
     payment = %{ gateway: "online", capture: true },
-    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: amount_cents } }
+    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
       changeset = Changeset.change(payment, status: "paid")
@@ -237,7 +235,7 @@ defmodule BlueJet.Billing.Payment do
   end
   def process(
     payment = %{ gateway: "online" },
-    %{ data: %{ status: "authorized", capture_amount: nil }, changes: %{ capture_amount: capture_amount } }
+    %{ data: %{ status: "authorized", capture_amount: nil }, changes: %{ capture_amount: _ } }
   ) do
     with {:ok, payment} <- capture(payment) do
       changeset = Changeset.change(payment, status: "paid")
@@ -287,7 +285,7 @@ defmodule BlueJet.Billing.Payment do
   """
   @spec capture(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def capture(payment = %Payment{ processor: "stripe" }) do
-    with {:ok, stripe_charge} <- capture_stripe_charge(payment) do
+    with {:ok, _} <- capture_stripe_charge(payment) do
       {:ok, payment}
     else
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}

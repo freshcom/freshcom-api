@@ -22,7 +22,7 @@ defmodule BlueJetWeb.UnlockableController do
     render(conn, "index.json-api", data: unlockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "Unlockable" } }) do
+def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unlockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -41,7 +41,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
     end
   end
 
-  def show(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+  def show(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: params,
@@ -54,7 +54,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
     render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id, "data" => data = %{ "type" => "Unlockable" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Unlockable" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
@@ -73,7 +73,7 @@ def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ 
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: vas } }, params) do
+  def delete(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: params

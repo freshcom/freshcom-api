@@ -89,7 +89,7 @@ defmodule BlueJet.Billing.BillingSettings do
   end
   def process(billing_settings, _), do: {:ok, billing_settings}
 
-  @spec create_stripe_access_token(string) :: {:ok, map} | {:error, map}
+  @spec create_stripe_access_token(String.t) :: {:ok, map} | {:error, map}
   defp create_stripe_access_token(stripe_auth_code) do
     key = System.get_env("STRIPE_SECRET_KEY")
     OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_auth_code, grant_type: "authorization_code" })
