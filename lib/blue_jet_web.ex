@@ -5,8 +5,8 @@ defmodule BlueJetWeb do
 
   This can be used in your application as:
 
-      use NiceJetWeb, :controller
-      use NiceJetWeb, :view
+      use BlueJetWeb, :controller
+      use BlueJetWeb, :view
 
   The definitions below will be executed for every view,
   controller, etc, so keep them short and clean, focused
