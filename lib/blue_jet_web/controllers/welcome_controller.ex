@@ -8,5 +8,4 @@ defmodule BlueJetWeb.WelcomeController do
   def options(conn, _params) do
     text conn, ""
   end
-
 end

@@ -14,6 +14,8 @@ defmodule BlueJetWeb.Router do
     plug JaSerializer.Deserializer
   end
 
+  get "/", BlueJetWeb.WelcomeController, :index
+
   scope "/v1/", BlueJetWeb do
     pipe_through :api
 
