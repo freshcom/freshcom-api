@@ -11,7 +11,7 @@ defmodule BlueJet.Plugs.Authentication do
          {:ok, verified_authorization_payload} <- verify_access_token(access_token),
          {:ok, verified_authorization_scope} <- extract_authorization_scope(verified_authorization_payload)
     do
-      Logger.debug("Verified Authorization Scope: #{inspect verified_authorization_scope}")
+      Logger.info("Verified Authorization Scope: #{inspect verified_authorization_scope}")
       assign(conn, :vas, verified_authorization_scope)
     else
       true -> conn
