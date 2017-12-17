@@ -15,6 +15,7 @@ defmodule BlueJetWeb.ProductView do
     :description,
     :custom_data,
     :locale,
+    :sort_index,
     :inserted_at,
     :updated_at
   ]

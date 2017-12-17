@@ -60,7 +60,18 @@ defmodule BlueJet.Identity do
     end
 
     def create_account_user(account_id, fields) do
-      test_account = Repo.get_by!(Account, mode: "test", live_account_id: account_id)
+      test_account = Repo.get_by(Account, mode: "test", live_account_id: account_id)
+
+      live_account_id = if test_account do
+        account_id
+      else
+        nil
+      end
+      test_account_id = if test_account do
+        test_account.id
+      else
+        account_id
+      end
 
       Multi.new()
       |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account_id, "account_id" => account_id })))
@@ -76,12 +87,20 @@ defmodule BlueJet.Identity do
           {:ok, account_membership}
         end)
       |> Multi.run(:urt_live, fn(%{ user: user }) ->
-          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account_id, user_id: user.id }))
-          {:ok, refresh_token}
+          if live_account_id do
+            refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: live_account_id, user_id: user.id }))
+            {:ok, refresh_token}
+          else
+            {:ok, nil}
+          end
         end)
       |> Multi.run(:urt_test, fn(%{ user: user }) ->
-          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id, user_id: user.id }))
-          {:ok, refresh_token}
+          if test_account_id do
+            refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account_id, user_id: user.id }))
+            {:ok, refresh_token}
+          else
+            {:ok, nil}
+          end
         end)
     end
   end
@@ -179,24 +198,24 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  defp do_create_user(%AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
+  def do_create_user(%AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
     result = Query.create_global_user(fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user(%{ vas: %{ account_id: account_id, user_id: _ }, fields: fields, preloads: preloads }) do
+  def do_create_user(%{ vas: %{ account_id: account_id, user_id: _ }, fields: fields, preloads: preloads }) do
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user(%{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
+  def do_create_user(%{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
     fields = Map.merge(fields, %{ "role" => "customer" })
     result = Query.create_account_user(account_id, fields) |> Repo.transaction()
     do_create_user_response(result, preloads)
   end
-  defp do_create_user_response({:ok, %{ user: user}}, preloads) do
+  def do_create_user_response({:ok, %{ user: user}}, preloads) do
     user = Repo.preload(user, User.Query.preloads(preloads))
     {:ok, %AccessResponse{ data: user }}
   end
-  defp do_create_user_response({:error, _, failed_value, _}, _) do
+  def do_create_user_response({:error, _, failed_value, _}, _) do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
 

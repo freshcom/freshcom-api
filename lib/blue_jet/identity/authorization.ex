@@ -440,10 +440,12 @@ defmodule BlueJet.Identity.Authorization do
   def authorize(vas, endpoint) when map_size(vas) == 0 do
     authorize("anonymous", endpoint)
   end
+
   def authorize(vas = %{ account_id: account_id }, endpoint) do
     account = Repo.get!(Account, account_id)
     authorize(vas, account, endpoint)
   end
+
   def authorize(role, target_endpoint) when is_bitstring(role) do
     endpoints = Map.get(@role_endpoints, role)
     found = Enum.any?(endpoints, fn(endpoint) -> endpoint == target_endpoint end)
@@ -454,6 +456,7 @@ defmodule BlueJet.Identity.Authorization do
       {:error, role}
     end
   end
+
   def authorize(%{ user_id: user_id }, %{ id: account_id, mode: "live" }, endpoint) do
     with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
          {:ok, role} <- authorize(role, endpoint)
@@ -464,14 +467,27 @@ defmodule BlueJet.Identity.Authorization do
       {:error, _} -> {:error, :role_not_allowed}
     end
   end
-  def authorize(vas, %{ mode: "test", live_account_id: account_id }, endpoint) do
+
+  def authorize(vas = %{ user_id: _ }, account = %{ mode: "test", live_account_id: account_id }, endpoint) do
     # Check if the endpoint is testable
     case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
       nil -> {:error, :test_account_not_allowed}
-      _ -> authorize(vas, %{ id: account_id, mode: "live" }, endpoint)
+      _ -> authorize_test_account(vas, account, endpoint)
     end
   end
-  def authorize(%{ account_id: _ }, %{ mode: "live" }, endpoint) do
+
+  def authorize(%{ account_id: _ }, _, endpoint) do
     authorize("guest", endpoint)
+  end
+
+  defp authorize_test_account(vas = %{ user_id: user_id }, %{ id: test_account_id, live_account_id: live_account_id }, endpoint) do
+    with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: test_account_id, user_id: user_id),
+         {:ok, role} <- authorize(role, endpoint)
+    do
+      {:ok, role}
+    else
+      nil -> authorize(vas, %{ id: live_account_id, mode: "live" }, endpoint)
+      {:error, _} -> {:error, :role_not_allowed}
+    end
   end
 end

@@ -75,7 +75,7 @@ defmodule BlueJet.CRM do
       Multi.new()
       |> Multi.run(:user, fn(_) ->
           if fields["status"] == "registered" do
-            case Identity.create_user(%AccessRequest{ vas: vas, fields: fields}) do
+            case Identity.do_create_user(%AccessRequest{ vas: vas, fields: fields}) do
               {:ok, %{ data: user }} -> {:ok, user}
               other -> other
             end
@@ -233,7 +233,7 @@ defmodule BlueJet.CRM do
       Multi.new()
       |> Multi.run(:delete_user, fn(_) ->
           if customer.user_id do
-            Identity.delete_user(%AccessRequest{ vas: vas, params: %{ user_id: customer.user_id } })
+            Identity.do_delete_user(%AccessRequest{ vas: vas, params: %{ user_id: customer.user_id } })
           else
             {:ok, nil}
           end
