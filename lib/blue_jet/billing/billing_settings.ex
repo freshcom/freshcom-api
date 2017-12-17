@@ -2,7 +2,11 @@ defmodule BlueJet.Billing.BillingSettings do
   use BlueJet, :data
 
   alias Ecto.Changeset
+
   alias BlueJet.Repo
+  alias BlueJet.Identity
+  alias BlueJet.AccessRequest
+
   alias BlueJet.Billing.BillingSettings
 
   @type t :: Ecto.Schema.t
@@ -25,6 +29,8 @@ defmodule BlueJet.Billing.BillingSettings do
     field :freshcom_transaction_fee_percentage, :decimal, default: Decimal.new(1.59)
 
     field :stripe_auth_code, :string, virtual: true
+
+    field :account, :map, virtual: true
 
     timestamps()
   end
@@ -60,6 +66,14 @@ defmodule BlueJet.Billing.BillingSettings do
     Repo.get_by!(BillingSettings, account_id: account_id)
   end
 
+  def account(%{ account_id: account_id, account: nil }) do
+    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
+      {:ok, %{ data: account }} -> account
+      {:error, _} -> nil
+    end
+  end
+  def account(%{ account: account }), do: account
+
   @doc """
   Process the given account.
 
@@ -71,7 +85,9 @@ defmodule BlueJet.Billing.BillingSettings do
   """
   @spec process(BillingSettings.t, Changeset.t) :: {:ok, BillingSettings.t} | {:error. map}
   def process(billing_settings, %{ data: %{ stripe_auth_code: nil }, changes: %{ stripe_auth_code: stripe_auth_code }}) do
-    with {:ok, data} <- create_stripe_access_token(stripe_auth_code) do
+    account = account(%{ account_id: billing_settings.account_id, account: nil })
+
+    with {:ok, data} <- create_stripe_access_token(stripe_auth_code, mode: account.mode) do
       changeset = Changeset.change(billing_settings, %{
         stripe_user_id: data["stripe_user_id"],
         stripe_livemode: data["stripe_livemode"],
@@ -89,9 +105,13 @@ defmodule BlueJet.Billing.BillingSettings do
   end
   def process(billing_settings, _), do: {:ok, billing_settings}
 
-  @spec create_stripe_access_token(String.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_access_token(stripe_auth_code) do
-    key = System.get_env("STRIPE_SECRET_KEY")
+  @spec create_stripe_access_token(String.t, Map.t) :: {:ok, map} | {:error, map}
+  defp create_stripe_access_token(stripe_auth_code, options) do
+    key = if options[:mode] == "test" do
+      System.get_env("STRIPE_TEST_SECRET_KEY")
+    else
+      System.get_env("STRIPE_LIVE_SECRET_KEY")
+    end
     OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_auth_code, grant_type: "authorization_code" })
   end
 end
