@@ -1,4 +1,5 @@
 defmodule BlueJet.Identity.Authentication do
+  require Logger
 
   @moduledoc """
   Storefront Refresh Token
@@ -67,6 +68,7 @@ defmodule BlueJet.Identity.Authentication do
   end
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id }) do
     refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
+    Logger.info("Found RT with ID: #{refresh_token.id}")
     create_token_by_refresh_token(refresh_token)
   end
 
