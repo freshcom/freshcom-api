@@ -9,7 +9,10 @@ defmodule BlueJet.AccessRequest do
             filter: %{},
             sort: %{},
             pagination: %{},
+            counts: %{ all: %{} },
+
+            account: nil,
 
             preloads: [],
-            locale: "en"
+            locale: nil
 end

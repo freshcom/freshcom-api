@@ -43,16 +43,29 @@ defmodule BlueJet.Translation do
     Changeset.put_change(changeset, :translations, new_translations)
   end
 
-  def translate(struct_or_structs, locale) do
-    default_locale = default_locale(struct_or_structs)
+  # TODO: remove this
+  # def translate(struct_or_structs, locale) do
+  #   default_locale = default_locale(struct_or_structs)
 
+  #   cond do
+  #     is_nil(default_locale) || locale == default_locale -> struct_or_structs
+  #     true -> translate_fields(struct_or_structs, locale)
+  #   end
+  # end
+
+  # TODO: remove this
+  def translate(struct_or_structs, _) do
+    struct_or_structs
+  end
+
+  def translate(struct_or_structs, locale, default_locale) do
     cond do
       is_nil(default_locale) || locale == default_locale -> struct_or_structs
-      true -> translate_fields(struct_or_structs, locale)
+      true -> translate_fields(struct_or_structs, locale, default_locale)
     end
   end
 
-  defp translate_fields(struct, locale) when is_map(struct) do
+  defp translate_fields(struct, locale, default_locale) when is_map(struct) do
     # Translate each loaded association (recursively)
     assoc_fnames = struct.__struct__.__schema__(:associations)
     struct = Enum.reduce(assoc_fnames, struct, fn(field_name, acc) ->
@@ -72,7 +85,8 @@ defmodule BlueJet.Translation do
         Map.merge(struct, t_attributes)
     end
   end
-  defp translate_fields(list, locale) when is_list(list) do
+
+  defp translate_fields(list, locale, default_locale) when is_list(list) do
     Enum.map(list, fn(item) -> translate(item, locale) end)
   end
 

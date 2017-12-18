@@ -443,7 +443,10 @@ defmodule BlueJet.Identity.Authorization do
 
   def authorize(vas = %{ account_id: account_id }, endpoint) do
     account = Repo.get!(Account, account_id)
-    authorize(vas, account, endpoint)
+    case authorize(vas, account, endpoint) do
+      {:ok, role} -> {:ok, %{ role: role, account: account }}
+      other -> other
+    end
   end
 
   def authorize(role, target_endpoint) when is_bitstring(role) do
@@ -468,7 +471,7 @@ defmodule BlueJet.Identity.Authorization do
     end
   end
 
-  def authorize(vas = %{ user_id: _ }, account = %{ mode: "test", live_account_id: account_id }, endpoint) do
+  def authorize(vas = %{ user_id: _ }, account = %{ mode: "test" }, endpoint) do
     # Check if the endpoint is testable
     case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
       nil -> {:error, :test_account_not_allowed}

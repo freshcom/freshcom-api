@@ -39,11 +39,13 @@ defmodule BlueJet do
       def put_external_resources(struct_or_structs, targets) when is_list(targets) and length(targets) == 0 do
         struct_or_structs
       end
+
       def put_external_resources(structs, targets) when is_list(structs) do
         Enum.map(structs, fn(struct) ->
           put_external_resources(struct, targets)
         end)
       end
+
       def put_external_resources(struct, targets) when is_list(targets) do
         [target | rest] = targets
 
@@ -56,12 +58,43 @@ defmodule BlueJet do
 
   def query do
     quote do
+
+      def search_default_locale(query, columns, keyword) do
+        keyword = "%#{keyword}%"
+
+        Enum.reduce(columns, query, fn(column, query) ->
+          from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
+        end)
+      end
+
+      def search_translations(query, columns, keyword, locale, translatable_columns) do
+        keyword = "%#{keyword}%"
+
+        Enum.reduce(columns, query, fn(column, query) ->
+          if Enum.member?(translatable_columns, column) do
+            column = Atom.to_string(column)
+            from q in query, or_where: ilike(fragment("?->?->>?", q.translations, ^locale, ^column), ^keyword)
+          else
+            from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
+          end
+        end)
+      end
+
       def preloads(targets) when is_list(targets) and length(targets) == 0 do
         []
       end
+
       def preloads(targets) when is_list(targets) do
         [target | rest] = targets
         preloads(target) ++ preloads(rest)
+      end
+
+      def preloads(targets, options) when is_list(targets) and length(targets) == 0 do
+        []
+      end
+      def preloads(targets, options) when is_list(targets) do
+        [target | rest] = targets
+        preloads(target, options) ++ preloads(rest, options)
       end
     end
   end

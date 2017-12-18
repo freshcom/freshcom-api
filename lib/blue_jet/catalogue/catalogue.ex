@@ -13,49 +13,62 @@ defmodule BlueJet.Catalogue do
   ######
   # Product
   ######
-  def list_product(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product") do
-      do_list_product(%{ request | role: role })
+  def list_product(request) do
+    with {:ok, request} <- authorize_request(request, "catalogue.list_product") do
+      request
+      |> transform_request()
+      |> do_list_product
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_product(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  defp transform_request(request = %{ role: role }) when role == "guest" or role == "customer" do
+    filter = Map.put(request.filter, :status, "active")
+    counts = Map.put(request.counts, :all, %{ status: "active" })
+    %{ request | filter: filter, counts: counts }
+  end
+
+  defp transform_request(request), do: request
+
+  def do_list_product(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       Product.Query.default()
-      |> search([:name], request.search, request.locale, account_id)
+      |> search([:name], request.search, request.locale, account.default_locale, Product.translatable_fields)
       |> filter_by(status: filter[:status], kind: filter[:kind], parent_id: filter[:parent_id])
+      |> root_only_if_no_parent_id(filter[:parent_id])
+      |> Product.Query.for_account(account.id)
 
-    query = if filter[:parent_id] do
-      query |> Product.Query.for_account(account_id)
-    else
-      query
-      |> Product.Query.root()
-      |> Product.Query.for_account(account_id)
-    end
+    total_count = Repo.aggregate(data_query, :count, :id)
 
-    result_count = Repo.aggregate(query, :count, :id)
+    all_query =
+      Product.Query.default()
+      |> filter_by(parent_id: filter[:parent_id], status: counts[:all][:status])
+      |> Product.Query.for_account(account.id)
+      |> root_only_if_no_parent_id(filter[:parent_id])
 
-    total_query = Product |> Product.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
+    all_count = Repo.aggregate(all_query, :count, :id)
 
     products =
-      Repo.all(query)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
       |> Repo.preload(Product.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count,
+        all_count: all_count,
+        total_count: total_count
       },
       data: products
     }
 
     {:ok, response}
   end
+
+  defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
+  defp root_only_if_no_parent_id(query, _), do: query
 
   def create_product(request = %AccessRequest{ vas: vas }) do
     with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product") do
@@ -65,7 +78,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_create_product(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
     changeset = Product.changeset(%Product{}, fields)
 
     with {:ok, product} <- Repo.insert(changeset) do
@@ -85,11 +98,11 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(id)
     do_get_product_response(product, request)
   end
   def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get_by(code: code)
     do_get_product_response(product, request)
   end
   defp do_get_product_response(nil, _), do: {:error, :not_found}
@@ -110,7 +123,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_update_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(id)
 
     with %Product{} <- product,
          changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale)
@@ -146,7 +159,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_delete_product(%AccessRequest{ vas: vas, params: %{ product_id: product_id } }) do
-    product = Product |> Product.Query.for_account(vas[:account_id]) |> Repo.get(product_id)
+    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(product_id)
 
     cond do
       product && product.avatar_id ->
@@ -183,8 +196,8 @@ defmodule BlueJet.Catalogue do
       |> ProductCollection.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = ProductCollection |> ProductCollection.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    all_query = ProductCollection |> ProductCollection.Query.for_account(account_id)
+    all_count = Repo.aggregate(all_query, :count, :id)
 
     query = paginate(query, size: pagination[:size], number: pagination[:number])
 
@@ -195,7 +208,7 @@ defmodule BlueJet.Catalogue do
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
+        all_count: all_count,
         result_count: result_count,
       },
       data: product_collections
@@ -212,7 +225,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_create_product_collection(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
     changeset = ProductCollection.changeset(%ProductCollection{}, fields)
 
     with {:ok, product_collection} <- Repo.insert(changeset) do
@@ -232,11 +245,11 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get(id)
     do_get_product_collection_response(product_collection, request)
   end
   def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get_by(code: code)
     do_get_product_collection_response(product_collection, request)
   end
 
@@ -258,7 +271,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_update_product_collection(request = %{ vas: vas, params: %{ id: id }}) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get(id)
 
     with %ProductCollection{} <- product_collection,
          changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale),
@@ -288,7 +301,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_create_product_collection_membership(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
     changeset = ProductCollectionMembership.changeset(%ProductCollectionMembership{}, fields)
 
     with {:ok, product_collection_membership} <- Repo.insert(changeset) do
@@ -304,7 +317,7 @@ defmodule BlueJet.Catalogue do
   def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
   def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
     membership =
-      ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas[:account_id])
+      ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id)
       |> Repo.get_by(collection_id: collection_id, product_id: product_id)
 
     if membership do
@@ -328,7 +341,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_delete_product_collection_membership(%AccessRequest{ vas: vas, params: %{ id: id } }) do
-    pcm = ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    pcm = ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id) |> Repo.get(id)
 
     if pcm do
       Repo.delete!(pcm)
@@ -356,8 +369,8 @@ defmodule BlueJet.Catalogue do
       |> Price.Query.for_account(account_id)
     result_count = Repo.aggregate(query, :count, :id)
 
-    total_query = Price |> Price.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    all_query = Price |> Price.Query.for_account(account_id)
+    all_count = Repo.aggregate(all_query, :count, :id)
 
     query = paginate(query, size: pagination[:size], number: pagination[:number])
 
@@ -368,7 +381,7 @@ defmodule BlueJet.Catalogue do
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
+        all_count: all_count,
         result_count: result_count,
       },
       data: prices
@@ -385,7 +398,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_create_price(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
     changeset = Price.changeset(%Price{}, fields)
 
     with {:ok, price} <- Repo.insert(changeset) do
@@ -405,11 +418,11 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_get_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    price = Price |> Price.Query.for_account(vas.account_id) |> Repo.get(id)
     do_get_price_response(price, request)
   end
   def do_get_price(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+    price = Price |> Price.Query.for_account(vas.account_id) |> Repo.get_by(code: code)
     do_get_price_response(price, request)
   end
   def do_get_price_response(nil, _), do: {:error, :not_found}
@@ -430,7 +443,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_update_price(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id) |> Repo.preload(:parent)
+    price = Price |> Price.Query.for_account(vas.account_id) |> Repo.get(id) |> Repo.preload(:parent)
 
     with %Price{} <- price,
          changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale)
@@ -465,7 +478,7 @@ defmodule BlueJet.Catalogue do
     end
   end
   def do_delete_price(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    price = Price |> Price.Query.for_account(vas[:account_id]) |> Repo.get(id)
+    price = Price |> Price.Query.for_account(vas.account_id) |> Repo.get(id)
 
     case price.status do
       "disabled" ->

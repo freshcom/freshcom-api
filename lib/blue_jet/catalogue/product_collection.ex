@@ -72,15 +72,15 @@ defmodule BlueJet.Catalogue.ProductCollection do
       from(pc in query, where: pc.account_id == ^account_id)
     end
 
+    def default() do
+      from(pc in ProductCollection, order_by: [desc: pc.updated_at])
+    end
+
     def preloads(:products) do
       [products: Product.Query.default()]
     end
     def preloads({:memberships, membership_preloads}) do
       [memberships: {ProductCollectionMembership.Query.default(), ProductCollectionMembership.Query.preloads(membership_preloads)}]
-    end
-
-    def default() do
-      from(pc in ProductCollection, order_by: [desc: pc.updated_at])
     end
   end
 end
