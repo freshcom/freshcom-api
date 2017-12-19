@@ -10,7 +10,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
   schema "external_file_collections" do
     field :account_id, Ecto.UUID
-
+    field :status, :string, default: "active"
     field :name, :string
     field :label, :string
 
@@ -75,6 +75,10 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+    end
+
     def for_owner_type(owner_type) do
       from(efc in ExternalFileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
     end
@@ -83,12 +87,9 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
       from(efc in query, where: efc.account_id == ^account_id)
     end
 
-    def preloads(:files) do
-      [files: ExternalFile.Query.default()]
-    end
-
-    def default() do
-      from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+    def preloads({:files, ef_preloads}, options) do
+      query = ExternalFile.Query.default() |> ExternalFile.Query.uploaded()
+      [files: {query, ExternalFile.Query.preloads(ef_preloads, options)}]
     end
   end
 end

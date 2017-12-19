@@ -8,7 +8,13 @@ defmodule BlueJetWeb.FallbackController do
 
   def call(conn, {:error, :not_found}) do
     conn
-    |> put_status(:not_found)
+    |> put_status(404)
     |> render(BlueJetWeb.ErrorView, :"404")
+  end
+
+  def call(conn, {:error, :access_denied}) do
+    conn
+    |> put_status(403)
+    |> render(BlueJetWeb.ErrorView, :"403")
   end
 end

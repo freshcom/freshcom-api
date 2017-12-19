@@ -5,6 +5,10 @@ defmodule BlueJetWeb.ErrorView do
     %{errors: %{detail: "Page not found"}}
   end
 
+  def render("403.json-api", _assigns) do
+    %{errors: %{detail: "Forbidden"}}
+  end
+
   def render("500.json-api", _assigns) do
     %{errors: %{detail: "Internal server error"}}
   end

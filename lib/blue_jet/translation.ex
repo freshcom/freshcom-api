@@ -73,7 +73,7 @@ defmodule BlueJet.Translation do
       case assoc do
         %Ecto.Association.NotLoaded{} -> acc
         nil -> acc
-        _ -> Map.put(acc, field_name, translate(assoc, locale))
+        _ -> Map.put(acc, field_name, translate(assoc, locale, default_locale))
       end
     end)
 
@@ -87,7 +87,7 @@ defmodule BlueJet.Translation do
   end
 
   defp translate_fields(list, locale, default_locale) when is_list(list) do
-    Enum.map(list, fn(item) -> translate(item, locale) end)
+    Enum.map(list, fn(item) -> translate(item, locale, default_locale) end)
   end
 
   def merge_translations(dst_translations, src_translations, fields, prefix \\ "") do

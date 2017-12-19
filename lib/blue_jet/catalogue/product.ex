@@ -16,11 +16,10 @@ defmodule BlueJet.Catalogue.Product do
   alias BlueJet.Translation
 
   alias BlueJet.Goods
+  alias BlueJet.FileStorage
 
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -48,14 +47,17 @@ defmodule BlueJet.Catalogue.Product do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
+    field :avatar_id, Ecto.UUID
+    field :avatar, :map, virtual: true
+
+    field :external_file_collections, {:array, :map}, default: [], virtual: true
+
     timestamps()
 
-    belongs_to :avatar, ExternalFile
     belongs_to :parent, Product
     has_many :items, Product, foreign_key: :parent_id, on_delete: :delete_all
     has_many :variants, Product, foreign_key: :parent_id, on_delete: :delete_all
 
-    has_many :external_file_collections, ExternalFileCollection, foreign_key: :owner_id, on_delete: :delete_all
     has_many :prices, Price, on_delete: :delete_all
     has_one :default_price, Price
   end
@@ -100,7 +102,6 @@ defmodule BlueJet.Catalogue.Product do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
-    |> validate_assoc_account_scope(:avatar)
     |> validate_status()
     |> validate_source()
   end
@@ -278,6 +279,37 @@ defmodule BlueJet.Catalogue.Product do
   end
   def put_name(changeset, _), do: changeset
 
+  def put_external_resources(product = %{ avatar_id: nil }, {:avatar, nil}, _), do: product
+
+  def put_external_resources(product = %{ avatar_id: avatar_id }, {:avatar, nil}, _) do
+    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
+      vas: %{ account_id: product.account_id },
+      params: %{ id: avatar_id }
+    })
+
+    %{ product | avatar: avatar }
+  end
+
+  def put_external_resources(product, {:external_file_collections, efc_preloads}, %{ account: account, role: role }) do
+    request = %AccessRequest{
+      account: account,
+      filter: %{ owner_id: product.id, owner_type: "Product" },
+      pagination: %{ size: 5, number: 1 },
+      preloads: preloads_for_request(efc_preloads),
+      role: role
+    }
+
+    {:ok, %{ data: efcs }} =
+      request
+      |> AccessRequest.transform_by_role()
+      |> FileStorage.do_list_external_file_collection()
+
+    %{ product | external_file_collections: efcs }
+  end
+
+  defp preloads_for_request(nil), do: []
+  defp preloads_for_request(preloads), do: preloads
+
   defmodule Query do
     use BlueJet, :query
 
@@ -288,33 +320,48 @@ defmodule BlueJet.Catalogue.Product do
     def variant_default() do
       from(p in Product, where: p.kind == "variant", order_by: [desc: :updated_at])
     end
+
     def item_default() do
       from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
     end
 
-    def preloads(:items) do
-      [items: Product.Query.item_default()]
+    def preloads({:items, item_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+      query = Product.Query.default() |> Product.Query.active()
+      [items: {query, Product.Query.preloads(item_preloads, options)}]
     end
-    def preloads({:items, item_preloads}) do
-      [items: {Product.Query.item_default(), Product.Query.preloads(item_preloads)}]
+
+    def preloads({:items, item_preloads}, options = [role: _]) do
+      query = Product.Query.default()
+      [items: {query, Product.Query.preloads(item_preloads, options)}]
     end
-    def preloads(:variants) do
-      [variants: Product.Query.variant_default()]
+
+    def preloads({:variants, item_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+      query = Product.Query.default() |> Product.Query.active()
+      [variants: {query, Product.Query.preloads(item_preloads, options)}]
     end
-    def preloads({:variants, variant_preloads}) do
-      [variants: {Product.Query.variant_default(), Product.Query.preloads(variant_preloads)}]
+
+    def preloads({:variants, item_preloads}, options = [role: _]) do
+      query = Product.Query.default()
+      [variants: {query, Product.Query.preloads(item_preloads, options)}]
     end
-    def preloads(:prices) do
-      [prices: Price.Query.default()]
+
+    def preloads({:prices, price_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+      query = Price.Query.default() |> Price.Query.active()
+      [prices: {query, Price.Query.preloads(price_preloads, options)}]
     end
-    def preloads(:default_price) do
-      [default_price: Price.Query.active_by_moq()]
+
+    def preloads({:prices, price_preloads}, options = [role: _]) do
+      query = Price.Query.default()
+      [prices: {query, Price.Query.preloads(price_preloads, options)}]
     end
-    def preloads(:avatar) do
-      [avatar: ExternalFile.Query.default()]
+
+    def preloads({:default_price, price_preloads}, options) do
+      query = Price.Query.active_by_moq()
+      [default_price: {query, Price.Query.preloads(price_preloads, options)}]
     end
-    def preloads(:external_file_collections) do
-      [external_file_collections: ExternalFileCollection.Query.for_owner_type("Product")]
+
+    def preloads(_, _) do
+      []
     end
 
     def root(query) do
@@ -323,6 +370,10 @@ defmodule BlueJet.Catalogue.Product do
 
     def default() do
       from(p in Product, order_by: [desc: :updated_at])
+    end
+
+    def active(query) do
+      from(p in query, where: p.status == "active")
     end
   end
 end

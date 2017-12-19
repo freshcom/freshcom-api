@@ -98,12 +98,16 @@ defmodule BlueJet.FileStorage.ExternalFile do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(ef in ExternalFile, order_by: [desc: ef.updated_at])
+    end
+
     def for_account(query, account_id) do
       from(ef in query, where: ef.account_id == ^account_id)
     end
 
-    def default() do
-      from(ef in ExternalFile, order_by: [desc: ef.updated_at])
+    def uploaded(query) do
+      from(ef in query, where: ef.status == "uploaded")
     end
   end
 end

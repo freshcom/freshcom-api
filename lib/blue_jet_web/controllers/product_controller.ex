@@ -4,6 +4,8 @@ defmodule BlueJetWeb.ProductController do
   alias JaSerializer.Params
   alias BlueJet.Catalogue
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -16,7 +18,7 @@ defmodule BlueJetWeb.ProductController do
       locale: assigns[:locale]
     }
 
-   {:ok, %AccessResponse{ data: products, meta: meta }} = Catalogue.list_product(request)
+    {:ok, %AccessResponse{ data: products, meta: meta }} = Catalogue.list_product(request)
 
     render(conn, "index.json-api", data: products, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -41,6 +43,7 @@ defmodule BlueJetWeb.ProductController do
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+      other -> other
     end
   end
 

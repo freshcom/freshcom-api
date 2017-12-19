@@ -43,6 +43,7 @@ defmodule BlueJetWeb.ProductCollectionController do
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+      other -> other
     end
   end
 

@@ -151,40 +151,54 @@ defmodule BlueJet.FileStorage do
   ####
   # ExternalFileCollection
   ####
-  def list_external_file_collection(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "file_storage.list_external_file_collection") do
-      do_list_external_file_collection(%{ request | role: role })
+  def list_external_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.list_external_file_collection") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_external_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_external_file_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_external_file_collection(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       ExternalFileCollection.Query.default()
-      |> search([:name, :label, :id], request.search, request.locale, account_id)
+      |> search(
+          [:name, :code, :id],
+          request.search,
+          request.locale,
+          account.default_locale,
+          ExternalFileCollection.translatable_fields
+         )
       |> filter_by(
           owner_id: filter[:owner_id],
           owner_type: filter[:owner_type],
           label: filter[:label],
           content_type: filter[:content_type]
          )
-      |> ExternalFileCollection.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> ExternalFileCollection.Query.for_account(account.id)
 
-    total_query = ExternalFileCollection |> ExternalFileCollection.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      ExternalFileCollection.Query.default()
+      |> filter_by(status: counts[:all][:status])
+      |> ExternalFileCollection.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = ExternalFileCollection.Query.preloads(request.preloads, role: request.role)
     efcs =
-      Repo.all(query)
-      |> Repo.preload(ExternalFileCollection.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
       },
       data: efcs
     }

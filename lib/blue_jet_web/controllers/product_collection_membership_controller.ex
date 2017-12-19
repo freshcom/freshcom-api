@@ -21,10 +21,10 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   #   render(conn, "index.json-api", data: product_collection_memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   # end
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "product_collection_id" => pc_id, "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      fields: Params.to_attributes(data),
+      fields: Map.merge(Params.to_attributes(data), %{ "collection_id" => pc_id }),
       preloads: assigns[:preloads]
     }
 

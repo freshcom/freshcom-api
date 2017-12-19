@@ -54,19 +54,28 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index], limit: 10)
+    end
+
     def for_account(query, account_id) do
       from(pcm in query, where: pcm.account_id == ^account_id)
     end
 
-    def preloads(:product) do
-      [product: Product.Query.default()]
-    end
-    def preloads({:product, product_preloads}) do
-      [product: {Product.Query.default(), Product.Query.preloads(product_preloads)}]
+    def with_active_product(query) do
+      from pcm in query,
+        join: p in Product, on: p.id == pcm.product_id,
+        where: p.status == "active"
     end
 
-    def default() do
-      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index], limit: 10)
+    def preloads({:product, product_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+      query = Product.Query.default() |> Product.Query.active()
+      [product: {query, Product.Query.preloads(product_preloads, options)}]
+    end
+
+    def preloads({:product, product_preloads}, options = [role: _]) do
+      query = Product.Query.default()
+      [product: {query, Product.Query.preloads(product_preloads, options)}]
     end
   end
 end

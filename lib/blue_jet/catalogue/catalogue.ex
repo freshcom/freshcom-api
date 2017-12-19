@@ -14,50 +14,43 @@ defmodule BlueJet.Catalogue do
   # Product
   ######
   def list_product(request) do
-    with {:ok, request} <- authorize_request(request, "catalogue.list_product") do
+    with {:ok, request} <- preprocess_request(request, "catalogue.list_product") do
       request
-      |> transform_request()
+      |> AccessRequest.transform_by_role()
       |> do_list_product
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  defp transform_request(request = %{ role: role }) when role == "guest" or role == "customer" do
-    filter = Map.put(request.filter, :status, "active")
-    counts = Map.put(request.counts, :all, %{ status: "active" })
-    %{ request | filter: filter, counts: counts }
-  end
-
-  defp transform_request(request), do: request
-
   def do_list_product(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       Product.Query.default()
-      |> search([:name], request.search, request.locale, account.default_locale, Product.translatable_fields)
-      |> filter_by(status: filter[:status], kind: filter[:kind], parent_id: filter[:parent_id])
+      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Product.translatable_fields)
+      |> filter_by(status: filter[:status], kind: underscore(filter[:kind]), parent_id: filter[:parent_id])
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Product.Query.for_account(account.id)
 
     total_count = Repo.aggregate(data_query, :count, :id)
-
-    all_query =
+    all_count =
       Product.Query.default()
       |> filter_by(parent_id: filter[:parent_id], status: counts[:all][:status])
       |> Product.Query.for_account(account.id)
       |> root_only_if_no_parent_id(filter[:parent_id])
+      |> Repo.aggregate(:count, :id)
 
-    all_count = Repo.aggregate(all_query, :count, :id)
-
+    preloads = Product.Query.preloads(request.preloads, role: request.role)
     products =
       data_query
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
-      |> Repo.preload(Product.Query.preloads(request.preloads))
+      |> Repo.preload(preloads)
+      |> Product.put_external_resources(request.preloads, %{ account: account, role: request.role })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
         all_count: all_count,
         total_count: total_count
       },
@@ -109,7 +102,7 @@ defmodule BlueJet.Catalogue do
   defp do_get_product_response(product, request) do
     product =
       product
-      |> Repo.preload(Product.Query.preloads(request.preloads))
+      |> Repo.preload(Product.Query.preloads(request.preloads, role: request.role))
       |> Translation.translate(request.locale)
 
     {:ok, %AccessResponse{ data: product }}
@@ -181,35 +174,45 @@ defmodule BlueJet.Catalogue do
   ######
   # ProductCollection
   ######
-  def list_product_collection(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.list_product_collection") do
-      do_list_product_collection(%{ request | role: role })
+
+  def list_product_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.list_product_collection") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_product_collection
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_product_collection(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+  def do_list_product_collection(request = %AccessRequest{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       ProductCollection.Query.default()
-      |> search([:name], request.search, request.locale, account_id)
+      |> search([:name], request.search, request.locale, account.id)
       |> filter_by(status: filter[:status], label: filter[:label])
-      |> ProductCollection.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> ProductCollection.Query.for_account(account.id)
 
-    all_query = ProductCollection |> ProductCollection.Query.for_account(account_id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+
+    all_query =
+      ProductCollection
+      |> filter_by(status: counts[:all][:status])
+      |> ProductCollection.Query.for_account(account.id)
+
     all_count = Repo.aggregate(all_query, :count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = ProductCollection.Query.preloads(request.preloads, role: request.role)
     product_collections =
-      Repo.all(query)
-      |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
         all_count: all_count,
-        result_count: result_count,
+        total_count: total_count
       },
       data: product_collections
     }
@@ -217,9 +220,10 @@ defmodule BlueJet.Catalogue do
     {:ok, response}
   end
 
-  def create_product_collection(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection") do
-      do_create_product_collection(%{ request | role: role })
+  def create_product_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.create_product_collection") do
+      request
+      |> do_create_product_collection
     else
       {:error, _} -> {:error, :access_denied}
     end

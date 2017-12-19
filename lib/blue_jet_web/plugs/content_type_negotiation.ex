@@ -20,6 +20,7 @@ defmodule  BlueJet.Plugs.ContentTypeNegotiation do
   plug :set_content_type
 
   @jsonapi "application/vnd.api+json"
+  @json "application/json"
 
   def verify_content_type(%Plug.Conn{ method: "HEAD" } = conn, _o), do: conn
   def verify_content_type(%Plug.Conn{ method: "GET" } = conn, _o), do: conn
@@ -36,7 +37,8 @@ defmodule  BlueJet.Plugs.ContentTypeNegotiation do
     end
   end
   def verify_content_type(%Plug.Conn{} = conn, _o) do
-    if Enum.member?(get_req_header(conn, "content-type"), @jsonapi) do
+    ct_headers = get_req_header(conn, "content-type")
+    if Enum.member?(ct_headers, @jsonapi) || Enum.member?(ct_headers, @json) do
       conn
     else
       halt send_resp(conn, 415, "")
