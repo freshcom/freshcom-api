@@ -20,7 +20,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :maximum_public_order_quantity, :integer
 
       add :caption, :string
-      add :description, :string
+      add :description, :text
 
       add :source_id, :binary_id
       add :source_type, :string

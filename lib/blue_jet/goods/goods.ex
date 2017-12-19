@@ -9,35 +9,58 @@ defmodule BlueJet.Goods do
   ####
   # Stockable
   ####
-  def list_stockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.list_stockable") do
-      do_list_stockable(%{ request | role: role })
+  def stockable_response(stockable, request = %{ account: account }) do
+    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
+
+    stockable =
+      stockable
+      |> Repo.preload(preloads)
+      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
+      |> Translation.translate(request.locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
+  end
+
+  def stockable_response(nil, _), do: {:error, :not_found}
+
+  def list_stockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.list_stockable") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_stockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_stockable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_stockable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       Stockable
-      |> search([:name, :print_name, :code, :id], request.search, request.locale, account_id)
+      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Stockable.translatable_fields)
       |> filter_by(status: filter[:status])
-      |> Stockable.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> Stockable.Query.for_account(account.id)
 
-    total_query = Stockable |> Stockable.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Stockable.Query.default()
+      |> filter_by(status: counts[:all][:status])
+      |> Stockable.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
     stockables =
-      Repo.all(query)
-      |> Repo.preload(Stockable.Query.preloads(request.preloads))
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
       |> Translation.translate(request.locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count,
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
       },
       data: stockables
     }
@@ -45,71 +68,71 @@ defmodule BlueJet.Goods do
     {:ok, response}
   end
 
-  def create_stockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.create_stockable") do
-      do_create_stockable(%{ request | role: role })
+  def create_stockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.create_stockable") do
+      request
+      |> do_create_stockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_stockable(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Stockable.changeset(%Stockable{}, fields)
+
+  def do_create_stockable(request = %{ account: account }) do
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
+    changeset = Stockable.changeset(%Stockable{}, fields, request.locale)
 
     with {:ok, stockable} <- Repo.insert(changeset) do
-      stockable = Repo.preload(stockable, Stockable.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: stockable }}
+      stockable_response(stockable, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def get_stockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.get_stockable") do
-      do_get_stockable(%{ request | role: role })
+  def get_stockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.get_stockable") do
+      request
+      |> do_get_stockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
-    if stockable do
-      stockable =
-        stockable
-        |> Repo.preload(Stockable.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
+  def do_get_stockable(request = %{ account: account, params: %{ "id" => id } }) do
+    stockable =
+      Stockable.Query.default()
+      |> Stockable.Query.for_account(account.id)
+      |> Repo.get(id)
 
-      {:ok, %AccessResponse{ data: stockable }}
-    else
-      {:error, :not_found}
-    end
+    stockable_response(stockable, request)
   end
 
-  def update_stockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.update_stockable") do
-      do_update_stockable(%{ request | role: role })
+  def update_stockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.update_stockable") do
+      request
+      |> do_update_stockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_stockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
-    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_update_stockable(request = %{ account: account, params: %{ "id" => id } }) do
+    stockable =
+      Stockable.Query.default()
+      |> Stockable.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Stockable{} <- stockable,
          changeset <- Stockable.changeset(stockable, request.fields, request.locale),
-        {:ok, stockable} <- Repo.update(changeset)
+         {:ok, stockable} <- Repo.update(changeset)
     do
-      stockable =
-        stockable
-        |> Repo.preload(Stockable.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: stockable }}
+      stockable_response(stockable, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
       nil ->
         {:error, :not_found}
     end

@@ -1,19 +1,29 @@
 defmodule BlueJet.Goods.Stockable do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :print_name, :caption, :description, :specification, :storage_description, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :print_name,
+    :unit_of_measure,
+    :caption,
+    :description,
+    :specification,
+    :storage_description,
+    :custom_data
+  ], container: :translations
 
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
+
   alias BlueJet.FileStorage
 
   alias BlueJet.Goods.Stockable
 
   schema "stockables" do
     field :account_id, Ecto.UUID
-
+    field :status, :string, default: "draft"
     field :code, :string
-    field :status, :string, default: "active"
+
     field :name, :string
     field :print_name, :string
     field :unit_of_measure, :string
@@ -33,6 +43,7 @@ defmodule BlueJet.Goods.Stockable do
 
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
+
     field :external_file_collections, {:array, :map}, virtual: true, default: []
 
     timestamps()
@@ -64,34 +75,24 @@ defmodule BlueJet.Goods.Stockable do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale) do
     struct
     |> cast(params, castable_fields(struct))
-    |> validate_length(:print_name, min: 3)
-    |> validate_required([:account_id, :status, :name, :print_name, :unit_of_measure])
+    |> validate_required([:account_id, :status, :name, :unit_of_measure])
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def put_external_resources(stockable = %Stockable{ avatar_id: nil }, :avatar) do
-    stockable
-  end
-  def put_external_resources(stockable, :avatar) do
-    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
-      vas: %{ account_id: stockable.account_id },
-      params: %{ id: stockable.avatar_id }
-    })
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file,
+    field: :avatar
 
-    %{ stockable | avatar: avatar }
-  end
-  def put_external_resources(stockable, :external_file_collections) do
-    {:ok, %{ data: efcs }} = FileStorage.do_list_external_file_collection(%AccessRequest{
-      vas: %{ account_id: stockable.account_id },
-      filter: %{ owner_id: stockable.id, owner_type: "Stockable" },
-      pagination: %{ size: 5, number: 1 }
-    })
-
-    %{ stockable | external_file_collections: efcs }
-  end
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Stockable"
 
   defmodule Query do
     use BlueJet, :query
@@ -100,7 +101,7 @@ defmodule BlueJet.Goods.Stockable do
       from(s in query, where: s.account_id == ^account_id)
     end
 
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
 

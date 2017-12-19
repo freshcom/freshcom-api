@@ -87,7 +87,6 @@ defmodule BlueJet do
 
   def query do
     quote do
-
       def search_default_locale(query, columns, keyword) do
         keyword = "%#{keyword}%"
 

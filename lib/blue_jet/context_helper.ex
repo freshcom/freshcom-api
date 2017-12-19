@@ -23,6 +23,9 @@ defmodule BlueJet.ContextHelpers do
   def underscore(nil), do: nil
   def underscore(s), do: Inflex.underscore(s)
 
+  def listify(nil), do: []
+  def listify(list), do: list
+
   def paginate(query, size: size, number: number) do
     limit = size
     offset = size * (number - 1)

@@ -16,17 +16,15 @@ defmodule BlueJet.Catalogue.Product do
   alias BlueJet.Translation
 
   alias BlueJet.Goods
-  alias BlueJet.FileStorage
 
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
 
   schema "products" do
     field :account_id, Ecto.UUID
-
-    field :kind, :string, default: "simple"
     field :status, :string, default: "draft"
     field :code, :string
+    field :kind, :string, default: "simple"
 
     field :name_sync, :string, default: "disabled"
     field :name, :string
@@ -279,36 +277,17 @@ defmodule BlueJet.Catalogue.Product do
   end
   def put_name(changeset, _), do: changeset
 
-  def put_external_resources(product = %{ avatar_id: nil }, {:avatar, nil}, _), do: product
+  ####
+  # External Resources
+  ###
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file,
+    field: :avatar
 
-  def put_external_resources(product = %{ avatar_id: avatar_id }, {:avatar, nil}, _) do
-    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
-      vas: %{ account_id: product.account_id },
-      params: %{ id: avatar_id }
-    })
-
-    %{ product | avatar: avatar }
-  end
-
-  def put_external_resources(product, {:external_file_collections, efc_preloads}, %{ account: account, role: role }) do
-    request = %AccessRequest{
-      account: account,
-      filter: %{ owner_id: product.id, owner_type: "Product" },
-      pagination: %{ size: 5, number: 1 },
-      preloads: preloads_for_request(efc_preloads),
-      role: role
-    }
-
-    {:ok, %{ data: efcs }} =
-      request
-      |> AccessRequest.transform_by_role()
-      |> FileStorage.do_list_external_file_collection()
-
-    %{ product | external_file_collections: efcs }
-  end
-
-  defp preloads_for_request(nil), do: []
-  defp preloads_for_request(preloads), do: preloads
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Product"
 
   defmodule Query do
     use BlueJet, :query

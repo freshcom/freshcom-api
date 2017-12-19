@@ -18,9 +18,12 @@ defmodule BlueJetWeb.StockableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockables, meta: meta }} = Goods.list_stockable(request)
+    case Goods.list_stockable(request) do
+      {:ok, %AccessResponse{ data: stockables, meta: meta }} ->
+        render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Stockable" } }) do
@@ -50,9 +53,12 @@ defmodule BlueJetWeb.StockableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockable }} = Goods.get_stockable(request)
+    case Goods.get_stockable(request) do
+      {:ok, %AccessResponse{ meta: meta, data: stockable }} ->
+        render(conn, "show.json-api", data: stockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Stockable" } }) do
