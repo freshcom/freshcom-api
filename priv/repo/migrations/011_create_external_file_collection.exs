@@ -14,7 +14,6 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
 
       add :caption, :string
       add :description, :text
-
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 

@@ -9,20 +9,6 @@ defmodule BlueJet.Goods do
   ####
   # Stockable
   ####
-  defp stockable_response(nil, _), do: {:error, :not_found}
-
-  defp stockable_response(stockable, request = %{ account: account }) do
-    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
-
-    stockable =
-      stockable
-      |> Repo.preload(preloads)
-      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
-  end
-
   def list_stockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_stockable") do
       request
@@ -66,6 +52,20 @@ defmodule BlueJet.Goods do
     }
 
     {:ok, response}
+  end
+
+  defp stockable_response(nil, _), do: {:error, :not_found}
+
+  defp stockable_response(stockable, request = %{ account: account }) do
+    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
+
+    stockable =
+      stockable
+      |> Repo.preload(preloads)
+      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
   end
 
   def create_stockable(request) do
@@ -149,10 +149,10 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
+  def do_delete_stockable(%{ account: account, params: %{ "id" => id } }) do
     stockable =
       Stockable.Query.default()
-      |> Stockable.Query.for_account(vas[:account_id])
+      |> Stockable.Query.for_account(account.id)
       |> Repo.get(id)
 
     if stockable do

@@ -2,5 +2,30 @@ defmodule BlueJetWeb.UserView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  attributes [:email, :first_name, :last_name, :other_name, :inserted_at, :updated_at]
+  attributes [
+    :email,
+    :username,
+    :first_name,
+    :last_name,
+    :other_name,
+    :role,
+    :inserted_at,
+    :updated_at
+  ]
+
+  has_one :account, serializer: BlueJetWeb.AccountView, identifiers: :always
+
+  def type do
+    "User"
+  end
+
+  def account(%{ account_id: nil, account: %Ecto.Association.NotLoaded{} }, _) do
+    nil
+  end
+
+  def account(%{ account_id: account_id, account: %Ecto.Association.NotLoaded{} }, _) do
+    %{ id: account_id, type: "Account" }
+  end
+
+  def account(%{ account: account }, _), do: account
 end

@@ -23,7 +23,7 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
   has_many :files, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
   has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
-  def type(_, _) do
+  def type do
     "ExternalFileCollection"
   end
 

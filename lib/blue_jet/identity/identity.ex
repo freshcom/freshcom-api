@@ -76,15 +76,13 @@ defmodule BlueJet.Identity do
       Multi.new()
       |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account_id, "account_id" => account_id })))
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
-          account_membership = Repo.insert!(
+          Repo.insert(
             AccountMembership.changeset(%AccountMembership{}, %{
               account_id: account_id,
               user_id: user.id,
               role: Map.get(fields, "role")
             })
           )
-
-          {:ok, account_membership}
         end)
       |> Multi.run(:urt_live, fn(%{ user: user }) ->
           if live_account_id do
@@ -123,7 +121,15 @@ defmodule BlueJet.Identity do
     Authorization.authorize(vas, endpoint)
   end
 
-  def create_token(%AccessRequest{ fields: fields }) do
+  def authorize_request(request = %{ vas: vas }, endpoint) do
+    with {:ok, %{ role: role, account: account }} <- authorize(vas, endpoint) do
+      {:ok, %{ request | role: role, account: account }}
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
       {:ok, %AccessResponse{ data: token }}
     else
@@ -134,55 +140,56 @@ defmodule BlueJet.Identity do
   ####
   # Account
   ####
-  def list_account(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.list_account") do
-      do_list_account(%{ request | role: role })
+  def list_account(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.list_account") do
+      request
+      |> do_list_account()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_account(%AccessRequest{ vas: %{ user_id: user_id }, locale: locale }) do
+
+  def do_list_account(request = %{ account: account, vas: %{ user_id: user_id } }) do
     accounts =
       Account
       |> Account.Query.has_member(user_id)
+      |> Account.Query.live()
       |> Repo.all()
-      |> Translation.translate(locale)
+      |> Translation.translate(request.locale, account.default_locale)
 
-    {:ok, %AccessResponse{ data: accounts }}
+    {:ok, %AccessResponse{ data: accounts, meta: %{ locale: request.locale } }}
   end
 
-  def get_account(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.get_account") do
-      do_get_account(%{ request | role: role })
+  def get_account(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.get_account") do
+      request
+      |> do_get_account()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_account(%{ vas: %{ account_id: account_id }, locale: locale }) do
-    account =
-      Account
-      |> Repo.get!(account_id)
-      |> Account.put_test_account_id()
-      |> Translation.translate(locale)
 
-    {:ok, %AccessResponse{ data: account }}
+  def do_get_account(request = %{ account: account }) do
+    account = Translation.translate(account, request.locale, account.default_locale)
+    {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
   end
 
-  def update_account(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.update_account") do
-      do_update_account(%{ request | role: role })
+  def update_account(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.update_account") do
+      request
+      |> do_update_account()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_account(%AccessRequest{ vas: %{ account_id: account_id }, fields: fields }) do
-    changeset =
-      Account
-      |> Repo.get!(account_id)
-      |> Account.changeset(fields)
+
+  # TODO: also need to update the test account accordingly
+  def do_update_account(request = %{ account: account, fields: fields }) do
+    changeset = Account.changeset(account, fields)
 
     with {:ok, account} <- Repo.update(changeset) do
-      {:ok, %AccessResponse{ data: account }}
+      account = Translation.translate(account, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
     else
       {:error, changeset} -> {:error, %AccessResponse{ errors: changeset.errors }}
     end
@@ -191,86 +198,136 @@ defmodule BlueJet.Identity do
   ####
   # User
   ####
-  def create_user(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.create_user") do
-      do_create_user(%{ request | role: role })
+  defp user_response(nil, _), do: {:error, :not_found}
+
+  defp user_response(user, request = %{ account: account }) do
+    preloads = User.Query.preloads(request.preloads, role: request.role)
+
+    user =
+      user
+      |> User.put_role(account)
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
+  end
+
+  def create_user(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.create_user") do
+      request
+      |> do_create_user()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_user(%AccessRequest{ vas: vas, fields: fields, preloads: preloads }) when map_size(vas) == 0 do
-    result = Query.create_global_user(fields) |> Repo.transaction()
-    do_create_user_response(result, preloads)
+
+  def do_create_user(request = %{ role: "anonymous", fields: fields }) do
+    Query.create_global_user(fields)
+    |> Repo.transaction()
+    |> do_create_user_response(request)
   end
-  def do_create_user(%{ vas: %{ account_id: account_id, user_id: _ }, fields: fields, preloads: preloads }) do
-    result = Query.create_account_user(account_id, fields) |> Repo.transaction()
-    do_create_user_response(result, preloads)
-  end
-  def do_create_user(%{ vas: %{ account_id: account_id }, fields: fields, preloads: preloads }) do
+  def do_create_user(request = %{ role: "guest", account: account, fields: fields }) do
     fields = Map.merge(fields, %{ "role" => "customer" })
-    result = Query.create_account_user(account_id, fields) |> Repo.transaction()
-    do_create_user_response(result, preloads)
+
+    Query.create_account_user(account.id, fields)
+    |> Repo.transaction()
+    |> do_create_user_response(request)
   end
-  def do_create_user_response({:ok, %{ user: user}}, preloads) do
-    user = Repo.preload(user, User.Query.preloads(preloads))
-    {:ok, %AccessResponse{ data: user }}
+  def do_create_user(request = %{ account: account, fields: fields }) do
+    Query.create_account_user(account.id, fields)
+    |> Repo.transaction()
+    |> do_create_user_response(request)
+  end
+  def do_create_user_response({:ok, %{ user: user }}, request) do
+    user_response(user, request)
   end
   def do_create_user_response({:error, _, failed_value, _}, _) do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
 
-  def get_user(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.get_user") do
-      do_get_user(%{ request | role: role })
+  def get_user(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.get_user") do
+      request
+      |> do_get_user()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_user(%AccessRequest{ vas: %{ user_id: user_id }, preloads: preloads, locale: locale }) do
-    user =
-      User
-      |> Repo.get!(user_id)
-      |> Repo.preload(User.Query.preloads(preloads))
-      |> Translation.translate(locale)
 
-    {:ok, %AccessResponse{ data: user }}
+  def do_get_user(request = %{ vas: %{ user_id: user_id } }) do
+    User
+    |> Repo.get(user_id)
+    |> user_response(request)
   end
 
-  def delete_user(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.delete_user") do
+  def delete_user(request = %{ vas: vas, params: %{ "id" => id } }) do
+    with {:ok, request} <- preprocess_request(request, "identity.delete_user") do
       cond do
-        role == "customer" && vas[:user_id] == request.params.user_id -> do_delete_user(request)
-        role == "customer" -> {:error, :access_denied}
-        true -> do_delete_user(request)
+        # Customer user cannot delete a user other than himself
+        request.role == "customer" && vas[:user_id] != id ->
+          {:error, :access_denied}
+
+        # Allow other role to delete
+        true ->
+          request
+          |> do_delete_user()
       end
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_user(%AccessRequest{ vas: vas, params: %{ user_id: user_id } }) do
-    user = User |> User.Query.member_of_account(vas[:account_id]) |> Repo.get(user_id)
 
-    Repo.delete!(user)
+  # def delete_user(request = %AccessRequest{ vas: vas }) do
+  #   with {:ok, role} <- authorize(vas, "identity.delete_user") do
+  #     cond do
+  #       # If customer trying to delete self allow
+  #       role == "customer" && vas[:user_id] == request.params.user_id -> do_delete_user(request)
+  #       # Otherwise don't allow customer delete
+  #       role == "customer" -> {:error, :access_denied}
+  #       # Allow other role to delete
+  #       true -> do_delete_user(request)
+  #     end
+  #   else
+  #     {:error, _} -> {:error, :access_denied}
+  #   end
+  # end
 
-    {:ok, %AccessResponse{}}
+  def do_delete_user(%{ account: account, params: %{ "id" => id } }) do
+    user =
+      User.Query.default()
+      |> User.Query.member_of_account(account.id)
+      |> Repo.get(id)
+
+    if user do
+      Repo.delete!(user)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 
   #
   # RefreshToken
   #
-  def get_refresh_token(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- authorize(vas, "identity.get_refresh_token") do
-      do_get_refresh_token(%{ request | role: role })
+  def get_refresh_token(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.get_refresh_token") do
+      request
+      |> do_get_refresh_token()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_refresh_token(%AccessRequest{ vas: %{ account_id: account_id } }) do
+
+  def do_get_refresh_token(%{ account: account }) do
     refresh_token =
       RefreshToken.Query.publishable()
-      |> Repo.get_by(account_id: account_id)
+      |> Repo.get_by(account_id: account.id)
 
-    refresh_token = %{ refresh_token | prefixed_id: RefreshToken.prefix_id(refresh_token) }
-    {:ok, %AccessResponse{ data: refresh_token }}
+    if refresh_token do
+      refresh_token = %{ refresh_token | prefixed_id: RefreshToken.prefix_id(refresh_token) }
+      {:ok, %AccessResponse{ data: refresh_token }}
+    else
+      {:error, :not_found}
+    end
   end
 end

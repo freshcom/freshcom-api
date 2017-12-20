@@ -2,6 +2,7 @@ defmodule BlueJet.Identity.User do
   use BlueJet, :data
 
   alias Ecto.Changeset
+  alias BlueJet.Repo
 
   alias BlueJet.Identity.User
   alias BlueJet.Identity.Account
@@ -19,6 +20,8 @@ defmodule BlueJet.Identity.User do
     field :password, :string, virtual: true
 
     timestamps()
+
+    field :role, :string, virtual: true
 
     belongs_to :default_account, Account
     belongs_to :account, Account
@@ -53,7 +56,8 @@ defmodule BlueJet.Identity.User do
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:default_account_id)
     |> foreign_key_constraint(:account_id)
-    |> unique_constraint(:email)
+    |> unique_constraint(:email, name: :users_account_id_email_index)
+    |> unique_constraint(:username, name: :users_account_id_username_index)
   end
 
   @doc """
@@ -78,21 +82,35 @@ defmodule BlueJet.Identity.User do
   end
   defp put_username(changeset), do: changeset
 
+  def get_role(user, account) do
+    membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)
+
+    if membership do
+      membership.role
+    else
+      nil
+    end
+  end
+
+  def put_role(user, account) do
+    %{ user | role: get_role(user, account) }
+  end
+
   defmodule Query do
     use BlueJet, :query
 
-    def member_of_account(query, account_id) do
-      from u in query,
-        join: ac in AccountMembership, on: ac.user_id == u.id,
-        where: ac.account_id == ^account_id
+    def default() do
+      from(u in User, order_by: [desc: :inserted_at])
     end
 
     def global(query) do
       from u in query, where: is_nil(u.account_id)
     end
 
-    def default() do
-      from(u in User, order_by: [desc: :inserted_at])
+    def member_of_account(query, account_id) do
+      from u in query,
+        join: ac in AccountMembership, on: ac.user_id == u.id,
+        where: ac.account_id == ^account_id
     end
   end
 end

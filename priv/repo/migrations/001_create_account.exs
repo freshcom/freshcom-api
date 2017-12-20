@@ -10,6 +10,11 @@ defmodule BlueJet.Repo.Migrations.CreateAccount do
       add :live_account_id, references(:accounts, type: :binary_id)
       add :mode, :string, null: false, default: "live"
 
+      add :caption, :string
+      add :description, :text
+      add :custom_data, :map, null: false, default: "{}"
+      add :translations, :map, null: false, default: "{}"
+
       timestamps()
     end
 

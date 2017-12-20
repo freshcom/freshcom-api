@@ -5,6 +5,8 @@ defmodule BlueJetWeb.UserController do
   alias BlueJet.Identity
   alias JaSerializer.Params
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn, _params) do
@@ -12,16 +14,25 @@ defmodule BlueJetWeb.UserController do
     render(conn, "index.json-api", data: users)
   end
 
-  def create(conn, %{"data" => data = %{"type" => "User", "attributes" => _user_params}}) do
-    with {:ok, user} <- Identity.create_user(%{ fields: Params.to_attributes(data) }) do
-      conn
-      |> put_status(:created)
-      |> render("show.json-api", data: user)
-    else
-      {:error, changeset} ->
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "User" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
+
+    case Identity.create_user(request) do
+      {:ok, %{ data: user, meta: meta }} ->
+        conn
+        |> put_status(:created)
+        |> render("show.json-api", data: user, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -34,11 +45,11 @@ defmodule BlueJetWeb.UserController do
     }
 
     case Identity.get_user(request) do
-      {:ok, %{ data: user }} ->
-        render(conn, "show.json-api", data: user, opts: [include: conn.query_params["include"]])
-    end
+      {:ok, %{ data: user, meta: meta }} ->
+        render(conn, "show.json-api", data: user, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    # render(conn, "show.json-api", data: user, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn, %{"id" => id, "data" => data = %{"type" => "user", "attributes" => _user_params}}) do
@@ -55,14 +66,16 @@ defmodule BlueJetWeb.UserController do
     end
   end
 
-  def delete(conn, %{"id" => id}) do
-    user = Repo.get!(User, id)
+  def delete(conn = %{ assigns: assigns }, %{"id" => id}) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id }
+    }
 
-    # Here we use delete! (with a bang) because we expect
-    # it to always work (and if it does not, it will raise).
-    Repo.delete!(user)
+    case Identity.delete_user(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
-
 end

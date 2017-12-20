@@ -13,6 +13,11 @@ defmodule BlueJet.Identity.Account do
     field :mode, :string
     field :test_account_id, Ecto.UUID, virtual: true
 
+    field :caption, :string
+    field :description, :string
+    field :custom_data, :map, default: %{}
+    field :translations, :map, defualt: %{}
+
     timestamps()
 
     belongs_to :live_account, Account
@@ -40,14 +45,18 @@ defmodule BlueJet.Identity.Account do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(a in Account, order_by: [desc: :inserted_at])
+    end
+
     def has_member(query, user_id) do
       from a in query,
         join: ac in AccountMembership, on: ac.account_id == a.id,
         where: ac.user_id == ^user_id
     end
 
-    def default() do
-      from(a in Account, order_by: [desc: :inserted_at])
+    def live(query) do
+      from a in Account, where: a.mode == "live"
     end
   end
 end

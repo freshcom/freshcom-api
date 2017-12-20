@@ -7,9 +7,20 @@ defmodule BlueJetWeb.AccountController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _params) do
-    account = Repo.all(Account)
-    render(conn, "index.json-api", data: account)
+  def index(conn = %{ assigns: assigns }, _) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    case Identity.list_account(request) do
+      {:ok, %{ data: accounts, meta: meta }} ->
+        render(conn, "index.json-api", data: accounts, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      other -> other
+    end
   end
 
   def create(conn, %{"data" => data = %{"type" => "account", "attributes" => _account_params}}) do
@@ -34,27 +45,31 @@ defmodule BlueJetWeb.AccountController do
     }
 
     case Identity.get_account(request) do
-      {:ok, %{ data: account }} ->
-        render(conn, "show.json-api", data: account, opts: [include: conn.query_params["include"]])
+      {:ok, %{ data: account, meta: meta }} ->
+        render(conn, "show.json-api", data: account, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      other -> other
     end
   end
 
-  def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: account_id, user_id: _ } } }, %{"data" => data = %{"type" => "Account", "attributes" => _account_params}}) do
-    request = %{
+  def update(conn = %{ assigns: assigns }, %{"data" => data = %{"type" => "Account", "attributes" => _account_params}}) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      account_id: account_id,
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Identity.update_account(request) do
-      {:ok, order} ->
-        render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
+      {:ok, %{ data: account, meta: meta }} ->
+        render(conn, "show.json-api", data: account, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, changeset} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(changeset))
+
+      other -> other
     end
   end
 

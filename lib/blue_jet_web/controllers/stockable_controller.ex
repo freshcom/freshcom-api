@@ -38,10 +38,13 @@ defmodule BlueJetWeb.StockableController do
         conn
         |> put_status(:created)
         |> render("show.json-api", data: stockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -89,8 +92,10 @@ defmodule BlueJetWeb.StockableController do
       params: %{ "id" => id }
     }
 
-    Goods.delete_stockable(request)
+    case Goods.delete_stockable(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

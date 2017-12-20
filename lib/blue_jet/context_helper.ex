@@ -3,16 +3,8 @@ defmodule BlueJet.ContextHelpers do
 
   alias BlueJet.Identity
 
-  def authorize_request(request = %{ vas: vas }, endpoint) do
-    with {:ok, %{ role: role, account: account }} <- Identity.authorize(vas, endpoint) do
-      {:ok, %{ request | role: role, account: account }}
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
   def preprocess_request(request = %{ locale: locale }, endpoint) do
-    with {:ok, request} <- authorize_request(request, endpoint) do
+    with {:ok, request} <- Identity.authorize_request(request, endpoint) do
       request = Map.put(request, :locale, locale || request.account.default_locale)
       {:ok, request}
     else
