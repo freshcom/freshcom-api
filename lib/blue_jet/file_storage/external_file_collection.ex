@@ -1,7 +1,12 @@
 defmodule BlueJet.FileStorage.ExternalFileCollection do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias BlueJet.Translation
   alias BlueJet.FileStorage.ExternalFile
@@ -11,14 +16,17 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   schema "external_file_collections" do
     field :account_id, Ecto.UUID
     field :status, :string, default: "active"
+    field :code, :string
     field :name, :string
     field :label, :string
 
-    field :owner_id, Ecto.UUID
-    field :owner_type, :string
-
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
+
+    field :owner_id, Ecto.UUID
+    field :owner_type, :string
 
     timestamps()
 
@@ -51,7 +59,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :label])
+    |> validate_required([:account_id, :name])
     |> foreign_key_constraint(:account_id)
   end
 

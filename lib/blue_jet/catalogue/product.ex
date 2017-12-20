@@ -14,6 +14,7 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
+  alias BlueJet.Identity
 
   alias BlueJet.Goods
 
@@ -22,6 +23,8 @@ defmodule BlueJet.Catalogue.Product do
 
   schema "products" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "draft"
     field :code, :string
     field :kind, :string, default: "simple"
@@ -115,7 +118,10 @@ defmodule BlueJet.Catalogue.Product do
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
 
-    case source(account_id, source_id, source_type) do
+    account = get_account(%{ account: nil, account_id: account_id })
+    source = get_source(%{ account: account, source_id: source_id, source_type: source_type })
+
+    case source do
       nil -> Changeset.add_error(changeset, :source_id, "is invalid")
       _ -> changeset
     end
@@ -210,6 +216,21 @@ defmodule BlueJet.Catalogue.Product do
   end
   defp validate_status(changeset, _), do: changeset
 
+  def get_account(%{ account_id: account_id, account: nil }) do
+    response = Identity.do_get_account(%AccessRequest{
+      vas: %{ account_id: account_id }
+    })
+
+    case response do
+      {:ok, %{ data: account }} -> account
+
+      _ -> nil
+    end
+  end
+
+  def get_account(%{ account: account }), do: account
+
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
@@ -221,10 +242,14 @@ defmodule BlueJet.Catalogue.Product do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def source(account_id, source_id, "Stockable") do
+  def get_source(product, locale \\ nil)
+
+  def get_source(product = %{ source_id: source_id, source_type: "Stockable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_stockable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -232,10 +257,13 @@ defmodule BlueJet.Catalogue.Product do
       {:error, _} -> nil
     end
   end
-  def source(account_id, source_id, "Unlockable") do
+
+  def get_source(product = %{ source_id: source_id, source_type: "Unlockable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -243,24 +271,30 @@ defmodule BlueJet.Catalogue.Product do
       {:error, _} -> nil
     end
   end
-  def source(account_id, source_id, "Depositable") do
+
+  def get_source(product = %{ source_id: source_id, source_type: "Depositable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_depositable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
-      {:ok, %{ data: unlockable }} -> unlockable
+      {:ok, %{ data: depositable }} -> depositable
       {:error, _} -> nil
     end
   end
-  def source(_, _, _), do: nil
+
+  def get_source(_, _), do: nil
 
   def put_name(changeset = %Changeset{ valid?: true, changes: %{ name_sync: "sync_with_source" } }, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
-    source = source(account_id, source_id, source_type)
+
+    account = get_account(%{ account: nil, account_id: account_id })
+    source = get_source(%{ account: account, source_id: source_id, source_type: source_type })
 
     if source do
       changeset = put_change(changeset, :name, "#{source.name}")

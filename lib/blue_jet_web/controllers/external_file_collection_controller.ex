@@ -4,6 +4,8 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
   alias JaSerializer.Params
   alias BlueJet.FileStorage
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -29,34 +31,40 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     }
 
     case FileStorage.create_external_file_collection(request) do
-      {:ok, %AccessResponse{ data: efc }} ->
+      {:ok, %{ data: efc, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: efc, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: efc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ external_file_collection_id: efc_id },
+      params: %{ "id" => efc_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: efc }} = FileStorage.get_external_file_collection(request)
+    case FileStorage.get_external_file_collection(request) do
+      {:ok, %AccessResponse{ data: efc, meta: meta }} ->
+        render(conn, "show.json-api", data: efc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ external_file_collection_id: efc_id },
+      params: %{ "id" => efc_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -65,17 +73,20 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     case FileStorage.update_external_file_collection(request) do
       {:ok, %AccessResponse{ data: efc }} ->
         render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ external_file_collection_id: efc_id }
+      params: %{ "id" => efc_id }
     }
 
     FileStorage.delete_external_file_collection(request)

@@ -1,26 +1,44 @@
 defmodule BlueJet.FileStorage.ExternalFile do
   use BlueJet, :data
 
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
   alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.ExternalFileCollectionMembership
 
   schema "external_files" do
     field :account_id, Ecto.UUID
-
     field :status, :string, default: "pending"
+    field :code, :string
     field :name, :string
+    field :label, :string
+
     field :content_type, :string
     field :size_bytes, :integer
     field :public_readable, :boolean, default: false
+
     field :version_name, :string
+    field :version_label, :string
     field :system_tag, :string
     field :original_id, Ecto.UUID
-    field :url, :string, virtual: true
+
+    field :caption, :string
+    field :description, :string
+    field :custom_data, :map, default: %{}
+    field :translations, :map, defualt: %{}
 
     field :user_id, Ecto.UUID
 
-    field :custom_data, :map, default: %{}
-
     timestamps()
+
+    field :url, :string, virtual: true
+
+    has_many :collection_memberships, ExternalFileCollectionMembership, foreign_key: :file_id
   end
 
   def system_fields do
@@ -34,6 +52,10 @@ defmodule BlueJet.FileStorage.ExternalFile do
 
   def writable_fields do
     ExternalFile.__schema__(:fields) -- system_fields()
+  end
+
+  def translatable_fields do
+    ExternalFile.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do

@@ -96,16 +96,16 @@ defmodule BlueJet.Goods.Depositable do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(d in Depositable, order_by: [desc: :updated_at])
+    end
+
     def for_account(query, account_id) do
       from(d in query, where: d.account_id == ^account_id)
     end
 
     def preloads(_) do
       []
-    end
-
-    def default() do
-      from(d in Depositable, order_by: [desc: :updated_at])
     end
   end
 end

@@ -26,7 +26,7 @@ defmodule BlueJet.Catalogue do
   def do_list_product(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       Product.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Product.translatable_fields)
+      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Product.translatable_fields())
       |> filter_by(status: filter[:status], kind: underscore(filter[:kind]), parent_id: filter[:parent_id])
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Product.Query.for_account(account.id)

@@ -34,10 +34,10 @@ defmodule BlueJetWeb.StockableController do
     }
 
     case Goods.create_stockable(request) do
-      {:ok, %AccessResponse{ data: stockable }} ->
+      {:ok, %AccessResponse{ data: stockable, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: stockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -54,7 +54,7 @@ defmodule BlueJetWeb.StockableController do
     }
 
     case Goods.get_stockable(request) do
-      {:ok, %AccessResponse{ meta: meta, data: stockable }} ->
+      {:ok, %AccessResponse{ data: stockable, meta: meta }} ->
         render(conn, "show.json-api", data: stockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
@@ -71,12 +71,15 @@ defmodule BlueJetWeb.StockableController do
     }
 
     case Goods.update_stockable(request) do
-      {:ok, %AccessResponse{ data: stockable }} ->
-        render(conn, "show.json-api", data: stockable, opts: [include: conn.query_params["include"]])
+      {:ok, %AccessResponse{ data: stockable, meta: meta }} ->
+        render(conn, "show.json-api", data: stockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 

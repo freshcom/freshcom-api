@@ -8,6 +8,8 @@ defmodule BlueJet.Repo.Migrations.CreateStockable do
       add :status, :string, null: false
       add :code, :string
       add :name, :string, null: false
+      add :label, :string
+
       add :print_name, :string
       add :unit_of_measure, :string, null: false
       add :variable_weight, :boolean, null: false, default: false
@@ -30,7 +32,8 @@ defmodule BlueJet.Repo.Migrations.CreateStockable do
     end
 
     create unique_index(:stockables, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:stockables, [:account_id, :name])
     create index(:stockables, [:account_id, :status])
+    create index(:stockables, [:account_id, :name])
+    create index(:stockables, [:account_id, :label])
   end
 end

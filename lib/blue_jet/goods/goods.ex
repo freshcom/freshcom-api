@@ -9,19 +9,19 @@ defmodule BlueJet.Goods do
   ####
   # Stockable
   ####
-  def stockable_response(stockable, request = %{ account: account }) do
+  defp stockable_response(nil, _), do: {:error, :not_found}
+
+  defp stockable_response(stockable, request = %{ account: account }) do
     preloads = Stockable.Query.preloads(request.preloads, role: request.role)
 
     stockable =
       stockable
       |> Repo.preload(preloads)
       |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
-      |> Translation.translate(request.locale)
+      |> Translation.translate(request.locale, account.default_locale)
 
     {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
   end
-
-  def stockable_response(nil, _), do: {:error, :not_found}
 
   def list_stockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_stockable") do
@@ -54,7 +54,7 @@ defmodule BlueJet.Goods do
       |> Repo.all()
       |> Repo.preload(preloads)
       |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role })
-      |> Translation.translate(request.locale)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
@@ -78,6 +78,8 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_stockable(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
     fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = Stockable.changeset(%Stockable{}, fields, request.locale)
 
@@ -138,15 +140,20 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def delete_stockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.delete_stockable") do
-      do_delete_stockable(%{ request | role: role })
+  def delete_stockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.delete_stockable") do
+      request
+      |> do_delete_stockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
+
   def do_delete_stockable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    stockable = Stockable |> Stockable.Query.for_account(vas[:account_id]) |> Repo.get!(id)
+    stockable =
+      Stockable.Query.default()
+      |> Stockable.Query.for_account(vas[:account_id])
+      |> Repo.get(id)
 
     if stockable do
       Repo.delete!(stockable)
@@ -215,19 +222,20 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def get_unlockable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.get_unlockable") do
-      do_get_unlockable(%{ request | role: role })
+  def get_unlockable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.get_unlockable") do
+      request
+      |> do_get_unlockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get(id)
+  def do_get_unlockable(request = %AccessRequest{ account: account, params: %{ "id" => id } }) do
+    unlockable = Unlockable |> Unlockable.Query.for_account(account.id) |> Repo.get(id)
     do_get_unlockable_response(unlockable, request)
   end
-  def do_get_unlockable(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    unlockable = Unlockable |> Unlockable.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
+  def do_get_unlockable(request = %AccessRequest{ account: account, params: %{ "code" => code } }) do
+    unlockable = Unlockable |> Unlockable.Query.for_account(account.id) |> Repo.get_by(code: code)
     do_get_unlockable_response(unlockable, request)
   end
   def do_get_unlockable_response(nil, _), do: {:error, :not_found}
@@ -344,15 +352,20 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def get_depositable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.get_depositable") do
-      do_get_depositable(%{ request | role: role })
+  def get_depositable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.get_depositable") do
+      request
+      |> do_get_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_depositable(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_get_depositable(request = %{ account: account, params: %{ "id" => id } }) do
+    depositable =
+      Depositable.Query.default()
+      |> Depositable.Query.for_account(account.id)
+      |> Repo.get(id)
 
     if depositable do
       depositable =

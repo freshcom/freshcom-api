@@ -158,7 +158,7 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_account(%AccessRequest{ vas: %{ account_id: account_id }, locale: locale }) do
+  def do_get_account(%{ vas: %{ account_id: account_id }, locale: locale }) do
     account =
       Account
       |> Repo.get!(account_id)

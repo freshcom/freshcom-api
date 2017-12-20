@@ -13,9 +13,6 @@ defmodule BlueJet.Goods.Stockable do
   ], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-
-  alias BlueJet.FileStorage
 
   alias BlueJet.Goods.Stockable
 
