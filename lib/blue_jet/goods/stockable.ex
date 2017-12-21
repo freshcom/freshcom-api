@@ -31,11 +31,11 @@ defmodule BlueJet.Goods.Stockable do
     field :storage_size, :integer
     field :stackable, :boolean, default: false
 
-    field :caption, :string
-    field :description, :string
     field :specification, :string
     field :storage_description, :string
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 

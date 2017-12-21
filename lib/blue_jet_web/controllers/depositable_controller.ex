@@ -18,9 +18,12 @@ defmodule BlueJetWeb.DepositableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: depositables, meta: meta }} = Goods.list_depositable(request)
+    case Goods.list_depositable(request) do
+      {:ok, %AccessResponse{ data: depositables, meta: meta }} ->
+        render(conn, "index.json-api", data: depositables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: depositables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Depositable" } }) do
@@ -31,14 +34,17 @@ defmodule BlueJetWeb.DepositableController do
     }
 
     case Goods.create_depositable(request) do
-      {:ok, %AccessResponse{ data: depositable }} ->
+      {:ok, %AccessResponse{ data: depositable, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: depositable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -50,9 +56,12 @@ defmodule BlueJetWeb.DepositableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: depositable }} = Goods.get_depositable(request)
+    case Goods.get_depositable(request) do
+      {:ok, %AccessResponse{ data: depositable, meta: meta }} ->
+        render(conn, "show.json-api", data: depositable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Depositable" } }) do
@@ -65,12 +74,15 @@ defmodule BlueJetWeb.DepositableController do
     }
 
     case Goods.update_depositable(request) do
-      {:ok, %AccessResponse{ data: depositable }} ->
-        render(conn, "show.json-api", data: depositable, opts: [include: conn.query_params["include"]])
+      {:ok, %AccessResponse{ data: depositable, meta: meta }} ->
+        render(conn, "show.json-api", data: depositable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -80,8 +92,10 @@ defmodule BlueJetWeb.DepositableController do
       params: %{ "id" => id }
     }
 
-    Goods.delete_depositable(request)
+    case Goods.delete_depositable(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

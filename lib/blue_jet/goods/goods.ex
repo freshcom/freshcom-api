@@ -21,7 +21,7 @@ defmodule BlueJet.Goods do
 
   def do_list_stockable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
-      Stockable
+      Stockable.Query.default()
       |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Stockable.translatable_fields)
       |> filter_by(status: filter[:status])
       |> Stockable.Query.for_account(account.id)
@@ -331,35 +331,44 @@ defmodule BlueJet.Goods do
   #
   # Depositable
   #
-  def list_depositable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.list_depositable") do
-      do_list_depositable(%{ request | role: role })
+  def list_depositable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.list_depositable") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_depositable(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
-      Depositable
-      |> search([:name, :print_name, :code, :id], request.search, request.locale, account_id)
+
+  def do_list_depositable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
+      Depositable.Query.default()
+      |> search([:name, :code, :id], request.search, request.locale, account.default_locale)
       |> filter_by(status: filter[:status])
-      |> Depositable.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> Depositable.Query.for_account(account.id)
 
-    total_query = Depositable |> Depositable.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Depositable.Query.default()
+      |> filter_by(status: counts[:all][:status])
+      |> Depositable.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Depositable.Query.preloads(request.preloads, role: request.role)
     depositables =
-      Repo.all(query)
-      |> Repo.preload(request.preloads)
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Depositable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count,
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
       },
       data: depositables
     }
@@ -367,23 +376,42 @@ defmodule BlueJet.Goods do
     {:ok, response}
   end
 
-  def create_depositable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.create_depositable") do
-      do_create_depositable(%{ request | role: role })
+  defp depositable_response(nil, _), do: {:error, :not_found}
+
+  defp depositable_response(depositable, request = %{ account: account }) do
+    preloads = Depositable.Query.preloads(request.preloads, role: request.role)
+
+    depositable =
+      depositable
+      |> Repo.preload(preloads)
+      |> Depositable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
+  end
+
+  def create_depositable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.create_depositable") do
+      request
+      |> do_create_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_depositable(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Depositable.changeset(%Depositable{}, fields)
+
+  def do_create_depositable(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
+    changeset = Depositable.changeset(%Depositable{}, fields, request.locale, account.default_locale)
 
     with {:ok, depositable} <- Repo.insert(changeset) do
-      depositable = Repo.preload(depositable, Depositable.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: depositable }}
+      depositable_response(depositable, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -402,39 +430,29 @@ defmodule BlueJet.Goods do
       |> Depositable.Query.for_account(account.id)
       |> Repo.get(id)
 
-    if depositable do
-      depositable =
-        depositable
-        |> Repo.preload(Depositable.Query.preloads(request.preloads))
-        |> Depositable.put_external_resources(request.preloads)
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: depositable }}
-    else
-      {:error, :not_found}
-    end
+    depositable_response(depositable, request)
   end
 
-  def update_depositable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.update_depositable") do
-      do_update_depositable(%{ request | role: role })
+  def update_depositable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.update_depositable") do
+      request
+      |> do_update_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_depositable(request = %{ vas: vas, params: %{ "id" => id }}) do
-    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_update_depositable(request = %{ account: account, params: %{ "id" => id }}) do
+    depositable =
+      Depositable.Query.default()
+      |> Depositable.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Depositable{} <- depositable,
-         changeset <- Depositable.changeset(depositable, request.fields, request.locale),
+         changeset <- Depositable.changeset(depositable, request.fields, request.locale, account.default_locale),
         {:ok, depositable} <- Repo.update(changeset)
     do
-      depositable =
-        depositable
-        |> Repo.preload(Depositable.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: depositable }}
+      depositable_response(depositable, request)
     else
       nil -> {:error, :not_found}
       {:error, %{ errors: errors }} ->
@@ -442,15 +460,21 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def delete_depositable(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "inventory.delete_depositable") do
-      do_delete_depositable(%{ request | role: role })
+  def delete_depositable(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.delete_depositable") do
+      request
+      |> do_delete_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_depositable(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    depositable = Depositable |> Depositable.Query.for_account(vas[:account_id]) |> Repo.get!(id)
+
+  def do_delete_depositable(%AccessRequest{ account: account, params: %{ "id" => id } }) do
+    depositable =
+      Depositable.Query.default()
+      |> Depositable.Query.for_account(account.id)
+      |> Repo.get(id)
+
     if depositable do
       Repo.delete!(depositable)
       {:ok, %AccessResponse{}}

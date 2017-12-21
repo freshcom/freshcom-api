@@ -9,5 +9,9 @@ defmodule BlueJet.Repo.Migrations.CreateRefreshToken do
 
       timestamps()
     end
+
+    create unique_index(:refresh_tokens, [:account_id, :user_id])
+    create index(:refresh_tokens, :account_id)
+    create index(:refresh_tokens, :user_id)
   end
 end

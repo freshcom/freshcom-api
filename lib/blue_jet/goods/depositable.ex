@@ -1,33 +1,37 @@
 defmodule BlueJet.Goods.Depositable do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :print_name, :caption, :description, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :print_name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-  alias BlueJet.FileStorage
 
   alias BlueJet.Goods.Depositable
 
   schema "depositables" do
     field :account_id, Ecto.UUID
-
+    field :status, :string, default: "draft"
     field :code, :string
-    field :status, :string, default: "active"
     field :name, :string
+    field :label, :string
+
     field :print_name, :string
     field :amount, :integer
+    field :target_type, :string
 
     field :caption, :string
     field :description, :string
-
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :target_type, :string
-
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
+
     field :external_file_collections, {:array, :map}, virtual: true, default: []
 
     timestamps()
@@ -58,40 +62,40 @@ defmodule BlueJet.Goods.Depositable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name, :print_name, :amount])
+    |> validate_required([:account_id, :status, :name, :amount, :target_type])
     |> foreign_key_constraint(:account_id)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale, default_locale) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> put_print_name()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_external_resources(depositable = %Depositable{ avatar_id: nil }, :avatar) do
-    depositable
-  end
-  def put_external_resources(depositable, :avatar) do
-    {:ok, %{ data: avatar }} = FileStorage.do_get_external_file(%AccessRequest{
-      vas: %{ account_id: depositable.account_id },
-      params: %{ id: depositable.avatar_id }
-    })
+  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
 
-    %{ depositable | avatar: avatar }
+  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
   end
-  def put_external_resources(depositable, :external_file_collections) do
-    {:ok, %{ data: efcs }} = FileStorage.do_list_external_file_collection(%AccessRequest{
-      vas: %{ account_id: depositable.account_id },
-      filter: %{ owner_id: depositable.id, owner_type: "Depositable" },
-      pagination: %{ size: 5, number: 1 }
-    })
 
-    %{ depositable | external_file_collections: efcs }
-  end
+  def put_print_name(changeset), do: changeset
+
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file,
+    field: :avatar
+
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Stockable"
 
   defmodule Query do
     use BlueJet, :query
