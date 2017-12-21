@@ -3,6 +3,8 @@ defmodule BlueJetWeb.UnlockController do
 
   alias BlueJet.Storefront
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do

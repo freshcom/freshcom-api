@@ -17,10 +17,11 @@ defmodule BlueJet.FileStorage do
       quote do
         def put_external_resources(resource = %{ unquote(foreign_key) => nil }, {unquote(field), nil}, _), do: resource
 
-        def put_external_resources(resource = %{ unquote(foreign_key) => ef_id }, {unquote(field), nil}, _) do
+        def put_external_resources(resource = %{ unquote(foreign_key) => ef_id }, {unquote(field), nil}, %{ account: account, locale: locale }) do
           {:ok, %{ data: ef }} = FileStorage.do_get_external_file(%AccessRequest{
-            vas: %{ account_id: resource.account_id },
-            params: %{ id: ef_id }
+            account: account,
+            params: %{ "id" => ef_id },
+            locale: locale
           })
 
           Map.put(resource, unquote(field), ef)
@@ -30,13 +31,14 @@ defmodule BlueJet.FileStorage do
 
     def put_external_resources_efc(field, owner_type) do
       quote do
-        def put_external_resources(resource, {unquote(field), efc_preloads}, %{ account: account, role: role }) do
+        def put_external_resources(resource, {unquote(field), efc_preloads}, %{ account: account, role: role, locale: locale }) do
           request = %AccessRequest{
             account: account,
             filter: %{ owner_id: resource.id, owner_type: unquote(owner_type) },
             pagination: %{ size: 5, number: 1 },
             preloads: listify(efc_preloads),
-            role: role
+            role: role,
+            locale: locale
           }
 
           {:ok, %{ data: efcs }} =
@@ -136,7 +138,7 @@ defmodule BlueJet.FileStorage do
       "account_id" => account.id,
       "user_id" => vas[:user_id]
     })
-    changeset = ExternalFile.changeset(%ExternalFile{}, fields)
+    changeset = ExternalFile.changeset(%ExternalFile{}, fields, request.locale, account.default_locale)
 
     with {:ok, external_file} <- Repo.insert(changeset) do
       external_file_response(external_file, request)
@@ -180,7 +182,7 @@ defmodule BlueJet.FileStorage do
       |> Repo.get(id)
 
     with %ExternalFile{} <- external_file,
-         changeset = ExternalFile.changeset(external_file, request.fields),
+         changeset = ExternalFile.changeset(external_file, request.fields, request.locale, account.default_locale),
          {:ok, external_file} <- Repo.update(changeset)
     do
       external_file_response(external_file, request)
@@ -302,7 +304,7 @@ defmodule BlueJet.FileStorage do
     request = %{ request | locale: account.default_locale }
     fields = Map.merge(request.fields, %{ "account_id" => account.id })
 
-    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields) do
+    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields, request.locale, account.default_locale) do
       {:ok, efc} = Repo.transaction(fn ->
         efc = Repo.insert!(changeset)
         create_efcms!(fields["file_ids"] || [], efc)
@@ -370,7 +372,7 @@ defmodule BlueJet.FileStorage do
       |> Repo.get(efc_id)
 
     with %ExternalFileCollection{} <- efc,
-         changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale)
+         changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale, account.default_locale)
     do
       source_file_ids = Ecto.assoc(efc, :files) |> ids_only() |> Repo.all()
       target_file_ids = request.fields["file_ids"]

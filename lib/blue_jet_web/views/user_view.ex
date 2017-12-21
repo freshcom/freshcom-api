@@ -19,7 +19,7 @@ defmodule BlueJetWeb.UserView do
     "User"
   end
 
-  def account(%{ account_id: nil, account: %Ecto.Association.NotLoaded{} }, _) do
+  def account(%{ account_id: nil }, _) do
     nil
   end
 

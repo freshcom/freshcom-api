@@ -1,6 +1,13 @@
 defmodule BlueJet.Identity.Account do
   use BlueJet, :data
 
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
   alias BlueJet.Repo
 
   alias BlueJet.Identity.Account
@@ -28,12 +35,30 @@ defmodule BlueJet.Identity.Account do
 
   @type t :: Ecto.Schema.t
 
+  def system_fields do
+    [
+      :id,
+      :inserted_at,
+      :updated_at
+    ]
+  end
+
+  def writable_fields do
+    Account.__schema__(:fields) -- system_fields()
+  end
+
+  def translatable_fields do
+    Account.__trans__(:fields)
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
-    struct
-    |> cast(params, [:name, :default_locale])
+  def changeset(account, params, locale) do
+    account
+    |> cast(params, writable_fields())
+    |> validate_required([:default_locale])
+    |> Translation.put_change(translatable_fields(), locale, account.default_locale)
   end
 
   def put_test_account_id(account = %{ id: live_account_id, mode: "live" }) do
@@ -56,7 +81,7 @@ defmodule BlueJet.Identity.Account do
     end
 
     def live(query) do
-      from a in Account, where: a.mode == "live"
+      from a in query, where: a.mode == "live"
     end
   end
 end

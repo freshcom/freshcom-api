@@ -41,7 +41,8 @@ defmodule BlueJetWeb.AccountController do
 
   def show(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
-      vas: assigns[:vas]
+      vas: assigns[:vas],
+      locale: assigns[:locale]
     }
 
     case Identity.get_account(request) do

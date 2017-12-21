@@ -20,8 +20,9 @@ defmodule BlueJet.Goods.Stockable do
     field :account_id, Ecto.UUID
     field :status, :string, default: "draft"
     field :code, :string
-
     field :name, :string
+    field :label, :string
+
     field :print_name, :string
     field :unit_of_measure, :string
     field :variable_weight, :boolean, default: false
@@ -69,15 +70,30 @@ defmodule BlueJet.Goods.Stockable do
     writable_fields() -- [:account_id]
   end
 
+  def validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :status, :name, :unit_of_measure])
+    |> foreign_key_constraint(:account_id)
+  end
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale) do
+  def changeset(struct, params, locale, default_locale) do
     struct
     |> cast(params, castable_fields(struct))
-    |> validate_required([:account_id, :status, :name, :unit_of_measure])
-    |> Translation.put_change(translatable_fields(), locale)
+    |> validate()
+    |> put_print_name()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  def put_print_name(changeset), do: changeset
 
   ######
   # External Resources
@@ -94,16 +110,16 @@ defmodule BlueJet.Goods.Stockable do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(s in Stockable, order_by: [desc: :updated_at])
+    end
+
     def for_account(query, account_id) do
       from(s in query, where: s.account_id == ^account_id)
     end
 
     def preloads(_, _) do
       []
-    end
-
-    def default() do
-      from(s in Stockable, order_by: [desc: :updated_at])
     end
   end
 end

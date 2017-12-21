@@ -4,10 +4,14 @@ defmodule BlueJet.ContextHelpers do
   alias BlueJet.Identity
 
   def preprocess_request(request = %{ locale: locale }, endpoint) do
-    with {:ok, request} <- Identity.authorize_request(request, endpoint) do
-      request = Map.put(request, :locale, locale || request.account.default_locale)
-      {:ok, request}
-    else
+    case Identity.authorize_request(request, endpoint) do
+      {:ok, request = %{ account: nil }} ->
+        {:ok, request}
+
+      {:ok, request = %{ account: account }} ->
+        request = Map.put(request, :locale, locale || request.account.default_locale)
+        {:ok, request}
+
       other -> other
     end
   end

@@ -79,10 +79,11 @@ defmodule BlueJet.FileStorage.ExternalFile do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
+  def changeset(struct, params, locale, default_locale) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def key(struct) do

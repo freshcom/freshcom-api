@@ -217,7 +217,7 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_status(changeset, _), do: changeset
 
   def get_account(%{ account_id: account_id, account: nil }) do
-    response = Identity.do_get_account(%AccessRequest{
+    response = Identity.get_account(%AccessRequest{
       vas: %{ account_id: account_id }
     })
 

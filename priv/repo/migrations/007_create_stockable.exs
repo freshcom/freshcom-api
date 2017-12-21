@@ -18,11 +18,11 @@ defmodule BlueJet.Repo.Migrations.CreateStockable do
       add :storage_size, :integer, null: false, default: 0
       add :stackable, :boolean, null: false, default: false
 
-      add :caption, :string
-      add :description, :text
       add :specification, :text
       add :storage_description, :text
 
+      add :caption, :string
+      add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 

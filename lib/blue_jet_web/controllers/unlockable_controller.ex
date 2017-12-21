@@ -4,6 +4,8 @@ defmodule BlueJetWeb.UnlockableController do
   alias JaSerializer.Params
   alias BlueJet.Goods
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -17,9 +19,12 @@ defmodule BlueJetWeb.UnlockableController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: unlockables, meta: meta }} = Goods.list_unlockable(request)
+    case Goods.list_unlockable(request) do
+      {:ok, %AccessResponse{ data: unlockables, meta: meta }} ->
+        render(conn, "index.json-api", data: unlockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: unlockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
 def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unlockable" } }) do
@@ -30,14 +35,17 @@ def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unloc
     }
 
     case Goods.create_unlockable(request) do
-      {:ok, %AccessResponse{ data: unlockable }} ->
+      {:ok, %AccessResponse{ data: unlockable, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
+        |> render("show.json-api", data: unlockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -49,9 +57,12 @@ def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unloc
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: unlockable }} = Goods.get_unlockable(request)
+    case Goods.get_unlockable(request) do
+      {:ok, %AccessResponse{ data: unlockable, meta: meta }} ->
+        render(conn, "show.json-api", data: unlockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Unlockable" } }) do
@@ -64,23 +75,28 @@ def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unloc
     }
 
     case Goods.update_unlockable(request) do
-      {:ok, %AccessResponse{ data: unlockable }} ->
-        render(conn, "show.json-api", data: unlockable, opts: [include: conn.query_params["include"]])
+      {:ok, %AccessResponse{ data: unlockable, meta: meta }} ->
+        render(conn, "show.json-api", data: unlockable, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def delete(conn = %{ assigns: assigns }, params) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: params
+      params: %{ "id" => id }
     }
 
-    Goods.delete_unlockable(request)
+    case Goods.delete_unlockable(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

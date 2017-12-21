@@ -438,7 +438,10 @@ defmodule BlueJet.Identity.Authorization do
   }
 
   def authorize(vas, endpoint) when map_size(vas) == 0 do
-    authorize("anonymous", endpoint)
+    case authorize("anonymous", endpoint) do
+      {:ok, role} -> {:ok, %{ role: role, account: nil }}
+      other -> other
+    end
   end
 
   def authorize(vas = %{ account_id: account_id }, endpoint) do

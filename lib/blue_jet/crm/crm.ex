@@ -61,21 +61,26 @@ defmodule BlueJet.CRM do
     {:ok, response}
   end
 
-  def create_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.create_customer") do
-      do_create_customer(%{ request | role: role })
+  def create_customer(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.create_customer") do
+      request
+      |> do_create_customer()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_customer(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "role" => "customer" })
+
+  def do_create_customer(request = %{ account: account }) do
+    fields = Map.merge(request.fields, %{
+      "account_id" => account.id,
+      "role" => "customer"
+    })
 
     statements =
       Multi.new()
       |> Multi.run(:user, fn(_) ->
           if fields["status"] == "registered" do
-            case Identity.do_create_user(%AccessRequest{ vas: vas, fields: fields}) do
+            case Identity.do_create_user(%AccessRequest{ account: account, fields: fields}) do
               {:ok, %{ data: user }} -> {:ok, user}
               other -> other
             end

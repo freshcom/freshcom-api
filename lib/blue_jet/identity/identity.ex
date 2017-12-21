@@ -13,10 +13,12 @@ defmodule BlueJet.Identity do
     alias BlueJet.Identity
 
     def create_account(fields) do
+      default_locale = fields["default_locale"]
+
       Multi.new()
-      |> Multi.insert(:account, Account.changeset(%Account{ mode: "live" }, fields))
+      |> Multi.insert(:account, Account.changeset(%Account{ mode: "live", default_locale: default_locale }, fields, default_locale))
       |> Multi.run(:test_account, fn(%{ account: account }) ->
-          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
+          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test", default_locale: default_locale }, fields, default_locale)
           Repo.insert(changeset)
         end)
       |> Multi.run(:prt_live, fn(%{ account: account }) ->
@@ -34,9 +36,9 @@ defmodule BlueJet.Identity do
 
     def create_global_user(fields) do
       Multi.new()
-      |> Multi.append(create_account(%{ name: fields.account_name, default_locale: fields.default_locale }))
+      |> Multi.append(create_account(%{ "name" => fields["account_name"], "default_locale" => fields["default_locale"] }))
       |> Multi.run(:user, fn(%{ account: account }) ->
-          Repo.insert(User.changeset(%User{}, Map.merge(fields, %{ default_account_id: account.id })))
+          Repo.insert(User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account.id })))
         end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
           account_membership = Repo.insert!(
@@ -185,7 +187,7 @@ defmodule BlueJet.Identity do
 
   # TODO: also need to update the test account accordingly
   def do_update_account(request = %{ account: account, fields: fields }) do
-    changeset = Account.changeset(account, fields)
+    changeset = Account.changeset(account, fields, request.locale)
 
     with {:ok, account} <- Repo.update(changeset) do
       account = Translation.translate(account, request.locale, account.default_locale)
@@ -226,6 +228,7 @@ defmodule BlueJet.Identity do
     |> Repo.transaction()
     |> do_create_user_response(request)
   end
+
   def do_create_user(request = %{ role: "guest", account: account, fields: fields }) do
     fields = Map.merge(fields, %{ "role" => "customer" })
 
@@ -233,14 +236,23 @@ defmodule BlueJet.Identity do
     |> Repo.transaction()
     |> do_create_user_response(request)
   end
+
   def do_create_user(request = %{ account: account, fields: fields }) do
     Query.create_account_user(account.id, fields)
     |> Repo.transaction()
     |> do_create_user_response(request)
   end
+
+  # Global user
+  def do_create_user_response({:ok, %{ user: user, account: account }}, request) do
+    user_response(user, %{ request | account: account })
+  end
+
+  # Account user
   def do_create_user_response({:ok, %{ user: user }}, request) do
     user_response(user, request)
   end
+
   def do_create_user_response({:error, _, failed_value, _}, _) do
     {:error, %AccessResponse{ errors: failed_value.errors }}
   end
@@ -276,21 +288,6 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
-
-  # def delete_user(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- authorize(vas, "identity.delete_user") do
-  #     cond do
-  #       # If customer trying to delete self allow
-  #       role == "customer" && vas[:user_id] == request.params.user_id -> do_delete_user(request)
-  #       # Otherwise don't allow customer delete
-  #       role == "customer" -> {:error, :access_denied}
-  #       # Allow other role to delete
-  #       true -> do_delete_user(request)
-  #     end
-  #   else
-  #     {:error, _} -> {:error, :access_denied}
-  #   end
-  # end
 
   def do_delete_user(%{ account: account, params: %{ "id" => id } }) do
     user =

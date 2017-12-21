@@ -27,12 +27,12 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     {:ok, %{ data: %{ default_account_id: account1_id } }} = Identity.create_user(%AccessRequest{
       fields: %{
-        first_name: "Roy",
-        last_name: "Bao",
-        email: "user1@example.com",
-        password: "test1234",
-        account_name: "Outersky",
-        default_locale: "zh-CN"
+        "first_name" => "Roy",
+        "last_name" => "Bao",
+        "email" => "user1@example.com",
+        "password" => "test1234",
+        "account_name" => "Outersky",
+        "default_locale" => "en"
       }
     })
 
@@ -46,6 +46,10 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         "status" => "registered",
         "password" => "test1234"
       }
+    })
+
+    {:ok, %{ data: account1 }} = Identity.get_account(%AccessRequest{
+      vas: %{ account_id: account1_id }
     })
 
     changeset = Depositable.changeset(%Depositable{}, %{
@@ -139,14 +143,14 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "storage_type" => "room",
       "specification" => "510g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
-    }, "en")
+    }, "en", account1.default_locale)
     stockable_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_oyster_sauce, %{
       "name" => "李锦记熊猫蚝油",
       "specification" => "每瓶510克。",
       "storage_description" => "常温保存，避免爆嗮。"
-    }, "zh-CN")
+    }, "zh-CN", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -163,14 +167,14 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "storage_type" => "room",
       "specification" => "280g per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light. After open keep refrigerated."
-    }, "en")
+    }, "en", account1.default_locale)
     stockable_chili_oil = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_chili_oil, %{
       "name" => "老干妈豆豉辣椒油",
       "specification" => "每瓶280克。",
       "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
-    }, "zh-CN")
+    }, "zh-CN", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -187,14 +191,14 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "storage_type" => "room",
       "specification" => "410ml per bottle",
       "storage_description" => "Store in room temperature, avoid direct sun light."
-    }, "en")
+    }, "en", account1.default_locale)
     stockable_seasoned_soy_sauce = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_seasoned_soy_sauce, %{
       "name" => "李锦记蒸鱼豉油",
       "specification" => "每瓶410毫升。",
       "storage_description" => "常温保存，避免爆嗮。"
-    }, "zh-CN")
+    }, "zh-CN", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -211,14 +215,14 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "storage_type" => "cool",
       "specification" => "About 2lb per fish",
       "storage_description" => "Keep refrigerated"
-    }, "en")
+    }, "en", account1.default_locale)
     stockable_fish = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_fish, %{
       "name" => "鱼",
       "specification" => "每条约2磅",
       "storage_description" => "冷藏保存"
-    }, "zh-CN")
+    }, "zh-CN", account1.default_locale)
     Repo.update!(changeset)
 
     #######
@@ -414,7 +418,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "print_name" => "NEW ASSOC TRAIN",
       "caption" => "Get it",
       "description" => "Now"
-    }, "en")
+    }, "en", account1.default_locale)
     unlockable = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{

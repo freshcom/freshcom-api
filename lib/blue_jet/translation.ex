@@ -10,7 +10,7 @@ defmodule BlueJet.Translation do
 
   def default_locale(%{ default_locale: default_locale }), do: default_locale
   def default_locale(%{ account_id: account_id }) when not is_nil(account_id) do
-    {:ok, %{ data: account }} = Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } })
+    {:ok, %{ data: account }} = Identity.get_account(%AccessRequest{ vas: %{ account_id: account_id } })
     account.default_locale
   end
   def default_locale(structs) when length(structs) > 0 do
@@ -18,9 +18,18 @@ defmodule BlueJet.Translation do
   end
   def default_locale(_), do: nil
 
+  # TODO: Remove this
   def put_change(changeset = %{ data: struct }, translatable_fields, locale) do
     default_locale = default_locale(struct)
 
+    cond do
+      is_nil(default_locale) || locale == default_locale -> changeset
+      true -> put_translations(changeset, translatable_fields, locale)
+    end
+  end
+
+  # TODO: Keep this
+  def put_change(changeset, translatable_fields, locale, default_locale) do
     cond do
       is_nil(default_locale) || locale == default_locale -> changeset
       true -> put_translations(changeset, translatable_fields, locale)
