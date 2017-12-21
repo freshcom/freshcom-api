@@ -41,8 +41,8 @@ defmodule BlueJet.CRM do
       |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale)
       |> filter_by(status: filter[:status], label: filter[:label], delivery_address_country_code: filter[:delivery_address_country_code])
       |> Customer.Query.for_account(account.id)
-    total_count = Repo.aggregate(data_query, :count, :id)
 
+    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
       Customer.Query.default()
       |> filter_by(status: counts[:all][:status])
@@ -67,6 +67,20 @@ defmodule BlueJet.CRM do
     }
 
     {:ok, response}
+  end
+
+  defp customer_response(nil, _), do: {:error, :not_found}
+
+  defp customer_response(customer, request = %{ account: account }) do
+    preloads = Customer.Query.preloads(request.preloads, role: request.role)
+
+    customer =
+      customer
+      |> Repo.preload(preloads)
+      |> Customer.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
   end
 
   def create_customer(request) do
@@ -118,74 +132,92 @@ defmodule BlueJet.CRM do
 
     case Repo.transaction(statements) do
       {:ok, %{ customer: customer }} ->
-        customer = Repo.preload(customer, Customer.Query.preloads(request.preloads))
-        {:ok, %AccessResponse{ data: customer }}
+        customer_response(customer, request)
+
       {:error, :user, response, _} ->
         {:error, response}
+
       {:error, :customer, changeset, _} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
 
-  def get_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.get_customer") do
-      do_get_customer(%{ request | role: role })
+  def get_customer(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.get_customer") do
+      request
+      |> do_get_customer()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
-    do_get_customer_response(customer, request)
-  end
-  def do_get_customer(request = %AccessRequest{ role: "guest", vas: vas, params: params = %{ "code" => code } }) when map_size(params) >= 2 do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code, status: "guest")
+
+  def do_get_customer(request = %{ role: "guest", account: account, params: params = %{ "code" => code } }) when map_size(params) >= 2 do
+    customer =
+      Customer
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get_by(code: code, status: "guest")
 
     params = Map.drop(params, ["code"])
     if Customer.match?(customer, params) do
-      do_get_customer_response(customer, request)
+      customer_response(customer, request)
     else
       {:error, :not_found}
     end
   end
-  def do_get_customer(%AccessRequest{ role: "guest" }), do: {:error, :not_found}
-  def do_get_customer(request = %AccessRequest{ role: "customer", vas: %{ account_id: account_id, user_id: user_id } }) do
-    customer = Customer |> Customer.Query.for_account(account_id) |> Repo.get_by(user_id: user_id)
-    do_get_customer_response(customer, request)
+
+  def do_get_customer(%{ role: "guest" }), do: {:error, :not_found}
+
+  def do_get_customer(request = %{ role: "customer", account: account, vas: %{ user_id: user_id } }) do
+    customer =
+      Customer
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get_by(user_id: user_id)
+
+    customer_response(customer, request)
   end
-  def do_get_customer(%AccessRequest{ role: "customer" }), do: {:error, :not_found}
-  def do_get_customer(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get_by(code: code)
-    do_get_customer_response(customer, request)
+
+  def do_get_customer(%{ role: "customer" }), do: {:error, :not_found}
+
+  def do_get_customer(request = %{ account: account, params: %{ "id" => id } }) do
+    customer =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    customer_response(customer, request)
   end
+
+  def do_get_customer(request = %{ account: account, params: %{ "code" => code } }) do
+    customer =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get_by(code: code)
+
+    customer_response(customer, request)
+  end
+
   def do_get_customer(_), do: {:error, :not_found}
 
-  defp do_get_customer_response(nil, _) do
-    {:error, :not_found}
-  end
-  defp do_get_customer_response(customer, request) do
-    customer =
-      customer
-      |> Repo.preload(Customer.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
-
-    {:ok, %AccessResponse{ data: customer }}
-  end
-
-  def update_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.update_customer") do
-      do_update_customer(%{ request | role: role })
+  def update_customer(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.update_customer") do
+      request
+      |> do_update_customer()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_customer(request = %AccessRequest{ role: role, vas: vas, params: %{ "id" => id } }) do
-    customer_query = Customer |> Customer.Query.for_account(vas[:account_id])
 
-    customer = case role do
-      "guest" -> Repo.get_by(customer_query, id: id, status: "guest")
-      "customer" -> Repo.get(customer_query, id) # TODO: only find the customer of the user
-      _ -> Repo.get(customer_query, id)
+  def do_update_customer(request = %{ role: role, account: account, vas: vas, params: %{ "id" => id } }) do
+    customer_query =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+
+    customer = cond do
+      role == "guest" -> Repo.get_by(customer_query, id: id, status: "guest")
+      role == "customer" && vas[:user_id] -> Repo.get_by(customer_query, id: id, user_id: vas[:user_id]) # TODO: only find the customer of the user
+      true -> Repo.get(customer_query, id)
     end
 
     statements =
@@ -207,7 +239,7 @@ defmodule BlueJet.CRM do
             request.fields
           end
 
-          changeset = Customer.changeset(customer, fields)
+          changeset = Customer.changeset(customer, fields, request.locale, account.default_locale)
           {:ok, changeset}
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
@@ -217,43 +249,49 @@ defmodule BlueJet.CRM do
     with %Customer{} <- customer,
          {:ok, %{ customer: customer }} <- Repo.transaction(statements)
     do
-      customer =
-        customer
-        |> Repo.preload(Customer.Query.preloads(request.preloads))
-        |> Customer.put_external_resources(request.preloads)
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: customer }}
+      customer_response(customer, request)
     else
       nil ->
         {:error, :not_found}
+
       {:error, :user, response, _} ->
         {:error, response}
+
       {:error, :customer, changeset, _} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
 
-  def delete_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.delete_customer") do
-      do_delete_customer(%{ request | role: role })
+  def delete_customer(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.delete_customer") do
+      request
+      |> do_delete_customer()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_customer(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    customer = Customer |> Customer.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_delete_customer(%{ account: account, params: %{ "id" => id } }) do
+    customer =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get(id)
 
     statements =
       Multi.new()
       |> Multi.run(:delete_user, fn(_) ->
           if customer.user_id do
-            Identity.do_delete_user(%AccessRequest{ vas: vas, params: %{ user_id: customer.user_id } })
+            Identity.do_delete_user(%AccessRequest{ account: account, params: %{ "id" => customer.user_id } })
           else
             {:ok, nil}
           end
          end)
-      |> Multi.delete(:deleted_customer, customer)
+      |> Multi.run(:deleted_customer, fn(_) ->
+          Repo.delete!(customer)
+          {:ok, customer}
+         end)
 
     if customer do
       {:ok, _} = Repo.transaction(statements)

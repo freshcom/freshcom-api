@@ -13,7 +13,6 @@ defmodule BlueJet.CRM.Customer do
   alias Ecto.Changeset
 
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
 
   alias BlueJet.CRM.Customer
   alias BlueJet.CRM.PointAccount
@@ -177,6 +176,14 @@ defmodule BlueJet.CRM.Customer do
   defp remove_space(value) do
     String.replace(value, " ", "")
   end
+
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Customer"
 
   @doc """
   Preprocess the customer to be ready for its first payment
