@@ -8,6 +8,22 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
 
+  defmodule Shortcut do
+    def get_account(%{ account_id: account_id, account: nil }) do
+      response = Identity.get_account(%AccessRequest{
+        vas: %{ account_id: account_id }
+      })
+
+      case response do
+        {:ok, %{ data: account }} -> account
+
+        _ -> nil
+      end
+    end
+
+    def get_account(%{ account: account }), do: account
+  end
+
   defmodule Query do
     alias Ecto.Multi
     alias BlueJet.Identity

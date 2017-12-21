@@ -1,14 +1,19 @@
 defmodule BlueJet.CRM.Customer do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
+  use Trans, translates: [
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
 
   alias BlueJet.Repo
   alias Ecto.Changeset
 
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
-  alias BlueJet.Identity
 
   alias BlueJet.CRM.Customer
   alias BlueJet.CRM.PointAccount
@@ -17,23 +22,25 @@ defmodule BlueJet.CRM.Customer do
 
   schema "customers" do
     field :account_id, Ecto.UUID
-    field :code, :string
+    field :account, :map, virtual: true
+
     field :status, :string, default: "guest"
+    field :code, :string
+    field :name, :string
+    field :label, :string
+
     field :first_name, :string
     field :last_name, :string
     field :email, :string
-    field :label, :string
-    field :other_name, :string
     field :phone_number, :string
 
-    field :stripe_customer_id, :string
-
-    field :user_id, Ecto.UUID
-
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :account, :map, virtual: true
+    field :stripe_customer_id, :string
+    field :user_id, Ecto.UUID
 
     timestamps()
 
@@ -45,6 +52,7 @@ defmodule BlueJet.CRM.Customer do
   def system_fields do
     [
       :id,
+      :user_id,
       :stripe_customer_id,
       :inserted_at,
       :updated_at
@@ -66,8 +74,8 @@ defmodule BlueJet.CRM.Customer do
     writable_fields() -- [:account_id]
   end
 
-  def required_name_fields(_, _, other_name) do
-    if other_name do
+  def required_name_fields(_, _, name) do
+    if name do
       []
     else
       [:first_name, :last_name]
@@ -78,11 +86,11 @@ defmodule BlueJet.CRM.Customer do
     status = get_field(changeset, :status)
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
-    other_name = get_field(changeset, :other_name)
+    name = get_field(changeset, :name)
 
-    required_name_fields = required_name_fields(first_name, last_name, other_name)
+    required_name_fields = required_name_fields(first_name, last_name, name)
 
-    common = writable_fields() -- [:enroller_id, :sponsor_id, :other_name, :first_name, :last_name, :code, :phone_number, :label]
+    common = [:account_id, :status, :user_id]
     common = common ++ required_name_fields
 
     case status do
@@ -101,26 +109,35 @@ defmodule BlueJet.CRM.Customer do
     |> unique_constraint(:email)
   end
 
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale, default_locale) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> put_name()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def account(%{ account_id: account_id, account: nil }) do
-    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
-      {:ok, %{ data: account }} -> account
-      {:error, _} -> nil
+  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  def put_name(changeset = %{ valid?: true }) do
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :first_name)
+
+    if first_name && last_name do
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
     end
   end
-  def account(%{ account: account }), do: account
+
+  def put_name(changeset), do: changeset
 
   def match?(nil, _) do
     false
   end
+
   def match?(customer, params) do
-    params = Map.take(params, ["first_name", "last_name", "other_name", "phone_number"])
+    params = Map.take(params, ["first_name", "last_name", "name", "phone_number"])
 
     leftover = Enum.reject(params, fn({k, v}) ->
       case k do
@@ -128,8 +145,8 @@ defmodule BlueJet.CRM.Customer do
           String.downcase(v) == remove_space(downcase(customer.first_name))
         "last_name" ->
           String.downcase(v) == remove_space(downcase(customer.last_name))
-        "other_name" ->
-          String.downcase(v) == remove_space(downcase(customer.other_name))
+        "name" ->
+          String.downcase(v) == remove_space(downcase(customer.name))
         "phone_number" ->
           digit_only(v) == digit_only(customer.phone_number)
         "email" ->
@@ -166,7 +183,7 @@ defmodule BlueJet.CRM.Customer do
   """
   @spec preprocess(Customer.t, Keyword.t) :: Customer.t
   def preprocess(customer = %Customer{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
-    customer = %{ customer | account: account(customer) }
+    customer = %{ customer | account: get_account(customer) }
     {:ok, stripe_customer} = create_stripe_customer(customer)
 
     customer
@@ -177,7 +194,7 @@ defmodule BlueJet.CRM.Customer do
 
   # @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
   # defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
-  #   customer = %{ customer | account: account(customer) }
+  #   customer = %{ customer | account: get_account(customer) }
   #   with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
   #     Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
   #   else
@@ -187,18 +204,22 @@ defmodule BlueJet.CRM.Customer do
 
   @spec create_stripe_customer(Customer.t) :: {:ok, map} | {:error, map}
   defp create_stripe_customer(customer) do
-    account = account(customer)
+    account = get_account(customer)
     StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
   end
 
   # @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
   # defp list_stripe_card(customer = %Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
-  #   account = account(customer)
+  #   account = get_account(customer)
   #   StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
   # end
 
   defmodule Query do
     use BlueJet, :query
+
+    def default() do
+      from(c in Customer, order_by: [desc: :updated_at])
+    end
 
     def for_account(query, account_id) do
       from(c in query, where: c.account_id == ^account_id)
@@ -211,18 +232,12 @@ defmodule BlueJet.CRM.Customer do
       end
     end
 
-    def preloads(:point_account) do
-      [point_account: PointAccount.Query.default()]
-    end
-    def preloads({:point_account, point_account_preloads}) do
-      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads)}]
-    end
-    def preloads(_) do
-      []
+    def preloads({:point_account, point_account_preloads}, options) do
+      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
     end
 
-    def default() do
-      from(c in Customer, order_by: [desc: :updated_at])
+    def preloads(_) do
+      []
     end
   end
 end

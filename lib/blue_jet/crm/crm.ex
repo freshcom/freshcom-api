@@ -25,35 +25,43 @@ defmodule BlueJet.CRM do
   ####
   # Customer
   ####
-  def list_customer(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.list_customer") do
-      do_list_customer(%{ request | role: role })
+  def list_customer(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.list_customer") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_customer()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_customer(request = %AccessRequest{ vas: %{ account_id: account_id }, pagination: pagination }) do
-    query =
+
+  def do_list_customer(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       Customer.Query.default()
-      |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account_id)
-      |> filter_by(status: request.filter[:status], label: request.filter[:label], delivery_address_country_code: request.filter[:delivery_address_country_code])
-      |> Customer.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale)
+      |> filter_by(status: filter[:status], label: filter[:label], delivery_address_country_code: filter[:delivery_address_country_code])
+      |> Customer.Query.for_account(account.id)
+    total_count = Repo.aggregate(data_query, :count, :id)
 
-    total_query = Customer |> Customer.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    all_count =
+      Customer.Query.default()
+      |> filter_by(status: counts[:all][:status])
+      |> Customer.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Customer.Query.preloads(request.preloads, role: request.role)
     customers =
-      Repo.all(query)
-      |> Repo.preload(Customer.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
+        all_count: all_count,
         total_count: total_count,
-        result_count: result_count,
       },
       data: customers
     }
@@ -71,6 +79,8 @@ defmodule BlueJet.CRM do
   end
 
   def do_create_customer(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
     fields = Map.merge(request.fields, %{
       "account_id" => account.id,
       "role" => "customer"
@@ -89,13 +99,13 @@ defmodule BlueJet.CRM do
           end
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
-          fields = if user do
-            Map.merge(fields, %{ "user_id" => user.id })
+          customer = if user do
+            %Customer{ user_id: user.id }
           else
-            fields
+            %Customer{}
           end
 
-          changeset = Customer.changeset(%Customer{}, fields)
+          changeset = Customer.changeset(customer, fields, request.locale, account.default_locale)
           {:ok, changeset}
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset }) ->

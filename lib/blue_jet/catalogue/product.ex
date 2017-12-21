@@ -8,13 +8,19 @@ defmodule BlueJet.Catalogue.Product do
 
   use BlueJet, :data
 
-  use Trans, translates: [:name, :caption, :description, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
 
   alias Ecto.Changeset
 
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
-  alias BlueJet.Identity
 
   alias BlueJet.Goods
 
@@ -215,20 +221,6 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
   defp validate_status(changeset, _), do: changeset
-
-  def get_account(%{ account_id: account_id, account: nil }) do
-    response = Identity.get_account(%AccessRequest{
-      vas: %{ account_id: account_id }
-    })
-
-    case response do
-      {:ok, %{ data: account }} -> account
-
-      _ -> nil
-    end
-  end
-
-  def get_account(%{ account: account }), do: account
 
 
   @doc """

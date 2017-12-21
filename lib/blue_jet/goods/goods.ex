@@ -1,7 +1,6 @@
 defmodule BlueJet.Goods do
   use BlueJet, :context
 
-  alias BlueJet.Identity
   alias BlueJet.Goods.Stockable
   alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable

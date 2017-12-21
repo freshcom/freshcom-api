@@ -36,6 +36,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       }
     })
 
+    {:ok, %{ data: account1 }} = Identity.get_account(%AccessRequest{
+      vas: %{ account_id: account1_id }
+    })
 
     {:ok, %{ data: _ }} = CRM.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
@@ -48,10 +51,6 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       }
     })
 
-    {:ok, %{ data: account1 }} = Identity.get_account(%AccessRequest{
-      vas: %{ account_id: account1_id }
-    })
-
     changeset = Depositable.changeset(%Depositable{}, %{
       "account_id" => account1_id,
       "code" => "60050",
@@ -60,7 +59,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "充值$50",
       "print_name" => "充值$50",
       "amount" => 5000
-    }, "en")
+    }, "en", account1.default_locale)
     deposit_50 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -98,7 +97,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "充值$100",
       "print_name" => "充值$100",
       "amount" => 10000
-    }, "en")
+    }, "en", account1.default_locale)
     deposit_100 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
