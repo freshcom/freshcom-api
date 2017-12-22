@@ -31,14 +31,17 @@ defmodule BlueJetWeb.PointTransactionController do
     }
 
     case CRM.create_point_transaction(request) do
-      {:ok, %AccessResponse{ data: point_transaction }} ->
+      {:ok, %{ data: point_transaction, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: point_transaction, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: point_transaction, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -50,8 +53,11 @@ defmodule BlueJetWeb.PointTransactionController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_transaction }} = CRM.get_point_transaction(request)
+    case CRM.get_point_transaction(request) do
+      {:ok, %{ data: point_transaction, meta: meta }} ->
+        render(conn, "show.json-api", data: point_transaction, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: point_transaction, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 end

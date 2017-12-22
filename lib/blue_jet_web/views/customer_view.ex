@@ -39,19 +39,10 @@ defmodule BlueJetWeb.CustomerView do
   end
 
   def enroller(%{ enroller_id: nil }, _), do: nil
-
-  def enroller(%{ enroller_id: enroller_id, enroller: %Ecto.Association.NotLoaded{} }, _) do
-    %{ id: enroller_id, type: "Customer" }
-  end
-
+  def enroller(%{ enroller_id: enroller_id, enroller: %Ecto.Association.NotLoaded{} }, _), do: %{ id: enroller_id, type: "Customer" }
   def enroller(%{ enroller: enroller }, _), do: enroller
 
   def sponsor(%{ sponsor_id: nil }, _), do: nil
-
-  def sponsor(%{ sponsor_id: sponsor_id, sponsor: %Ecto.Association.NotLoaded{} }, _) do
-    %{ id: sponsor_id, type: "Customer" }
-  end
-
+  def sponsor(%{ sponsor_id: sponsor_id, sponsor: %Ecto.Association.NotLoaded{} }, _), do: %{ id: sponsor_id, type: "Customer" }
   def sponsor(%{ sponsor: sponsor }, _), do: sponsor
-
 end

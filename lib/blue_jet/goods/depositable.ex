@@ -97,6 +97,9 @@ defmodule BlueJet.Goods.Depositable do
     field: :external_file_collections,
     owner_type: "Stockable"
 
+  def put_external_resources(depositable, _, _), do: depositable
+
+
   defmodule Query do
     use BlueJet, :query
 

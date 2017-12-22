@@ -1,7 +1,12 @@
 defmodule BlueJet.CRM.PointTransaction do
   use BlueJet, :data
 
-  use Trans, translates: [:description, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias Ecto.Changeset
   alias Ecto.Multi
@@ -13,13 +18,17 @@ defmodule BlueJet.CRM.PointTransaction do
 
   schema "point_transactions" do
     field :account_id, Ecto.UUID
-
     field :status, :string, default: "pending"
+    field :code, :string
+    field :name, :string
+    field :label, :string
+
+    field :reason_label, :string
     field :amount, :integer
     field :balance_after_commit, :integer
-    field :reason_label, :string
-    field :description, :string
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
@@ -100,19 +109,33 @@ defmodule BlueJet.CRM.PointTransaction do
     end
   end
 
+  #
+  # ExternalFile
+  #
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "PointTransaction"
+
+  def put_external_resources(point_transaction, _, _), do: point_transaction
+
   defmodule Query do
     use BlueJet, :query
+
+    def default() do
+      from(pt in PointTransaction, order_by: [desc: :inserted_at])
+    end
 
     def for_account(query, account_id) do
       from(pt in query, where: pt.account_id == ^account_id)
     end
 
-    def preloads(_) do
-      []
+    def preloads({:point_account, point_account_preloads}, options) do
+      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
     end
 
-    def default() do
-      from(pt in PointTransaction, order_by: [desc: :inserted_at])
+    def preloads(_, _) do
+      []
     end
   end
 end

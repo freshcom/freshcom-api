@@ -2,8 +2,6 @@ defmodule BlueJetWeb.ExternalFileView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.FileStorage.ExternalFile
-
   attributes [
     :status,
     :code,

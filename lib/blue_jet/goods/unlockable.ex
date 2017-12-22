@@ -95,6 +95,8 @@ defmodule BlueJet.Goods.Unlockable do
     field: :external_file_collections,
     owner_type: "Unlockable"
 
+  def put_external_resources(unlockable, _, _), do: unlockable
+
   defmodule Query do
     use BlueJet, :query
 

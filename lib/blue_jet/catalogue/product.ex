@@ -10,6 +10,8 @@ defmodule BlueJet.Catalogue.Product do
 
   use Trans, translates: [
     :name,
+    :print_name,
+    :short_name,
     :caption,
     :description,
     :custom_data
@@ -50,6 +52,7 @@ defmodule BlueJet.Catalogue.Product do
 
     field :source_id, Ecto.UUID
     field :source_type, :string
+    field :source, :map, virtual: true
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}

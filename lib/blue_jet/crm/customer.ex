@@ -185,6 +185,9 @@ defmodule BlueJet.CRM.Customer do
     field: :external_file_collections,
     owner_type: "Customer"
 
+  def put_external_resources(customer, _, _), do: customer
+
+
   @doc """
   Preprocess the customer to be ready for its first payment
   """
@@ -243,7 +246,7 @@ defmodule BlueJet.CRM.Customer do
       [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
     end
 
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
   end

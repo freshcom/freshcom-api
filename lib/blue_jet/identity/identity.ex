@@ -9,6 +9,8 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.Account
 
   defmodule Shortcut do
+    alias BlueJet.Identity
+
     def get_account(%{ account_id: account_id, account: nil }) do
       response = Identity.get_account(%AccessRequest{
         vas: %{ account_id: account_id }

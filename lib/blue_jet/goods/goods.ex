@@ -195,7 +195,7 @@ defmodule BlueJet.Goods do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
-      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Unlockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{

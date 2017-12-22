@@ -55,6 +55,7 @@ defmodule BlueJet.CRM do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
+      |> Customer.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -304,33 +305,54 @@ defmodule BlueJet.CRM do
   #
   # PointTransaction
   #
-  def create_point_transaction(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.create_point_transaction") do
-      do_create_point_transaction(%{ request | role: role })
+  defp point_transaction_response(nil, _), do: {:error, :not_found}
+
+  defp point_transaction_response(point_transaction, request = %{ account: account }) do
+    preloads = PointTransaction.Query.preloads(request.preloads, role: request.role)
+
+    point_transaction =
+      point_transaction
+      |> Repo.preload(preloads)
+      |> PointTransaction.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: point_transaction }}
+  end
+
+  def create_point_transaction(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.create_point_transaction") do
+      request
+      |> do_create_point_transaction()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_point_transaction(request = %AccessRequest{ role: "customer", vas: vas }) do
+
+  def do_create_point_transaction(request = %{ role: "customer", account: account, vas: vas }) do
+    request = %{ request | locale: account.default_locale }
     customer = Repo.get_by(Customer, user_id: vas[:user_id])
 
     fields = Map.merge(request.fields, %{
-      "account_id" => vas[:account_id],
+      "account_id" => account.id,
       "customer_id" => customer.id,
       "status" => "pending"
     })
     changeset = PointTransaction.changeset(%PointTransaction{}, fields)
 
     with {:ok, point_transaction} <- Repo.insert(changeset) do
-      point_transaction = Repo.preload(point_transaction, PointTransaction.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: point_transaction }}
+      point_transaction_response(point_transaction, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
-  def do_create_point_transaction(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+
+  def do_create_point_transaction(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = PointTransaction.changeset(%PointTransaction{}, fields)
 
     statements =
@@ -350,33 +372,31 @@ defmodule BlueJet.CRM do
 
     case Repo.transaction(statements) do
       {:ok, %{ point_transaction: point_transaction }} ->
-        point_transaction = Repo.preload(point_transaction, PointTransaction.Query.preloads(request.preloads))
-        {:ok, %AccessResponse{ data: point_transaction }}
+        point_transaction_response(point_transaction, request)
+
       {:error, :point_transaction, changeset, _} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
 
-  def get_point_transaction(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "crm.get_point_transaction") do
-      do_get_point_transaction(%{ request | role: role })
+  def get_point_transaction(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.get_point_transaction") do
+      request
+      |> do_get_point_transaction()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_point_transaction(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    point_transaction = PointTransaction |> PointTransaction.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
-    if point_transaction do
-      point_transaction =
-        point_transaction
-        |> Repo.preload(PointTransaction.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
+  def do_get_point_transaction(request = %{ account: account, params: %{ "id" => id } }) do
+    point_transaction =
+      PointTransaction.Query.default()
+      |> PointTransaction.Query.for_account(account.id)
+      |> Repo.get(id)
 
-      {:ok, %AccessResponse{ data: point_transaction }}
-    else
-      {:error, :not_found}
-    end
+    point_transaction_response(point_transaction, request)
   end
 
   # TODO

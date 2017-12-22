@@ -5,51 +5,48 @@ defmodule BlueJetWeb.ProductView do
   attributes [
     :status,
     :code,
-    :kind,
-    :name_sync,
     :name,
+    :label,
+
+    :name_sync,
+    :short_name,
     :print_name,
-    :item_mode,
-    :caption,
+    :kind,
+
+    :sort_index,
+    :source_quantity,
     :primary,
+    :maximum_public_order_quantity,
+
+    :caption,
     :description,
     :custom_data,
-    :locale,
-    :sort_index,
+
     :inserted_at,
     :updated_at
   ]
 
-  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
-  has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
+  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :always
   has_one :parent, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
+  has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
   has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :variants, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included
 
-  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
-
-  def type(_, _) do
+  def type do
     "Product"
   end
 
-  def parent(product = %{ parent: %Ecto.Association.NotLoaded{} }, _) do
-    case product.parent_id do
-      nil -> nil
-      _ -> %{ type: "Product", id: product.parent_id }
-    end
-  end
-  def parent(product, _), do: product.parent
+  def parent(%{ parent_id: nil }, _), do: nil
+  def parent(%{ parent_id: parent_id, parent: %Ecto.Association.NotLoaded{} }, _), do: %{ id: parent_id, type: "Product" }
+  def parent(%{ parent: parent }, _), do: parent
 
-  def source(%{ source_id: nil }, _) do
-    nil
-  end
-  def source(%{ source_id: source_id, source_type: source_type }, _) do
-    %{ id: source_id, type: source_type }
-  end
+  def source(%{ source_id: nil }, _), do: nil
+  def source(%{ source_id: source_id, source_type: source_type, source: nil }, _), do: %{ id: source_id, type: source_type }
+  def source(%{ source: source }, _), do: source
 
   def kind(struct, _) do
     Inflex.camelize(struct.kind, :lower)
