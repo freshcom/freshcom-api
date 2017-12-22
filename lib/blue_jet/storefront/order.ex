@@ -362,6 +362,10 @@ defmodule BlueJet.Storefront.Order do
       from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
     end
 
+    def opened(query) do
+      from o in query, where: o.status == "opened"
+    end
+
     def for_account(query, account_id) do
       from(o in query, where: o.account_id == ^account_id)
     end

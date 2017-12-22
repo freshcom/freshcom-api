@@ -4,6 +4,7 @@ defmodule BlueJet.Storefront do
   alias Ecto.Changeset
   alias Ecto.Multi
 
+  alias BlueJet.CRM
   alias BlueJet.Identity
   alias BlueJet.Balance
 
@@ -43,23 +44,34 @@ defmodule BlueJet.Storefront do
   ####
   # Order
   ####
-  def list_order(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.list_order") do
-      do_list_order(%{ request | role: role })
+
+  def transform_order_request_by_role(request = %{ role: "customer" }) do
+    {:ok, %{ data: customer }} = CRM.do_get_customer(request)
+    %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
+  end
+
+  def transform_order_request_by_role(request), do: request
+
+  def list_order(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.list_order") do
+      request
+      |> transform_order_request_by_role()
+      |> do_list_order()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_order(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
+
+  def do_list_order(request = %{ account: account, filter: filter, pagination: pagination }) do
     filter = if !filter[:status] do
       Map.put(filter, :status, "opened")
     else
       filter
     end
 
-    query =
+    data_query =
       Order.Query.default()
-      |> search([:first_name, :last_name, :code, :email, :phone_number, :id], request.search, request.locale, account_id)
+      |> search([:first_name, :last_name, :name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale, Order.translatable_fields())
       |> Order.Query.not_cart()
       |> filter_by(
         customer_id: filter[:customer_id],
@@ -69,23 +81,29 @@ defmodule BlueJet.Storefront do
         delivery_address_city: filter[:delivery_address_city],
         fulfillment_method: filter[:fulfillment_method]
       )
-      |> Order.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> Order.Query.for_account(account.id)
+    total_count = Repo.aggregate(data_query, :count, :id)
 
-    total_query = Order.Query.default() |> Order.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    all_count =
+      Order.Query.default()
+      |> filter_by(customer_id: filter[:customer_id])
+      |> Order.Query.not_cart()
+      |> Order.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Order.Query.preloads(request.preloads, role: request.role)
     orders =
-      Repo.all(query)
-      |> Repo.preload(Order.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
+        all_count: all_count,
         total_count: total_count,
-        result_count: result_count,
       },
       data: orders
     }
