@@ -36,7 +36,7 @@ defmodule BlueJet.OrderLineItemTest do
       status: "active",
       label: "regular",
       name: "Regular Price",
-      charge_cents: 1000,
+      charge_amount_cents: 1000,
       order_unit: "EA",
       charge_unit: "EA",
       translations: %{
@@ -56,7 +56,7 @@ defmodule BlueJet.OrderLineItemTest do
       caption: "Bulk price is good",
       label: "blulk",
       name: "Bulk Price",
-      charge_cents: 899,
+      charge_amount_cents: 899,
       order_unit: "EA",
       charge_unit: "EA",
       minimum_order_quantity: 3,
@@ -128,7 +128,7 @@ defmodule BlueJet.OrderLineItemTest do
       assert changeset.changes.price_caption == bulk_price.caption
       assert changeset.changes.price_id == bulk_price.id
       assert changeset.changes.price_name == bulk_price.name
-      assert changeset.changes.price_charge_cents == bulk_price.charge_cents
+      assert changeset.changes.price_charge_amount_cents == bulk_price.charge_amount_cents
       assert changeset.changes.price_charge_unit == bulk_price.charge_unit
       assert changeset.changes.price_order_unit == bulk_price.order_unit
       assert changeset.changes.price_tax_one_percentage == bulk_price.tax_one_percentage
@@ -176,7 +176,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 1000,
+        charge_amount_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA",
         tax_one_percentage: 5,
@@ -191,7 +191,7 @@ defmodule BlueJet.OrderLineItemTest do
         caption: "Bulk price is good",
         label: "blulk",
         name: "Bulk Price",
-        charge_cents: 899,
+        charge_amount_cents: 899,
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 4,
@@ -214,7 +214,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 1000,
+        charge_amount_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA",
         end_time: price_end_time2
@@ -226,7 +226,7 @@ defmodule BlueJet.OrderLineItemTest do
         caption: "Bulk price is good",
         label: "blulk",
         name: "Bulk Price",
-        charge_cents: 899,
+        charge_amount_cents: 899,
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 3,
@@ -400,7 +400,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 1000,
+        charge_amount_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -418,7 +418,7 @@ defmodule BlueJet.OrderLineItemTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 1000,
+        charge_amount_cents: 1000,
         order_unit: "EA",
         charge_unit: "EA"
       })

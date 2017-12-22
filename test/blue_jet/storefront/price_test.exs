@@ -38,7 +38,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -48,7 +48,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: ~M[100],
+        charge_amount_cents: ~M[100],
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -59,7 +59,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: ~M[100],
+        charge_amount_cents: ~M[100],
         minimum_order_quantity: 8,
         order_unit: "EA",
         charge_unit: "EA"
@@ -70,7 +70,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"
@@ -105,7 +105,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -115,7 +115,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -126,7 +126,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: ~M[100],
+        charge_amount_cents: ~M[100],
         minimum_order_quantity: 8,
         order_unit: "EA",
         charge_unit: "EA"
@@ -137,7 +137,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"
@@ -155,7 +155,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         order_unit: "EA",
         charge_unit: "EA"
       })
@@ -165,7 +165,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         minimum_order_quantity: 3,
         order_unit: "EA",
         charge_unit: "EA"
@@ -176,7 +176,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: ~M[100],
+        charge_amount_cents: ~M[100],
         minimum_order_quantity: 10,
         order_unit: "EA",
         charge_unit: "EA"
@@ -187,7 +187,7 @@ defmodule BlueJet.PriceTest do
         status: "active",
         label: "regular",
         name: "Regular Price",
-        charge_cents: 100,
+        charge_amount_cents: 100,
         minimum_order_quantity: 20,
         order_unit: "EA",
         charge_unit: "EA"

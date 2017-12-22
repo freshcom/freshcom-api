@@ -7,11 +7,11 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string, null: false
       add :code, :string
-      add :name, :string
-      add :label, :string, null: false
+      add :name, :string, null: false
+      add :label, :string
 
       add :currency_code, :string, null: false, default: "CAD"
-      add :charge_cents, :integer, null: false
+      add :charge_amount_cents, :integer, null: false
       add :charge_unit, :string, null: false
       add :order_unit, :string, null: false
 

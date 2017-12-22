@@ -34,14 +34,17 @@ defmodule BlueJetWeb.PriceController do
     }
 
     case Catalogue.create_price(request) do
-      {:ok, %AccessResponse{ data: price }} ->
+      {:ok, %{ data: price, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: price, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: price, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -53,9 +56,12 @@ defmodule BlueJetWeb.PriceController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: price }} = Catalogue.get_price(request)
+    case Catalogue.get_price(request) do
+      {:ok, %{ data: price, meta: meta }} ->
+        render(conn, "show.json-api", data: price, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Price" } }) do
@@ -68,12 +74,15 @@ defmodule BlueJetWeb.PriceController do
     }
 
     case Catalogue.update_price(request) do
-      {:ok, %AccessResponse{ data: price }} ->
-        render(conn, "show.json-api", data: price, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: price, meta: meta }} ->
+        render(conn, "show.json-api", data: price, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -86,10 +95,13 @@ defmodule BlueJetWeb.PriceController do
     case Catalogue.delete_price(request) do
       {:ok, _} ->
         send_resp(conn, :no_content, "")
-      {:error, %AccessResponse{ errors: errors }} ->
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 end

@@ -9,7 +9,7 @@ defmodule BlueJetWeb.PriceView do
     :label,
 
     :currency_code,
-    :charge_cents,
+    :charge_amount_cents,
     :charge_unit,
     :order_unit,
 

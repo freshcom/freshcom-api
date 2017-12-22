@@ -67,11 +67,11 @@ defmodule BlueJet.Catalogue.ProductCollection do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   #

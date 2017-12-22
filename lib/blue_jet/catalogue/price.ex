@@ -19,13 +19,13 @@ defmodule BlueJet.Catalogue.Price do
 
   schema "prices" do
     field :account_id, Ecto.UUID
-    field :status, :string, default: "active"
+    field :status, :string, default: "draft"
     field :code, :string
     field :name, :string
     field :label, :string
 
     field :currency_code, :string, default: "CAD"
-    field :charge_cents, :integer
+    field :charge_amount_cents, :integer
     field :charge_unit, :string
     field :order_unit, :string
 
@@ -69,7 +69,7 @@ defmodule BlueJet.Catalogue.Price do
     Price.__trans__(:fields)
   end
 
-  # TODO: Fix so that charge_cents cannot be set if the price is for a product
+  # TODO: Fix so that charge_amount_cents cannot be set if the price is for a product
   def castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
@@ -78,7 +78,7 @@ defmodule BlueJet.Catalogue.Price do
   end
 
   def required_fields(changeset) do
-    common_required = [:account_id, :product_id, :status, :label, :currency_code, :charge_cents, :charge_unit]
+    common_required = [:account_id, :product_id, :status, :currency_code, :charge_amount_cents, :charge_unit]
     case get_field(changeset, :estimate_by_default) do
       true -> common_required ++ [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
       _ -> common_required
@@ -101,7 +101,7 @@ defmodule BlueJet.Catalogue.Price do
 
     case price do
       nil -> changeset
-      _ -> Changeset.add_error(changeset, :status, "There is already an Active Price that have the same Minimum Order Quantity.", [validation: :can_only_active_one_per_moq, full_error_message: true])
+      _ -> Changeset.add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :can_only_active_one_per_moq, full_error_message: true])
     end
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
@@ -144,7 +144,7 @@ defmodule BlueJet.Catalogue.Price do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> put_status()
@@ -153,7 +153,7 @@ defmodule BlueJet.Catalogue.Price do
     |> put_order_unit()
     |> put_minimum_order_quantity()
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def put_status(changeset = %Changeset{ valid?: true }) do
@@ -258,11 +258,11 @@ defmodule BlueJet.Catalogue.Price do
 
   def balance!(price) do
     children = Ecto.assoc(price, :children) |> Repo.all()
-    charge_cents = Enum.reduce(children, 0, fn(child, acc) ->
-      acc + child.charge_cents
+    charge_amount_cents = Enum.reduce(children, 0, fn(child, acc) ->
+      acc + child.charge_amount_cents
     end)
 
-    changeset = Price.changeset(price, %{ "charge_cents" => charge_cents })
+    changeset = Price.changeset(price, %{ "charge_amount_cents" => charge_amount_cents })
     Repo.update!(changeset)
   end
 
@@ -285,14 +285,19 @@ defmodule BlueJet.Catalogue.Price do
       from(p in query, where: p.status == "active")
     end
 
-    def preloads(:product) do
-      [product: Product.Query.default()]
+    def preloads({:product, product_preloads}, options) do
+      query = Product.Query.default()
+      [product: {query, Product.Query.preloads(product_preloads, options)}]
     end
-    def preloads({:children, children_preloads}) do
-      [children: {Price.Query.default(), Price.Query.preloads(children_preloads)}]
+
+    def preloads({:children, children_preloads}, options) do
+      query = Price.Query.default()
+      [children: {query, Price.Query.preloads(children_preloads, options)}]
     end
-    def preloads(:children) do
-      [children: Price.Query.default()]
+
+    def preloads(_, _) do
+      []
     end
+
   end
 end

@@ -16,7 +16,7 @@ defmodule BlueJetWeb.OrderLineItemView do
     :price_order_unit,
     :price_charge_unit,
     :price_currency_code,
-    :price_charge_cents,
+    :price_charge_amount_cents,
     :price_estimate_average_percentage,
     :price_estimate_maximum_percentage,
     :price_tax_one_percentage,

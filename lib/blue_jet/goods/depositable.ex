@@ -69,7 +69,7 @@ defmodule BlueJet.Goods.Depositable do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale, default_locale) do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()

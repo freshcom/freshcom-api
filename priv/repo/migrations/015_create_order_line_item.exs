@@ -19,7 +19,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_order_unit, :string
       add :price_charge_unit, :string
       add :price_currency_code, :string
-      add :price_charge_cents, :integer
+      add :price_charge_amount_cents, :integer
       add :price_estimate_average_percentage, :decimal
       add :price_estimate_maximum_percentage, :decimal
       add :price_tax_one_percentage, :decimal

@@ -29,6 +29,8 @@ defmodule BlueJet.Translation do
   end
 
   # TODO: Keep this
+  def put_change(changeset, _, nil, nil), do: changeset
+
   def put_change(changeset, translatable_fields, locale, default_locale) do
     cond do
       is_nil(default_locale) || locale == default_locale -> changeset

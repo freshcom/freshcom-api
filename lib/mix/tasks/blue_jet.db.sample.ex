@@ -69,18 +69,18 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "source_quantity" => 1
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 5000,
+      "name" => "Regular",
+      "charge_amount_cents" => 5000,
       "charge_unit" => "EA",
       "order_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -107,18 +107,18 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "source_quantity" => 1
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 10000,
+      "name" => "Regular",
+      "charge_amount_cents" => 10000,
       "charge_unit" => "EA",
       "order_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -230,7 +230,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "status" => "draft",
       "kind" => "with_variants",
       "name" => "Sauce"
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -244,7 +244,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "sort_index" => 9999,
       "source_quantity" => 1,
       "primary" => true
-    })
+    }, "en", account1.default_locale)
     item_seasoned_soy_sauce = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -257,27 +257,27 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
       "source_quantity" => 1
-    })
+    }, "en", account1.default_locale)
     item_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_seasoned_soy_sauce.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 599,
+      "name" => "Regular",
+      "charge_amount_cents" => 599,
       "charge_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_oyster_sauce.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 1099,
+      "name" => "Regular",
+      "charge_amount_cents" => 1099,
       "charge_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(item_seasoned_soy_sauce, %{
@@ -306,21 +306,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
       "source_quantity" => 1,
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "label" => "regular",
+      "name" => "Regular",
       "estimate_by_default" => true,
       "estimate_average_percentage" => 200,
       "estimate_maximum_percentage" => 250,
-      "charge_cents" => 1599,
+      "charge_amount_cents" => 1599,
       "charge_unit" => "LB",
       "order_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -336,7 +336,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "kind" => "combo",
       "maximum_public_order_quantity" => 9999,
       "name" => "Sauce Combo"
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -349,7 +349,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "sort_index" => 9999,
       "source_quantity" => 1
-    })
+    }, "en", account1.default_locale)
     item_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -362,35 +362,35 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "sort_index" => 9999,
       "source_quantity" => 1
-    })
+    }, "en", account1.default_locale)
     item_chili_oil = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 1100,
+      "name" => "Regular",
+      "charge_amount_cents" => 1100,
       "charge_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     price = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_oyster_sauce.id,
       "parent_id" => price.id,
-      "label" => "regular",
-      "charge_cents" => 500
-    })
+      "name" => "Regular",
+      "charge_amount_cents" => 500
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_chili_oil.id,
       "parent_id" => price.id,
-      "label" => "regular",
-      "charge_cents" => 600
-    })
+      "name" => "Regular",
+      "charge_amount_cents" => 600
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(item_oyster_sauce, %{
@@ -433,17 +433,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "source_quantity" => 1,
       "caption" => "Get it",
       "description" => "Now"
-    })
+    }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "label" => "regular",
-      "charge_cents" => 300,
+      "name" => "Regular",
+      "charge_amount_cents" => 300,
       "charge_unit" => "EA"
-    })
+    }, "en", account1.default_locale)
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{

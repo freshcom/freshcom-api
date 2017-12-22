@@ -23,21 +23,21 @@ defmodule BlueJetWeb.AccountController do
     end
   end
 
-  def create(conn, %{"data" => data = %{"type" => "account", "attributes" => _account_params}}) do
-    changeset = Account.changeset(%Account{}, Params.to_attributes(data))
+  # def create(conn, %{"data" => data = %{"type" => "account", "attributes" => _account_params}}) do
+  #   changeset = Account.changeset(%Account{}, Params.to_attributes(data))
 
-    case Repo.insert(changeset) do
-      {:ok, account} ->
-        conn
-        |> put_status(:created)
-        |> put_resp_header("location", account_path(conn, :show, account))
-        |> render("show.json-api", data: account)
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
-    end
-  end
+  #   case Repo.insert(changeset) do
+  #     {:ok, account} ->
+  #       conn
+  #       |> put_status(:created)
+  #       |> put_resp_header("location", account_path(conn, :show, account))
+  #       |> render("show.json-api", data: account)
+  #     {:error, changeset} ->
+  #       conn
+  #       |> put_status(:unprocessable_entity)
+  #       |> render(:errors, data: changeset)
+  #   end
+  # end
 
   def show(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
