@@ -30,44 +30,52 @@ defmodule BlueJetWeb.OrderLineItemController do
     }
 
     case Storefront.create_order_line_item(request) do
-      {:ok, %AccessResponse{ data: oli }} ->
+      {:ok, %{ data: oli, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: oli, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: oli, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => oli_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ order_line_item_id: oli_id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Storefront.update_order_line_item(request) do
-      {:ok, %AccessResponse{ data: oli }} ->
-        render(conn, "show.json-api", data: oli, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: oli, meta: meta }} ->
+        render(conn, "show.json-api", data: oli, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def delete(conn = %{ assigns: assigns }, %{ "id" => oli_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ order_line_item_id: oli_id }
+      params: %{ "id" => id }
     }
 
-    Storefront.delete_order_line_item(request)
+    case Storefront.delete_order_line_item(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

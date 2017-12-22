@@ -91,8 +91,7 @@ defmodule BlueJet.Balance do
   def do_list_card(request = %{ account: account, filter: filter, pagination: pagination }) do
     data_query =
       Card.Query.default()
-      |> filter_by(status: "saved_by_owner")
-      |> filter_by(owner_id: filter[:owner_id], owner_type: filter[:owner_type])
+      |> filter_by(status: "saved_by_owner", owner_id: filter[:owner_id], owner_type: filter[:owner_type])
       |> Card.Query.for_account(account.id)
 
     total_count = Repo.aggregate(data_query, :count, :id)
@@ -120,19 +119,37 @@ defmodule BlueJet.Balance do
     {:ok, response}
   end
 
-  def update_card(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.update_card") do
-      do_update_card(%{ request | role: role })
+  defp card_response(nil, _), do: {:error, :not_found}
+
+  defp card_response(card, request = %{ account: account }) do
+    preloads = Card.Query.preloads(request.preloads, role: request.role)
+
+    card =
+      card
+      |> Repo.preload(preloads)
+      |> Card.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: card }}
+  end
+
+  def update_card(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.update_card") do
+      request
+      |> do_update_card()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_card(request = %AccessRequest{ vas: vas, params: %{ card_id: card_id }}) do
-    card = Card |> Card.Query.for_account(vas[:account_id]) |> Repo.get(card_id)
+
+  def do_update_card(request = %{ account: account, params: %{ "id" => id }}) do
+    card =
+      Card.Query.default()
+      |> Card.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Card{} <- card,
-         changeset = %{valid?: true} <- Card.changeset(card, request.fields)
-
+         changeset = %{valid?: true} <- Card.changeset(card, request.fields, request.locale, account.default_locale)
     do
       statements =
         Multi.new()
@@ -142,22 +159,29 @@ defmodule BlueJet.Balance do
            end)
 
       {:ok, %{ processed_card: card }} = Repo.transaction(statements)
-      {:ok, %AccessResponse{ data: card }}
+      card_response(card, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def delete_card(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.delete_card") do
-      do_delete_card(%{ request | role: role })
+  def delete_card(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.delete_card") do
+      request
+      |> do_delete_card()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_card(%AccessRequest{ vas: vas, params: %{ card_id: card_id } }) do
-    card = Card |> Card.Query.for_account(vas[:account_id]) |> Repo.get!(card_id)
+
+  def do_delete_card(%{ account: account, params: %{ "id" => id } }) do
+    card =
+      Card.Query.default()
+      |> Card.Query.for_account(account.id)
+      |> Repo.get(id)
 
     if card do
       Repo.transaction(fn ->
@@ -174,15 +198,18 @@ defmodule BlueJet.Balance do
   ####
   # Payment
   ####
-  def list_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.list_payment") do
-      do_list_payment(%{ request | role: role })
+  def list_payment(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.list_payment") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_payment()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_payment(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_payment(request = %AccessRequest{ account: account, filter: filter, pagination: pagination }) do
+    data_query =
       Payment.Query.default()
       |> filter_by(
           target_id: filter[:target_id],
@@ -190,42 +217,68 @@ defmodule BlueJet.Balance do
           owner_id: filter[:owner_id],
           owner_type: filter[:owner_type]
          )
-      |> Payment.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> Payment.Query.for_account(account.id)
 
-    total_query = Payment |> Payment.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Payment.Query.default()
+      |> Payment.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Payment.Query.preloads(request.preloads, role: request.role)
     payments =
-      Repo.all(query)
-      |> Repo.preload(Payment.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Payment.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count,
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
       },
       data: payments
     }
 
     {:ok, response}
   end
+
   def list_payment_for_target(target_type, target_id) do
-    Payment |> Payment.Query.for_target(target_type, target_id) |> Repo.all()
+    Payment.Query.default()
+    |> Payment.Query.for_target(target_type, target_id)
+    |> Repo.all()
   end
 
-  def create_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.create_payment") do
-      do_create_payment(%{ request | role: role })
+  defp payment_response(nil, _), do: {:error, :not_found}
+
+  defp payment_response(payment, request = %{ account: account }) do
+    preloads = Payment.Query.preloads(request.preloads, role: request.role)
+
+    payment =
+      payment
+      |> Repo.preload(preloads)
+      |> Payment.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
+  end
+
+  def create_payment(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.create_payment") do
+      request
+      |> do_create_payment()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_payment(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
+
+  def do_create_payment(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
 
     owner = %{ id: fields["owner_id"], type: fields["owner_type"] }
     target = %{ id: fields["target_id"], type: fields["target_type"]}
@@ -236,7 +289,7 @@ defmodule BlueJet.Balance do
           run_payment_before_create(fields, owner, target)
          end)
       |> Multi.run(:changeset, fn(%{ fields: fields }) ->
-          {:ok, Payment.changeset(%Payment{}, fields)}
+          {:ok, Payment.changeset(%Payment{}, fields, request.locale, account.default_locale)}
          end)
       |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)
@@ -251,10 +304,14 @@ defmodule BlueJet.Balance do
     case Repo.transaction(statements) do
       {:ok, %{ processed_payment: payment }} ->
         {:ok, %AccessResponse{ data: payment }}
+
       {:error, :payment, %{ errors: errors}, _ } ->
         {:error, %AccessResponse{ errors: errors }}
+
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -276,40 +333,41 @@ defmodule BlueJet.Balance do
     end
   end
 
-  def get_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.get_payment") do
-      do_get_payment(%{ request | role: role })
+  def get_payment(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.get_payment") do
+      request
+      |> do_get_payment()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
-    payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
 
-    if payment do
-      payment =
-        payment
-        |> Repo.preload(Payment.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
+  def do_get_payment(request = %{ account: account, params: %{ "id" => id } }) do
+    payment =
+      Payment.Query.default()
+      |> Payment.Query.for_account(account.id)
+      |> Repo.get(id)
 
-      {:ok, %AccessResponse{ data: payment }}
-    else
-      {:error, :not_found}
-    end
+    payment_response(payment, request)
   end
 
-  def update_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.update_payment") do
-      do_update_payment(%{ request | role: role })
+  def update_payment(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.update_payment") do
+      request
+      |> do_update_payment()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_payment(request = %AccessRequest{ vas: vas, params: %{ payment_id: payment_id } }) do
-    payment = Payment |> Payment.Query.for_account(vas[:account_id]) |> Repo.get(payment_id)
+
+  def do_update_payment(request = %{ account: account, params: %{ "id" => id } }) do
+    payment =
+      Payment.Query.default()
+      |> Payment.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Payment{} <- payment,
-         changeset = %{valid?: true} <- Payment.changeset(payment, request.fields)
+         changeset = %{valid?: true} <- Payment.changeset(payment, request.fields, request.locale, account.default_locale)
     do
       statements =
         Multi.new()
@@ -322,32 +380,74 @@ defmodule BlueJet.Balance do
            end)
 
       {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
-      {:ok, %AccessResponse{ data: payment }}
+      payment_response(payment, request)
     else
       nil -> {:error, :not_found}
+
       %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def delete_payment!(%{ vas: vas, payment_id: payment_id }) do
-    payment = Repo.get_by!(Payment, account_id: vas[:account_id], id: payment_id)
-    Repo.delete!(payment)
+  def delete_payment(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.delete_payment") do
+      request
+      |> do_delete_payment()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_payment(%{ account: account, params: %{ "id" => id } }) do
+    payment =
+      Payment.Query.default()
+      |> Payment.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    if payment do
+      Repo.delete!(payment)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 
   ######
   # Refund
   ######
-  def create_refund(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "balance.create_refund") do
-      do_create_refund(%{ request | role: role })
+  defp refund_response(nil, _), do: {:error, :not_found}
+
+  defp refund_response(refund, request = %{ account: account }) do
+    preloads = Refund.Query.preloads(request.preloads, role: request.role)
+
+    refund =
+      refund
+      |> Repo.preload(preloads)
+      |> Refund.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: refund }}
+  end
+
+  def create_refund(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.create_refund") do
+      request
+      |> do_create_refund()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_refund(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = Refund.changeset(%Refund{}, fields)
+
+  def do_create_refund(request = %{ account: account, params: %{ "payment_id" => payment_id } }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{
+      "account_id" => account.id,
+      "payment_id" => payment_id
+    })
+    changeset = Refund.changeset(%Refund{}, fields, request.locale, account.default_locale)
 
     statements =
       Multi.new()
@@ -389,9 +489,12 @@ defmodule BlueJet.Balance do
 
     case Repo.transaction(statements) do
       {:ok, %{ processed_refund: refund }} ->
-        {:ok, %AccessResponse{ data: refund }}
+        refund_response(refund, request)
+
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 

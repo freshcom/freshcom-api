@@ -2,7 +2,6 @@ defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
   alias Ecto.Changeset
-  alias BlueJet.Identity
   alias BlueJet.FileStorage
 
   alias BlueJet.Catalogue.Product

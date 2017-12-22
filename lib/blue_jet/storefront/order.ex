@@ -7,6 +7,8 @@ defmodule BlueJet.Storefront.Order do
     :custom_data
   ], container: :translations
 
+  import BlueJet.Identity.Shortcut
+
   alias Ecto.Changeset
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
@@ -20,6 +22,8 @@ defmodule BlueJet.Storefront.Order do
 
   schema "orders" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "cart"
     field :code, :string
     field :name, :string
@@ -287,7 +291,9 @@ defmodule BlueJet.Storefront.Order do
   end
 
   def leaf_line_items(struct) do
-    Ecto.assoc(struct, :line_items) |> OrderLineItem.leaf() |> Repo.all()
+    Ecto.assoc(struct, :line_items)
+    |> OrderLineItem.Query.leaf()
+    |> Repo.all()
   end
 
   def lock_stock(_) do
@@ -298,7 +304,7 @@ defmodule BlueJet.Storefront.Order do
     {:ok, nil}
   end
 
-  def get_customer(%{ customer_id: nil }, options), do: nil
+  def get_customer(%{ customer_id: nil }, _), do: nil
 
   def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
@@ -310,7 +316,7 @@ defmodule BlueJet.Storefront.Order do
     customer
   end
 
-  def get_customer(%{ customer: customer }, options), do: customer
+  def get_customer(%{ customer: customer }, _), do: customer
 
   ######
   # External Resources
@@ -337,7 +343,8 @@ defmodule BlueJet.Storefront.Order do
   """
   def process(order), do: {:ok, order}
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = put_external_resources(order, :customer)
+    order = %{ order | account: get_account(order) }
+    order = put_external_resources(order, {:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
 
     leaf_line_items = Order.leaf_line_items(order)
     Enum.each(leaf_line_items, fn(line_item) ->

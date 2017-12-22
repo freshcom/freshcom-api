@@ -10,20 +10,23 @@ defmodule BlueJetWeb.RefundController do
     fields = Map.merge(Params.to_attributes(data), %{ "payment_id" => payment_id })
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ payment_id: payment_id },
+      params: %{ "payment_id" => payment_id },
       fields: fields,
       preloads: assigns[:preloads]
     }
 
     case Balance.create_refund(request) do
-      {:ok, %AccessResponse{ data: refund }} ->
+      {:ok, %{ data: refund, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: refund, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: refund, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 

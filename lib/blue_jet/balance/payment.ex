@@ -1,15 +1,19 @@
 defmodule BlueJet.Balance.Payment do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
+  use Trans, translates: [
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
 
   alias BlueJet.Repo
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-  alias BlueJet.Identity
 
   alias BlueJet.Balance.Payment
   alias BlueJet.Balance.Refund
@@ -20,7 +24,11 @@ defmodule BlueJet.Balance.Payment do
 
   schema "payments" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string # pending, authorized, paid, partially_refunded, fully_refunded
+    field :code, :string
+    field :label, :string
 
     field :gateway, :string # online, offline,
     field :processor, :string # stripe, paypal
@@ -45,6 +53,11 @@ defmodule BlueJet.Balance.Payment do
     field :billing_address_country_code, :string
     field :billing_address_postal_code, :string
 
+    field :caption, :string
+    field :description, :string
+    field :custom_data, :map, default: %{}
+    field :translations, :map, default: %{}
+
     field :stripe_charge_id, :string
     field :stripe_transfer_id, :string
     field :stripe_customer_id, :string
@@ -55,10 +68,6 @@ defmodule BlueJet.Balance.Payment do
     field :target_id, Ecto.UUID
     field :target_type, :string
 
-    field :custom_data, :map, default: %{}
-    field :translations, :map, default: %{}
-
-    field :account, :map, virtual: true
     field :source, :string, virtual: true
     field :save_source, :boolean, virtual: true
     field :capture, :boolean, virtual: true, default: true
@@ -128,13 +137,12 @@ defmodule BlueJet.Balance.Payment do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_gross_amount_cents()
-    # |> put_net_amount_cents()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
@@ -155,13 +163,15 @@ defmodule BlueJet.Balance.Payment do
   end
   def put_net_amount_cents(changeset), do: changeset
 
-  def account(%{ account_id: account_id, account: nil }) do
-    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
-      {:ok, %{ data: account }} -> account
-      {:error, _} -> nil
-    end
-  end
-  def account(%{ account: account }), do: account
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Payment"
+
+  def put_external_resources(payment, _, _), do: payment
 
   #####
   # Business Logic
@@ -257,7 +267,7 @@ defmodule BlueJet.Balance.Payment do
   """
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
-    payment = %{ payment | account: account(payment) }
+    payment = %{ payment | account: get_account(payment) }
     balance_settings = BalanceSettings.for_account(payment.account)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
@@ -348,13 +358,13 @@ defmodule BlueJet.Balance.Payment do
       stripe_request
     end
 
-    account = account(payment)
+    account = get_account(payment)
     StripeClient.post("/charges", stripe_request, mode: account.mode)
   end
 
   @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
-    account = account(payment)
+    account = get_account(payment)
     StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount }, mode: account.mode)
   end
 
@@ -366,6 +376,10 @@ defmodule BlueJet.Balance.Payment do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(p in Payment, order_by: [desc: :updated_at])
+    end
+
     def for_account(query, account_id) do
       from(p in query, where: p.account_id == ^account_id)
     end
@@ -374,12 +388,8 @@ defmodule BlueJet.Balance.Payment do
       from(p in query, where: p.target_type == ^target_type, where: p.target_id == ^target_id)
     end
 
-    def preloads(:refunds) do
-      [refunds: Refund.Query.default()]
-    end
-
-    def default() do
-      from(p in Payment, order_by: [desc: :updated_at])
+    def preloads({:refunds, refund_preloads}, options) do
+      [refunds: {Refund.Query.default(), Refund.Query.preloads(refund_preloads, options)}]
     end
   end
 end

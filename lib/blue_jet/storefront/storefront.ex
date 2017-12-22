@@ -6,7 +6,6 @@ defmodule BlueJet.Storefront do
 
   alias BlueJet.Identity
   alias BlueJet.Balance
-  alias BlueJet.CRM
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -294,6 +293,20 @@ defmodule BlueJet.Storefront do
   #   {:ok, response}
   # end
 
+  defp order_line_item_response(nil, _), do: {:error, :not_found}
+
+  defp order_line_item_response(order_line_item, request = %{ account: account }) do
+    preloads = OrderLineItem.Query.preloads(request.preloads, role: request.role)
+
+    order_line_item =
+      order_line_item
+      |> Repo.preload(preloads)
+      |> OrderLineItem.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order_line_item }}
+  end
+
   def create_order_line_item(request) do
     with {:ok, request} <- preprocess_request(request, "storefront.create_order_line_item") do
       request
@@ -328,25 +341,29 @@ defmodule BlueJet.Storefront do
 
     case Repo.transaction(statements) do
       {:ok, %{ oli: oli }} ->
-        oli = Repo.preload(oli, OrderLineItem.Query.preloads(request.preloads))
-        {:ok, %AccessResponse{ data: oli }}
+        order_line_item_response(oli, request)
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def update_order_line_item(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.update_order_line_item") do
-      do_update_order_line_item(%{ request | role: role })
+  def update_order_line_item(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.update_order_line_item") do
+      request
+      |> do_update_order_line_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_order_line_item(request = %AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
-    oli = OrderLineItem |> OrderLineItem.Query.for_account(vas[:account_id]) |> Repo.get(oli_id)
+
+  def do_update_order_line_item(request = %{ account: account, params: %{ "id" => id } }) do
+    oli =
+      OrderLineItem.Query.default()
+      |> OrderLineItem.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %OrderLineItem{} <- oli,
-         changeset = %{valid?: true} <- OrderLineItem.changeset(oli, request.fields)
+         changeset = %{valid?: true} <- OrderLineItem.changeset(oli, request.fields, request.locale, account.default_locale)
     do
       statements =
         Multi.new()
@@ -363,7 +380,7 @@ defmodule BlueJet.Storefront do
            end)
 
       {:ok, %{ balanced_oli: oli }} = Repo.transaction(statements)
-      {:ok, %AccessResponse{ data: oli }}
+      order_line_item_response(oli, request)
     else
       nil -> {:error, :not_found}
       %{ errors: errors } ->
@@ -371,15 +388,20 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def delete_order_line_item(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order_line_item") do
-      do_delete_order_line_item(%{ request | role: role })
+  def delete_order_line_item(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.delete_order_line_item") do
+      request
+      |> do_delete_order_line_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_order_line_item(%AccessRequest{ vas: vas, params: %{ order_line_item_id: oli_id } }) do
-    oli = OrderLineItem |> OrderLineItem.Query.for_account(vas[:account_id]) |> Repo.get(oli_id)
+
+  def do_delete_order_line_item(%{ account: account, params: %{ "id" => id } }) do
+    oli =
+      OrderLineItem.Query.default()
+      |> OrderLineItem.Query.for_account(account.id)
+      |> Repo.get(id)
 
     statements =
       Multi.new()

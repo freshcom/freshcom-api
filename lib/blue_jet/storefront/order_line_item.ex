@@ -546,7 +546,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
 
     def preloads({:order, order_preloads}, options) do
-      [order: {Order.Query.default(), Order.Query.preloads(order_preloads)}]
+      [order: {Order.Query.default(), Order.Query.preloads(order_preloads, options)}]
     end
 
     def preloads({:children, children_preloads}, options) do
@@ -563,6 +563,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     def root(query) do
       from(oli in query, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
+    end
+
+    def leaf(query) do
+      from oli in query, where: oli.is_leaf == true
     end
 
     def with_order(query, filter) do

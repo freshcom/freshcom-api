@@ -2,8 +2,6 @@ defmodule BlueJetWeb.OrderLineItemView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :code,
     :name,

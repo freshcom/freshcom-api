@@ -6,6 +6,8 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string, default: "pending"
+      add :code, :string
+      add :label, :string
 
       add :gateway, :string
       add :processor, :string
@@ -30,12 +32,18 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :billing_address_country_code, :string
       add :billing_address_postal_code, :string
 
+      add :caption, :string
+      add :description, :text
+      add :custom_data, :map, null: false, default: "{}"
+      add :translations, :map, null: false, default: "{}"
+
+      add :authorized_at, :utc_datetime
+      add :captured_at, :utc_datetime
+      add :refunded_at, :utc_datetime
+
       add :stripe_charge_id, :string
       add :stripe_transfer_id, :string
       add :stripe_customer_id, :string
-
-      add :custom_data, :map, null: false, default: "{}"
-      add :translations, :map, null: false, default: "{}"
 
       add :owner_id, :binary_id
       add :owner_type, :string
@@ -43,13 +51,12 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :target_id, :binary_id
       add :target_type, :string
 
-      add :authorized_at, :utc_datetime
-      add :captured_at, :utc_datetime
-      add :refunded_at, :utc_datetime
-
       timestamps()
     end
 
-    create index(:payments, [:account_id])
+    create unique_index(:payments, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:payments, :account_id)
+    create index(:payments, [:account_id, :status])
+    create index(:payments, [:account_id, :label])
   end
 end

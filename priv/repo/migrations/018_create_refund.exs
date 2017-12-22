@@ -6,6 +6,9 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :status, :string
+      add :code, :string
+      add :label, :string
+
       add :gateway, :string, null: false
       add :processor, :string
       add :method, :string
@@ -14,7 +17,10 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
       add :processor_fee_cents, :integer, null: false, default: 0
       add :freshcom_fee_cents, :integer, null: false, default: 0
 
-      add :notes, :text
+      add :caption, :string
+      add :description, :text
+      add :custom_data, :map, null: false, default: "{}"
+      add :translations, :map, null: false, default: "{}"
 
       add :payment_id, references(:payments, type: :binary_id, on_delete: :delete_all), null: false
       add :stripe_refund_id, :string
@@ -26,14 +32,12 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
       add :target_id, :binary_id
       add :target_type, :string
 
-      add :custom_data, :map, null: false, default: "{}"
-      add :translations, :map, null: false, default: "{}"
-
-
       timestamps()
     end
 
-    create index(:refunds, [:account_id])
-    create index(:refunds, [:payment_id])
+    create unique_index(:refunds, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:refunds, :account_id)
+    create index(:refunds, [:account_id, :label])
+    create index(:refunds, [:account_id, :payment_id])
   end
 end

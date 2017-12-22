@@ -4,6 +4,10 @@ defmodule BlueJetWeb.CardView do
 
   attributes [
     :status,
+    :code,
+    :name,
+    :label,
+
     :last_four_digit,
     :exp_month,
     :exp_year,
@@ -13,17 +17,20 @@ defmodule BlueJetWeb.CardView do
     :country,
     :stripe_card_id,
     :primary,
+
+    :caption,
+    :description,
+    :custom_data,
+
     :inserted_at,
     :updated_at
   ]
 
   has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
-  def type(_, _) do
+  def type do
     "Card"
   end
-
-  def locale(_, %{ assigns: %{ locale: locale } }), do: locale
 
   def owner(struct, _) do
     %{

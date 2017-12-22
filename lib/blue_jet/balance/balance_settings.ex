@@ -4,11 +4,7 @@ defmodule BlueJet.Balance.BalanceSettings do
   import BlueJet.Identity.Shortcut
 
   alias Ecto.Changeset
-
   alias BlueJet.Repo
-  alias BlueJet.Identity
-  alias BlueJet.AccessRequest
-
   alias BlueJet.Balance.BalanceSettings
 
   @type t :: Ecto.Schema.t

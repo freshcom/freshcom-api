@@ -58,33 +58,38 @@ defmodule BlueJetWeb.CardController do
   #   render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   # end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => card_id, "data" => data = %{ "type" => "Card" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Card" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ card_id: card_id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Balance.update_card(request) do
-      {:ok, %AccessResponse{ data: card }} ->
-        render(conn, "show.json-api", data: card, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: card, meta: meta }} ->
+        render(conn, "show.json-api", data: card, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def delete(conn = %{ assigns: assigns }, %{ "id" => card_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ card_id: card_id }
+      params: %{ "id" => id }
     }
 
-    Balance.delete_card(request)
+    case Balance.delete_card(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

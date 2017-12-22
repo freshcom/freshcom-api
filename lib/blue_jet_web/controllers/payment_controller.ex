@@ -4,6 +4,8 @@ defmodule BlueJetWeb.PaymentController do
   alias JaSerializer.Params
   alias BlueJet.Balance
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -16,9 +18,12 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: payments, meta: meta }} = Balance.list_payment(request)
+    case Balance.list_payment(request) do
+      {:ok, %{ data: payments, meta: meta }} ->
+        render(conn, "index.json-api", data: payments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: payments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Payment" } }) do
@@ -29,57 +34,68 @@ defmodule BlueJetWeb.PaymentController do
     }
 
     case Balance.create_payment(request) do
-      {:ok, %AccessResponse{ data: payment }} ->
+      {:ok, %{ data: payment, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: payment, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: payment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def show(conn = %{ assigns: assigns }, %{ "id" => payment_id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ payment_id: payment_id },
+      params: %{ "id" => id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: payment }} = Balance.get_payment(request)
+    case Balance.get_payment(request) do
+      {:ok, %{ data: payment, meta: meta }} ->
+        render(conn, "show.json-api", data: payment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => payment_id, "data" => data = %{ "type" => "Payment" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Payment" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ payment_id: payment_id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Balance.update_payment(request) do
-      {:ok, %AccessResponse{ data: payment }} ->
-        render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: payment, meta: meta }} ->
+        render(conn, "show.json-api", data: payment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => payment_id }) do
-    request = %{
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
+    request = %AccessRequest{
       vas: assigns[:vas],
-      payment_id: payment_id
+      params: %{ "id" => id }
     }
 
-    Balance.delete_payment!(request)
+    case Balance.delete_payment(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 end

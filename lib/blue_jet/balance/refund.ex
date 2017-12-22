@@ -1,7 +1,13 @@
 defmodule BlueJet.Balance.Refund do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
+  use Trans, translates: [
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
@@ -17,7 +23,12 @@ defmodule BlueJet.Balance.Refund do
 
   schema "refunds" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string
+    field :code, :string
+    field :label, :string
+
     field :gateway, :string
     field :processor, :string
     field :method, :string
@@ -29,18 +40,16 @@ defmodule BlueJet.Balance.Refund do
     field :stripe_refund_id, :string
     field :stripe_transfer_reversal_id, :string
 
+    field :caption, :string
+    field :description, :string
+    field :custom_data, :map, default: %{}
+    field :translations, :map, default: %{}
+
     field :owner_id, Ecto.UUID
     field :owner_type, :string
 
     field :target_id, Ecto.UUID
     field :target_type, :string
-
-    field :notes, :string
-
-    field :custom_data, :map, default: %{}
-    field :translations, :map, default: %{}
-
-    field :account, :map, virtual: true
 
     timestamps()
 
@@ -77,6 +86,7 @@ defmodule BlueJet.Balance.Refund do
     case gateway do
       "online" -> common ++ [:processor]
       "offline" -> common ++ [:method]
+      other -> common
     end
   end
 
@@ -104,24 +114,26 @@ defmodule BlueJet.Balance.Refund do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def account(%{ account_id: account_id, account: nil }) do
-    case Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } }) do
-      {:ok, %{ data: account }} -> account
-      {:error, _} -> nil
-    end
-  end
-  def account(%{ account: account }), do: account
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Refund"
+
+  def put_external_resources(refund, _, _), do: refund
 
   @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
   def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do
-    refund = %{ refund | account: account(refund) }
+    refund = %{ refund | account: get_account(refund) }
     with {:ok, stripe_refund} <- create_stripe_refund(refund),
          {:ok, stripe_transfer_reversal} <- create_stripe_transfer_reversal(refund, stripe_refund)
     do
@@ -155,7 +167,7 @@ defmodule BlueJet.Balance.Refund do
     refund = refund |> Repo.preload(:payment)
     stripe_charge_id = refund.payment.stripe_charge_id
 
-    account = account(refund)
+    account = get_account(refund)
     StripeClient.post("/refunds", %{
       charge: stripe_charge_id,
       amount: refund.amount_cents,
@@ -173,7 +185,7 @@ defmodule BlueJet.Balance.Refund do
 
     transfer_reversal_amount_cents = refund.amount_cents - stripe_fee_cents - freshcom_fee_cents
 
-    account = account(refund)
+    account = get_account(refund)
     StripeClient.post("/transfers/#{refund.payment.stripe_transfer_id}/reversals", %{
       amount: transfer_reversal_amount_cents,
       metadata: %{ fc_refund_id: refund.id }
