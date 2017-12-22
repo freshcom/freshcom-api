@@ -4,6 +4,8 @@ defmodule BlueJetWeb.OrderController do
   alias JaSerializer.Params
   alias BlueJet.Storefront
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
@@ -29,14 +31,17 @@ defmodule BlueJetWeb.OrderController do
     }
 
     case Storefront.create_order(request) do
-      {:ok, %AccessResponse{ data: order }} ->
+      {:ok, %{ data: order, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: order, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: order, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -48,9 +53,12 @@ defmodule BlueJetWeb.OrderController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: order }} = Storefront.get_order(request)
+    case Storefront.get_order(request) do
+      {:ok, %{ data: order, meta: meta }} ->
+        render(conn, "show.json-api", data: order, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Order" } }) do
@@ -63,12 +71,15 @@ defmodule BlueJetWeb.OrderController do
     }
 
     case Storefront.update_order(request) do
-      {:ok, %AccessResponse{ data: order }} ->
-        render(conn, "show.json-api", data: order, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: order, meta: meta }} ->
+        render(conn, "show.json-api", data: order, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -79,11 +90,15 @@ defmodule BlueJetWeb.OrderController do
     }
 
     case Storefront.delete_order(request) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+
       {:error, %AccessResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 

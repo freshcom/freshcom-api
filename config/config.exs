@@ -51,12 +51,12 @@ config :ja_serializer,
 
 config :blue_jet, :s3, prefix: "uploads"
 
-config :blue_jet, :billing, %{
+config :blue_jet, :balance, %{
   listeners: [BlueJet.Storefront, BlueJet.CRM]
 }
 
 config :blue_jet, :identity, %{
-  listeners: [BlueJet.Billing]
+  listeners: [BlueJet.Balance]
 }
 
 config :ex_aws, region: System.get_env("AWS_REGION")

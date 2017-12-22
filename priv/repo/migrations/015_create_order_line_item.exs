@@ -36,7 +36,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :tax_two_cents, :integer, null: false
       add :tax_three_cents, :integer, null: false
       add :grand_total_cents, :integer, null: false
-      add :authorization_cents, :integer, null: false
+      add :authorization_toal_cents, :integer, null: false
 
       add :is_estimate, :boolean, null: false, default: false
 

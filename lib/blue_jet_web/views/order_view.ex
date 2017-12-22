@@ -3,18 +3,28 @@ defmodule BlueJetWeb.OrderView do
   use JaSerializer.PhoenixView
 
   attributes [
-    :code,
     :status,
+    :code,
+    :name,
+    :label,
+
     :payment_status,
     :fulfillment_status,
+    :fulfillment_method,
     :system_tag,
-    :label,
 
     :email,
     :first_name,
     :last_name,
-    :other_name,
     :phone_number,
+
+    :sub_total_cents,
+    :tax_one_cents,
+    :tax_two_cents,
+    :tax_three_cents,
+    :grand_total_cents,
+    :authorization_toal_cents,
+    :is_estimate,
 
     :delivery_address_line_one,
     :delivery_address_line_two,
@@ -23,22 +33,14 @@ defmodule BlueJetWeb.OrderView do
     :delivery_address_country_code,
     :delivery_address_postal_code,
 
-    :is_estimate,
-
-    :sub_total_cents,
-    :tax_one_cents,
-    :tax_two_cents,
-    :tax_three_cents,
-    :grand_total_cents,
-    :authorization_cents,
-
-    :fulfillment_method,
-
     :opened_at,
     :confirmation_email_sent_at,
     :receipt_email_sent_at,
 
+    :caption,
+    :description,
     :custom_data,
+
     :inserted_at,
     :updated_at
   ]
@@ -47,7 +49,7 @@ defmodule BlueJetWeb.OrderView do
   has_many :root_line_items, serializer: BlueJetWeb.OrderLineItemView, identifiers: :when_included
   has_many :payments, serializer: BlueJetWeb.PaymentView, identifiers: :when_included
 
-  def type(_, _) do
+  def type do
     "Order"
   end
 

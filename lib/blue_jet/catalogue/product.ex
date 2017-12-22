@@ -318,6 +318,8 @@ defmodule BlueJet.Catalogue.Product do
     field: :external_file_collections,
     owner_type: "Product"
 
+  def put_external_resources(stockable, _, _), do: stockable
+
   defmodule Query do
     use BlueJet, :query
 

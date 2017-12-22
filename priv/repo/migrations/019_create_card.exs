@@ -5,8 +5,11 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
     create table(:cards, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :status, :string, null: false
+      add :code, :string
+      add :name, :string
+      add :label, :string
 
-      add :status, :string, null: false, default: "draft"
       add :last_four_digit, :string
       add :exp_month, :integer
       add :exp_year, :integer
@@ -16,18 +19,24 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
       add :country, :string
       add :primary, :boolean, null: false, default: false
 
-      add :stripe_card_id, :string
-      add :stripe_customer_id, :string
-      add :owner_id, :binary_id
-      add :owner_type, :string
-
+      add :caption, :string
+      add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
+
+      add :stripe_card_id, :string
+      add :stripe_customer_id, :string
+
+      add :owner_id, :binary_id
+      add :owner_type, :string
 
       timestamps()
     end
 
-    create index(:cards, [:account_id])
+    create unique_index(:cards, [:account_id, :code], where: "code IS NOT NULL")
     create unique_index(:cards, [:owner_id, :owner_type, :fingerprint])
+    create index(:cards, :account_id)
+    create index(:cards, [:account_id, :status])
+    create index(:cards, [:account_id, :label])
   end
 end

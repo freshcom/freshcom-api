@@ -5,14 +5,14 @@ defmodule BlueJet.Storefront do
   alias Ecto.Multi
 
   alias BlueJet.Identity
-  alias BlueJet.Billing
+  alias BlueJet.Balance
   alias BlueJet.CRM
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Unlock
 
-  def handle_event("billing.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
 
     case order.status do
@@ -29,11 +29,11 @@ defmodule BlueJet.Storefront do
         {:ok, Order.refresh_payment_status(order)}
     end
   end
-  def handle_event("billing.payment.updated", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.updated", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
     {:ok, order}
   end
-  def handle_event("billing.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id) |> Order.refresh_payment_status()
     {:ok, order}
   end
@@ -94,66 +94,87 @@ defmodule BlueJet.Storefront do
     {:ok, response}
   end
 
-  def create_order(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.create_order") do
-      do_create_order(%{ request | role: role })
+  defp order_response(nil, _), do: {:error, :not_found}
+
+  defp order_response(order, request = %{ account: account }) do
+    preloads = Order.Query.preloads(request.preloads, role: request.role)
+
+    order =
+      order
+      |> Repo.preload(preloads)
+      |> Order.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
+  end
+
+  def create_order(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.create_order") do
+      request
+      |> do_create_order()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_order(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] || request.fields["customer_id"] })
-    changeset = Order.changeset(%Order{}, fields)
+
+  def do_create_order(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
+    changeset = Order.changeset(%Order{}, fields, request.locale, account.default_locale)
 
     with {:ok, order} <- Repo.insert(changeset) do
-      order = Repo.preload(order, Order.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: order }}
+      order_response(order, request)
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
-  def get_order(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.get_order") do
-      do_get_order(%{ request | role: role })
+  def get_order(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.get_order") do
+      request
+      |> do_get_order()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
 
-    if order do
-      order =
-        order
-        |> Repo.preload(Order.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-      {:ok, %AccessResponse{ data: order }}
-    else
-      {:error, :not_found}
-    end
+  def do_get_order(request = %{ account: account, params: %{ "id" => id } }) do
+    order =
+      Order.Query.default()
+      |> Order.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    order_response(order, request)
   end
 
   # TODO: Check if customer already have unlock
-  def update_order(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.update_order") do
-      do_update_order(%{ request | role: role })
+  def update_order(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.update_order") do
+      request
+      |> do_update_order()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_order(request = %AccessRequest{ role: "customer", vas: vas, params: %{ "id" => id }}) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_update_order(request = %{ role: role, account: account, params: %{ "id" => id }}) when role in ["guest", "customer"] do
+    order =
+      Order.Query.default()
+      |> Order.Query.for_account(account.id)
+      |> Repo.get(id)
+
     fields = cond do
       order.status == "cart" && order.grand_total_cents == 0 && request.fields["status"] == "opened" ->
         request.fields
+
       true ->
         Map.merge(request.fields, %{ "status" => order.status })
     end
 
     with %Order{} <- order,
-         changeset = %{valid?: true} <- Order.changeset(order, fields, request.locale)
+         changeset = %{valid?: true} <- Order.changeset(order, fields, request.locale, account.default_locale)
     do
       statements =
         Multi.new()
@@ -163,52 +184,59 @@ defmodule BlueJet.Storefront do
            end)
 
       {:ok, %{ processed_order: order }} = Repo.transaction(statements)
-      do_update_order_response(order, request)
+      order_response(order, request)
     else
       nil ->
         {:error, :not_found}
+
       changeset ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
-  def do_update_order(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_update_order(request = %{ account: account, params: %{ "id" => id }}) do
+    order =
+      Order.Query.default()
+      |> Order.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Order{} <- order,
-         changeset <- Order.changeset(order, request.fields, request.locale),
+         changeset <- Order.changeset(order, request.fields, request.locale, account.default_locale),
           {:ok, order} <- Repo.update(changeset)
     do
-      do_update_order_response(order, request)
+      order_response(order, request)
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
-  def do_update_order_response(order, request) do
-    order =
-      order
-      |> Repo.preload(Order.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
 
-    {:ok, %AccessResponse{ data: order }}
-  end
-
-  def delete_order(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.delete_order") do
-      do_delete_order(%{ request | role: role })
+  def delete_order(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.delete_order") do
+      request
+      |> do_delete_order()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_order(%AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    order = Order |> Order.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_delete_order(%{ account: account, params: %{ "id" => id } }) do
+    order =
+      Order.Query.default()
+      |> Order.Query.for_account(account.id)
+      |> Repo.get(id)
 
     if order do
-      payments = Billing.list_payment_for_target("Order", id)
+      payments = Balance.list_payment_for_target("Order", id)
       case length(payments) do
         0 ->
           Repo.delete!(order)
           {:ok, %AccessResponse{}}
+
         _ ->
           errors = %{ id: {"Order with existing payment can not be deleted", [code: :order_with_payment_cannot_be_deleted, full_error_message: true]} }
           {:error, %AccessResponse{ errors: errors }}

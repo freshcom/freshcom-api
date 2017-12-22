@@ -1,4 +1,4 @@
-defmodule BlueJet.Billing do
+defmodule BlueJet.Balance do
   use BlueJet, :context
 
   alias Ecto.Changeset
@@ -6,13 +6,13 @@ defmodule BlueJet.Billing do
 
   alias BlueJet.Identity
 
-  alias BlueJet.Billing.Payment
-  alias BlueJet.Billing.Refund
-  alias BlueJet.Billing.Card
-  alias BlueJet.Billing.BillingSettings
+  alias BlueJet.Balance.Payment
+  alias BlueJet.Balance.Refund
+  alias BlueJet.Balance.Card
+  alias BlueJet.Balance.BalanceSettings
 
   def run_event_handler(name, data) do
-    listeners = Map.get(Application.get_env(:blue_jet, :billing, %{}), :listeners, [])
+    listeners = Map.get(Application.get_env(:blue_jet, :balance, %{}), :listeners, [])
 
     Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
       with {:ok, result} <- listener.handle_event(name, data) do
@@ -26,80 +26,93 @@ defmodule BlueJet.Billing do
   end
 
   def handle_event("identity.account.created", %{ account: account }) do
-    changeset = BillingSettings.changeset(%BillingSettings{}, %{ account_id: account.id })
-    billing_settings = Repo.insert!(changeset)
+    changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: account.id })
+    balance_settings = Repo.insert!(changeset)
 
-    {:ok, billing_settings}
+    {:ok, balance_settings}
   end
   def handle_event(_, _), do: {:ok, nil}
 
-  def update_billing_settings(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.update_settings") do
-      do_update_billing_settings(%{ request | role: role })
+  def update_settings(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.update_settings") do
+      request
+      |> do_update_settings()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_billing_settings(request = %AccessRequest{ vas: vas }) do
-    billing_settings = Repo.get_by!(BillingSettings, account_id: vas[:account_id])
-    changeset = BillingSettings.changeset(billing_settings, request.fields)
+
+  def do_update_settings(request = %{ account: account }) do
+    balance_settings = Repo.get_by!(BalanceSettings, account_id: account.id)
+    changeset = BalanceSettings.changeset(balance_settings, request.fields)
 
     statements = Multi.new()
-    |> Multi.update(:billing_settings, changeset)
-    |> Multi.run(:processed_billing_settings, fn(%{ billing_settings: billing_settings }) ->
-        BillingSettings.process(billing_settings, changeset)
+    |> Multi.update(:balance_settings, changeset)
+    |> Multi.run(:processed_balance_settings, fn(%{ balance_settings: balance_settings }) ->
+        BalanceSettings.process(balance_settings, changeset)
        end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_billing_settings: billing_settings }} ->
-        {:ok, %AccessResponse{ data: billing_settings }}
+      {:ok, %{ processed_balance_settings: balance_settings }} ->
+        {:ok, %AccessResponse{ data: balance_settings }}
+
       {:error, _, errors, _} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def get_billing_settings(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.get_settings") do
-      do_get_billing_settings(%{ request | role: role })
+  def get_settings(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.get_settings") do
+      request
+      |> do_get_settings()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_billing_settings(%AccessRequest{ vas: vas }) do
-    billing_settings = Repo.get_by!(BillingSettings, account_id: vas[:account_id])
 
-    {:ok, %AccessResponse{ data: billing_settings }}
+  def do_get_settings(%{ account: account }) do
+    balance_settings = Repo.get_by!(BalanceSettings, account_id: account.id)
+
+    {:ok, %AccessResponse{ data: balance_settings }}
   end
 
-  def list_card(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.list_card") do
-      do_list_card(%{ request | role: role })
+  def list_card(request) do
+    with {:ok, request} <- preprocess_request(request, "balance.list_card") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_card()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_card(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_card(request = %{ account: account, filter: filter, pagination: pagination }) do
+    data_query =
       Card.Query.default()
       |> filter_by(status: "saved_by_owner")
       |> filter_by(owner_id: filter[:owner_id], owner_type: filter[:owner_type])
-      |> Card.Query.for_account(account_id)
+      |> Card.Query.for_account(account.id)
 
-    result_count = Repo.aggregate(query, :count, :id)
-
-    total_query = Card |> Card.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
-
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Card
+      |> filter_by(status: "saved_by_owner")
+      |> Card.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
     cards =
-      Repo.all(query)
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
+        all_count: all_count,
         total_count: total_count,
-        result_count: result_count,
       },
       data: cards
     }
@@ -108,7 +121,7 @@ defmodule BlueJet.Billing do
   end
 
   def update_card(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.update_card") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.update_card") do
       do_update_card(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -137,7 +150,7 @@ defmodule BlueJet.Billing do
   end
 
   def delete_card(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.delete_card") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.delete_card") do
       do_delete_card(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -162,7 +175,7 @@ defmodule BlueJet.Billing do
   # Payment
   ####
   def list_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.list_payment") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.list_payment") do
       do_list_payment(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -205,7 +218,7 @@ defmodule BlueJet.Billing do
   end
 
   def create_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.create_payment") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.create_payment") do
       do_create_payment(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -232,7 +245,7 @@ defmodule BlueJet.Billing do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          run_event_handler("billing.payment.created", %{ payment: payment })
+          run_event_handler("balance.payment.created", %{ payment: payment })
          end)
 
     case Repo.transaction(statements) do
@@ -247,7 +260,7 @@ defmodule BlueJet.Billing do
 
   # Allow other services to change the fields of payment
   defp run_payment_before_create(fields, owner, target) do
-    with {:ok, results} <- run_event_handler("billing.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
+    with {:ok, results} <- run_event_handler("balance.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
       values = Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
         if fields do
@@ -264,7 +277,7 @@ defmodule BlueJet.Billing do
   end
 
   def get_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.get_payment") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.get_payment") do
       do_get_payment(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -286,7 +299,7 @@ defmodule BlueJet.Billing do
   end
 
   def update_payment(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.update_payment") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.update_payment") do
       do_update_payment(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -305,7 +318,7 @@ defmodule BlueJet.Billing do
             Payment.process(payment, changeset)
            end)
         |> Multi.run(:after_update, fn(%{ processed_payment: payment}) ->
-            run_event_handler("billing.payment.updated", %{ payment: payment })
+            run_event_handler("balance.payment.updated", %{ payment: payment })
            end)
 
       {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
@@ -326,7 +339,7 @@ defmodule BlueJet.Billing do
   # Refund
   ######
   def create_refund(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "billing.create_refund") do
+    with {:ok, role} <- Identity.authorize(vas, "balance.create_refund") do
       do_create_refund(%{ request | role: role })
     else
       {:error, _} -> {:error, :access_denied}
@@ -370,7 +383,7 @@ defmodule BlueJet.Billing do
           {:ok, payment}
          end)
       |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-          run_event_handler("billing.refund.created", %{ refund: refund })
+          run_event_handler("balance.refund.created", %{ refund: refund })
           {:ok, refund}
          end)
 

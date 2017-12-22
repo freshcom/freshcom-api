@@ -2,7 +2,7 @@ defmodule BlueJetWeb.CardController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Billing
+  alias BlueJet.Balance
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -16,9 +16,13 @@ defmodule BlueJetWeb.CardController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: cards, meta: meta }} = Billing.list_card(request)
+    case Balance.list_card(request) do
+      {:ok, %{ data: cards, meta: meta }} ->
+        render(conn, "index.json-api", data: cards, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: cards, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
+
   end
 
   # def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "order_id" => order_id, "data" => data = %{ "type" => "Payment" } }) when map_size(vas) == 2 do
@@ -63,7 +67,7 @@ defmodule BlueJetWeb.CardController do
       locale: assigns[:locale]
     }
 
-    case Billing.update_card(request) do
+    case Balance.update_card(request) do
       {:ok, %AccessResponse{ data: card }} ->
         render(conn, "show.json-api", data: card, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
@@ -79,7 +83,7 @@ defmodule BlueJetWeb.CardController do
       params: %{ card_id: card_id }
     }
 
-    Billing.delete_card(request)
+    Balance.delete_card(request)
 
     send_resp(conn, :no_content, "")
   end

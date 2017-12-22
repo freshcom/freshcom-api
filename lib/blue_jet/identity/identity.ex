@@ -11,16 +11,14 @@ defmodule BlueJet.Identity do
   defmodule Shortcut do
     alias BlueJet.Identity
 
+    def get_account(%{ account_id: nil }), do: nil
+
     def get_account(%{ account_id: account_id, account: nil }) do
-      response = Identity.get_account(%AccessRequest{
+      {:ok, %{ data: account }} = Identity.get_account(%AccessRequest{
         vas: %{ account_id: account_id }
       })
 
-      case response do
-        {:ok, %{ data: account }} -> account
-
-        _ -> nil
-      end
+      account
     end
 
     def get_account(%{ account: account }), do: account

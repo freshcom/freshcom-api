@@ -1,12 +1,16 @@
 defmodule BlueJet.Storefront.Order do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
+  use Trans, translates: [
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias Ecto.Changeset
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
-  alias BlueJet.Billing
+  alias BlueJet.Balance
   alias BlueJet.CRM
 
   alias BlueJet.Storefront.Order
@@ -16,17 +20,28 @@ defmodule BlueJet.Storefront.Order do
 
   schema "orders" do
     field :account_id, Ecto.UUID
-    field :code, :string
     field :status, :string, default: "cart"
-    field :payment_status, :string, default: "pending"
-    field :system_tag, :string
+    field :code, :string
+    field :name, :string
     field :label, :string
+
+    field :payment_status, :string, default: "pending"
+    field :fulfillment_status, :string, default: "pending"
+    field :fulfillment_method, :string # ship, pickup
+    field :system_tag, :string
 
     field :email, :string
     field :first_name, :string
     field :last_name, :string
-    field :other_name, :string
     field :phone_number, :string
+
+    field :sub_total_cents, :integer, default: 0
+    field :tax_one_cents, :integer, default: 0
+    field :tax_two_cents, :integer, default: 0
+    field :tax_three_cents, :integer, default: 0
+    field :grand_total_cents, :integer, default: 0
+    field :authorization_toal_cents, :integer, default: 0
+    field :is_estimate, :boolean, default: false
 
     field :delivery_address_line_one, :string
     field :delivery_address_line_two, :string
@@ -35,28 +50,19 @@ defmodule BlueJet.Storefront.Order do
     field :delivery_address_country_code, :string
     field :delivery_address_postal_code, :string
 
-    field :sub_total_cents, :integer, default: 0
-    field :tax_one_cents, :integer, default: 0
-    field :tax_two_cents, :integer, default: 0
-    field :tax_three_cents, :integer, default: 0
-    field :grand_total_cents, :integer, default: 0
-    field :authorization_cents, :integer, default: 0
-
-    field :is_estimate, :boolean, default: false
-
-    field :fulfillment_method, :string # ship, pickup
-    field :fulfillment_status, :string, default: "pending"
-
     field :opened_at, :utc_datetime
     field :confirmation_email_sent_at, :utc_datetime
     field :receipt_email_sent_at, :utc_datetime
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :created_by_id, Ecto.UUID
     field :customer_id, Ecto.UUID
     field :customer, :map, virtual: true
+
+    field :user_id, Ecto.UUID
 
     timestamps()
 
@@ -105,8 +111,8 @@ defmodule BlueJet.Storefront.Order do
     writable_fields() -- [:account_id]
   end
 
-  def required_name_fields(_, _, other_name) do
-    if other_name do
+  def required_name_fields(_, _, name) do
+    if name do
       []
     else
       [:first_name, :last_name]
@@ -117,9 +123,9 @@ defmodule BlueJet.Storefront.Order do
     id = get_field(changeset, :id)
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
-    other_name = get_field(changeset, :other_name)
+    name = get_field(changeset, :name)
 
-    required_name_fields = required_name_fields(first_name, last_name, other_name)
+    required_name_fields = required_name_fields(first_name, last_name, name)
 
     fulfillment_method = get_field(changeset, :fulfillment_method)
 
@@ -168,13 +174,29 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale, default_locale) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate(struct)
     |> put_opened_at()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> put_name()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  def put_name(changeset = %{ valid?: true }) do
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :first_name)
+
+    if first_name && last_name do
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
+    end
+  end
+
+  def put_name(changeset), do: changeset
 
   defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     Changeset.put_change(changeset, :opened_at, Ecto.DateTime.utc())
@@ -189,7 +211,7 @@ defmodule BlueJet.Storefront.Order do
     tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents) || 0
     tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents) || 0
     grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents) || 0
-    authorization_cents = Repo.aggregate(query, :sum, :authorization_cents) || 0
+    authorization_toal_cents = Repo.aggregate(query, :sum, :authorization_toal_cents) || 0
 
     root_line_items = Repo.all(query)
     estimate_count = Enum.reduce(root_line_items, 0, fn(item, acc) ->
@@ -213,7 +235,7 @@ defmodule BlueJet.Storefront.Order do
       tax_two_cents: tax_two_cents,
       tax_three_cents: tax_three_cents,
       grand_total_cents: grand_total_cents,
-      authorization_cents: authorization_cents,
+      authorization_toal_cents: authorization_toal_cents,
       is_estimate: is_estimate
     )
   end
@@ -229,7 +251,7 @@ defmodule BlueJet.Storefront.Order do
     |> Repo.update!()
   end
   defp payment_status(order) do
-    payments = Billing.list_payment_for_target("Order", order.id)
+    payments = Balance.list_payment_for_target("Order", order.id)
 
     total_paid_amount_cents =
       payments
@@ -253,7 +275,7 @@ defmodule BlueJet.Storefront.Order do
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
       total_paid_amount_cents > 0 -> "partially_paid"
-      total_authorized_amount_cents >= order.authorization_cents -> "authorized"
+      total_authorized_amount_cents >= order.authorization_toal_cents -> "authorized"
       total_authorized_amount_cents > 0 -> "partially_authorized"
       true -> "pending"
     end
@@ -271,20 +293,33 @@ defmodule BlueJet.Storefront.Order do
     {:ok, nil}
   end
 
-  def customer(%{ customer_id: nil }), do: nil
-  def customer(order = %{ customer: nil }) do
+  def get_customer(%{ customer_id: nil }, options), do: nil
+
+  def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
-      vas: %{ account_id: order.account_id },
-      params: %{ "id" => order.customer_id }
+      account: account,
+      params: %{ "id" => customer_id },
+      locale: locale
     })
 
     customer
   end
-  def customer(%{ customer: customer }), do: customer
 
-  def put_external_resources(order, :customer) do
-    %{ order | customer: customer(order) }
+  def get_customer(%{ customer: customer }, options), do: customer
+
+  ######
+  # External Resources
+  #####
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "Order"
+
+  def put_external_resources(order, {:customer, nil}, options) do
+    %{ order | customer: get_customer(order, options) }
   end
+
+  def put_external_resources(order, _, _), do: order
 
   #####
   # Business Functions
@@ -311,26 +346,24 @@ defmodule BlueJet.Storefront.Order do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
+    end
+
     def for_account(query, account_id) do
       from(o in query, where: o.account_id == ^account_id)
     end
 
-    def preloads(:root_line_items) do
-      [root_line_items: OrderLineItem.Query.root()]
+    def preloads({:root_line_items, root_line_item_preloads}, options) do
+      [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads, options)}]
     end
-    def preloads({:root_line_items, root_line_item_preloads}) do
-      [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads)}]
-    end
-    def preloads(_) do
+
+    def preloads(_, _) do
       []
     end
 
     def not_cart(query) do
       from(o in query, where: o.status != "cart")
-    end
-
-    def default() do
-      from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
     end
   end
 end

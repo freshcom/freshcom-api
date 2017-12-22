@@ -72,14 +72,14 @@ defmodule BlueJet.Identity.Authorization do
     "storefront.list_unlock",
     "storefront.get_unlock",
 
-    "billing.list_payment",
-    "billing.create_payment",
-    "billing.get_payment",
-    "billing.update_payment",
-    "billing.list_card",
-    "billing.update_card",
-    "billing.delete_card",
-    "billing.create_refund",
+    "balance.list_payment",
+    "balance.create_payment",
+    "balance.get_payment",
+    "balance.update_payment",
+    "balance.list_card",
+    "balance.update_card",
+    "balance.delete_card",
+    "balance.create_refund",
 
     "data_trading.create_data_import"
   ]
@@ -112,8 +112,8 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.get_order",
       "storefront.update_order",
 
-      "billing.create_payment",
-      "billing.get_payment",
+      "balance.create_payment",
+      "balance.get_payment",
 
       "storefront.create_order_line_item",
       "storefront.update_order_line_item",
@@ -152,12 +152,12 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.get_unlock",
 
-      "billing.list_payment",
-      "billing.create_payment",
-      "billing.get_payment",
-      "billing.list_card",
-      "billing.update_card",
-      "billing.delete_card"
+      "balance.list_payment",
+      "balance.create_payment",
+      "balance.get_payment",
+      "balance.list_card",
+      "balance.update_card",
+      "balance.delete_card"
     ],
 
     "marketing_specialist" => [
@@ -220,14 +220,14 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.get_unlock",
 
-      "billing.list_payment",
-      "billing.create_payment",
-      "billing.get_payment",
-      "billing.update_payment",
-      "billing.list_card",
-      "billing.update_card",
-      "billing.delete_card",
-      "billing.create_refund"
+      "balance.list_payment",
+      "balance.create_payment",
+      "balance.get_payment",
+      "balance.update_payment",
+      "balance.list_card",
+      "balance.update_card",
+      "balance.delete_card",
+      "balance.create_refund"
     ],
 
     "goods_specialist" => [
@@ -342,14 +342,14 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.get_unlock",
 
-      "billing.list_payment",
-      "billing.create_payment",
-      "billing.get_payment",
-      "billing.update_payment",
-      "billing.list_card",
-      "billing.update_card",
-      "billing.delete_card",
-      "billing.create_refund"
+      "balance.list_payment",
+      "balance.create_payment",
+      "balance.get_payment",
+      "balance.update_payment",
+      "balance.list_card",
+      "balance.update_card",
+      "balance.delete_card",
+      "balance.create_refund"
     ],
 
     "administrator" => [
@@ -425,16 +425,16 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.get_unlock",
 
-      "billing.list_payment",
-      "billing.create_payment",
-      "billing.get_payment",
-      "billing.update_payment",
-      "billing.list_card",
-      "billing.update_card",
-      "billing.delete_card",
-      "billing.get_settings",
-      "billing.update_settings",
-      "billing.create_refund",
+      "balance.list_payment",
+      "balance.create_payment",
+      "balance.get_payment",
+      "balance.update_payment",
+      "balance.list_card",
+      "balance.update_card",
+      "balance.delete_card",
+      "balance.get_settings",
+      "balance.update_settings",
+      "balance.create_refund",
 
       "data_trading.create_data_import"
     ]

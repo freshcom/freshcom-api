@@ -1,4 +1,4 @@
-defmodule BlueJet.Billing.Payment do
+defmodule BlueJet.Balance.Payment do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
@@ -11,10 +11,10 @@ defmodule BlueJet.Billing.Payment do
   alias BlueJet.AccessRequest
   alias BlueJet.Identity
 
-  alias BlueJet.Billing.Payment
-  alias BlueJet.Billing.Refund
-  alias BlueJet.Billing.Card
-  alias BlueJet.Billing.BillingSettings
+  alias BlueJet.Balance.Payment
+  alias BlueJet.Balance.Refund
+  alias BlueJet.Balance.Card
+  alias BlueJet.Balance.BalanceSettings
 
   @type t :: Ecto.Schema.t
 
@@ -167,18 +167,18 @@ defmodule BlueJet.Billing.Payment do
   # Business Logic
   #####
 
-  def destination_amount_cents(payment, billing_settings) do
-    payment.amount_cents - processor_fee_cents(payment, billing_settings) - freshcom_fee_cents(payment, billing_settings)
+  def destination_amount_cents(payment, balance_settings) do
+    payment.amount_cents - processor_fee_cents(payment, balance_settings) - freshcom_fee_cents(payment, balance_settings)
   end
 
-  def processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, billing_settings) do
-    variable_rate = billing_settings.stripe_variable_fee_percentage |> D.div(D.new(100))
+  def processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, balance_settings) do
+    variable_rate = balance_settings.stripe_variable_fee_percentage |> D.div(D.new(100))
     variable_fee_cents = D.new(amount_cents) |> D.mult(variable_rate) |> D.round() |> D.to_integer
-    variable_fee_cents + billing_settings.stripe_fixed_fee_cents
+    variable_fee_cents + balance_settings.stripe_fixed_fee_cents
   end
 
-  def freshcom_fee_cents(%{ amount_cents: amount_cents }, billing_settings) do
-    rate = billing_settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
+  def freshcom_fee_cents(%{ amount_cents: amount_cents }, balance_settings) do
+    rate = balance_settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
     D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
   end
 
@@ -258,7 +258,7 @@ defmodule BlueJet.Billing.Payment do
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
     payment = %{ payment | account: account(payment) }
-    billing_settings = BillingSettings.for_account(payment.account)
+    balance_settings = BalanceSettings.for_account(payment.account)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
@@ -270,7 +270,7 @@ defmodule BlueJet.Billing.Payment do
     }
 
     with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields),
-         {:ok, stripe_charge} <- create_stripe_charge(payment, source, billing_settings)
+         {:ok, stripe_charge} <- create_stripe_charge(payment, source, balance_settings)
     do
       sync_with_stripe_charge(payment, stripe_charge)
     else
@@ -324,13 +324,13 @@ defmodule BlueJet.Billing.Payment do
     {:ok, payment}
   end
 
-  @spec create_stripe_charge(Payment.t, String.t, BillingSettings.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_charge(Payment.t, String.t, BalanceSettings.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
     payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
     source,
-    billing_settings
+    balance_settings
   ) do
-    destination_amount_cents = destination_amount_cents(payment, billing_settings)
+    destination_amount_cents = destination_amount_cents(payment, balance_settings)
 
     stripe_request = %{
       amount: payment.amount_cents,
@@ -338,7 +338,7 @@ defmodule BlueJet.Billing.Payment do
       capture: capture,
       currency: "CAD",
       metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
-      destination: %{ account: billing_settings.stripe_user_id, amount: destination_amount_cents },
+      destination: %{ account: balance_settings.stripe_user_id, amount: destination_amount_cents },
       expand: ["transfer", "balance_transaction"]
     }
 

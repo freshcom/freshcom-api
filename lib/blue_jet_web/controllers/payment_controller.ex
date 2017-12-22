@@ -2,7 +2,7 @@ defmodule BlueJetWeb.PaymentController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Billing
+  alias BlueJet.Balance
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -16,7 +16,7 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: payments, meta: meta }} = Billing.list_payment(request)
+    {:ok, %AccessResponse{ data: payments, meta: meta }} = Balance.list_payment(request)
 
     render(conn, "index.json-api", data: payments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -28,7 +28,7 @@ defmodule BlueJetWeb.PaymentController do
       preloads: assigns[:preloads]
     }
 
-    case Billing.create_payment(request) do
+    case Balance.create_payment(request) do
       {:ok, %AccessResponse{ data: payment }} ->
         conn
         |> put_status(:created)
@@ -48,7 +48,7 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: payment }} = Billing.get_payment(request)
+    {:ok, %AccessResponse{ data: payment }} = Balance.get_payment(request)
 
     render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
   end
@@ -62,7 +62,7 @@ defmodule BlueJetWeb.PaymentController do
       locale: assigns[:locale]
     }
 
-    case Billing.update_payment(request) do
+    case Balance.update_payment(request) do
       {:ok, %AccessResponse{ data: payment }} ->
         render(conn, "show.json-api", data: payment, opts: [include: conn.query_params["include"]])
       {:error, %AccessResponse{ errors: errors }} ->
@@ -78,7 +78,7 @@ defmodule BlueJetWeb.PaymentController do
       payment_id: payment_id
     }
 
-    Billing.delete_payment!(request)
+    Balance.delete_payment!(request)
 
     send_resp(conn, :no_content, "")
   end

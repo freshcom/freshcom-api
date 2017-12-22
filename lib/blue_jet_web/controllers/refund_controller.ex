@@ -2,7 +2,7 @@ defmodule BlueJetWeb.RefundController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Billing
+  alias BlueJet.Balance
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -15,7 +15,7 @@ defmodule BlueJetWeb.RefundController do
       preloads: assigns[:preloads]
     }
 
-    case Billing.create_refund(request) do
+    case Balance.create_refund(request) do
       {:ok, %AccessResponse{ data: refund }} ->
         conn
         |> put_status(:created)

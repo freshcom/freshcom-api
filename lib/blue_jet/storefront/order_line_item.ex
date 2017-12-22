@@ -52,7 +52,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :tax_two_cents, :integer
     field :tax_three_cents, :integer
     field :grand_total_cents, :integer
-    field :authorization_cents, :integer
+    field :authorization_toal_cents, :integer
 
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
@@ -323,7 +323,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:tax_two_cents, 0)
     |> put_change(:tax_three_cents, 0)
     |> put_change(:grand_total_cents, sub_total_cents)
-    |> put_change(:authorization_cents, sub_total_cents)
+    |> put_change(:authorization_toal_cents, sub_total_cents)
   end
   defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
@@ -334,7 +334,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     changeset
     |> put_change(:grand_total_cents, grand_total_cents)
-    |> put_change(:authorization_cents, grand_total_cents)
+    |> put_change(:authorization_toal_cents, grand_total_cents)
   end
   defp refresh_amount_fields(changeset, :with_price) do
     charge_quantity = get_field(changeset, :charge_quantity)
@@ -357,7 +357,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
 
-    authorization_cents = if is_estimate do
+    authorization_toal_cents = if is_estimate do
       order_quantity = get_field(changeset, :order_quantity)
 
       price_estimate_maximum_percentage = D.new(get_field(changeset, :price_estimate_maximum_percentage))
@@ -380,7 +380,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:tax_two_cents, tax_two_cents)
     |> put_change(:tax_three_cents, tax_three_cents)
     |> put_change(:grand_total_cents, grand_total_cents)
-    |> put_change(:authorization_cents, authorization_cents)
+    |> put_change(:authorization_toal_cents, authorization_toal_cents)
   end
 
   def root(query) do
@@ -422,7 +422,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       tax_two_cents: struct.tax_two_cents,
       tax_three_cents: struct.tax_three_cents,
       grand_total_cents: struct.grand_total_cents,
-      authorization_cents: struct.authorization_cents,
+      authorization_toal_cents: struct.authorization_toal_cents,
       translations: Translation.merge_translations(%{}, source.translations, ["name"])
     }
 

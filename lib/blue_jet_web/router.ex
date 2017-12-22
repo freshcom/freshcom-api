@@ -76,15 +76,15 @@ defmodule BlueJetWeb.Router do
     resources "/unlocks", UnlockController, only: [:show, :index]
 
     #####
-    # Billing
+    # Balance
     #####
     resources "/cards", CardController, only: [:index, :create, :update, :delete]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
     end
 
-    get "/billing_settings", BillingSettingsController, :show
-    patch "/billing_settings", BillingSettingsController, :update
+    get "/balance_settings", BalanceSettingsController, :show
+    patch "/balance_settings", BalanceSettingsController, :update
 
     ####
     # Data Trading

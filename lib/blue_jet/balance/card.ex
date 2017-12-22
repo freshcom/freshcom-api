@@ -1,4 +1,4 @@
-defmodule BlueJet.Billing.Card do
+defmodule BlueJet.Balance.Card do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
@@ -9,7 +9,7 @@ defmodule BlueJet.Billing.Card do
   alias BlueJet.Translation
   alias BlueJet.Identity
 
-  alias BlueJet.Billing.Card
+  alias BlueJet.Balance.Card
 
   @type t :: Ecto.Schema.t
 

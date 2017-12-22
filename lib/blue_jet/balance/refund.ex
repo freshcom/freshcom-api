@@ -1,4 +1,4 @@
-defmodule BlueJet.Billing.Refund do
+defmodule BlueJet.Balance.Refund do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations
@@ -10,8 +10,8 @@ defmodule BlueJet.Billing.Refund do
   alias BlueJet.Identity
   alias BlueJet.Translation
 
-  alias BlueJet.Billing.Refund
-  alias BlueJet.Billing.Payment
+  alias BlueJet.Balance.Refund
+  alias BlueJet.Balance.Payment
 
   @type t :: Ecto.Schema.t
 

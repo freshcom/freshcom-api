@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.BillingSettingsView do
+defmodule BlueJetWeb.BalanceSettingsView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -15,7 +15,7 @@ defmodule BlueJetWeb.BillingSettingsView do
   ]
 
   def type(_, _) do
-    "BillingSettings"
+    "BalanceSettings"
   end
 
   def locale(_, %{ assigns: %{ locale: locale } }), do: locale
