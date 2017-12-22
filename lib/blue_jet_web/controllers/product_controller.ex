@@ -18,9 +18,12 @@ defmodule BlueJetWeb.ProductController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: products, meta: meta }} = Catalogue.list_product(request)
+    case Catalogue.list_product(request) do
+      {:ok, %{ data: products, meta: meta }} ->
+        render(conn, "index.json-api", data: products, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: products, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Product" } }) do
@@ -35,14 +38,16 @@ defmodule BlueJetWeb.ProductController do
     }
 
     case Catalogue.create_product(request) do
-      {:ok, %AccessResponse{ data: product }} ->
+      {:ok, %{ data: product, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: product, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: product, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
       other -> other
     end
   end
@@ -55,9 +60,12 @@ defmodule BlueJetWeb.ProductController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: product }} = Catalogue.get_product(request)
+    case Catalogue.get_product(request) do
+      {:ok, %{ data: product, meta: meta }} ->
+        render(conn, "show.json-api", data: product, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: product, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Product" } }) do
@@ -74,24 +82,29 @@ defmodule BlueJetWeb.ProductController do
     }
 
     case Catalogue.update_product(request) do
-      {:ok, %AccessResponse{ data: product }} ->
-        render(conn, "show.json-api", data: product, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: product, meta: meta }} ->
+        render(conn, "show.json-api", data: product, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
-  def delete(conn = %{ assigns: assigns }, %{ "id" => product_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ product_id: product_id }
+      params: %{ "id" => id }
     }
 
-    Catalogue.delete_product(request)
+    case Catalogue.delete_product(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 
 end

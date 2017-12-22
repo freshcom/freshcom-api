@@ -29,14 +29,17 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
     }
 
     case Catalogue.create_product_collection_membership(request) do
-      {:ok, %AccessResponse{ data: product_collection_membership }} ->
+      {:ok, %{ data: pcm, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: product_collection_membership, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: pcm, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 
@@ -79,12 +82,14 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id }
+      params: %{ "id" => id }
     }
 
-    {:ok, _} = Catalogue.delete_product_collection_membership(request)
+    case Catalogue.delete_product_collection_membership(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-    send_resp(conn, :no_content, "")
+      other -> other
+    end
   end
 
 end

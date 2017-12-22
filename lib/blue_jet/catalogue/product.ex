@@ -42,9 +42,9 @@ defmodule BlueJet.Catalogue.Product do
     field :short_name, :string
     field :print_name, :string
 
-    field :sort_index, :integer
+    field :sort_index, :integer, default: 0
     field :source_quantity, :integer, default: 1
-    field :maximum_public_order_quantity, :integer
+    field :maximum_public_order_quantity, :integer, default: 999
     field :primary, :boolean, default: false
 
     field :caption, :string
@@ -333,7 +333,7 @@ defmodule BlueJet.Catalogue.Product do
       from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
     end
 
-    def preloads({:items, item_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+    def preloads({:items, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = Product.Query.default() |> Product.Query.active()
       [items: {query, Product.Query.preloads(item_preloads, options)}]
     end
@@ -343,7 +343,7 @@ defmodule BlueJet.Catalogue.Product do
       [items: {query, Product.Query.preloads(item_preloads, options)}]
     end
 
-    def preloads({:variants, item_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+    def preloads({:variants, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = Product.Query.default() |> Product.Query.active()
       [variants: {query, Product.Query.preloads(item_preloads, options)}]
     end
@@ -353,7 +353,7 @@ defmodule BlueJet.Catalogue.Product do
       [variants: {query, Product.Query.preloads(item_preloads, options)}]
     end
 
-    def preloads({:prices, price_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+    def preloads({:prices, price_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = Price.Query.default() |> Price.Query.active()
       [prices: {query, Price.Query.preloads(price_preloads, options)}]
     end

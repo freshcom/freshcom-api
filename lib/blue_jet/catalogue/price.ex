@@ -1,7 +1,14 @@
 defmodule BlueJet.Catalogue.Price do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :caption, :order_unit, :charge_unit], container: :translations
+  use Trans, translates: [
+    :name,
+    :order_unit,
+    :charge_unit,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias Ecto.Changeset
 
@@ -12,25 +19,30 @@ defmodule BlueJet.Catalogue.Price do
 
   schema "prices" do
     field :account_id, Ecto.UUID
-    field :code, :string
     field :status, :string, default: "active"
+    field :code, :string
     field :name, :string
     field :label, :string
-    field :caption, :string
+
     field :currency_code, :string, default: "CAD"
     field :charge_cents, :integer
+    field :charge_unit, :string
+    field :order_unit, :string
+
     field :estimate_average_percentage, :decimal
     field :estimate_maximum_percentage, :decimal
     field :minimum_order_quantity, :integer, default: 1
-    field :order_unit, :string
-    field :charge_unit, :string
     field :estimate_by_default, :boolean, default: false
+
     field :tax_one_percentage, :decimal, default: Decimal.new(0)
     field :tax_two_percentage, :decimal, default: Decimal.new(0)
     field :tax_three_percentage, :decimal, default: Decimal.new(0)
+
     field :start_time, :utc_datetime
     field :end_time, :utc_datetime
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 

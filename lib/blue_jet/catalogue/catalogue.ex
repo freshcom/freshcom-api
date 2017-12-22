@@ -63,60 +63,104 @@ defmodule BlueJet.Catalogue do
   defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
   defp root_only_if_no_parent_id(query, _), do: query
 
-  def create_product(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product") do
-      do_create_product(%{ request | role: role })
+  defp product_response(nil, _), do: {:error, :not_found}
+
+  defp product_response(product, request = %{ account: account }) do
+    preloads = Product.Query.preloads(request.preloads, role: request.role)
+
+    product =
+      product
+      |> Repo.preload(preloads)
+      |> Product.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
+  end
+
+  def create_product(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.create_product") do
+      request
+      |> do_create_product()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_product(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
+
+  def do_create_product(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = Product.changeset(%Product{}, fields)
 
     with {:ok, product} <- Repo.insert(changeset) do
-      product = Repo.preload(product, Product.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: product }}
+      product_response(product, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_product(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product") do
-      do_get_product(%{ request | role: role })
+  def get_product(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.get_product") do
+      request
+      |> do_get_product()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(id)
-    do_get_product_response(product, request)
-  end
-  def do_get_product(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get_by(code: code)
-    do_get_product_response(product, request)
-  end
-  defp do_get_product_response(nil, _), do: {:error, :not_found}
-  defp do_get_product_response(product, request) do
+
+  def do_get_product(request = %{ role: role, account: account, params: %{ "id" => id } }) when role in ["guest", "customer"] do
     product =
-      product
-      |> Repo.preload(Product.Query.preloads(request.preloads, role: request.role))
-      |> Translation.translate(request.locale)
+      Product.Query.default()
+      |> Product.Query.active()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get(id)
 
-    {:ok, %AccessResponse{ data: product }}
+    product_response(product, request)
   end
 
-  def update_product(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product") do
-      do_update_product(%{ request | role: role })
+  def do_get_product(request = %{ account: account, params: %{ "id" => id } }) do
+    product =
+      Product.Query.default()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    product_response(product, request)
+  end
+
+  def do_get_product(request = %{ role: role, account: account, params: %{ "code" => code } }) when role in ["guest", "customer"] do
+    product =
+      Product.Query.default()
+      |> Product.Query.active()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get_by(code: code)
+
+    product_response(product, request)
+  end
+
+  def do_get_product(request = %{ account: account, params: %{ "code" => code } }) do
+    product =
+      Product.Query.default()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get_by(code: code)
+
+    product_response(product, request)
+  end
+
+  def update_product(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.update_product") do
+      request
+      |> do_update_product()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_product(request = %AccessRequest{ vas: vas, params: %{ "id" => id }}) do
-    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(id)
+
+  def do_update_product(request = %{ account: account, params: %{ "id" => id }}) do
+    product =
+      Product.Query.default()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %Product{} <- product,
          changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale)
@@ -131,40 +175,47 @@ defmodule BlueJet.Catalogue do
         Repo.update!(changeset)
       end)
 
-      product =
-        product
-        |> Repo.preload(Product.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: product }}
+      product_response(product, request)
     else
       nil -> {:error, :not_found}
+
       %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def delete_product(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product") do
-      do_delete_product(%{ request | role: role })
+  def delete_product(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.delete_product") do
+      request
+      |> do_delete_product()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_product(%AccessRequest{ vas: vas, params: %{ product_id: product_id } }) do
-    product = Product |> Product.Query.for_account(vas.account_id) |> Repo.get(product_id)
+
+  def do_delete_product(%{ account: account, params: %{ "id" => id } }) do
+    product =
+      Product.Query.default()
+      |> Product.Query.for_account(account.id)
+      |> Repo.get(id)
 
     cond do
       product && product.avatar_id ->
-        Repo.transaction(fn ->
+        {:ok, _} = Repo.transaction(fn ->
           FileStorage.do_delete_external_file(%AccessRequest{
-            vas: vas,
-            params: %{ external_file_id: product.avatar_id }
+            account: account,
+            params: %{ "id" => product.avatar_id }
           })
           Repo.delete!(product)
         end)
+        {:ok, %AccessResponse{}}
+
       product ->
         Repo.delete!(product)
+        {:ok, %AccessResponse{}}
+
       !product ->
         {:error, :not_found}
     end
@@ -174,7 +225,6 @@ defmodule BlueJet.Catalogue do
   ######
   # ProductCollection
   ######
-
   def list_product_collection(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.list_product_collection") do
       request
@@ -184,6 +234,7 @@ defmodule BlueJet.Catalogue do
       {:error, _} -> {:error, :access_denied}
     end
   end
+
   def do_list_product_collection(request = %AccessRequest{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       ProductCollection.Query.default()
@@ -192,13 +243,11 @@ defmodule BlueJet.Catalogue do
       |> ProductCollection.Query.for_account(account.id)
 
     total_count = Repo.aggregate(data_query, :count, :id)
-
-    all_query =
-      ProductCollection
+    all_count =
+      ProductCollection.Query.default()
       |> filter_by(status: counts[:all][:status])
       |> ProductCollection.Query.for_account(account.id)
-
-    all_count = Repo.aggregate(all_query, :count, :id)
+      |> Repo.aggregate(:count, :id)
 
     preloads = ProductCollection.Query.preloads(request.preloads, role: request.role)
     product_collections =
@@ -206,6 +255,7 @@ defmodule BlueJet.Catalogue do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
+      |> Product.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -220,6 +270,20 @@ defmodule BlueJet.Catalogue do
     {:ok, response}
   end
 
+  defp product_collection_response(nil, _), do: {:error, :not_found}
+
+  defp product_collection_response(product_collection, request = %{ account: account }) do
+    preloads = ProductCollection.Query.preloads(request.preloads, role: request.role)
+
+    product_collection =
+      product_collection
+      |> Repo.preload(preloads)
+      |> ProductCollection.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product_collection }}
+  end
+
   def create_product_collection(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.create_product_collection") do
       request
@@ -228,124 +292,152 @@ defmodule BlueJet.Catalogue do
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_product_collection(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
+
+  def do_create_product_collection(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = ProductCollection.changeset(%ProductCollection{}, fields)
 
     with {:ok, product_collection} <- Repo.insert(changeset) do
-      product_collection = Repo.preload(product_collection, ProductCollection.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: product_collection }}
+      product_collection_response(product_collection, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_product_collection(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.get_product_collection") do
-      do_get_product_collection(%{ request | role: role })
+  def get_product_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.get_product_collection") do
+      request
+      |> do_get_product_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get(id)
-    do_get_product_collection_response(product_collection, request)
-  end
-  def do_get_product_collection(request = %AccessRequest{ vas: vas, params: %{ "code" => code } }) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get_by(code: code)
-    do_get_product_collection_response(product_collection, request)
-  end
 
-  defp do_get_product_collection_response(nil, _), do: {:error, :not_found}
-  defp do_get_product_collection_response(product_collection, request) do
+  def do_get_product_collection(request = %{ account: account, params: %{ "id" => id } }) do
     product_collection =
-      product_collection
-      |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      ProductCollection.Query.default()
+      |> ProductCollection.Query.for_account(account.id)
+      |> Repo.get(id)
 
-    {:ok, %AccessResponse{ data: product_collection }}
+    product_collection_response(product_collection, request)
+  end
+  def do_get_product_collection(request = %AccessRequest{ account: account, params: %{ "code" => code } }) do
+    product_collection =
+      ProductCollection.Query.default()
+      |> ProductCollection.Query.for_account(account.id)
+      |> Repo.get_by(code: code)
+
+    product_collection_response(product_collection, request)
   end
 
-  def update_product_collection(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.update_product_collection") do
-      do_update_product_collection(%{ request | role: role })
+  def update_product_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.update_product_collection") do
+      request
+      |> do_update_product_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_update_product_collection(request = %{ vas: vas, params: %{ id: id }}) do
-    product_collection = ProductCollection |> ProductCollection.Query.for_account(vas.account_id) |> Repo.get(id)
+
+  def do_update_product_collection(request = %{ account: account, params: %{ "id" => id }}) do
+    product_collection =
+      ProductCollection.Query.default()
+      |> ProductCollection.Query.for_account(account.id)
+      |> Repo.get(id)
 
     with %ProductCollection{} <- product_collection,
          changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale),
         {:ok, product_collection} <- Repo.update(changeset)
     do
-      product_collection =
-        product_collection
-        |> Repo.preload(ProductCollection.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
-
-      {:ok, %AccessResponse{ data: product_collection }}
+      product_collection_response(product_collection, request)
     else
       nil -> {:error, :not_found}
+
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
   #
   # ProductCollectionMembership
   #
-  def create_product_collection_membership(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.create_product_collection_membership") do
-      do_create_product_collection_membership(%{ request | role: role })
+  defp product_collection_membership_response(nil, _), do: {:error, :not_found}
+
+  defp product_collection_membership_response(product_collection_membership, request = %{ account: account }) do
+    preloads = ProductCollectionMembership.Query.preloads(request.preloads, role: request.role)
+
+    product_collection_membership =
+      product_collection_membership
+      |> Repo.preload(preloads)
+      |> ProductCollectionMembership.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product_collection_membership }}
+  end
+
+  def create_product_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.create_product_collection_membership") do
+      request
+      |> do_create_product_collection_membership()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_product_collection_membership(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas.account_id })
+
+  def do_create_product_collection_membership(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
+
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = ProductCollectionMembership.changeset(%ProductCollectionMembership{}, fields)
 
-    with {:ok, product_collection_membership} <- Repo.insert(changeset) do
-      product_collection_membership = Repo.preload(product_collection_membership, ProductCollection.Query.preloads(request.preloads))
-      {:ok, %AccessResponse{ data: product_collection_membership }}
+    with {:ok, pcm} <- Repo.insert(changeset) do
+      product_collection_membership_response(pcm, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  def do_get_product_collection_membership(%{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
-  def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
-  def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
-    membership =
-      ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id)
-      |> Repo.get_by(collection_id: collection_id, product_id: product_id)
+  # def do_get_product_collection_membership(%{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
+  # def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
+  # def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
+  #   membership =
+  #     ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id)
+  #     |> Repo.get_by(collection_id: collection_id, product_id: product_id)
 
-    if membership do
-      membership =
-        membership
-        |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
+  #   if membership do
+  #     membership =
+  #       membership
+  #       |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
+  #       |> Translation.translate(request.locale)
 
-      {:ok, %AccessResponse{ data: membership }}
-    else
-      {:error, :not_found}
-    end
-  end
-  def do_get_product_collection_membership(_), do: {:error, :not_found}
+  #     {:ok, %AccessResponse{ data: membership }}
+  #   else
+  #     {:error, :not_found}
+  #   end
+  # end
+  # def do_get_product_collection_membership(_), do: {:error, :not_found}
 
-  def delete_product_collection_membership(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.delete_product_collection_membership") do
-      do_delete_product_collection_membership(%{ request | role: role })
+  def delete_product_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.delete_product_collection_membership") do
+      request
+      |> do_delete_product_collection_membership()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_delete_product_collection_membership(%AccessRequest{ vas: vas, params: %{ id: id } }) do
-    pcm = ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id) |> Repo.get(id)
+
+  def do_delete_product_collection_membership(%{ account: account, params: %{ "id" => id } }) do
+    pcm =
+      ProductCollectionMembership.Query.default()
+      |> ProductCollectionMembership.Query.for_account(account.id)
+      |> Repo.get(id)
 
     if pcm do
       Repo.delete!(pcm)
@@ -358,35 +450,42 @@ defmodule BlueJet.Catalogue do
   #####
   # Price
   #####
-  def list_price(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "catalogue.list_price") do
-      do_list_price(%{ request | role: role })
+  def list_price(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.list_price") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_price()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_price(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_price(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+    data_query =
       Price.Query.default()
-      |> search([:name, :id], request.search, request.locale, account_id)
-      |> filter_by(product_id: filter[:product_id], label: filter[:label])
-      |> Price.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> search([:name, :id], request.search, request.locale, account.default_locale)
+      |> filter_by(product_id: filter[:product_id], status: filter[:status], label: filter[:label])
+      |> Price.Query.for_account(account.id)
 
-    all_query = Price |> Price.Query.for_account(account_id)
-    all_count = Repo.aggregate(all_query, :count, :id)
-
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Price.Query.default()
+      |> filter_by(status: counts[:all][:status])
+      |> Price.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
     prices =
-      Repo.all(query)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
       |> Repo.preload(Price.Query.preloads(request.preloads))
       |> Translation.translate(request.locale)
 
     response = %AccessResponse{
       meta: %{
+        locale: request.locale,
         all_count: all_count,
-        result_count: result_count,
+        total_count: total_count
       },
       data: prices
     }

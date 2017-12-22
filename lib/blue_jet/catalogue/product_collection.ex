@@ -1,7 +1,12 @@
 defmodule BlueJet.Catalogue.ProductCollection do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
 
   alias BlueJet.Translation
   alias BlueJet.Catalogue.Product
@@ -10,15 +15,19 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
   schema "product_collections" do
     field :account_id, Ecto.UUID
-
+    field :status, :string, default: "draft"
     field :code, :string
-    field :status, :string
     field :name, :string
     field :label, :string
     field :sort_index, :integer
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
+
+    field :avatar_id, Ecto.UUID
+    field :avatar, :map, virtual: true
 
     timestamps()
 
@@ -65,6 +74,20 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
+  #
+  # External Resources
+  #
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file,
+    field: :avatar
+
+  use BlueJet.FileStorage.Macro,
+    put_external_resources: :external_file_collection,
+    field: :external_file_collections,
+    owner_type: "ProductCollection"
+
+  def put_external_resources(product_collection, _, _), do: product_collection
+
   defmodule Query do
     use BlueJet, :query
 
@@ -76,7 +99,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
       from(pc in query, where: pc.account_id == ^account_id)
     end
 
-    def preloads({:products, product_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+    def preloads({:products, product_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = Product.Query.default() |> Product.Query.active()
       [products: {query, Product.Query.preloads(product_preloads, options)}]
     end
@@ -86,7 +109,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
       [products: {query, Product.Query.preloads(product_preloads, options)}]
     end
 
-    def preloads({:memberships, membership_preloads}, options = [role: role]) when role == "guest" or role == "customer" do
+    def preloads({:memberships, membership_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = ProductCollectionMembership.Query.default() |> ProductCollectionMembership.Query.with_active_product()
       [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
     end

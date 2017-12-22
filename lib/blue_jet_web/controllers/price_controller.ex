@@ -18,9 +18,12 @@ defmodule BlueJetWeb.PriceController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: prices, meta: meta }} = Catalogue.list_price(request)
+    case Catalogue.list_price(request) do
+      {:ok, %{ data: prices, meta: meta }} ->
+        render(conn, "index.json-api", data: prices, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: prices, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Price" } }) do

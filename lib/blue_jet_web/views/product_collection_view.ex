@@ -3,20 +3,26 @@ defmodule BlueJetWeb.ProductCollectionView do
   use JaSerializer.PhoenixView
 
   attributes [
+    :status,
     :code,
     :name,
-    :status,
     :label,
     :sort_index,
+
+    :caption,
+    :description,
     :custom_data,
+
     :inserted_at,
     :updated_at
   ]
 
+  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :always
+
   has_many :memberships, serializer: BlueJetWeb.ProductCollectionMembershipView, identifiers: :when_included
   has_many :products, serializer: BlueJetWeb.ProductView, include: false, identifiers: :when_included
 
-  def type(_, _conn) do
+  def type do
     "ProductCollection"
   end
 end

@@ -18,9 +18,12 @@ defmodule BlueJetWeb.ProductCollectionController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: product_collections, meta: meta }} = Catalogue.list_product_collection(request)
+    case Catalogue.list_product_collection(request) do
+      {:ok, %{ data: product_collections, meta: meta }} ->
+        render(conn, "index.json-api", data: product_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: product_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def create(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "data" => data = %{ "type" => "ProductCollection" } }) do
@@ -35,14 +38,16 @@ defmodule BlueJetWeb.ProductCollectionController do
     }
 
     case Catalogue.create_product_collection(request) do
-      {:ok, %AccessResponse{ data: product_collection }} ->
+      {:ok, %{ data: product_collection, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: product_collection, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+        |> render("show.json-api", data: product_collection, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
       other -> other
     end
   end
@@ -56,8 +61,9 @@ defmodule BlueJetWeb.ProductCollectionController do
     }
 
     case Catalogue.get_product_collection(request) do
-      {:ok, %AccessResponse{ data: product_collection }} ->
-        render(conn, "show.json-api", data: product_collection, opts: [include: conn.query_params["include"]])
+      {:ok, %{ data: product_collection, meta: meta }} ->
+        render(conn, "show.json-api", data: product_collection, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
       other -> other
     end
   end
@@ -65,19 +71,22 @@ defmodule BlueJetWeb.ProductCollectionController do
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "ProductCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ id: id },
+      params: %{ "id" => id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case Catalogue.update_product_collection(request) do
-      {:ok, %AccessResponse{ data: product_collection }} ->
-        render(conn, "show.json-api", data: product_collection, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:ok, %{ data: product_collection, meta: meta }} ->
+        render(conn, "show.json-api", data: product_collection, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 

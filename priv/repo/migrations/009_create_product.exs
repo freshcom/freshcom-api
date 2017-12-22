@@ -15,7 +15,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :print_name, :string
       add :kind, :string, null: false, default: "simple"
 
-      add :sort_index, :integer
+      add :sort_index, :integer, null: false
       add :source_quantity, :integer, null: false
       add :primary, :boolean, null: false, default: false
       add :maximum_public_order_quantity, :integer
