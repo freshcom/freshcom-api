@@ -1,7 +1,16 @@
 defmodule BlueJet.Storefront.OrderLineItem do
   use BlueJet, :data
 
-  use Trans, translates: [:name, :print_name, :description, :price_caption, :custom_data], container: :translations
+  use Trans, translates: [
+    :name,
+    :print_name,
+    :price_caption,
+    :caption,
+    :description,
+    :custom_data
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
@@ -21,13 +30,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   schema "order_line_items" do
     field :account_id, Ecto.UUID
+    field :code, :string
     field :name, :string
     field :label, :string
-    field :print_name, :string
-    field :description, :string
 
+    field :print_name, :string
     field :is_leaf, :boolean, default: true
-    field :is_estimate, :boolean, default: false
+    field :charge_quantity, :decimal
+    field :order_quantity, :integer, default: 1
 
     field :price_name, :string
     field :price_label, :string
@@ -44,16 +54,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :price_tax_three_percentage, :decimal
     field :price_end_time, Timex.Ecto.DateTime
 
-    field :charge_quantity, :decimal
-    field :order_quantity, :integer
-
     field :sub_total_cents, :integer
-    field :tax_one_cents, :integer
-    field :tax_two_cents, :integer
-    field :tax_three_cents, :integer
+    field :tax_one_cents, :integer, default: 0
+    field :tax_two_cents, :integer, default: 0
+    field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer
     field :authorization_toal_cents, :integer
+    field :is_estimate, :boolean, default: false
 
+    field :caption, :string
+    field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
@@ -69,10 +79,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
     has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  def source(account_id, source_id, "Stockable") do
+  def get_source(product, locale \\ nil)
+
+  def get_source(product = %{ source_id: source_id, source_type: "Stockable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_stockable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -80,10 +94,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
       {:error, _} -> nil
     end
   end
-  def source(account_id, source_id, "Unlockable") do
+
+  def get_source(product = %{ source_id: source_id, source_type: "Unlockable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -91,10 +108,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
       {:error, _} -> nil
     end
   end
-  def source(account_id, source_id, "Depositable") do
+
+  def get_source(product = %{ source_id: source_id, source_type: "Depositable" }, locale) do
+    account = get_account(product)
     response = Goods.do_get_depositable(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -102,10 +122,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
       {:error, _} -> nil
     end
   end
-  def source(account_id, source_id, "PointTransaction") do
+
+  def get_source(product = %{ source_id: source_id, source_type: "PointTransaction" }, locale) do
+    account = get_account(product)
     response = CRM.do_get_point_transaction(%AccessRequest{
-      vas: %{ account_id: account_id },
-      params: %{ "id" => source_id }
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
     })
 
     case response do
@@ -113,10 +136,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       {:error, _} -> nil
     end
   end
-  def source(_, _, _), do: nil
-  def source(%OrderLineItem{ account_id: account_id, source_id: source_id, source_type: source_type }) do
-    source(account_id, source_id, source_type)
-  end
+  def get_source(_, _), do: nil
 
   def system_fields do
     [
@@ -181,19 +201,28 @@ defmodule BlueJet.Storefront.OrderLineItem do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_is_leaf()
     |> put_name()
+    |> put_print_name()
     |> put_is_estimate()
     |> put_price_id()
     |> put_price_fields()
     |> put_charge_quantity()
     |> put_amount_fields()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  def put_print_name(changeset), do: changeset
 
   def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: _ } }) do
     put_change(changeset, :is_leaf, false)
@@ -314,7 +343,12 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp refresh_amount_fields(changeset = %Changeset{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }) do
     account_id = get_field(changeset, :account_id)
-    point_transaction = source(account_id, source_id, "PointTransaction")
+    point_transaction = get_source(%{
+      source_id: source_id,
+      source_type: "PointTransaction",
+      account_id: account_id,
+      account: nil
+    })
     sub_total_cents = point_transaction.amount
 
     changeset
@@ -383,14 +417,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:authorization_toal_cents, authorization_toal_cents)
   end
 
-  def root(query) do
-    from oli in query, where: is_nil(oli.parent_id)
-  end
-
-  def leaf(query) do
-    from oli in query, where: oli.is_leaf == true
-  end
-
   def balance!(struct = %OrderLineItem{ is_leaf: true, parent_id: nil }), do: struct
   def balance!(struct = %OrderLineItem{ is_leaf: true }) do
     parent = assoc(struct, :parent) |> Repo.one()
@@ -403,7 +429,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def balance!(struct), do: struct
   def balance_by_product(struct, product = %Product{ kind: kind }) when kind == "simple" or kind == "item" or kind == "variant" do
     source_order_quantity = product.source_quantity * struct.order_quantity
-    source = source(product.account_id, product.source_id, product.source_type)
+    source = get_source(product)
 
     # Product Variant should ever only have one child
     child = assoc(struct, :children) |> Repo.one()
@@ -470,24 +496,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     struct
   end
 
-  def query() do
-    from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
-  end
-  def query(:root) do
-    from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
-  end
-  def query(:is_leaf) do
-    from(oli in OrderLineItem, where: oli.is_leaf == true, order_by: [desc: oli.inserted_at])
-  end
-
-  def preload_keyword(:children) do
-    [children: query()]
-  end
-
-  def preload_keyword(:price) do
-    [price: query()]
-  end
-
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     changeset = Unlock.changeset(%Unlock{}, %{ account_id: line_item.account_id, unlockable_id: source_id, customer_id: customer.id })
     Repo.insert!(changeset)
@@ -533,14 +541,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defmodule Query do
     use BlueJet, :query
 
-    def preloads(:order) do
-      [order: Order]
+    def default() do
+      from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
     end
-    def preloads({:order, order_preloads}) do
+
+    def preloads({:order, order_preloads}, options) do
       [order: {Order.Query.default(), Order.Query.preloads(order_preloads)}]
     end
-    def preloads(:children) do
-      [children: OrderLineItem.Query.default()]
+
+    def preloads({:children, children_preloads}, options) do
+      [children: {OrderLineItem.Query.default(), OrderLineItem.Query.preloads(children_preloads, options)}]
     end
 
     def for_account(query, account_id) do
@@ -551,8 +561,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
       from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
     end
 
-    def default() do
-      from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
+    def root(query) do
+      from(oli in query, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
     end
 
     def with_order(query, filter) do

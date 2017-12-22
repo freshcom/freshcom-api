@@ -5,13 +5,14 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
     create table(:order_line_items, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
-
+      add :code, :string
       add :name, :string
-      add :print_name, :string
       add :label, :string
-      add :description, :text
 
+      add :print_name, :string
       add :is_leaf, :boolean, null: false, default: true
+      add :charge_quantity, :decimal, null: false
+      add :order_quantity, :integer, null: false
 
       add :price_name, :string
       add :price_label, :string
@@ -28,18 +29,16 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :price_estimate_by_default, :boolean
       add :price_end_time, :utc_datetime
 
-      add :charge_quantity, :decimal, null: false
-      add :order_quantity, :integer, null: false
-
       add :sub_total_cents, :integer, null: false
       add :tax_one_cents, :integer, null: false
       add :tax_two_cents, :integer, null: false
       add :tax_three_cents, :integer, null: false
       add :grand_total_cents, :integer, null: false
       add :authorization_toal_cents, :integer, null: false
-
       add :is_estimate, :boolean, null: false, default: false
 
+      add :caption, :string
+      add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
@@ -54,10 +53,10 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       timestamps()
     end
 
-    create index(:order_line_items, [:parent_id])
-    create index(:order_line_items, [:account_id])
-    create index(:order_line_items, [:order_id])
-    create index(:order_line_items, [:price_id])
-    create index(:order_line_items, [:product_id])
+    create index(:order_line_items, :parent_id)
+    create index(:order_line_items, :account_id)
+    create index(:order_line_items, :order_id)
+    create index(:order_line_items, :price_id)
+    create index(:order_line_items, :product_id)
   end
 end

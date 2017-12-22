@@ -6,20 +6,20 @@ defmodule BlueJetWeb.OrderLineItemController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
-      vas: assigns[:vas],
-      search: params["search"],
-      filter: assigns[:filter],
-      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
+  # def index(conn = %{ assigns: assigns }, params) do
+  #   request = %AccessRequest{
+  #     vas: assigns[:vas],
+  #     search: params["search"],
+  #     filter: assigns[:filter],
+  #     pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+  #     preloads: assigns[:preloads],
+  #     locale: assigns[:locale]
+  #   }
 
-    {:ok, %AccessResponse{ data: order_line_items, meta: meta }} = Storefront.list_order_line_item(request)
+  #   {:ok, %AccessResponse{ data: order_line_items, meta: meta }} = Storefront.list_order_line_item(request)
 
-    render(conn, "index.json-api", data: order_line_items, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-  end
+  #   render(conn, "index.json-api", data: order_line_items, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  # end
 
   def create(conn = %{ assigns: assigns }, %{ "order_id" => order_id, "data" => data = %{ "type" => "OrderLineItem" } }) do
     fields = Map.merge(Params.to_attributes(data), %{ "order_id" => order_id })

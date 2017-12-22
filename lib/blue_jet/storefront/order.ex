@@ -189,10 +189,12 @@ defmodule BlueJet.Storefront.Order do
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :first_name)
 
-    if first_name && last_name do
-      put_change(changeset, :name, "#{first_name} #{last_name}")
-    else
-      changeset
+    cond do
+      first_name && last_name ->
+        put_change(changeset, :name, "#{first_name} #{last_name}")
+
+      true ->
+        put_change(changeset, :name, nil)
     end
   end
 
@@ -204,7 +206,10 @@ defmodule BlueJet.Storefront.Order do
   defp put_opened_at(changeset), do: changeset
 
   defp changeset_for_balance(struct) do
-    query = Ecto.assoc(struct, :root_line_items) |> OrderLineItem.root()
+    query =
+      struct
+      |> Ecto.assoc(:root_line_items)
+      |> OrderLineItem.Query.root()
 
     sub_total_cents = Repo.aggregate(query, :sum, :sub_total_cents) || 0
     tax_one_cents = Repo.aggregate(query, :sum, :tax_one_cents) || 0

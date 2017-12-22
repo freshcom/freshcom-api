@@ -250,60 +250,64 @@ defmodule BlueJet.Storefront do
   # Order Line Item
   ####
   ######## NOT TESTED AND NOT USED ######
-  def list_order_line_item(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.list_order_line_item") do
-      do_list_order_line_item(%{ request | role: role })
+  # def list_order_line_item(request = %AccessRequest{ vas: vas }) do
+  #   with {:ok, role} <- Identity.authorize(vas, "storefront.list_order_line_item") do
+  #     do_list_order_line_item(%{ request | role: role })
+  #   else
+  #     {:error, _} -> {:error, :access_denied}
+  #   end
+  # end
+  # def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
+  #   {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
+
+  #   filter = Map.merge(filter, %{ customer_id: customer.id })
+  #   query =
+  #     OrderLineItem.Query.default()
+  #     |> filter_by(
+  #         label: filter[:label],
+  #         product_id: filter[:product_id],
+  #         source_id: filter[:source_id],
+  #         source_type: filter[:source_type],
+  #         is_leaf: filter[:is_leaf]
+  #        )
+  #     |> OrderLineItem.Query.for_account(vas[:account_id])
+  #     |> OrderLineItem.Query.with_order(
+  #         fulfillment_status: filter[:fulfillment_status],
+  #         customer_id: filter[:customer_id]
+  #        )
+
+  #   result_count = Repo.aggregate(query, :count, :id)
+  #   query = paginate(query, size: pagination[:size], number: pagination[:number])
+
+  #   order_line_items =
+  #     Repo.all(query)
+  #     |> Repo.preload(OrderLineItem.Query.preloads(request.preloads))
+  #     |> Translation.translate(request.locale)
+
+  #   response = %AccessResponse{
+  #     meta: %{
+  #       result_count: result_count,
+  #     },
+  #     data: order_line_items
+  #   }
+
+  #   {:ok, response}
+  # end
+
+  def create_order_line_item(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.create_order_line_item") do
+      request
+      |> do_create_order_line_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
-    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
 
-    filter = Map.merge(filter, %{ customer_id: customer.id })
-    query =
-      OrderLineItem.Query.default()
-      |> filter_by(
-          label: filter[:label],
-          product_id: filter[:product_id],
-          source_id: filter[:source_id],
-          source_type: filter[:source_type],
-          is_leaf: filter[:is_leaf]
-         )
-      |> OrderLineItem.Query.for_account(vas[:account_id])
-      |> OrderLineItem.Query.with_order(
-          fulfillment_status: filter[:fulfillment_status],
-          customer_id: filter[:customer_id]
-         )
+  def do_create_order_line_item(request = %{ account: account }) do
+    request = %{ request | locale: account.default_locale }
 
-    result_count = Repo.aggregate(query, :count, :id)
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
-    order_line_items =
-      Repo.all(query)
-      |> Repo.preload(OrderLineItem.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
-
-    response = %AccessResponse{
-      meta: %{
-        result_count: result_count,
-      },
-      data: order_line_items
-    }
-
-    {:ok, response}
-  end
-
-  def create_order_line_item(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.create_order_line_item") do
-      do_create_order_line_item(%{ request | role: role })
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-  def do_create_order_line_item(request = %AccessRequest{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-    changeset = OrderLineItem.changeset(%OrderLineItem{}, fields)
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
+    changeset = OrderLineItem.changeset(%OrderLineItem{}, fields, request.locale, account.default_locale)
 
     statements =
       Multi.new()

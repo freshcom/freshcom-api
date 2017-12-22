@@ -10,24 +10,6 @@ defmodule BlueJet.CRM do
   alias BlueJet.CRM.PointAccount
   alias BlueJet.CRM.PointTransaction
 
-  defmodule Shortcut do
-    alias BlueJet.CRM
-
-    def get_account(%{ account_id: account_id, account: nil }) do
-      response = CRM.get_account(%AccessRequest{
-        vas: %{ account_id: account_id }
-      })
-
-      case response do
-        {:ok, %{ data: account }} -> account
-
-        _ -> nil
-      end
-    end
-
-    def get_account(%{ account: account }), do: account
-  end
-
   def handle_event("balance.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
     customer = Repo.get!(Customer, customer_id)
     customer = Customer.preprocess(customer, payment_processor: "stripe")
