@@ -17,9 +17,12 @@ defmodule BlueJetWeb.UnlockController do
       locale: assigns[:locale]
     }
 
-   {:ok, %AccessResponse{ data: unlocks, meta: meta }} = Storefront.list_unlock(request)
+    case Storefront.list_unlock(request) do
+      {:ok, %{ data: unlocks, meta: meta }} ->
+        render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      other -> other
+    end
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
@@ -30,8 +33,11 @@ defmodule BlueJetWeb.UnlockController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: unlock }} = Storefront.get_unlock(request)
+    case Storefront.get_unlock(request) do
+      {:ok, %{ data: unlock, meta: meta }} ->
+        render(conn, "show.json-api", data: unlock, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-    render(conn, "show.json-api", data: unlock, opts: [include: conn.query_params["include"]])
+      other -> other
+    end
   end
 end

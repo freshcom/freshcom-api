@@ -70,10 +70,10 @@ defmodule BlueJet.CRM.PointAccount do
       from(pa in query, where: pa.account_id == ^account_id)
     end
 
-    def preloads(:transactions) do
-      [transactions: PointTransaction.Query.default()]
+    def preloads({:transactions, transaction_preloads}, options) do
+      [transactions: {PointTransaction.Query.default(), PointTransaction.Query.preloads(transaction_preloads, options)}]
     end
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
 

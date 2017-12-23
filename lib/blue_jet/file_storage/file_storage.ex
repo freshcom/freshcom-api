@@ -265,6 +265,7 @@ defmodule BlueJet.FileStorage do
       |> Repo.all()
       |> Repo.preload(preloads)
       |> Translation.translate(request.locale, account.default_locale)
+      |> ExternalFileCollection.put_file_urls()
 
     response = %AccessResponse{
       meta: %{
@@ -280,15 +281,16 @@ defmodule BlueJet.FileStorage do
 
   defp external_file_collection_response(nil, _), do: {:error, :not_found}
 
-  defp external_file_collection_response(external_file_collection, request = %{ account: account }) do
+  defp external_file_collection_response(efc, request = %{ account: account }) do
     preloads = ExternalFileCollection.Query.preloads(request.preloads, role: request.role)
 
-    external_file_collection =
-      external_file_collection
+    efc =
+      efc
       |> Repo.preload(preloads)
       |> Translation.translate(request.locale, account.default_locale)
+      |> ExternalFileCollection.put_file_urls()
 
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: external_file_collection }}
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: efc }}
   end
 
   def create_external_file_collection(request) do

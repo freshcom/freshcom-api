@@ -71,31 +71,40 @@ defmodule BlueJet.Storefront.Unlock do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def put_external_resources(unlock, :unlockable) do
+  def get_unlockable(%{ unlockable_id: nil }, _), do: nil
+  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }, options = %{ account: account, locale: locale }) do
     {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: unlock.account_id },
-      params: %{ "id" => unlock.unlockable_id }
+      account: account,
+      params: %{ "id" => unlockable_id },
+      locale: locale,
+      preloads: options[:preloads] || []
     })
 
-    %{ unlock | unlockable: unlockable }
+    unlockable
   end
-  def put_external_resources(unlock, {:unlockable, unlockable_preloads}) do
-    {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: unlock.account_id },
-      params: %{ "id" => unlock.unlockable_id },
-      preloads: [unlockable_preloads]
-    })
+  def get_unlockable(%{ unlockable: unlockable }, _), do: unlockable
 
-    %{ unlock | unlockable: unlockable }
-  end
-  def put_external_resources(unlock, :customer) do
+  def get_customer(%{ customer_id: nil }, _), do: nil
+  def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
-      vas: %{ account_id: unlock.account_id },
-      params: %{ "id" => unlock.customer_id }
+      account: account,
+      params: %{ "id" => customer_id },
+      locale: locale
     })
 
-    %{ unlock | customer: customer }
+    customer
   end
+  def get_customer(%{ customer: customer }, _), do: customer
+
+  def put_external_resources(unlock, {:unlockable, unlockable_preloads}, options) do
+    %{ unlock | unlockable: get_unlockable(unlock, Map.put(options, :preloads, unlockable_preloads)) }
+  end
+
+  def put_external_resources(unlock, {:customer, nil}, options) do
+    %{ unlock | customer: get_customer(unlock, options) }
+  end
+
+  def put_external_resources(order, _, _), do: order
 
   defmodule Query do
     use BlueJet, :query
@@ -104,7 +113,7 @@ defmodule BlueJet.Storefront.Unlock do
       from(u in query, where: u.account_id == ^account_id)
     end
 
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
 

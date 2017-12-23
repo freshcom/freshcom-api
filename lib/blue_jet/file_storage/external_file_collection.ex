@@ -63,6 +63,17 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     |> foreign_key_constraint(:account_id)
   end
 
+  def put_file_urls(efc, opts \\ [])
+
+  def put_file_urls(efcs, opts) when is_list(efcs) do
+    Enum.map(efcs, fn(efc) ->
+      put_file_urls(efc, opts)
+    end)
+  end
+
+  def put_file_urls(efc = %ExternalFileCollection{}, opts) do
+    Map.put(efc, :files, ExternalFile.put_url(efc.files, opts))
+  end
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """

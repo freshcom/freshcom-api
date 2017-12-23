@@ -7,6 +7,8 @@ defmodule BlueJet.DataTrading.DataImport do
 
   schema "data_imports" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "pending"
     field :data_url, :string
     field :data_type, :string

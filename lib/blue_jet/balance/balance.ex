@@ -4,8 +4,6 @@ defmodule BlueJet.Balance do
   alias Ecto.Changeset
   alias Ecto.Multi
 
-  alias BlueJet.Identity
-
   alias BlueJet.Balance.Payment
   alias BlueJet.Balance.Refund
   alias BlueJet.Balance.Card

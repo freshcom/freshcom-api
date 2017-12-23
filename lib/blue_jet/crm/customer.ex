@@ -51,7 +51,6 @@ defmodule BlueJet.CRM.Customer do
   def system_fields do
     [
       :id,
-      :user_id,
       :stripe_customer_id,
       :inserted_at,
       :updated_at

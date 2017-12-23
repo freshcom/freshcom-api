@@ -27,6 +27,7 @@ defmodule BlueJet.Catalogue do
       Product.Query.default()
       |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Product.translatable_fields())
       |> filter_by(status: filter[:status], kind: underscore(filter[:kind]), parent_id: filter[:parent_id])
+      |> Product.Query.in_collection(filter[:collection_id])
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Product.Query.for_account(account.id)
 
@@ -34,6 +35,7 @@ defmodule BlueJet.Catalogue do
     all_count =
       Product.Query.default()
       |> filter_by(parent_id: filter[:parent_id], status: counts[:all][:status])
+      |> Product.Query.in_collection(filter[:collection_id])
       |> Product.Query.for_account(account.id)
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Repo.aggregate(:count, :id)
@@ -403,25 +405,25 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  # def do_get_product_collection_membership(%{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
-  # def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
-  # def do_get_product_collection_membership(request = %{ vas: vas, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
-  #   membership =
-  #     ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(vas.account_id)
-  #     |> Repo.get_by(collection_id: collection_id, product_id: product_id)
+  def do_get_product_collection_membership(%{ params: %{ "collection_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(%{ params: %{ "product_id" => nil } }), do: {:error, :not_found}
+  def do_get_product_collection_membership(request = %{ account: account, params: %{ "collection_id" => collection_id, "product_id" => product_id } }) do
+    membership =
+      ProductCollectionMembership |> ProductCollectionMembership.Query.for_account(account.id)
+      |> Repo.get_by(collection_id: collection_id, product_id: product_id)
 
-  #   if membership do
-  #     membership =
-  #       membership
-  #       |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
-  #       |> Translation.translate(request.locale)
+    if membership do
+      membership =
+        membership
+        |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
+        |> Translation.translate(request.locale)
 
-  #     {:ok, %AccessResponse{ data: membership }}
-  #   else
-  #     {:error, :not_found}
-  #   end
-  # end
-  # def do_get_product_collection_membership(_), do: {:error, :not_found}
+      {:ok, %AccessResponse{ data: membership }}
+    else
+      {:error, :not_found}
+    end
+  end
+  def do_get_product_collection_membership(_), do: {:error, :not_found}
 
   def delete_product_collection_membership(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.delete_product_collection_membership") do
@@ -552,6 +554,15 @@ defmodule BlueJet.Catalogue do
       Price.Query.default()
       |> Price.Query.for_account(account.id)
       |> Repo.get(id)
+
+    price_response(price, request)
+  end
+
+  def do_get_price(request = %{ account: account, params: %{ "code" => code } }) do
+    price =
+      Price.Query.default()
+      |> Price.Query.for_account(account.id)
+      |> Repo.get_by(code: code)
 
     price_response(price, request)
   end

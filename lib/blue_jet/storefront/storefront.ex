@@ -5,7 +5,6 @@ defmodule BlueJet.Storefront do
   alias Ecto.Multi
 
   alias BlueJet.CRM
-  alias BlueJet.Identity
   alias BlueJet.Balance
 
   alias BlueJet.Storefront.Order
@@ -44,13 +43,12 @@ defmodule BlueJet.Storefront do
   ####
   # Order
   ####
-
-  def transform_order_request_by_role(request = %{ role: "customer" }) do
+  defp transform_order_request_by_role(request = %{ role: "customer" }) do
     {:ok, %{ data: customer }} = CRM.do_get_customer(request)
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 
-  def transform_order_request_by_role(request), do: request
+  defp transform_order_request_by_role(request), do: request
 
   def list_order(request) do
     with {:ok, request} <- preprocess_request(request, "storefront.list_order") do
@@ -446,38 +444,53 @@ defmodule BlueJet.Storefront do
   #
   # Unlock
   #
-  def list_unlock(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.list_unlock") do
-      do_list_unlock(%{ request | role: role })
+  defp transform_unlock_request_by_role(request = %{ role: "customer" }) do
+    {:ok, %{ data: customer }} = CRM.do_get_customer(request)
+    %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
+  end
+
+  defp transform_unlock_request_by_role(request), do: request
+
+  def list_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.list_unlock") do
+      request
+      |> transform_unlock_request_by_role()
+      |> do_list_unlock()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_list_unlock(request = %AccessRequest{ vas: %{ account_id: account_id }, filter: filter, pagination: pagination }) do
-    query =
+
+  def do_list_unlock(request = %{ account: account, filter: filter, pagination: pagination }) do
+    data_query =
       Unlock.Query.default()
       |> filter_by(
           customer_id: filter[:customer_id],
           unlockable_id: filter[:unlockable_id]
         )
-      |> Unlock.Query.for_account(account_id)
-    result_count = Repo.aggregate(query, :count, :id)
+      |> Unlock.Query.for_account(account.id)
 
-    total_query = Unlock |> Unlock.Query.for_account(account_id)
-    total_count = Repo.aggregate(total_query, :count, :id)
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      Unlock
+      |> filter_by(customer_id: filter[:customer_id])
+      |> Unlock.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
 
-    query = paginate(query, size: pagination[:size], number: pagination[:number])
-
+    preloads = Unlock.Query.preloads(request.preloads, role: request.role)
     unlocks =
-      Repo.all(query)
-      |> Repo.preload(Unlock.Query.preloads(request.preloads))
-      |> Unlock.put_external_resources(request.preloads)
-      |> Translation.translate(request.locale)
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        total_count: total_count,
-        result_count: result_count,
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
       },
       data: unlocks
     }
@@ -486,24 +499,33 @@ defmodule BlueJet.Storefront do
   end
 
   # TODO: If customer should scope by customer
-  def get_unlock(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "storefront.get_unlock") do
-      do_get_unlock(%{ request | role: role })
+  def get_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.get_unlock") do
+      request
+      |> transform_unlock_request_by_role()
+      |> do_get_unlock()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_get_unlock(request = %AccessRequest{ vas: vas, params: %{ "id" => id } }) do
-    unlock = Unlock |> Unlock.Query.for_account(vas[:account_id]) |> Repo.get(id)
+
+  def do_get_unlock(request = %{ account: account, filter: filter, params: %{ "id" => id } }) do
+    unlock =
+      Unlock.Query.default()
+      |> filter_by(customer_id: filter[:customer_id])
+      |> Unlock.Query.for_account(account.id)
+      |> Repo.get(id)
 
     if unlock do
+      preloads = Unlock.Query.preloads(request.preloads, role: request.role)
+
       unlock =
         unlock
-        |> Repo.preload(Unlock.Query.preloads(request.preloads))
-        |> Unlock.put_external_resources(request.preloads)
-        |> Translation.translate(request.locale)
+        |> Repo.preload(preloads)
+        |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+        |> Translation.translate(request.locale, account.default_locale)
 
-      {:ok, %AccessResponse{ data: unlock }}
+      {:ok, %AccessResponse{ data: unlock, meta: %{ locale: request.locale } }}
     else
       {:error, :not_found}
     end

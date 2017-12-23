@@ -259,7 +259,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ price_id: _ } }), do: changeset
   def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
-    order_quantity = get_change(changeset, :order_quantity)
+    order_quantity = get_field(changeset, :order_quantity)
     price = Price.query_for(product_id: product_id, order_quantity: order_quantity) |> Repo.one()
     put_change(changeset, :price_id, price.id)
   end

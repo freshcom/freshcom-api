@@ -235,7 +235,7 @@ defmodule BlueJet.CRM do
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
           fields = if user do
-            Map.merge(request.fields, %{ "user_id" => user.id, "account_id" => vas[:account_id] })
+            Map.merge(request.fields, %{ "user_id" => user.id, "account_id" => account.id })
           else
             request.fields
           end

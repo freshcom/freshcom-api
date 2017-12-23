@@ -12,8 +12,6 @@ defmodule BlueJet.Balance.Refund do
   alias Decimal, as: D
   alias Ecto.Changeset
 
-  alias BlueJet.AccessRequest
-  alias BlueJet.Identity
   alias BlueJet.Translation
 
   alias BlueJet.Balance.Refund
@@ -86,7 +84,7 @@ defmodule BlueJet.Balance.Refund do
     case gateway do
       "online" -> common ++ [:processor]
       "offline" -> common ++ [:method]
-      other -> common
+      _ -> common
     end
   end
 

@@ -1,25 +1,27 @@
 defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
-  alias BlueJet.Identity
   alias BlueJet.CRM
   alias BlueJet.Goods
   alias BlueJet.Catalogue
 
   alias BlueJet.DataTrading.DataImport
 
-  def create_data_import(request = %AccessRequest{ vas: vas }) do
-    with {:ok, role} <- Identity.authorize(vas, "data_trading.create_data_import") do
-      do_create_data_import(%{ request | role: role })
+  def create_data_import(request) do
+    with {:ok, request} <- preprocess_request(request, "data_trading.create_data_import") do
+      request
+      |> do_create_data_import()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
-  def do_create_data_import(request = %{ vas: vas }) do
-    fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id], "customer_id" => vas[:customer_id] || request.fields["customer_id"] })
+
+  def do_create_data_import(request = %{ account: account }) do
+    fields = Map.merge(request.fields, %{ "account_id" => account.id })
     changeset = DataImport.changeset(%DataImport{}, fields)
 
     with {:ok, data_import} <- Repo.insert(changeset) do
+      data_import = %{ data_import | account: account }
       Task.start(fn ->
         import_data(data_import)
       end)
@@ -39,15 +41,15 @@ defmodule BlueJet.DataTrading do
       |> Stream.chunk_every(100)
       |> Enum.each(fn(chunk) ->
           Enum.each(chunk, fn({:ok, row}) ->
-           import_resource(row, import_data.account_id, data_type)
+           import_resource(row, import_data.account, data_type)
           end)
          end)
     end)
   end
 
-  def import_resource(row, account_id, "Customer") do
-    enroller_id = extract_customer_id(row, account_id, "enroller")
-    sponsor_id = extract_customer_id(row, account_id, "sponsor")
+  def import_resource(row, account, "Customer") do
+    enroller_id = extract_customer_id(row, account, "enroller")
+    sponsor_id = extract_customer_id(row, account, "sponsor")
 
     fields =
       merge_custom_data(row, row["custom_data"])
@@ -56,55 +58,54 @@ defmodule BlueJet.DataTrading do
           "enroller_id" => enroller_id
         })
 
-    customer = get_customer(row, account_id)
+    customer = get_customer(row, account)
     case customer do
       nil ->
         {:ok, _} = CRM.do_create_customer(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           fields: fields
         })
       customer ->
         {:ok, _} = CRM.do_update_customer(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           params: %{ "id" => customer.id },
           fields: fields
         })
     end
   end
-  def import_resource(row, account_id, "Unlockable") do
+  def import_resource(row, account, "Unlockable") do
     fields = merge_custom_data(row, row["custom_data"])
-    {:ok, %{ data: account }} = Identity.do_get_account(%AccessRequest{ vas: %{ account_id: account_id } })
 
-    unlockable = get_unlockable(row, account_id)
+    unlockable = get_unlockable(row, account)
     case unlockable do
       nil ->
         {:ok, _} = Goods.do_create_unlockable(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           fields: fields
         })
       unlockable ->
         {:ok, _} = Goods.do_update_unlockable(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           params: %{ "id" => unlockable.id },
           fields: fields,
           locale: account.default_locale
         })
     end
   end
-  def import_resource(row, account_id, "Product") do
-    source_id = extract_product_source_id(row, account_id)
-    collection_id = extract_product_collection_id(row, account_id, "collection")
+  def import_resource(row, account, "Product") do
+    source_id = extract_product_source_id(row, account)
+    collection_id = extract_product_collection_id(row, account, "collection")
 
     fields =
       merge_custom_data(row, row["custom_data"])
       |> Map.merge(%{ "source_id" => source_id })
 
     product =
-      get_product(row, account_id)
-      |> update_or_create_product(account_id, fields)
+      get_product(row, account)
+      |> update_or_create_product(account, fields)
 
     result = Catalogue.do_get_product_collection_membership(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "collection_id" => collection_id, "product_id" => product.id }
     })
 
@@ -112,28 +113,28 @@ defmodule BlueJet.DataTrading do
       {:ok, response} -> {:ok, response}
       {:error, :not_found} ->
         Catalogue.do_create_product_collection_membership(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           fields: %{ "product_id" => product.id, "collection_id" => collection_id, "sort_index" => row["collection_sort_index"] }
         })
     end
   end
-  def import_resource(row, account_id, "Price") do
-    product_id = extract_product_id(row, account_id, "product")
+  def import_resource(row, account, "Price") do
+    product_id = extract_product_id(row, account, "product")
 
     fields =
       merge_custom_data(row, row["custom_data"])
       |> Map.merge(%{ "product_id" => product_id })
 
-    get_price(row, account_id)
-    |> update_or_create_price(account_id, fields)
+    get_price(row, account)
+    |> update_or_create_price(account, fields)
   end
 
   defp extract_product_source_id(%{ "source_id" => source_id }, _) when byte_size(source_id) > 0 do
     source_id
   end
-  defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account_id) when byte_size(code) > 0 do
+  defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account) when byte_size(code) > 0 do
     result = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "code" => code }
     })
 
@@ -149,7 +150,7 @@ defmodule BlueJet.DataTrading do
   defp rel_code_key(nil), do: "code"
   defp rel_code_key(rel_name), do: "#{rel_name}_code"
 
-  defp extract_customer_id(row, account_id, rel_name) do
+  defp extract_customer_id(row, account, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -157,7 +158,7 @@ defmodule BlueJet.DataTrading do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
         result = CRM.do_get_customer(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           params: %{ "code" => row[code_key] }
         })
 
@@ -169,7 +170,7 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp extract_product_id(row, account_id, rel_name) do
+  defp extract_product_id(row, account, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -177,7 +178,7 @@ defmodule BlueJet.DataTrading do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
         result = Catalogue.do_get_product(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           params: %{ "code" => row[code_key] }
         })
 
@@ -189,7 +190,7 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp extract_product_collection_id(row, account_id, rel_name) do
+  defp extract_product_collection_id(row, account, rel_name) do
     id_key = rel_id_key(rel_name)
     code_key = rel_code_key(rel_name)
 
@@ -197,7 +198,7 @@ defmodule BlueJet.DataTrading do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
         result = Catalogue.do_get_product_collection(%AccessRequest{
-          vas: %{ account_id: account_id },
+          account: account,
           params: %{ "code" => row[code_key] }
         })
 
@@ -209,17 +210,17 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp get_customer(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+  defp get_customer(%{ "id" => id }, account) when byte_size(id) > 0 do
     {:ok, %{ data: customer}} = CRM.do_get_customer(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => id }
     })
 
     customer
   end
-  defp get_customer(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+  defp get_customer(%{ "code" => code }, account) when byte_size(code) > 0 do
     result = CRM.do_get_customer(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "code" => code }
     })
 
@@ -230,17 +231,17 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp get_unlockable(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+  defp get_unlockable(%{ "id" => id }, account) when byte_size(id) > 0 do
     {:ok, %{ data: unlockable}} = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => id }
     })
 
     unlockable
   end
-  defp get_unlockable(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+  defp get_unlockable(%{ "code" => code }, account) when byte_size(code) > 0 do
     result = Goods.do_get_unlockable(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "code" => code }
     })
 
@@ -251,17 +252,17 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp get_product(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+  defp get_product(%{ "id" => id }, account) when byte_size(id) > 0 do
     {:ok, %{ data: product}} = Catalogue.do_get_product(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => id }
     })
 
     product
   end
-  defp get_product(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+  defp get_product(%{ "code" => code }, account) when byte_size(code) > 0 do
     result = Catalogue.do_get_product(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "code" => code }
     })
 
@@ -272,17 +273,17 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp get_price(%{ "id" => id }, account_id) when byte_size(id) > 0 do
+  defp get_price(%{ "id" => id }, account) when byte_size(id) > 0 do
     {:ok, %{ data: price}} = Catalogue.do_get_price(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => id }
     })
 
     price
   end
-  defp get_price(%{ "code" => code }, account_id) when byte_size(code) > 0 do
+  defp get_price(%{ "code" => code }, account) when byte_size(code) > 0 do
     result = Catalogue.do_get_price(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "code" => code }
     })
 
@@ -293,32 +294,32 @@ defmodule BlueJet.DataTrading do
     end
   end
 
-  defp update_or_create_product(nil, account_id, fields) do
+  defp update_or_create_product(nil, account, fields) do
     {:ok, %{ data: product }} = Catalogue.do_create_product(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       fields: fields
     })
     product
   end
-  defp update_or_create_product(product, account_id, fields) do
+  defp update_or_create_product(product, account, fields) do
     {:ok, %{ data: product }} = Catalogue.do_update_product(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => product.id },
       fields: fields
     })
     product
   end
 
-  defp update_or_create_price(nil, account_id, fields) do
+  defp update_or_create_price(nil, account, fields) do
     {:ok, %{ data: price }} = Catalogue.do_create_price(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       fields: fields
     })
     price
   end
-  defp update_or_create_price(price, account_id, fields) do
+  defp update_or_create_price(price, account, fields) do
     {:ok, %{ data: price }} = Catalogue.do_update_price(%AccessRequest{
-      vas: %{ account_id: account_id },
+      account: account,
       params: %{ "id" => price.id },
       fields: fields
     })

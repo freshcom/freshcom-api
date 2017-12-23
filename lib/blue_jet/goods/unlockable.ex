@@ -108,7 +108,7 @@ defmodule BlueJet.Goods.Unlockable do
       from(u in query, where: u.account_id == ^account_id)
     end
 
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
   end

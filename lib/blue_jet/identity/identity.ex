@@ -188,7 +188,11 @@ defmodule BlueJet.Identity do
   end
 
   def do_get_account(request = %{ account: account }) do
-    account = Translation.translate(account, request.locale, account.default_locale)
+    account =
+      account
+      |> Translation.translate(request.locale, account.default_locale)
+      |> Account.put_test_account_id()
+
     {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
   end
 

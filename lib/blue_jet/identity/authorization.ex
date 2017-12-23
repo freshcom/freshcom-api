@@ -129,6 +129,7 @@ defmodule BlueJet.Identity.Authorization do
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
 
+      "catalogue.list_product",
       "catalogue.get_product",
       "catalogue.list_product_item",
       "catalogue.get_product_item",

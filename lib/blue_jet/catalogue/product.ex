@@ -28,6 +28,7 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.ProductCollectionMembership
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -323,8 +324,20 @@ defmodule BlueJet.Catalogue.Product do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from p in Product
+    end
+
     def for_account(query, account_id) do
       from(p in query, where: p.account_id == ^account_id)
+    end
+
+    def in_collection(query, nil), do: query
+    def in_collection(query, collection_id) do
+      from p in query,
+        join: pcm in ProductCollectionMembership, on: pcm.product_id == p.id,
+        where: pcm.collection_id == ^collection_id,
+        order_by: [desc: pcm.sort_index]
     end
 
     def variant_default() do
@@ -376,10 +389,6 @@ defmodule BlueJet.Catalogue.Product do
 
     def root(query) do
       from(p in query, where: is_nil(p.parent_id))
-    end
-
-    def default() do
-      from(p in Product, order_by: [desc: :updated_at])
     end
 
     def active(query) do

@@ -94,9 +94,19 @@ defmodule BlueJet.FileStorage.ExternalFile do
     "#{prefix}/ExternalFile/#{id}/#{name}"
   end
 
-  def put_url(struct, opts \\ []) do
+  def put_url(structs, opts \\ [])
+
+  def put_url(structs, opts) when is_list(structs) do
+    Enum.map(structs, fn(ef) ->
+      put_url(ef, opts)
+    end)
+  end
+
+  def put_url(struct = %ExternalFile{}, opts) do
     %{ struct | url: url(struct, opts) }
   end
+
+  def put_url(struct, _), do: struct
 
   def url(struct, opts \\ []) do
     s3_key = key(struct)
