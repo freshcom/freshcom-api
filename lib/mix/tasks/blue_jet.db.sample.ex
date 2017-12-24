@@ -9,9 +9,9 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
   """
 
   def run(args) do
-    Mix.Tasks.Ecto.Drop.run(args)
-    Mix.Tasks.Ecto.Create.run(args)
-    Mix.Tasks.Ecto.Migrate.run(args)
+    # Mix.Tasks.Ecto.Drop.run(args)
+    # Mix.Tasks.Ecto.Create.run(args)
+    # Mix.Tasks.Ecto.Migrate.run(args)
 
     alias BlueJet.Repo
     alias BlueJet.Goods.Stockable
