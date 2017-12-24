@@ -18,10 +18,12 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
     field :label, :string
 
+    field :quantity, :integer
     field :print_name, :string
 
     field :caption, :string

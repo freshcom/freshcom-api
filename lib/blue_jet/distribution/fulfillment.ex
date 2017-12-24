@@ -21,7 +21,6 @@ defmodule BlueJet.Distribution.Fulfillment do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
     field :label, :string
@@ -68,7 +67,7 @@ defmodule BlueJet.Distribution.Fulfillment do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:status, :source_id, :source_type, :account_id])
+    |> validate_required([:source_id, :source_type, :account_id])
     |> foreign_key_constraint(:account_id)
   end
 
@@ -92,6 +91,8 @@ defmodule BlueJet.Distribution.Fulfillment do
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
     owner_type: "Fulfillment"
+
+  def put_external_resources(fulfillment, _, _), do: fulfillment
 
   defmodule Query do
     use BlueJet, :query

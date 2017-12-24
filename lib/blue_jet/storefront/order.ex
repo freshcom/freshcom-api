@@ -71,7 +71,7 @@ defmodule BlueJet.Storefront.Order do
     field :tax_two_cents, :integer, default: 0
     field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer, default: 0
-    field :authorization_toal_cents, :integer, default: 0
+    field :authorization_total_cents, :integer, default: 0
     field :is_estimate, :boolean, default: false
 
     field :delivery_address_line_one, :string
@@ -247,7 +247,7 @@ defmodule BlueJet.Storefront.Order do
     tax_two_cents = Repo.aggregate(query, :sum, :tax_two_cents) || 0
     tax_three_cents = Repo.aggregate(query, :sum, :tax_three_cents) || 0
     grand_total_cents = Repo.aggregate(query, :sum, :grand_total_cents) || 0
-    authorization_toal_cents = Repo.aggregate(query, :sum, :authorization_toal_cents) || 0
+    authorization_total_cents = Repo.aggregate(query, :sum, :authorization_total_cents) || 0
 
     root_line_items = Repo.all(query)
     estimate_count = Enum.reduce(root_line_items, 0, fn(item, acc) ->
@@ -271,7 +271,7 @@ defmodule BlueJet.Storefront.Order do
       tax_two_cents: tax_two_cents,
       tax_three_cents: tax_three_cents,
       grand_total_cents: grand_total_cents,
-      authorization_toal_cents: authorization_toal_cents,
+      authorization_total_cents: authorization_total_cents,
       is_estimate: is_estimate
     )
   end
@@ -311,11 +311,74 @@ defmodule BlueJet.Storefront.Order do
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
       total_paid_amount_cents > 0 -> "partially_paid"
-      total_authorized_amount_cents >= order.authorization_toal_cents -> "authorized"
+      total_authorized_amount_cents >= order.authorization_total_cents -> "authorized"
       total_authorized_amount_cents > 0 -> "partially_authorized"
       true -> "pending"
     end
   end
+
+  # def refresh_fulfillment_status(order) do
+  #   order
+  #   |> Changeset.change(fulfillment_status: get_fulfillment_status(order))
+  #   |> Repo.update!()
+  # end
+  # defp get_fulfillment_status(order) do
+  #   fulfillable_olis =
+  #     OrderLineItem
+  #     |> OrderLineItem.Query.for_order(order.id)
+  #     |> OrderLineItem.Query.fulfillable()
+  #     |> Repo.all()
+
+  #   total_fulfillable_quantity = Enum.reduce(fulfillable_olis, 0, fn(oli, acc) ->
+  #     acc + oli.order_quantity
+  #   end)
+
+  #   account = get_account(order)
+  #   {:ok, %{ data: fulfillments }} = Distribution.do_list_fulfillment(%AccessRequest{
+  #     account: account,
+  #     filter: %{ source_id: order.id, source_type: "Order" },
+  #     preloads: [:line_items],
+  #     pagination: %{ size: 1000, number: 1 }
+  #   })
+
+  #   fulfilled_quantities =
+  #     fulfillments
+  #     |> Enum.map(fn(fulfillment) -> fulfillment.line_items end)
+  #     |> List.flatten()
+  #     |> Enum.reduce(%{}, fn(fli, acc) ->
+  #         case fli.status do
+  #           "fulfilled" ->
+  #             already_fulfilled_quantity = acc[fli.source_id] || 0
+  #             Map.put(acc, fli.source_id, already_fulfilled_quantity + fli.quantity)
+
+  #            _ -> acc
+  #         end
+  #        end)
+
+  #   pending_quantities = Enum.reduce(fulfillable_olis, %{}, fn(oli, acc) ->
+  #     fulfilled_quantity = fulfilled_quantities[oli.id] || 0
+
+  #     cond do
+  #       (oli.order_quantity - fulfilled_quantity) > 0 ->
+  #         Map.put(acc, oli.id, oli.order_quantity - fulfilled_quantity)
+
+  #       true -> acc
+  #     end
+  #   end)
+
+  #   total_pending_quantities =
+  #     pending_quantities
+  #     |> Map.values()
+  #     |> Enum.sum()
+
+  #   cond do
+  #     map_size(pending_quantities) == 0 -> "fulfilled"
+
+  #     total_fulfillable_quantity >= total_pending_quantities -> "pending"
+
+  #     total_pending_quantities < total_fulfillable_quantity -> "partially_fulfilled"
+  #   end
+  # end
 
   def leaf_line_items(struct) do
     Ecto.assoc(struct, :line_items)
@@ -382,6 +445,8 @@ defmodule BlueJet.Storefront.Order do
     # Process auto fulfill
     process_auto_fulfill(order)
 
+    refresh_fulfillment_status(order)
+
     {:ok, order}
   end
   def process(order, _), do: {:ok, order}
@@ -405,24 +470,64 @@ defmodule BlueJet.Storefront.Order do
           account: account,
           fields: %{
             "source_id" => order.id,
-            "source_type" => "Order",
-            "status" => "fulfilled"
+            "source_type" => "Order"
           }
         })
 
         Enum.each(af_line_items, fn(line_item) ->
-          IO.inspect line_item.source_type
+          translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
+
           {:ok, %{ data: _ }} = Distribution.do_create_fulfillment_line_item(%AccessRequest{
             account: account,
             fields: %{
               "fulfillment_id" => fulfillment.id,
+              "name" => line_item.name,
+              "status" => "fulfilled",
+              "quantity" => line_item.order_quantity,
               "source_id" => line_item.id,
               "source_type" => "OrderLineItem",
               "goods_id" => line_item.source_id,
-              "goods_type" => line_item.source_type
+              "goods_type" => line_item.source_type,
+              "translations" => translations
             }
           })
         end)
+    end
+  end
+
+  def refresh_fulfillment_status(order) do
+    order
+    |> Changeset.change(fulfillment_status: get_fulfillment_status(order))
+    |> Repo.update!()
+  end
+
+  def get_fulfillment_status(order) do
+    root_line_items =
+      OrderLineItem
+      |> OrderLineItem.Query.for_order(order.id)
+      |> OrderLineItem.Query.root()
+      |> Repo.all()
+
+    fulfillable_quantity = length(root_line_items)
+    fulfilled_quantity =
+      root_line_items
+      |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "fulfilled" end)
+      |> length()
+    returned_quantity =
+      root_line_items
+      |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "returned" end)
+      |> length()
+
+    cond do
+      returned_quantity >= fulfillable_quantity -> "returned"
+
+      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+
+      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+
+      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+
+      true -> "pending"
     end
   end
 

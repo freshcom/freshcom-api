@@ -23,7 +23,7 @@ defmodule BlueJetWeb.OrderView do
     :tax_two_cents,
     :tax_three_cents,
     :grand_total_cents,
-    :authorization_toal_cents,
+    :authorization_total_cents,
     :is_estimate,
 
     :delivery_address_line_one,

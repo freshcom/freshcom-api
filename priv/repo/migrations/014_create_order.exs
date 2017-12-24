@@ -25,7 +25,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :tax_two_cents, :integer, null: false, default: 0
       add :tax_three_cents, :integer, null: false, default: 0
       add :grand_total_cents, :integer, null: false, default: 0
-      add :authorization_toal_cents, :integer, null: false, default: 0
+      add :authorization_total_cents, :integer, null: false, default: 0
       add :is_estimate, :boolean, null: false, default: false
 
       add :delivery_address_line_one, :string

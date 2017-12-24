@@ -7,6 +7,8 @@ defmodule BlueJetWeb.OrderLineItemView do
     :name,
     :label,
 
+    :fulfillment_status,
+
     :print_name,
     :is_leaf,
     :order_quantity,

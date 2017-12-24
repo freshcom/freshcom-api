@@ -17,6 +17,10 @@ defmodule BlueJet.Storefront.Unlock do
 
     field :account_id, Ecto.UUID
 
+    field :source_id, Ecto.UUID
+    field :source_type, :string
+    field :source, :map, virtual: true
+
     field :unlockable_id, Ecto.UUID
     field :unlockable, :map, virtual: true
 

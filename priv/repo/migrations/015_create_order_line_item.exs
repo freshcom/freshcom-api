@@ -9,6 +9,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :name, :string
       add :label, :string
 
+      add :fulfillment_status, :string, null: false
+
       add :print_name, :string
       add :is_leaf, :boolean, null: false, default: true
       add :charge_quantity, :decimal, null: false
@@ -34,7 +36,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :tax_two_cents, :integer, null: false
       add :tax_three_cents, :integer, null: false
       add :grand_total_cents, :integer, null: false
-      add :authorization_toal_cents, :integer, null: false
+      add :authorization_total_cents, :integer, null: false
       add :is_estimate, :boolean, null: false, default: false
       add :auto_fulfill, :boolean, null: false
 

@@ -3,11 +3,13 @@ defmodule BlueJetWeb.FulfillmentLineItemView do
   use JaSerializer.PhoenixView
 
   attributes [
+    :status,
     :code,
     :name,
     :label,
 
     :print_name,
+    :quantity,
 
     :caption,
     :description,

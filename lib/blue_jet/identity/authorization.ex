@@ -277,7 +277,12 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.create_fulfillment",
       "distribution.show_fulfillment",
       "distribution.update_fulfillment",
-      "distribution.delete_fulfillment"
+      "distribution.delete_fulfillment",
+      "distribution.list_fulfillment_line_item",
+      "distribution.create_fulfillment_line_item",
+      "distribution.show_fulfillment_line_item",
+      "distribution.update_fulfillment_line_item",
+      "distribution.delete_fulfillment_line_item"
     ],
 
     "developer" => [
@@ -364,7 +369,12 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.create_fulfillment",
       "distribution.show_fulfillment",
       "distribution.update_fulfillment",
-      "distribution.delete_fulfillment"
+      "distribution.delete_fulfillment",
+      "distribution.list_fulfillment_line_item",
+      "distribution.create_fulfillment_line_item",
+      "distribution.show_fulfillment_line_item",
+      "distribution.update_fulfillment_line_item",
+      "distribution.delete_fulfillment_line_item"
     ],
 
     "administrator" => [
@@ -457,6 +467,11 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.show_fulfillment",
       "distribution.update_fulfillment",
       "distribution.delete_fulfillment",
+      "distribution.list_fulfillment_line_item",
+      "distribution.create_fulfillment_line_item",
+      "distribution.show_fulfillment_line_item",
+      "distribution.update_fulfillment_line_item",
+      "distribution.delete_fulfillment_line_item",
 
       "data_trading.create_data_import"
     ]

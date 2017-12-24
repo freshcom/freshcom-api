@@ -59,6 +59,10 @@ config :blue_jet, :identity, %{
   listeners: [BlueJet.Balance]
 }
 
+config :blue_jet, :distribution, %{
+  listeners: [BlueJet.Storefront]
+}
+
 config :ex_aws, region: System.get_env("AWS_REGION")
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")

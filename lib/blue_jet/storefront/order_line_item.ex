@@ -21,6 +21,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   alias BlueJet.Goods
   alias BlueJet.CRM
+  alias BlueJet.Distribution
 
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
@@ -36,6 +37,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :code, :string
     field :name, :string
     field :label, :string
+
+    field :fulfillment_status, :string, default: "pending"
 
     field :print_name, :string
     field :is_leaf, :boolean, default: true
@@ -62,7 +65,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :tax_two_cents, :integer, default: 0
     field :tax_three_cents, :integer, default: 0
     field :grand_total_cents, :integer
-    field :authorization_toal_cents, :integer
+    field :authorization_total_cents, :integer
     field :is_estimate, :boolean, default: false
     field :auto_fulfill, :boolean
 
@@ -369,7 +372,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:tax_two_cents, 0)
     |> put_change(:tax_three_cents, 0)
     |> put_change(:grand_total_cents, sub_total_cents)
-    |> put_change(:authorization_toal_cents, sub_total_cents)
+    |> put_change(:authorization_total_cents, sub_total_cents)
   end
   defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
@@ -380,7 +383,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     changeset
     |> put_change(:grand_total_cents, grand_total_cents)
-    |> put_change(:authorization_toal_cents, grand_total_cents)
+    |> put_change(:authorization_total_cents, grand_total_cents)
   end
   defp refresh_amount_fields(changeset, :with_price) do
     charge_quantity = get_field(changeset, :charge_quantity)
@@ -403,7 +406,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
 
-    authorization_toal_cents = if is_estimate do
+    authorization_total_cents = if is_estimate do
       order_quantity = get_field(changeset, :order_quantity)
 
       price_estimate_maximum_percentage = D.new(get_field(changeset, :price_estimate_maximum_percentage))
@@ -426,7 +429,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:tax_two_cents, tax_two_cents)
     |> put_change(:tax_three_cents, tax_three_cents)
     |> put_change(:grand_total_cents, grand_total_cents)
-    |> put_change(:authorization_toal_cents, authorization_toal_cents)
+    |> put_change(:authorization_total_cents, authorization_total_cents)
   end
 
   def balance!(struct = %OrderLineItem{ is_leaf: true, parent_id: nil }), do: struct
@@ -461,7 +464,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       tax_two_cents: struct.tax_two_cents,
       tax_three_cents: struct.tax_three_cents,
       grand_total_cents: struct.grand_total_cents,
-      authorization_toal_cents: struct.authorization_toal_cents,
+      authorization_total_cents: struct.authorization_total_cents,
       translations: Translation.merge_translations(%{}, source.translations, ["name"])
     }
 
@@ -511,8 +514,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
-    changeset = Unlock.changeset(%Unlock{}, %{ account_id: line_item.account_id, unlockable_id: source_id, customer_id: customer.id })
-    Repo.insert!(changeset)
+    %Unlock{ account_id: line_item.account_id }
+    |> Changeset.change(%{
+        unlockable_id: source_id,
+        customer_id: customer.id,
+        source_id: line_item.id,
+        source_type: "OrderLineItem"
+       })
+    |> Repo.insert!()
   end
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
@@ -552,6 +561,88 @@ defmodule BlueJet.Storefront.OrderLineItem do
     {:ok, line_item}
   end
 
+  def refresh_fulfillment_status(oli) do
+    oli
+    |> Changeset.change(fulfillment_status: get_fulfillment_status(oli))
+    |> Repo.update!()
+
+    if oli.parent_id do
+      assoc(oli, :parent)
+      |> Repo.one()
+      |> refresh_fulfillment_status()
+
+      oli
+    else
+      assoc(oli, :order)
+      |> Repo.one()
+      |> Order.refresh_fulfillment_status()
+    end
+  end
+
+  def get_fulfillment_status(%{ grant_total_cents: grand_total_cents }) when grand_total_cents < 0 do
+    "fulfilled"
+  end
+
+  def get_fulfillment_status(oli = %{ is_leaf: true }) do
+    account = get_account(oli)
+    {:ok, %{ data: flis }} = Distribution.do_list_fulfillment_line_item(%AccessRequest{
+      account: account,
+      filter: %{ source_id: oli.id, source_type: "OrderLineItem" },
+      pagination: %{ size: 1000, number: 1 }
+    })
+
+    fulfillable_quantity = oli.order_quantity
+    fulfilled_quantity =
+      flis
+      |> Enum.filter(fn(fli) -> fli.status == "fulfilled" end)
+      |> Enum.map(fn(fli) -> fli.quantity end)
+      |> Enum.sum()
+
+    returned_quantity =
+      flis
+      |> Enum.filter(fn(fli) -> fli.status == "returned" end)
+      |> Enum.map(fn(fli) -> fli.quantity end)
+      |> Enum.sum()
+
+    cond do
+      returned_quantity >= fulfillable_quantity -> "returned"
+
+      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+
+      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+
+      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+
+      true -> "pending"
+    end
+  end
+
+  def get_fulfillment_status(oli) do
+    children = assoc(oli, :children) |> Repo.all()
+
+    fulfillable_quantity = length(children)
+    fulfilled_quantity =
+      children
+      |> Enum.filter(fn(child) -> child.fulfillment_status == "fulfilled" end)
+      |> length()
+    returned_quantity =
+      children
+      |> Enum.filter(fn(child) -> child.fulfillment_status == "returned" end)
+      |> length()
+
+    cond do
+      returned_quantity >= fulfillable_quantity -> "returned"
+
+      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+
+      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+
+      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+
+      true -> "pending"
+    end
+  end
+
   defmodule Query do
     use BlueJet, :query
 
@@ -569,6 +660,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     def with_positive_amount(query) do
       from oli in query, where: oli.grand_total_cents >= 0
+    end
+
+    def id_only(query) do
+      from oli in query, select: oli.id
+    end
+
+    def fulfillable(query) do
+      query
+      |> leaf()
+      |> with_positive_amount()
     end
 
     def preloads({:order, order_preloads}, options) do

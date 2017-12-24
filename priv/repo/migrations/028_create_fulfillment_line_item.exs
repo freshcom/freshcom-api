@@ -5,10 +5,12 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
     create table(:fulfillment_line_items, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :status, :string, null: false
       add :code, :string
       add :name, :string
       add :label, :string
 
+      add :quantity, :integer, null: false
       add :print_name, :string
 
       add :caption, :string
@@ -29,6 +31,7 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
 
     create unique_index(:fulfillment_line_items, [:account_id, :code], where: "code IS NOT NULL")
     create index(:fulfillment_line_items, :account_id)
+    create index(:fulfillment_line_items, [:account_id, :status])
     create index(:fulfillment_line_items, [:account_id, :fulfillment_id])
     create index(:fulfillment_line_items, [:account_id, :source_id, :source_type])
     create index(:fulfillment_line_items, [:account_id, :goods_id, :goods_type])

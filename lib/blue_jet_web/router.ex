@@ -89,7 +89,8 @@ defmodule BlueJetWeb.Router do
     #
     # Fulfillment
     #
-    resources "/fulfillments", FulfillmentController, only: [:index, :create, :show]
+    resources "/fulfillments", FulfillmentController, only: [:index, :create, :show, :delete]
+    resources "/fulfillment_line_items", FulfillmentLineItemController, only: [:update, :delete]
 
     ####
     # Data Trading

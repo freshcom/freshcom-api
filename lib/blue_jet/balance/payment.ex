@@ -26,13 +26,13 @@ defmodule BlueJet.Balance.Payment do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    field :status, :string # pending, authorized, paid, partially_refunded, fully_refunded
+    field :status, :string
     field :code, :string
     field :label, :string
 
     field :gateway, :string # online, offline,
-    field :processor, :string # stripe, paypal
-    field :method, :string # visa, mastercard ... , cash
+    field :processor, :string, default: "stripe"
+    field :method, :string
 
     field :amount_cents, :integer
     field :refunded_amount_cents, :integer, default: 0

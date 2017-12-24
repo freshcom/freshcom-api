@@ -3,7 +3,6 @@ defmodule BlueJetWeb.FulfillmentView do
   use JaSerializer.PhoenixView
 
   attributes [
-    :status,
     :code,
     :name,
     :label,

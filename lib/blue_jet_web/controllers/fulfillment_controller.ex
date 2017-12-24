@@ -85,16 +85,16 @@ defmodule BlueJetWeb.FulfillmentController do
   #   end
   # end
 
-  # def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-  #   request = %AccessRequest{
-  #     vas: assigns[:vas],
-  #     params: %{ "id" => id }
-  #   }
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id }
+    }
 
-  #   case Distribution.delete_fulfillment(request) do
-  #     {:ok, _} -> send_resp(conn, :no_content, "")
+    case Distribution.delete_fulfillment(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
 
-  #     other -> other
-  #   end
-  # end
+      other -> other
+    end
+  end
 end
