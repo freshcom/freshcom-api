@@ -45,9 +45,11 @@ defmodule BlueJet.Balance.Refund do
 
     field :owner_id, Ecto.UUID
     field :owner_type, :string
+    field :owner, :map, virtual: true
 
     field :target_id, Ecto.UUID
     field :target_type, :string
+    field :target, :map, virtual: true
 
     timestamps()
 
