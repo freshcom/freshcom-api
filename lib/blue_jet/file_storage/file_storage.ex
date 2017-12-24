@@ -9,7 +9,6 @@ defmodule BlueJet.FileStorage do
   ####
   # Macro
   ####
-  # TODO: need to consider locale
   defmodule Macro do
     def put_external_resources_ef(field) do
       foreign_key = String.to_atom(Atom.to_string(field) <> "_id")

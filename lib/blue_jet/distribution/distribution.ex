@@ -1,6 +1,8 @@
 defmodule BlueJet.Distribution do
   use BlueJet, :context
 
+  import BlueJet.Identity.Shortcut
+
   alias BlueJet.Distribution.Fulfillment
   alias BlueJet.Distribution.FulfillmentLineItem
 
@@ -37,6 +39,7 @@ defmodule BlueJet.Distribution do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
+      |> Fulfillment.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
