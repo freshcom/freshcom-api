@@ -11,6 +11,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   ], container: :translations
 
   import BlueJet.Identity.Shortcut
+  import BlueJet.Catalogue.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
@@ -30,6 +31,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   schema "order_line_items" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :code, :string
     field :name, :string
     field :label, :string
@@ -61,6 +64,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :grand_total_cents, :integer
     field :authorization_toal_cents, :integer
     field :is_estimate, :boolean, default: false
+    field :auto_fulfill, :boolean
 
     field :caption, :string
     field :description, :string
@@ -213,15 +217,23 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_price_fields()
     |> put_charge_quantity()
     |> put_amount_fields()
+    |> put_auto_fulfill()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+  def put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
+  def put_auto_fulfill(changeset= %{ valid?: true, changes: %{ product_id: product_id } }) do
+    account = get_account(changeset.data)
+    product = get_product(%{ product_id: product_id, product: nil, account: account })
 
+    put_change(changeset, :auto_fulfill, product.auto_fulfill)
+  end
+  def put_auto_fulfill(changeset), do: changeset
+
+  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
   def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
     put_change(changeset, :print_name, get_field(changeset, :name))
   end
-
   def put_print_name(changeset), do: changeset
 
   def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: _ } }) do
@@ -427,7 +439,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     balance_by_product(struct, product)
   end
   def balance!(struct), do: struct
-  def balance_by_product(struct, product = %Product{ kind: kind }) when kind == "simple" or kind == "item" or kind == "variant" do
+  def balance_by_product(struct, product = %Product{ kind: kind }) when kind in ["simple", "item", "variant"] do
     source_order_quantity = product.source_quantity * struct.order_quantity
     source = get_source(product)
 
@@ -440,6 +452,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       source_type: product.source_type,
       parent_id: struct.id,
       is_leaf: true,
+      auto_fulfill: struct.auto_fulfill,
       name: source.name,
       order_quantity: source_order_quantity,
       charge_quantity: struct.charge_quantity,
@@ -478,6 +491,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       end)
       changeset = OrderLineItem.changeset(child, %{
         "account_id" => struct.account_id,
+        "auto_fulfill" => struct.auto_fulfill,
         "order_id" => struct.order_id,
         "product_id" => item.id,
         "order_quantity" => struct.order_quantity,
@@ -543,6 +557,18 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     def default() do
       from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
+    end
+
+    def for_order(query, order_id) do
+      from oli in query, where: oli.order_id == ^order_id
+    end
+
+    def with_auto_fulfill(query) do
+      from oli in query, where: oli.auto_fulfill == true
+    end
+
+    def with_positive_amount(query) do
+      from oli in query, where: oli.grand_total_cents >= 0
     end
 
     def preloads({:order, order_preloads}, options) do

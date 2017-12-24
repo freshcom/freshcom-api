@@ -19,6 +19,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :source_quantity, :integer, null: false
       add :primary, :boolean, null: false, default: false
       add :maximum_public_order_quantity, :integer
+      add :auto_fulfill, :boolean, null: false, default: false
 
       add :caption, :string
       add :description, :text

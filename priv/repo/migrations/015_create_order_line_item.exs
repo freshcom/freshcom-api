@@ -36,6 +36,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :grand_total_cents, :integer, null: false
       add :authorization_toal_cents, :integer, null: false
       add :is_estimate, :boolean, null: false, default: false
+      add :auto_fulfill, :boolean, null: false
 
       add :caption, :string
       add :description, :text
@@ -53,6 +54,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       timestamps()
     end
 
+    create unique_index(:order_line_items, [:account_id, :code], where: "code IS NOT NULL")
     create index(:order_line_items, :parent_id)
     create index(:order_line_items, :account_id)
     create index(:order_line_items, :order_id)

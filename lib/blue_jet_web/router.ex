@@ -86,6 +86,11 @@ defmodule BlueJetWeb.Router do
     get "/balance_settings", BalanceSettingsController, :show
     patch "/balance_settings", BalanceSettingsController, :update
 
+    #
+    # Fulfillment
+    #
+    resources "/fulfillments", FulfillmentController, only: [:index, :create, :show]
+
     ####
     # Data Trading
     ####

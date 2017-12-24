@@ -1,4 +1,30 @@
 defmodule BlueJet.Storefront.Order do
+  @moduledoc """
+
+  ## Status
+  - cart
+  - opened
+  - closed
+  - cancelled
+
+  ## Fulfillment
+  - pending
+  - fulfilled
+  - returned
+  - discarded
+
+  ## Payment
+  - pending
+  - authorized
+  - partially_authorized
+  - partially_paid
+  - paid
+  - over_paid
+  - partially_refunded
+  - refunded
+
+
+  """
   use BlueJet, :data
 
   use Trans, translates: [
@@ -14,6 +40,7 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Translation
   alias BlueJet.Balance
   alias BlueJet.CRM
+  alias BlueJet.Distribution
 
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
@@ -346,14 +373,58 @@ defmodule BlueJet.Storefront.Order do
     order = %{ order | account: get_account(order) }
     order = put_external_resources(order, {:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
 
+    # Process line items
     leaf_line_items = Order.leaf_line_items(order)
     Enum.each(leaf_line_items, fn(line_item) ->
       OrderLineItem.process(line_item, order, changeset, order.customer)
     end)
 
+    # Process auto fulfill
+    process_auto_fulfill(order)
+
     {:ok, order}
   end
   def process(order, _), do: {:ok, order}
+
+  defp process_auto_fulfill(order) do
+    af_line_items =
+      OrderLineItem
+      |> OrderLineItem.Query.for_order(order.id)
+      |> OrderLineItem.Query.with_auto_fulfill()
+      |> OrderLineItem.Query.leaf()
+      |> OrderLineItem.Query.with_positive_amount()
+      |> Repo.all()
+
+    case length(af_line_items) do
+      0 -> {:ok, nil}
+
+      _ ->
+        account = get_account(order)
+
+        {:ok, %{ data: fulfillment }} = Distribution.do_create_fulfillment(%AccessRequest{
+          account: account,
+          fields: %{
+            "source_id" => order.id,
+            "source_type" => "Order",
+            "status" => "fulfilled"
+          }
+        })
+
+        Enum.each(af_line_items, fn(line_item) ->
+          IO.inspect line_item.source_type
+          {:ok, %{ data: _ }} = Distribution.do_create_fulfillment_line_item(%AccessRequest{
+            account: account,
+            fields: %{
+              "fulfillment_id" => fulfillment.id,
+              "source_id" => line_item.id,
+              "source_type" => "OrderLineItem",
+              "goods_id" => line_item.source_id,
+              "goods_type" => line_item.source_type
+            }
+          })
+        end)
+    end
+  end
 
   defmodule Query do
     use BlueJet, :query

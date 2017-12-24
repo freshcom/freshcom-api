@@ -12,7 +12,6 @@ defmodule BlueJet.Identity do
     alias BlueJet.Identity
 
     def get_account(%{ account_id: nil }), do: nil
-
     def get_account(%{ account_id: account_id, account: nil }) do
       {:ok, %{ data: account }} = Identity.get_account(%AccessRequest{
         vas: %{ account_id: account_id }
@@ -20,8 +19,21 @@ defmodule BlueJet.Identity do
 
       account
     end
-
     def get_account(%{ account: account }), do: account
+
+    def put_account(structs, account) when is_list(structs) do
+      Enum.map(structs, fn(struct) ->
+        put_account(struct, account)
+      end)
+    end
+    def put_account(struct, account), do: %{ struct | account: account }
+
+    def put_account(structs) when is_list(structs) do
+      Enum.map(structs, fn(struct) ->
+        put_account(struct)
+      end)
+    end
+    def put_account(struct), do: %{ struct | account: get_account(struct) }
   end
 
   defmodule Query do

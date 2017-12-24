@@ -5,43 +5,19 @@ defmodule BlueJet.Translation do
 
   alias Ecto.Changeset
 
-  alias BlueJet.AccessRequest
-  alias BlueJet.Identity
-
-  def default_locale(%{ default_locale: default_locale }), do: default_locale
-  def default_locale(%{ account_id: account_id }) when not is_nil(account_id) do
-    {:ok, %{ data: account }} = Identity.get_account(%AccessRequest{ vas: %{ account_id: account_id } })
-    account.default_locale
-  end
-  def default_locale(structs) when length(structs) > 0 do
-    default_locale(Enum.at(structs, 0))
-  end
-  def default_locale(_), do: nil
-
-  # TODO: Remove this
-  def put_change(changeset = %{ data: struct }, translatable_fields, locale) do
-    default_locale = default_locale(struct)
-
-    cond do
-      is_nil(default_locale) || locale == default_locale -> changeset
-      true -> put_translations(changeset, translatable_fields, locale)
-    end
-  end
-
-  # TODO: Keep this
+  @spec put_change(Changeset.t, list, String.t, String.t) :: Changeset.t
+  def put_change(changeset, translatable_fields, locale \\ nil, default_locale \\ nil)
   def put_change(changeset, _, nil, nil), do: changeset
-
-  def put_change(changeset, translatable_fields, locale, default_locale) do
-    cond do
-      is_nil(default_locale) || locale == default_locale -> changeset
-      true -> put_translations(changeset, translatable_fields, locale)
-    end
+  def put_change(changeset, _, _, nil), do: changeset
+  def put_change(changeset, _, locale, default_locale) when locale == default_locale, do: changeset
+  def put_change(changeset, translatable_fields, locale, _) do
+    put_translations(changeset, translatable_fields, locale)
   end
 
-  def put_translations(changeset, translatable_fields, locale) do
+  defp put_translations(changeset, translatable_fields, locale) do
     translations = Changeset.get_field(changeset, :translations)
 
-    locale_struct = translations |> Map.get(locale, %{})
+    locale_struct = Map.get(translations, locale, %{})
     new_locale_struct =
       changeset.changes
       |> Map.take(translatable_fields)
@@ -54,26 +30,12 @@ defmodule BlueJet.Translation do
     Changeset.put_change(changeset, :translations, new_translations)
   end
 
-  # TODO: remove this
-  # def translate(struct_or_structs, locale) do
-  #   default_locale = default_locale(struct_or_structs)
-
-  #   cond do
-  #     is_nil(default_locale) || locale == default_locale -> struct_or_structs
-  #     true -> translate_fields(struct_or_structs, locale)
-  #   end
-  # end
-
-  # TODO: remove this
-  def translate(struct_or_structs, _) do
-    struct_or_structs
-  end
-
+  @spec translate(map | list, String.t, String.t) :: map | list
+  def translate(struct_or_structs, locale, default_locale \\ nil)
+  def translate(struct_or_structs, _, nil), do: struct_or_structs
+  def translate(struct_or_structs, locale, default_locale) when locale == default_locale, do: struct_or_structs
   def translate(struct_or_structs, locale, default_locale) do
-    cond do
-      is_nil(default_locale) || locale == default_locale -> struct_or_structs
-      true -> translate_fields(struct_or_structs, locale, default_locale)
-    end
+    translate_fields(struct_or_structs, locale, default_locale)
   end
 
   defp translate_fields(struct, locale, default_locale) when is_map(struct) do
@@ -101,6 +63,7 @@ defmodule BlueJet.Translation do
     Enum.map(list, fn(item) -> translate(item, locale, default_locale) end)
   end
 
+  @spec merge_translations(map, map, list, String.t) :: map
   def merge_translations(dst_translations, src_translations, fields, prefix \\ "") do
     Enum.reduce(src_translations, dst_translations, fn({locale, src_locale_struct}, acc) ->
       dst_locale_struct = Map.get(acc, locale, %{})

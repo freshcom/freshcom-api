@@ -47,16 +47,16 @@ defmodule BlueJet.Catalogue.Product do
     field :source_quantity, :integer, default: 1
     field :maximum_public_order_quantity, :integer, default: 999
     field :primary, :boolean, default: false
+    field :auto_fulfill, :boolean, null: false, default: false
 
     field :caption, :string
     field :description, :string
+    field :custom_data, :map, default: %{}
+    field :translations, :map, default: %{}
 
     field :source_id, Ecto.UUID
     field :source_type, :string
     field :source, :map, virtual: true
-
-    field :custom_data, :map, default: %{}
-    field :translations, :map, default: %{}
 
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true

@@ -34,6 +34,7 @@ defmodule BlueJetWeb.OrderLineItemView do
     :grand_total_cents,
     :authorization_total_cents,
     :is_estimate,
+    :auto_fulfill,
 
     :caption,
     :description,

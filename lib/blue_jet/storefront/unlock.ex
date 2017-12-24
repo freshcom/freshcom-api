@@ -16,8 +16,10 @@ defmodule BlueJet.Storefront.Unlock do
     field :translations, :map, default: %{}
 
     field :account_id, Ecto.UUID
+
     field :unlockable_id, Ecto.UUID
     field :unlockable, :map, virtual: true
+
     field :customer_id, Ecto.UUID
     field :customer, :map, virtual: true
 

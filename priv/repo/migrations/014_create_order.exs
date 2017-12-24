@@ -50,6 +50,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       timestamps()
     end
 
+    create unique_index(:orders, [:account_id, :code], where: "code IS NOT NULL")
     create index(:orders, :account_id)
     create index(:orders, :customer_id)
     create index(:orders, :user_id)

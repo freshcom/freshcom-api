@@ -17,6 +17,7 @@ defmodule BlueJetWeb.ProductView do
     :source_quantity,
     :primary,
     :maximum_public_order_quantity,
+    :auto_fulfill,
 
     :caption,
     :description,

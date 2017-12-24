@@ -80,8 +80,8 @@ defmodule BlueJet.Storefront do
         fulfillment_method: filter[:fulfillment_method]
       )
       |> Order.Query.for_account(account.id)
-    total_count = Repo.aggregate(data_query, :count, :id)
 
+    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
       Order.Query.default()
       |> filter_by(customer_id: filter[:customer_id])
@@ -334,9 +334,9 @@ defmodule BlueJet.Storefront do
 
   def do_create_order_line_item(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = OrderLineItem.changeset(%OrderLineItem{}, fields, request.locale, account.default_locale)
+    changeset =
+      %OrderLineItem{ account_id: account.id, account: account }
+      |> OrderLineItem.changeset(request.fields)
 
     statements =
       Multi.new()

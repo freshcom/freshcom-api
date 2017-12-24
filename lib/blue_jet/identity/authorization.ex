@@ -271,7 +271,13 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_price",
       "catalogue.get_price",
       "catalogue.list_product_collection",
-      "catalogue.get_product_collection"
+      "catalogue.get_product_collection",
+
+      "distribution.list_fulfillment",
+      "distribution.create_fulfillment",
+      "distribution.show_fulfillment",
+      "distribution.update_fulfillment",
+      "distribution.delete_fulfillment"
     ],
 
     "developer" => [
@@ -352,7 +358,13 @@ defmodule BlueJet.Identity.Authorization do
       "balance.list_card",
       "balance.update_card",
       "balance.delete_card",
-      "balance.create_refund"
+      "balance.create_refund",
+
+      "distribution.list_fulfillment",
+      "distribution.create_fulfillment",
+      "distribution.show_fulfillment",
+      "distribution.update_fulfillment",
+      "distribution.delete_fulfillment"
     ],
 
     "administrator" => [
@@ -439,6 +451,12 @@ defmodule BlueJet.Identity.Authorization do
       "balance.get_settings",
       "balance.update_settings",
       "balance.create_refund",
+
+      "distribution.list_fulfillment",
+      "distribution.create_fulfillment",
+      "distribution.show_fulfillment",
+      "distribution.update_fulfillment",
+      "distribution.delete_fulfillment",
 
       "data_trading.create_data_import"
     ]

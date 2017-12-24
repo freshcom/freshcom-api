@@ -9,6 +9,21 @@ defmodule BlueJet.Catalogue do
   alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.Price
 
+  defmodule Shortcut do
+    alias BlueJet.Catalogue
+
+    def get_product(%{ product_id: nil }), do: nil
+    def get_product(%{ product_id: id, product: nil, account: account }) do
+      {:ok, %{ data: product }} = Catalogue.do_get_product(%AccessRequest{
+        account: account,
+        params: %{ "id" => id }
+      })
+
+      product
+    end
+    def get_product(%{ product: product }), do: product
+  end
+
   ######
   # Product
   ######
@@ -416,7 +431,7 @@ defmodule BlueJet.Catalogue do
       membership =
         membership
         |> Repo.preload(ProductCollectionMembership.Query.preloads(request.preloads))
-        |> Translation.translate(request.locale)
+        |> Translation.translate(request.locale, account.default_locale)
 
       {:ok, %AccessResponse{ data: membership }}
     else
@@ -480,7 +495,7 @@ defmodule BlueJet.Catalogue do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(Price.Query.preloads(request.preloads))
-      |> Translation.translate(request.locale)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
