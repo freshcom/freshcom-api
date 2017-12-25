@@ -55,7 +55,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     use BlueJet, :query
 
     def default() do
-      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index], limit: 10)
+      from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index])
     end
 
     def for_account(query, account_id) do
