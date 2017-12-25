@@ -225,11 +225,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
-  def put_auto_fulfill(changeset= %{ valid?: true, changes: %{ product_id: product_id } }) do
+  def put_auto_fulfill(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account = get_account(changeset.data)
     product = get_product(%{ product_id: product_id, product: nil, account: account })
 
     put_change(changeset, :auto_fulfill, product.auto_fulfill)
+  end
+  def put_auto_fulfill(changeset = %{ data: %{ auto_fulfill: nil }, valid?: true }) do
+    grand_total_cents = get_field(changeset, :grand_total_cents)
+    if grand_total_cents >= 0 do
+      put_change(changeset, :auto_fulfill, false)
+    else
+      put_change(changeset, :auto_fulfill, true)
+    end
   end
   def put_auto_fulfill(changeset), do: changeset
 
@@ -524,14 +532,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> Repo.insert!()
   end
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+    account = get_account(line_item)
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
-      vas: %{ account_id: line_item.account_id },
+      account: account,
       params: %{ "id" => source_id }
     })
 
     if depositable.target_type == "PointAccount" do
       {:ok, _} = CRM.do_create_point_transaction(%AccessRequest{
-        vas: %{ account_id: line_item.account_id },
+        account: account,
         fields: %{
           "status" => "committed",
           "customer_id" => customer.id,

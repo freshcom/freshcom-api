@@ -41,9 +41,20 @@ defmodule BlueJet.DataTrading do
       |> Stream.chunk_every(100)
       |> Enum.each(fn(chunk) ->
           Enum.each(chunk, fn({:ok, row}) ->
+           row = process_csv_row(row)
            import_resource(row, import_data.account, data_type)
           end)
          end)
+    end)
+  end
+
+  defp process_csv_row(row) do
+    Enum.reduce(row, %{}, fn({k, v}, acc) ->
+      case v do
+        "true" -> Map.put(acc, k, true)
+        "false" -> Map.put(acc, k, false)
+        other -> Map.put(acc, k, other)
+      end
     end)
   end
 

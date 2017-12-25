@@ -144,7 +144,7 @@ defmodule BlueJet.CRM.Customer do
         "last_name" ->
           String.downcase(v) == remove_space(downcase(customer.last_name))
         "name" ->
-          String.downcase(v) == remove_space(downcase(customer.name))
+          remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
         "phone_number" ->
           digit_only(v) == digit_only(customer.phone_number)
         "email" ->

@@ -9,15 +9,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
   """
 
   def run(args) do
-    # Mix.Tasks.Ecto.Drop.run(args)
-    # Mix.Tasks.Ecto.Create.run(args)
-    # Mix.Tasks.Ecto.Migrate.run(args)
+    Mix.Tasks.Ecto.Drop.run(args)
+    Mix.Tasks.Ecto.Create.run(args)
+    Mix.Tasks.Ecto.Migrate.run(args)
 
     alias BlueJet.Repo
     alias BlueJet.Goods.Stockable
     alias BlueJet.Goods.Unlockable
     alias BlueJet.Goods.Depositable
     alias BlueJet.Catalogue.Product
+    alias BlueJet.Catalogue.ProductCollection
+    alias BlueJet.Catalogue.ProductCollectionMembership
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
@@ -40,6 +42,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       vas: %{ account_id: account1_id }
     })
 
+    test_account1_id = account1.test_account_id
+
     {:ok, %{ data: _ }} = CRM.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
       fields: %{
@@ -51,8 +55,43 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       }
     })
 
+    changeset = ProductCollection.changeset(%ProductCollection{ account_id: test_account1_id }, %{
+      "status" => "active",
+      "code" => "DEPOSIT",
+      "name" => "充值",
+      "label" => "deposit"
+    })
+    deposit_pc = Repo.insert!(changeset)
+
+    changeset = ProductCollection.changeset(%ProductCollection{ account_id: test_account1_id }, %{
+      "status" => "active",
+      "code" => "TOM",
+      "name" => "本月推荐（TOM)",
+      "label" => "audio",
+      "sort_index" => 300
+    })
+    Repo.insert!(changeset)
+
+    changeset = ProductCollection.changeset(%ProductCollection{ account_id: test_account1_id }, %{
+      "status" => "active",
+      "code" => "ASSOC-TR-AUD",
+      "name" => "经销商培训CD",
+      "label" => "audio",
+      "sort_index" => 200
+    })
+    Repo.insert!(changeset)
+
+    changeset = ProductCollection.changeset(%ProductCollection{ account_id: test_account1_id }, %{
+      "status" => "active",
+      "code" => "LDR-TR-AUD",
+      "name" => "领导力培训CD",
+      "label" => "audio",
+      "sort_index" => 100
+    })
+    Repo.insert!(changeset)
+
     changeset = Depositable.changeset(%Depositable{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "code" => "60050",
       "status" => "active",
       "target_type" => "PointAccount",
@@ -63,7 +102,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     deposit_50 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "source_id" => deposit_50.id,
       "source_type" => "Depositable",
       "name_sync" => "sync_with_source",
@@ -72,8 +111,15 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     }, "en", account1.default_locale)
     product = Repo.insert!(changeset)
 
+    Repo.insert!(%ProductCollectionMembership{
+      account_id: test_account1_id,
+      collection_id: deposit_pc.id,
+      product_id: product.id,
+      sort_index: 100
+    })
+
     changeset = Price.changeset(%Price{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "product_id" => product.id,
       "status" => "active",
       "name" => "Regular",
@@ -90,7 +136,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     #######
     changeset = Depositable.changeset(%Depositable{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "code" => "60100",
       "status" => "active",
       "target_type" => "PointAccount",
@@ -101,7 +147,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     deposit_100 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "source_id" => deposit_100.id,
       "source_type" => "Depositable",
       "name_sync" => "sync_with_source",
@@ -111,7 +157,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
-      "account_id" => account1_id,
+      "account_id" => test_account1_id,
       "product_id" => product.id,
       "status" => "active",
       "name" => "Regular",
@@ -126,6 +172,11 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     })
     Repo.update!(changeset)
 
+    Repo.insert!(%ProductCollectionMembership{
+      account_id: test_account1_id,
+      collection_id: deposit_pc.id,
+      product_id: product.id
+    })
 
 
     ########################
