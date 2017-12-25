@@ -19,7 +19,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     field :code, :string
     field :name, :string
     field :label, :string
-    field :sort_index, :integer
+    field :sort_index, :integer, default: 0
 
     field :caption, :string
     field :description, :string
@@ -92,7 +92,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     use BlueJet, :query
 
     def default() do
-      from(pc in ProductCollection, order_by: [desc: pc.updated_at])
+      from(pc in ProductCollection, order_by: [desc: pc.sort_index])
     end
 
     def for_account(query, account_id) do

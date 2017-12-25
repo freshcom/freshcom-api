@@ -10,7 +10,7 @@ defmodule BlueJet.Repo.Migrations.CreateProductCollection do
       add :name, :string, null: false
       add :label, :string
 
-      add :sort_index, :integer
+      add :sort_index, :integer, null: false
 
       add :caption, :string
       add :description, :text

@@ -66,7 +66,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     changeset = ProductCollection.changeset(%ProductCollection{ account_id: test_account1_id }, %{
       "status" => "active",
       "code" => "TOM",
-      "name" => "本月推荐（TOM)",
+      "name" => "本月推荐（TOM）",
       "label" => "audio",
       "sort_index" => 300
     })
