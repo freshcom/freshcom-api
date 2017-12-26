@@ -111,7 +111,7 @@ defmodule BlueJet.Goods.Depositable do
       from(d in query, where: d.account_id == ^account_id)
     end
 
-    def preloads(_) do
+    def preloads(_, _) do
       []
     end
   end

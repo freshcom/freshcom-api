@@ -31,7 +31,7 @@ defmodule BlueJet.Balance.Payment do
     field :label, :string
 
     field :gateway, :string # online, offline,
-    field :processor, :string, default: "stripe"
+    field :processor, :string
     field :method, :string
 
     field :amount_cents, :integer
