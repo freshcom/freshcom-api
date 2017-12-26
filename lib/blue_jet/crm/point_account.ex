@@ -71,14 +71,19 @@ defmodule BlueJet.CRM.PointAccount do
     end
 
     def preloads({:transactions, transaction_preloads}, options) do
-      [transactions: {PointTransaction.Query.default(), PointTransaction.Query.preloads(transaction_preloads, options)}]
+      query =
+        PointTransaction.Query.default()
+        |> PointTransaction.Query.committed()
+        |> PointTransaction.Query.limit(10)
+
+      [transactions: {query, PointTransaction.Query.preloads(transaction_preloads, options)}]
     end
     def preloads(_, _) do
       []
     end
 
     def default() do
-      from(pa in PointAccount, order_by: [desc: :updated_at])
+      from(pa in PointAccount, order_by: [desc: pa.updated_at])
     end
   end
 end

@@ -34,6 +34,7 @@ defmodule BlueJet.CRM.PointTransaction do
 
     field :source_id, Ecto.UUID
     field :source_type, :string
+    field :source, :map, virtual: true
 
     field :customer_id, :string, virtual: true
 
@@ -123,7 +124,15 @@ defmodule BlueJet.CRM.PointTransaction do
     use BlueJet, :query
 
     def default() do
-      from(pt in PointTransaction, order_by: [desc: :inserted_at])
+      from(pt in PointTransaction, order_by: [desc: pt.inserted_at])
+    end
+
+    def committed(query) do
+      from pt in PointTransaction, where: pt.status == "committed"
+    end
+
+    def limit(query, limit) do
+      from pt in PointTransaction, limit: ^limit
     end
 
     def for_account(query, account_id) do
