@@ -566,18 +566,18 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the processed order line item.
   """
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Unlockable" }, order, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
     %Unlock{ account_id: line_item.account_id }
     |> Changeset.change(%{
         unlockable_id: source_id,
-        customer_id: customer.id,
+        customer_id: order.customer_id,
         source_id: line_item.id,
         source_type: "OrderLineItem"
        })
     |> Repo.insert!()
   end
 
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Depositable" }, order, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
     account = get_account(line_item)
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
       account: account,
@@ -589,7 +589,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
         account: account,
         fields: %{
           "status" => "committed",
-          "customer_id" => customer.id,
+          "customer_id" => order.customer_id,
           "amount" => line_item.order_quantity * depositable.amount,
           "reason_label" => "self_deposit",
           "source_id" => line_item.id,
@@ -601,7 +601,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, _) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
     {:ok, %{ data: _ }} = CRM.do_update_point_transaction(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
       params: %{ "id" => source_id },
@@ -611,7 +611,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     })
   end
 
-  def process(line_item, _, _, _) do
+  def process(line_item, _, _) do
     {:ok, line_item}
   end
 
@@ -620,7 +620,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   @doc """
-  Returns the order line item with fulfillment status updated.
+  Refresh the fulfillment status of the order line item. Returns the updated
+  fulfillment status.
   """
   def refresh_fulfillment_status(oli) do
     oli
@@ -641,9 +642,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   @doc """
-  Returns the order line item base on the fulfillment of the given order line item.
+  Returns the fulfillment status of the order line item base on its fulfillment.
 
-  It will always return the corrent fulfillment status where as the `fulfillment_status`
+  It will always return the correct fulfillment status where as the `fulfillment_status`
   field of the order line item may not be up to date yet.
   """
   def get_fulfillment_status(%{ grant_total_cents: grand_total_cents }) when grand_total_cents < 0 do

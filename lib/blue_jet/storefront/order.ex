@@ -167,7 +167,7 @@ defmodule BlueJet.Storefront.Order do
       _ -> required_fields
     end
 
-    required_fields = cond do
+    cond do
       name -> required_fields
 
       first_name -> required_fields ++ [:last_name]
@@ -180,20 +180,27 @@ defmodule BlueJet.Storefront.Order do
 
   def required_fields, do: [:account_id, :status, :fulfillment_status, :payment_status]
 
-
   # TODO: if changeing from cart to opened status we need to check inventory
-  def validate(changeset, %{ __meta__: %{ state: :built } }) do
+  def validate(changeset = %{ data: %{ __meta__: %{ state: :built } } }) do
     changeset
   end
-  def validate(changeset, _) do
+
+  def validate(changeset) do
+    required_fields = required_fields(changeset)
+
     changeset
-    |> validate_required(required_fields(changeset))
+    |> validate_required(required_fields)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:account_id)
+    |> validate_inventory()
     |> validate_customer_id()
   end
 
-  def validate_customer_id(changeset) do
+  defp validate_inventory(changeset) do
+    changeset
+  end
+
+  defp validate_customer_id(changeset) do
     id = get_field(changeset, :id)
     customer_id = get_field(changeset, :customer_id)
 
@@ -207,6 +214,7 @@ defmodule BlueJet.Storefront.Order do
       # TODO: Also need to consider depositable
       case ordered_unlockable_count do
         0 -> changeset
+
         _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: "order_with_unlockable_must_associate_customer", full_error_message: true])
       end
     end
@@ -215,18 +223,22 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale, default_locale) do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
-    |> validate(struct)
+    |> validate()
     |> put_opened_at()
     |> put_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+  ########
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
-  def put_name(changeset = %{ valid?: true }) do
+  defp put_name(changeset = %{ valid?: true }) do
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :first_name)
 
@@ -239,13 +251,26 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  def put_name(changeset), do: changeset
+  defp put_name(changeset), do: changeset
 
+  ######
   defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     Changeset.put_change(changeset, :opened_at, Ecto.DateTime.utc())
   end
+
   defp put_opened_at(changeset), do: changeset
 
+  @doc """
+  Balance the order base on the root line items.
+
+  Returns the balanced order.
+  """
+  def balance(struct) do
+    changeset = changeset_for_balance(struct)
+    Repo.update!(changeset)
+  end
+
+  ######
   defp changeset_for_balance(struct) do
     query =
       struct
@@ -286,17 +311,22 @@ defmodule BlueJet.Storefront.Order do
     )
   end
 
-  def balance(struct) do
-    changeset = changeset_for_balance(struct)
-    Repo.update!(changeset)
-  end
-
+  @doc """
+  Refresh the payment status of the order. Returns the updated order.
+  """
   def refresh_payment_status(order) do
     order
-    |> Changeset.change(payment_status: payment_status(order))
+    |> Changeset.change(payment_status: get_payment_status(order))
     |> Repo.update!()
   end
-  defp payment_status(order) do
+
+  @doc """
+  Returns the payment status of the given order base on its payments.
+
+  It will always return the correct payment status where as the `payment_status`
+  field of the order may not be up to date yet.
+  """
+  def get_payment_status(order) do
     payments = Balance.list_payment_for_target("Order", order.id)
 
     total_paid_amount_cents =
@@ -326,69 +356,6 @@ defmodule BlueJet.Storefront.Order do
       true -> "pending"
     end
   end
-
-  # def refresh_fulfillment_status(order) do
-  #   order
-  #   |> Changeset.change(fulfillment_status: get_fulfillment_status(order))
-  #   |> Repo.update!()
-  # end
-  # defp get_fulfillment_status(order) do
-  #   fulfillable_olis =
-  #     OrderLineItem
-  #     |> OrderLineItem.Query.for_order(order.id)
-  #     |> OrderLineItem.Query.fulfillable()
-  #     |> Repo.all()
-
-  #   total_fulfillable_quantity = Enum.reduce(fulfillable_olis, 0, fn(oli, acc) ->
-  #     acc + oli.order_quantity
-  #   end)
-
-  #   account = get_account(order)
-  #   {:ok, %{ data: fulfillments }} = Distribution.do_list_fulfillment(%AccessRequest{
-  #     account: account,
-  #     filter: %{ source_id: order.id, source_type: "Order" },
-  #     preloads: [:line_items],
-  #     pagination: %{ size: 1000, number: 1 }
-  #   })
-
-  #   fulfilled_quantities =
-  #     fulfillments
-  #     |> Enum.map(fn(fulfillment) -> fulfillment.line_items end)
-  #     |> List.flatten()
-  #     |> Enum.reduce(%{}, fn(fli, acc) ->
-  #         case fli.status do
-  #           "fulfilled" ->
-  #             already_fulfilled_quantity = acc[fli.source_id] || 0
-  #             Map.put(acc, fli.source_id, already_fulfilled_quantity + fli.quantity)
-
-  #            _ -> acc
-  #         end
-  #        end)
-
-  #   pending_quantities = Enum.reduce(fulfillable_olis, %{}, fn(oli, acc) ->
-  #     fulfilled_quantity = fulfilled_quantities[oli.id] || 0
-
-  #     cond do
-  #       (oli.order_quantity - fulfilled_quantity) > 0 ->
-  #         Map.put(acc, oli.id, oli.order_quantity - fulfilled_quantity)
-
-  #       true -> acc
-  #     end
-  #   end)
-
-  #   total_pending_quantities =
-  #     pending_quantities
-  #     |> Map.values()
-  #     |> Enum.sum()
-
-  #   cond do
-  #     map_size(pending_quantities) == 0 -> "fulfilled"
-
-  #     total_fulfillable_quantity >= total_pending_quantities -> "pending"
-
-  #     total_pending_quantities < total_fulfillable_quantity -> "partially_fulfilled"
-  #   end
-  # end
 
   def leaf_line_items(struct) do
     Ecto.assoc(struct, :line_items)
@@ -442,25 +409,36 @@ defmodule BlueJet.Storefront.Order do
   This function may change the order in database.
   """
   def process(order), do: {:ok, order}
+
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = %{ order | account: get_account(order) }
-    order = put_external_resources(order, {:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
-
-    # Process line items
-    leaf_line_items = Order.leaf_line_items(order)
-    Enum.each(leaf_line_items, fn(line_item) ->
-      OrderLineItem.process(line_item, order, changeset, order.customer)
-    end)
-
-    # Process auto fulfill
-    process_auto_fulfill(order)
-
-    refresh_fulfillment_status(order)
+    order =
+      order
+      |> Map.put(:account, get_account(order))
+      |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
+      |> process_leaf_line_items(changeset)
+      |> process_auto_fulfill()
+      |> refresh_fulfillment_status()
 
     {:ok, order}
   end
+
   def process(order, _), do: {:ok, order}
 
+  ######
+  defp process_leaf_line_items(order, changeset) do
+    leaf_line_items =
+      OrderLineItem.Query.default()
+      |> OrderLineItem.Query.for_order(order.id)
+      |> OrderLineItem.Query.leaf()
+
+    Enum.each(leaf_line_items, fn(line_item) ->
+      OrderLineItem.process(line_item, order, changeset)
+    end)
+
+    order
+  end
+
+  ######
   defp process_auto_fulfill(order) do
     af_line_items =
       OrderLineItem
@@ -503,6 +481,8 @@ defmodule BlueJet.Storefront.Order do
           })
         end)
     end
+
+    order
   end
 
   def refresh_fulfillment_status(order) do
@@ -548,12 +528,16 @@ defmodule BlueJet.Storefront.Order do
       from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
     end
 
+    def for_account(query, account_id) do
+      from(o in query, where: o.account_id == ^account_id)
+    end
+
     def opened(query) do
       from o in query, where: o.status == "opened"
     end
 
-    def for_account(query, account_id) do
-      from(o in query, where: o.account_id == ^account_id)
+    def not_cart(query) do
+      from(o in query, where: o.status != "cart")
     end
 
     def preloads({:root_line_items, root_line_item_preloads}, options) do
@@ -562,10 +546,6 @@ defmodule BlueJet.Storefront.Order do
 
     def preloads(_, _) do
       []
-    end
-
-    def not_cart(query) do
-      from(o in query, where: o.status != "cart")
     end
   end
 end
