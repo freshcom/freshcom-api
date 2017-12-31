@@ -83,8 +83,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     belongs_to :order, Order
     belongs_to :price, Price
     belongs_to :product, Product
-    belongs_to :parent, OrderLineItem
-    has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
+    belongs_to :parent, __MODULE__
+    has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
   @doc """
@@ -116,7 +116,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Returns a list of fields that is changable by user input.
   """
   def writable_fields do
-    OrderLineItem.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- system_fields()
   end
 
   @doc """
@@ -129,7 +129,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Returns a list of fields that can be translated.
   """
   def translatable_fields do
-    OrderLineItem.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
   @doc """
@@ -463,14 +463,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the input order line item after its being balanced.
   """
-  def balance!(struct = %OrderLineItem{ is_leaf: true, parent_id: nil }), do: struct
+  def balance!(struct = %__MODULE__{ is_leaf: true, parent_id: nil }), do: struct
 
-  def balance!(struct = %OrderLineItem{ is_leaf: true }) do
+  def balance!(struct = %__MODULE__{ is_leaf: true }) do
     parent = assoc(struct, :parent) |> Repo.one()
     balance!(parent)
   end
 
-  def balance!(struct = %OrderLineItem{ product_id: product_id }) when not is_nil(product_id) do
+  def balance!(struct = %__MODULE__{ product_id: product_id }) when not is_nil(product_id) do
     product = Repo.get!(Product, product_id)
     balance_by_product(struct, product)
   end
@@ -487,7 +487,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
     source = get_source(product)
 
-    # Product Variant should ever only have one child
+    # Product variant should ever only have one child
     child = assoc(struct, :children) |> Repo.one()
     child_fields = %{
       account_id: struct.account_id,
@@ -510,7 +510,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     }
 
     case child do
-      nil -> Repo.insert!(Changeset.change(%OrderLineItem{}, child_fields))
+      nil -> Repo.insert!(Changeset.change(%__MODULE__{}, child_fields))
 
       _ ->
         child
@@ -521,22 +521,22 @@ defmodule BlueJet.Storefront.OrderLineItem do
     struct
   end
 
-  defp balance_by_product(struct, product = %Product{ kind: kind}) when kind == "combo" do
+  defp balance_by_product(struct, product = %Product{ kind: kind }) when kind == "combo" do
     price = Repo.get!(Price, struct.price_id) |> Repo.preload(:children)
     items = assoc(product, :items) |> Repo.all()
 
     Enum.each(items, fn(item) ->
-      existing_child = Repo.get_by(OrderLineItem, parent_id: struct.id, product_id: item.id)
+      existing_child = Repo.get_by(__MODULE__, parent_id: struct.id, product_id: item.id)
       child = case existing_child do
-        nil -> %OrderLineItem{}
+        nil -> %__MODULE__{ account_id: struct.account_id }
+
         _ -> existing_child
       end
 
       target_price = Enum.find(price.children, fn(child_price) ->
         child_price.product_id == item.id
       end)
-      changeset = OrderLineItem.changeset(child, %{
-        "account_id" => struct.account_id,
+      changeset = __MODULE__.changeset(child, %{
         "auto_fulfill" => struct.auto_fulfill,
         "order_id" => struct.order_id,
         "product_id" => item.id,
@@ -547,10 +547,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
       updated_child = case existing_child do
         nil -> Repo.insert!(changeset)
+
         _ -> Repo.update!(changeset)
       end
 
-      OrderLineItem.balance!(updated_child)
+      __MODULE__.balance!(updated_child)
     end)
 
     struct
@@ -565,7 +566,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the processed order line item.
   """
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     %Unlock{ account_id: line_item.account_id }
     |> Changeset.change(%{
         unlockable_id: source_id,
@@ -576,7 +577,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> Repo.insert!()
   end
 
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     account = get_account(line_item)
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
       account: account,
@@ -600,7 +601,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, _) when not is_nil(source_id) do
+  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, _) when not is_nil(source_id) do
     {:ok, %{ data: _ }} = CRM.do_update_point_transaction(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
       params: %{ "id" => source_id },

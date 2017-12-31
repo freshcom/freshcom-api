@@ -58,7 +58,7 @@ defmodule BlueJet.Storefront.Order do
 
     field :payment_status, :string, default: "pending"
     field :fulfillment_status, :string, default: "pending"
-    field :fulfillment_method, :string # ship, pickup
+    field :fulfillment_method, :string
     field :system_tag, :string
 
     field :email, :string
@@ -101,12 +101,9 @@ defmodule BlueJet.Storefront.Order do
     has_many :root_line_items, OrderLineItem
   end
 
-  def translatable_fields do
-    Order.__trans__(:fields)
-  end
-
   def system_fields do
     [
+      :account_id,
       :system_tag,
       :sub_total_cents,
       :tax_one_cents,
@@ -131,45 +128,58 @@ defmodule BlueJet.Storefront.Order do
     ]
   end
 
+  @doc """
+  Returns a list of fields that is changable by user input.
+  """
   def writable_fields do
     Order.__schema__(:fields) -- system_fields()
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields() -- [:status]
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+  @doc """
+  Returns a list of fields that can be changed for the given order.
+  """
+  def castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields() -- [:status]
+  def castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields()
+
+  @doc """
+  Returns a list of fields that can be translated.
+  """
+  def translatable_fields do
+    Order.__trans__(:fields)
   end
 
-  def required_name_fields(_, _, name) do
-    if name do
-      []
-    else
-      [:first_name, :last_name]
-    end
-  end
+  @doc """
+  Returns a list of required fields for the given `changeset`
+  """
+  def required_fields(%{ data: %{ __meta__: %{ state: :built } } }), do: required_fields()
 
   def required_fields(changeset) do
-    id = get_field(changeset, :id)
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
     name = get_field(changeset, :name)
-
-    required_name_fields = required_name_fields(first_name, last_name, name)
-
     fulfillment_method = get_field(changeset, :fulfillment_method)
 
-    common_fields = [:account_id, :status, :fulfillment_status, :payment_status]
-    common_fields_for_update = common_fields ++ [:email, :fulfillment_method] ++ required_name_fields
-    cond do
-      id && fulfillment_method == "ship" ->
-        common_fields_for_update ++ (delivery_address_fields() -- [:delivery_address_line_two])
-      id ->
-        common_fields_for_update
-      true -> common_fields
+    required_fields = required_fields() ++ [:email, :fulfillment_method]
+
+    required_fields = case fulfillment_method do
+      "ship" -> required_fields ++ (delivery_address_fields() -- [:delivery_address_line_two])
+
+      _ -> required_fields
+    end
+
+    required_fields = cond do
+      name -> required_fields
+
+      first_name -> required_fields ++ [:last_name]
+
+      last_name -> required_fields ++ [:first_name]
+
+      true -> required_fields ++ [:first_name, :last_name]
     end
   end
+
+  def required_fields, do: [:account_id, :status, :fulfillment_status, :payment_status]
+
 
   # TODO: if changeing from cart to opened status we need to check inventory
   def validate(changeset, %{ __meta__: %{ state: :built } }) do
