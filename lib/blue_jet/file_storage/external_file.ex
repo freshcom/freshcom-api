@@ -8,11 +8,15 @@ defmodule BlueJet.FileStorage.ExternalFile do
     :custom_data
   ], container: :translations
 
+  import BlueJet.Identity.Shortcut
+
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
 
   schema "external_files" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -79,7 +83,10 @@ defmodule BlueJet.FileStorage.ExternalFile do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale, default_locale) do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
@@ -95,17 +102,12 @@ defmodule BlueJet.FileStorage.ExternalFile do
   end
 
   def put_url(structs, opts \\ [])
-
   def put_url(structs, opts) when is_list(structs) do
     Enum.map(structs, fn(ef) ->
       put_url(ef, opts)
     end)
   end
-
-  def put_url(struct = %ExternalFile{}, opts) do
-    %{ struct | url: url(struct, opts) }
-  end
-
+  def put_url(struct = %ExternalFile{}, opts), do: %{ struct | url: url(struct, opts) }
   def put_url(struct, _), do: struct
 
   def url(struct, opts \\ []) do

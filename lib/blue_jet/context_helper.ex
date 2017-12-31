@@ -9,7 +9,7 @@ defmodule BlueJet.ContextHelpers do
         {:ok, request}
 
       {:ok, request = %{ account: account }} ->
-        request = Map.put(request, :locale, locale || request.account.default_locale)
+        request = Map.put(request, :locale, locale || account.default_locale)
         {:ok, request}
 
       other -> other

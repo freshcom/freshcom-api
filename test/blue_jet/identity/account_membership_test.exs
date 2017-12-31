@@ -10,7 +10,7 @@ defmodule BlueJet.AccountMembershipTest do
   }
   @invalid_params %{}
 
-  describe "changeset/2" do
+  describe "changeset/4" do
     test "with struct in :built state with valid attributes" do
       changeset = AccountMembership.changeset(%AccountMembership{}, @valid_params)
 

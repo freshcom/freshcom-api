@@ -128,7 +128,7 @@ defmodule BlueJet.CRM.PointTransaction do
     end
 
     def committed(query) do
-      from pt in PointTransaction, where: pt.status == "committed"
+      from pt in query, where: pt.status == "committed"
     end
 
     def limit(query, limit) do

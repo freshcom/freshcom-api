@@ -21,6 +21,14 @@ defmodule BlueJet.Identity do
     end
     def get_account(%{ account: account }), do: account
 
+    def get_default_locale(struct) do
+      case get_account(struct) do
+        nil -> nil
+
+        %{ default_locale: default_locale } -> default_locale
+      end
+    end
+
     def put_account(structs, account) when is_list(structs) do
       Enum.map(structs, fn(struct) ->
         put_account(struct, account)

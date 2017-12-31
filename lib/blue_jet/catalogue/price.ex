@@ -10,6 +10,7 @@ defmodule BlueJet.Catalogue.Price do
     :custom_data
   ], container: :translations
 
+  alias Decimal, as: D
   alias Ecto.Changeset
 
   alias BlueJet.Repo
@@ -29,10 +30,10 @@ defmodule BlueJet.Catalogue.Price do
     field :charge_unit, :string
     field :order_unit, :string
 
+    field :estimate_by_default, :boolean, default: false
     field :estimate_average_percentage, :decimal
     field :estimate_maximum_percentage, :decimal
     field :minimum_order_quantity, :integer, default: 1
-    field :estimate_by_default, :boolean, default: false
 
     field :tax_one_percentage, :decimal, default: Decimal.new(0)
     field :tax_two_percentage, :decimal, default: Decimal.new(0)
@@ -222,6 +223,16 @@ defmodule BlueJet.Catalogue.Price do
     put_change(changeset, :order_unit, charge_unit)
   end
   def put_order_unit(changeset), do: changeset
+
+  def get_estimate_average_rate(%{ estimate_average_percentage: nil }), do: nil
+  def get_estimate_average_rate(%{ estimate_average_percentage: p }) do
+    D.new(p) |> D.div(D.new(100))
+  end
+
+  def get_estimate_average_rate(%{ estimate_maximum_percentage: nil }), do: nil
+  def get_estimate_average_rate(%{ estimate_maximum_percentage: p }) do
+    D.new(p) |> D.div(D.new(100))
+  end
 
   def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
     query = from p in Price,

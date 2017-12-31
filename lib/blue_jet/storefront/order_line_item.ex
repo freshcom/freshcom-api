@@ -12,6 +12,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   import BlueJet.Identity.Shortcut
   import BlueJet.Catalogue.Shortcut
+  import BlueJet.Goods.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
@@ -42,8 +43,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     field :print_name, :string
     field :is_leaf, :boolean, default: true
-    field :charge_quantity, :decimal
     field :order_quantity, :integer, default: 1
+    field :charge_quantity, :decimal
 
     field :price_name, :string
     field :price_label, :string
@@ -86,68 +87,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
     has_many :children, OrderLineItem, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  def get_source(product, locale \\ nil)
-
-  def get_source(product = %{ source_id: source_id, source_type: "Stockable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_stockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: stockable }} -> stockable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(product = %{ source_id: source_id, source_type: "Unlockable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: unlockable }} -> unlockable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(product = %{ source_id: source_id, source_type: "Depositable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_depositable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: depositable }} -> depositable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(product = %{ source_id: source_id, source_type: "PointTransaction" }, locale) do
-    account = get_account(product)
-    response = CRM.do_get_point_transaction(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: point_transaction }} -> point_transaction
-      {:error, _} -> nil
-    end
-  end
-  def get_source(_, _), do: nil
-
+  @doc """
+  Returns a list of fields that is managed by the system.
+  """
   def system_fields do
     [
       :id,
+      :account_id,
       :price_name,
       :price_label,
       :price_caption,
@@ -166,37 +112,69 @@ defmodule BlueJet.Storefront.OrderLineItem do
     ]
   end
 
+  @doc """
+  Returns a list of fields that is changable by user input.
+  """
   def writable_fields do
     OrderLineItem.__schema__(:fields) -- system_fields()
   end
 
+  @doc """
+  Returns a list of fields that can be changed for the given order line item.
+  """
+  def castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
+  def castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
+
+  @doc """
+  Returns a list of fields that can be translated.
+  """
   def translatable_fields do
     OrderLineItem.__trans__(:fields)
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :order_id, :product_id, :parent_id]
-  end
+  @doc """
+  Returns the required fields for the given `changeset`.
+  """
+  def required_fields(changeset), do: required_fields(changeset.data, changeset.changes)
+  defp required_fields, do: [:account_id, :order_id, :order_quantity]
+  defp required_fields(%{ __meta__: %{ state: :built } }, %{ product_id: _ }), do: required_fields()
+  defp required_fields(%{ __meta__: %{ state: :built } }, %{ source_type: "PointTransaction" }), do: required_fields()
+  defp required_fields(%{ __meta__: %{ state: :built } }, _), do: required_fields() ++ [:sub_total_cents]
+  defp required_fields(%{ __meta__: %{ state: :loaded } }, _), do: []
 
-  def require_fields(changeset) do
-    common = [:account_id, :order_id, :order_quantity]
+  @doc """
+  Returns the source of the given product.
+  """
+  def get_source(product, locale \\ nil)
 
-    cond do
-      get_field(changeset, :product_id) ->
-        common
-      get_field(changeset, :source_type) == "PointTransaction" ->
-        common
-      true ->
-        common ++ [:sub_total_cents]
+  def get_source(oli = %{ source_id: source_id, source_type: "PointTransaction" }, locale) do
+    account = get_account(oli)
+    response = CRM.do_get_point_transaction(%AccessRequest{
+      account: account,
+      params: %{ "id" => source_id },
+      locale: locale || account.default_locale
+    })
+
+    case response do
+      {:ok, %{ data: point_transaction }} -> point_transaction
+      {:error, _} -> nil
     end
   end
 
+  def get_source(oli = %{ source_id: source_id, source_type: source_type }, locale) do
+    get_goods(%{ id: source_id, type: source_type }, oli, locale)
+  end
+
+  def get_source(_, _), do: nil
+
+  @doc """
+  Returns the validated changeset.
+  """
   def validate(changeset) do
+    required_fields = required_fields(changeset)
+
     changeset
-    |> validate_required(require_fields(changeset))
+    |> validate_required(required_fields)
     |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:order_id)
     |> foreign_key_constraint(:price_id)
@@ -209,53 +187,68 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
     |> put_is_leaf()
     |> put_name()
     |> put_print_name()
-    |> put_is_estimate()
     |> put_price_id()
     |> put_price_fields()
+    |> put_is_estimate()
     |> put_charge_quantity()
     |> put_amount_fields()
     |> put_auto_fulfill()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
-  def put_auto_fulfill(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+  #######
+  defp put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
+
+  defp put_auto_fulfill(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account = get_account(changeset.data)
     product = get_product(%{ product_id: product_id, product: nil, account: account })
 
     put_change(changeset, :auto_fulfill, product.auto_fulfill)
   end
-  def put_auto_fulfill(changeset = %{ data: %{ auto_fulfill: nil }, valid?: true }) do
+
+  defp put_auto_fulfill(changeset = %{ data: %{ auto_fulfill: nil }, valid?: true }) do
     grand_total_cents = get_field(changeset, :grand_total_cents)
+
     if grand_total_cents >= 0 do
       put_change(changeset, :auto_fulfill, false)
     else
       put_change(changeset, :auto_fulfill, true)
     end
   end
-  def put_auto_fulfill(changeset), do: changeset
 
-  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
-  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+  defp put_auto_fulfill(changeset), do: changeset
+
+  #######
+  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  defp put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
     put_change(changeset, :print_name, get_field(changeset, :name))
   end
-  def put_print_name(changeset), do: changeset
 
-  def put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: _ } }) do
+  defp put_print_name(changeset), do: changeset
+
+  #######
+  defp put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: _ } }) do
     put_change(changeset, :is_leaf, false)
   end
-  def put_is_leaf(changeset), do: changeset
 
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name: _ } }) do
+  defp put_is_leaf(changeset), do: changeset
+
+  #######
+  defp put_name(changeset = %Changeset{ valid?: true, changes: %{ name: _ } }) do
     changeset
   end
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
+
+  defp put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
     product = Repo.get!(Product, product_id)
     translations =
       get_field(changeset, :translations)
@@ -265,12 +258,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:name, product.name)
     |> put_change(:translations, translations)
   end
-  def put_name(changeset), do: changeset
 
-  def put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: _ } }) do
+  defp put_name(changeset), do: changeset
+
+  #######
+  defp put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: _ } }) do
     changeset
   end
-  def put_is_estimate(changeset = %Changeset{ valid?: true, data: %OrderLineItem{ id: nil } }) do
+
+  defp put_is_estimate(changeset = %Changeset{ valid?: true, data: %{ id: nil } }) do
     price_estimate_by_default = get_field(changeset, :price_estimate_by_default)
     charge_quantity = get_field(changeset, :charge_quantity)
     cond do
@@ -278,17 +274,22 @@ defmodule BlueJet.Storefront.OrderLineItem do
       true -> put_change(changeset, :is_estimate, false)
     end
   end
-  def put_is_estimate(changeset), do: changeset
 
-  def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ price_id: _ } }), do: changeset
-  def put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
+  defp put_is_estimate(changeset), do: changeset
+
+  #######
+  defp put_price_id(changeset = %Changeset{ valid?: true, changes: %{ price_id: _ } }), do: changeset
+
+  defp put_price_id(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
     order_quantity = get_field(changeset, :order_quantity)
     price = Price.query_for(product_id: product_id, order_quantity: order_quantity) |> Repo.one()
     put_change(changeset, :price_id, price.id)
   end
-  def put_price_id(changeset), do: changeset
 
-  def put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
+  defp put_price_id(changeset), do: changeset
+
+  #######
+  defp put_price_fields(changeset = %Changeset{ valid?: true, changes: %{ price_id: price_id } }) do
     price = Repo.get!(Price, price_id)
     changeset =
       changeset
@@ -313,12 +314,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     put_change(changeset, :translations, translations)
   end
-  def put_price_fields(changeset), do: changeset
 
-  def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
+  defp put_price_fields(changeset), do: changeset
+
+  #######
+  defp put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ charge_quantity: _ } }) do
     changeset
   end
-  def put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: sub_total_cents } }) when not is_nil(sub_total_cents) do
+
+  defp put_charge_quantity(changeset = %Changeset{ valid?: true, changes: %{ sub_total_cents: sub_total_cents } }) when not is_nil(sub_total_cents) do
     price_charge_amount_cents = get_field(changeset, :price_charge_amount_cents)
 
     if price_charge_amount_cents do
@@ -328,7 +332,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
       put_change(changeset, :charge_quantity, D.new(get_field(changeset, :order_quantity)))
     end
   end
-  def put_charge_quantity(changeset = %Changeset{ valid?: true }) do
+
+  defp put_charge_quantity(changeset = %Changeset{ valid?: true }) do
     price_estimate_by_default = get_field(changeset, :price_estimate_by_default)
     is_estimate = get_field(changeset, :is_estimate)
 
@@ -353,17 +358,21 @@ defmodule BlueJet.Storefront.OrderLineItem do
       true -> changeset
     end
   end
-  def put_charge_quantity(changeset), do: changeset
 
-  def put_amount_fields(changeset = %Changeset{ valid?: true }) do
+  defp put_charge_quantity(changeset), do: changeset
+
+  #######
+  defp put_amount_fields(changeset = %Changeset{ valid?: true }) do
     if get_field(changeset, :price_id) do
       refresh_amount_fields(changeset, :with_price)
     else
       refresh_amount_fields(changeset)
     end
   end
-  def put_amount_fields(changeset), do: changeset
 
+  defp put_amount_fields(changeset), do: changeset
+
+  #######
   defp refresh_amount_fields(changeset = %Changeset{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }) do
     account_id = get_field(changeset, :account_id)
     point_transaction = get_source(%{
@@ -382,6 +391,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:grand_total_cents, sub_total_cents)
     |> put_change(:authorization_total_cents, sub_total_cents)
   end
+
   defp refresh_amount_fields(changeset = %Changeset{ valid?: true }) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
     tax_one_cents = get_field(changeset, :tax_one_cents)
@@ -393,6 +403,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:grand_total_cents, grand_total_cents)
     |> put_change(:authorization_total_cents, grand_total_cents)
   end
+
   defp refresh_amount_fields(changeset, :with_price) do
     charge_quantity = get_field(changeset, :charge_quantity)
     price_charge_amount_cents = get_field(changeset, :price_charge_amount_cents)
@@ -440,18 +451,40 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:authorization_total_cents, authorization_total_cents)
   end
 
+  @doc """
+  Balance the order line item by creating or updating its children.
+
+  If the order line item has parent, then calling this function has the same
+  effect as if it is called on the parent. This function will search for the
+  root and balance towards the leaf.
+
+  This function will balance the entire branch regardless which order line item
+  on the branch is the input.
+
+  Returns the input order line item after its being balanced.
+  """
   def balance!(struct = %OrderLineItem{ is_leaf: true, parent_id: nil }), do: struct
+
   def balance!(struct = %OrderLineItem{ is_leaf: true }) do
     parent = assoc(struct, :parent) |> Repo.one()
     balance!(parent)
   end
+
   def balance!(struct = %OrderLineItem{ product_id: product_id }) when not is_nil(product_id) do
     product = Repo.get!(Product, product_id)
     balance_by_product(struct, product)
   end
+
   def balance!(struct), do: struct
-  def balance_by_product(struct, product = %Product{ kind: kind }) when kind in ["simple", "item", "variant"] do
+
+  ######
+  defp balance_by_product(struct, product = %Product{ kind: kind }) when kind in ["simple", "item", "variant"] do
     source_order_quantity = product.source_quantity * struct.order_quantity
+    source_charge_quantity = if struct.price_estimate_by_default do
+      struct.charge_quantity
+    else
+      D.new(source_order_quantity)
+    end
     source = get_source(product)
 
     # Product Variant should ever only have one child
@@ -466,7 +499,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       auto_fulfill: struct.auto_fulfill,
       name: source.name,
       order_quantity: source_order_quantity,
-      charge_quantity: struct.charge_quantity,
+      charge_quantity: source_charge_quantity,
       sub_total_cents: struct.sub_total_cents,
       tax_one_cents: struct.tax_one_cents,
       tax_two_cents: struct.tax_two_cents,
@@ -478,6 +511,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     case child do
       nil -> Repo.insert!(Changeset.change(%OrderLineItem{}, child_fields))
+
       _ ->
         child
         |> Changeset.change(child_fields)
@@ -486,7 +520,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     struct
   end
-  def balance_by_product(struct, product = %Product{ kind: kind}) when kind == "combo" do
+
+  defp balance_by_product(struct, product = %Product{ kind: kind}) when kind == "combo" do
     price = Repo.get!(Price, struct.price_id) |> Repo.preload(:children)
     items = assoc(product, :items) |> Repo.all()
 
@@ -521,6 +556,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
     struct
   end
 
+  @doc """
+  Process the given order line item so that other related resource can be created/updated.
+
+  This function may change the order line item in database.
+
+  External resources maybe created/updated.
+
+  Returns the processed order line item.
+  """
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Unlockable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     %Unlock{ account_id: line_item.account_id }
     |> Changeset.change(%{
@@ -531,6 +575,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
        })
     |> Repo.insert!()
   end
+
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "Depositable" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, customer) when not is_nil(source_id) do
     account = get_account(line_item)
     {:ok, %{ data: depositable }} = Goods.do_get_depositable(%AccessRequest{
@@ -554,6 +599,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       line_item
     end
   end
+
   def process(line_item = %OrderLineItem{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }, _) when not is_nil(source_id) do
     {:ok, %{ data: _ }} = CRM.do_update_point_transaction(%AccessRequest{
       vas: %{ account_id: line_item.account_id },
@@ -563,13 +609,18 @@ defmodule BlueJet.Storefront.OrderLineItem do
       }
     })
   end
+
   def process(line_item, _, _, _) do
     {:ok, line_item}
   end
+
   def process(line_item, :delete) do
     {:ok, line_item}
   end
 
+  @doc """
+  Returns the order line item with fulfillment status updated.
+  """
   def refresh_fulfillment_status(oli) do
     oli
     |> Changeset.change(fulfillment_status: get_fulfillment_status(oli))
@@ -588,6 +639,12 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
+  @doc """
+  Returns the order line item base on the fulfillment of the given order line item.
+
+  It will always return the corrent fulfillment status where as the `fulfillment_status`
+  field of the order line item may not be up to date yet.
+  """
   def get_fulfillment_status(%{ grant_total_cents: grand_total_cents }) when grand_total_cents < 0 do
     "fulfilled"
   end

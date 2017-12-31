@@ -1,7 +1,8 @@
-defmodule BlueJet.SkuTest do
+defmodule BlueJet.StockableTest do
   use BlueJet.DataCase
+  import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Inventory.Sku
+  alias BlueJet.Goods.Stockable
 
   @valid_params %{
     account_id: Ecto.UUID.generate(),
@@ -15,9 +16,9 @@ defmodule BlueJet.SkuTest do
   }
   @invalid_params %{}
 
-  describe "changeset/1" do
+  describe "changeset/2" do
     test "with struct in :built state, valid params, en locale" do
-      changeset = Sku.changeset(%Sku{}, @valid_params)
+      changeset = Stockable.changeset(%Stockable{}, @valid_params)
 
       assert changeset.valid?
       assert changeset.changes.account_id
@@ -28,22 +29,10 @@ defmodule BlueJet.SkuTest do
       assert changeset.changes.custom_data
     end
 
-    test "with struct in :built state, valid params, zh-CN locale" do
-      changeset = Sku.changeset(%Sku{}, @valid_params, "zh-CN")
-
-      assert changeset.valid?
-      assert changeset.changes.account_id
-      assert changeset.changes.status
-      assert changeset.changes.unit_of_measure
-      assert changeset.changes.translations["zh-CN"]
-      refute Map.get(changeset.changes, :name)
-      refute Map.get(changeset.changes, :print_name)
-      refute Map.get(changeset.changes, :custom_data)
-    end
-
     test "with struct in :loaded state, valid params" do
-      struct = Ecto.put_meta(%Sku{ account_id: Ecto.UUID.generate() }, state: :loaded)
-      changeset = Sku.changeset(struct, @valid_params)
+      %{ account: account } = create_identity("guest")
+      struct = Ecto.put_meta(%Stockable{ account_id: account.id }, state: :loaded)
+      changeset = Stockable.changeset(struct, @valid_params)
 
       assert changeset.valid?
       assert changeset.changes.status
@@ -55,9 +44,23 @@ defmodule BlueJet.SkuTest do
     end
 
     test "with struct in :built state, invalid params" do
-      changeset = Sku.changeset(%Sku{}, @invalid_params)
+      changeset = Stockable.changeset(%Stockable{}, @invalid_params)
 
       refute changeset.valid?
+    end
+  end
+
+  describe "changeset/4" do
+    test "with struct in :built state, valid params, zh-CN locale" do
+      changeset = Stockable.changeset(%Stockable{}, @valid_params, "zh-CN", "en")
+
+      assert changeset.valid?
+      assert changeset.changes.account_id
+      assert changeset.changes.status
+      assert changeset.changes.translations["zh-CN"]
+      refute Map.get(changeset.changes, :name)
+      refute Map.get(changeset.changes, :print_name)
+      refute Map.get(changeset.changes, :custom_data)
     end
   end
 end

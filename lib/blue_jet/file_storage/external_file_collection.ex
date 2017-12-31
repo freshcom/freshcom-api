@@ -8,6 +8,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     :custom_data
   ], container: :translations
 
+  import BlueJet.Identity.Shortcut
+
   alias BlueJet.Translation
   alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollection
@@ -15,6 +17,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
   schema "external_file_collections" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "active"
     field :code, :string
     field :name, :string
@@ -77,7 +81,10 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale, default_locale) do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
     |> validate()

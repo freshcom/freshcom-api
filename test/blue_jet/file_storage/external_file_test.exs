@@ -13,7 +13,7 @@ defmodule BlueJet.ExternalFileTest do
   }
   @invalid_params %{}
 
-  describe "changeset/1" do
+  describe "changeset/4" do
     test "with valid attributes" do
       changeset = ExternalFile.changeset(%ExternalFile{}, @valid_params)
       assert changeset.valid?

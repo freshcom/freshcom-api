@@ -10,14 +10,14 @@ defmodule BlueJet.ExternalFileCollectionTest do
   }
   @invalid_params %{}
 
-  describe "changeset/1" do
+  describe "changeset/4" do
     test "with valid attributes" do
-      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_params)
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @valid_params, "en", "en")
       assert changeset.valid?
     end
 
     test "with invalid attributes" do
-      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_params)
+      changeset = ExternalFileCollection.changeset(%ExternalFileCollection{}, @invalid_params, "en", "en")
       refute changeset.valid?
     end
   end

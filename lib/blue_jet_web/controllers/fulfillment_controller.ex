@@ -8,7 +8,7 @@ defmodule BlueJetWeb.FulfillmentController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, params) do
+  def index(conn = %{ assigns: assigns }, _) do
     request = %AccessRequest{
       vas: assigns[:vas],
       filter: assigns[:filter],

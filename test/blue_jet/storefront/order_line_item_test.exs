@@ -1,61 +1,79 @@
 defmodule BlueJet.OrderLineItemTest do
   use BlueJet.DataCase
 
+  alias Decimal, as: D
+
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Price
-  alias BlueJet.Storefront.ProductItem
-  alias BlueJet.Storefront.Product
-  alias BlueJet.Inventory.Sku
+  alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.Product
+  alias BlueJet.Goods.Stockable
 
-  def create_regular_product do
+  def create_product_with_variants do
     account = Repo.insert!(%Account{})
-    product = Repo.insert!(%Product{
+    stockable = Repo.insert!(%Stockable{
+      account_id: account.id,
       status: "active",
       name: "Apple",
-      account_id: account.id
+      unit_of_measure: "EA"
     })
-    product_item = Repo.insert!(%ProductItem{
+
+    product = Repo.insert!(%Product{
       status: "active",
-      name: "Apple Large",
+      kind: "with_variants",
+      name: "Apple",
       account_id: account.id,
-      product_id: product.id,
       translations: %{
-        "zh-CN" => %{
-          "name" => "苹果 大号"
-        },
-        "lala" => %{
-          "name" => "Apple Large"
+        "zh-CN": %{
+          name: "苹果"
         }
       }
     })
+    variant = Repo.insert!(%Product{
+      status: "active",
+      kind: "variant",
+      name: "Apple Large",
+      account_id: account.id,
+      parent_id: product.id,
+      source_type: "Stockable",
+      source_id: stockable.id,
+      source_quantity: 5,
+      translations: %{
+        "zh-CN": %{
+          name: "苹果 大号"
+        }
+      }
+    })
+
+    %{ account: account, product: product, variant: variant }
+  end
+
+  def create_exact_regular_and_bulk_price(product, account) do
     regular_price = Repo.insert!(%Price{
       account_id: account.id,
-      product_item_id: product_item.id,
+      product_id: product.id,
       status: "active",
+      name: "Regular",
       label: "regular",
-      name: "Regular Price",
+      caption: "This is regular price",
       charge_amount_cents: 1000,
       order_unit: "EA",
       charge_unit: "EA",
       translations: %{
-        "zh-CN" => %{
-          "name" => "原价"
-        },
-        "lala" => %{
-          "name" => "Regular Price"
+        "zh-CN": %{
+          name: "原价"
         }
       }
     })
     end_time = Timex.shift(Timex.now(), days: 3)
     bulk_price = Repo.insert!(%Price{
       account_id: account.id,
-      product_item_id: product_item.id,
+      product_id: product.id,
       status: "active",
-      caption: "Bulk price is good",
-      label: "blulk",
-      name: "Bulk Price",
+      name: "Bulk",
+      label: "bulk",
+      caption: "This is bulk price",
       charge_amount_cents: 899,
       order_unit: "EA",
       charge_unit: "EA",
@@ -65,16 +83,40 @@ defmodule BlueJet.OrderLineItemTest do
       tax_three_percentage: Decimal.new(1),
       end_time: end_time,
       translations: %{
-        "zh-CN" => %{
-          "name" => "团购价"
-        },
-        "lala" => %{
-          "name" => "Bulk Price"
+        "zh-CN": %{
+          name: "团购价"
         }
       }
     })
+    %{ regular: regular_price, bulk: bulk_price }
+  end
 
-    %{ account: account, product: product, product_item: product_item, regular_price: regular_price, bulk_price: bulk_price }
+  def create_estimated_price(product, account) do
+    end_time = Timex.shift(Timex.now(), days: 3)
+    Repo.insert!(%Price{
+      account_id: account.id,
+      product_id: product.id,
+      status: "active",
+      name: "Regular",
+      label: "regular",
+      caption: "This is regular price",
+      charge_amount_cents: 899,
+      order_unit: "EA",
+      charge_unit: "LB",
+      estimate_by_default: true,
+      estimate_average_percentage: 150,
+      estimate_maximum_percentage: 200,
+      minimum_order_quantity: 1,
+      tax_one_percentage: D.new(5),
+      tax_two_percentage: D.new(7),
+      tax_three_percentage: D.new(1),
+      end_time: end_time,
+      translations: %{
+        "zh-CN": %{
+          name: "原价"
+        }
+      }
+    })
   end
 
   def create_combo_product do
@@ -91,216 +133,154 @@ defmodule BlueJet.OrderLineItemTest do
 
   describe "schema" do
     test "defaults" do
-      struct = %Product{}
+      oli = %OrderLineItem{}
 
-      assert struct.item_mode == "any"
-      assert struct.custom_data == %{}
-      assert struct.translations == %{}
+      assert oli.fulfillment_status == "pending"
+      assert oli.is_leaf
+      assert oli.order_quantity == 1
+      assert oli.tax_one_cents == 0
+      assert oli.tax_two_cents == 0
+      assert oli.tax_three_cents == 0
+      assert oli.is_estimate == false
+      assert oli.custom_data == %{}
+      assert oli.translations == %{}
     end
   end
 
-  describe "changeset/3" do
-    test "with new OrderLineItem that have product_item_id and order_quantity" do
-      %{ account: account, product_item: product_item, bulk_price: bulk_price } = create_regular_product()
-      order = Repo.insert!(%Order{ account_id: account.id })
+  describe "changeset/4" do
+    test "on new order line item with product variant and exact price" do
+      %{ account: account, variant: variant } = create_product_with_variants()
+      %{ bulk: bulk_price } = create_exact_regular_and_bulk_price(variant, account)
 
-      changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
-        "account_id" => account.id,
+      order = Repo.insert!(%Order{ account_id: account.id })
+      order_quantity = 3
+
+      changeset = OrderLineItem.changeset(%OrderLineItem{
+        account_id: account.id
+      }, %{
         "order_id" => order.id,
-        "product_item_id" => product_item.id,
-        "order_quantity" => 3
+        "product_id" => variant.id,
+        "order_quantity" => order_quantity
       })
 
       correct_translations = %{
         "zh-CN" => %{
           "name" => "苹果 大号",
           "price_name" => "团购价"
-        },
-        "lala" => %{
-          "name" => "Apple Large",
-          "price_name" => "Bulk Price"
         }
       }
 
       assert changeset.valid?
-      assert changeset.changes.name == product_item.name
-      assert changeset.changes.price_label == bulk_price.label
-      assert changeset.changes.price_caption == bulk_price.caption
+      assert changeset.changes.name == variant.name
+
+      assert changeset.changes.is_leaf == false
+      assert changeset.changes.order_quantity == order_quantity
+      assert changeset.changes.charge_quantity == D.new(order_quantity)
+
       assert changeset.changes.price_id == bulk_price.id
       assert changeset.changes.price_name == bulk_price.name
-      assert changeset.changes.price_charge_amount_cents == bulk_price.charge_amount_cents
-      assert changeset.changes.price_charge_unit == bulk_price.charge_unit
+      assert changeset.changes.price_label == bulk_price.label
+      assert changeset.changes.price_caption == bulk_price.caption
       assert changeset.changes.price_order_unit == bulk_price.order_unit
+      assert changeset.changes.price_charge_unit == bulk_price.charge_unit
+      assert changeset.changes.price_currency_code == bulk_price.currency_code
+      assert changeset.changes.price_charge_amount_cents == bulk_price.charge_amount_cents
+      assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
       assert changeset.changes.price_tax_one_percentage == bulk_price.tax_one_percentage
       assert changeset.changes.price_tax_two_percentage == bulk_price.tax_two_percentage
       assert changeset.changes.price_tax_three_percentage == bulk_price.tax_three_percentage
       assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
       assert changeset.changes.price_end_time == bulk_price.end_time
-      assert changeset.changes.order_quantity == 3
-      assert changeset.changes.charge_quantity == Decimal.new(3)
+
+      assert changeset.changes.sub_total_cents == bulk_price.charge_amount_cents * order_quantity
+      assert changeset.changes.tax_one_cents == 135
+      assert changeset.changes.tax_two_cents == 189
+      assert changeset.changes.tax_three_cents == 27
+      assert changeset.changes.grand_total_cents == 3048
+      assert changeset.changes.authorization_total_cents == 3048
+      assert changeset.changes.auto_fulfill == false
+
+      assert changeset.changes.translations == correct_translations
+    end
+
+    test "on new order line item with product variant and estimated price" do
+      %{ account: account, variant: variant } = create_product_with_variants()
+      estimated_price = create_estimated_price(variant, account)
+
+      order = Repo.insert!(%Order{ account_id: account.id })
+      order_quantity = 2
+
+      changeset = OrderLineItem.changeset(%OrderLineItem{
+        account_id: account.id
+      }, %{
+        "order_id" => order.id,
+        "product_id" => variant.id,
+        "order_quantity" => order_quantity
+      })
+
+      correct_translations = %{
+        "zh-CN" => %{
+          "name" => "苹果 大号",
+          "price_name" => "原价"
+        }
+      }
+
+      assert changeset.valid?
+      assert changeset.changes.name == variant.name
+
+      assert changeset.changes.is_leaf == false
+      assert changeset.changes.order_quantity == order_quantity
+      assert changeset.changes.charge_quantity == Price.get_estimate_average_rate(estimated_price) |> D.mult(D.new(order_quantity))
+
+      assert changeset.changes.price_id == estimated_price.id
+      assert changeset.changes.price_name == estimated_price.name
+      assert changeset.changes.price_label == estimated_price.label
+      assert changeset.changes.price_caption == estimated_price.caption
+      assert changeset.changes.price_order_unit == estimated_price.order_unit
+      assert changeset.changes.price_charge_unit == estimated_price.charge_unit
+      assert changeset.changes.price_currency_code == estimated_price.currency_code
+      assert changeset.changes.price_charge_amount_cents == estimated_price.charge_amount_cents
+      assert changeset.changes.price_estimate_by_default == estimated_price.estimate_by_default
+      assert changeset.changes.price_tax_one_percentage == estimated_price.tax_one_percentage
+      assert changeset.changes.price_tax_two_percentage == estimated_price.tax_two_percentage
+      assert changeset.changes.price_tax_three_percentage == estimated_price.tax_three_percentage
+      assert changeset.changes.price_estimate_by_default == estimated_price.estimate_by_default
+      assert changeset.changes.price_end_time == estimated_price.end_time
+
       assert changeset.changes.sub_total_cents == 2697
       assert changeset.changes.tax_one_cents == 135
       assert changeset.changes.tax_two_cents == 189
       assert changeset.changes.tax_three_cents == 27
       assert changeset.changes.grand_total_cents == 3048
-      assert changeset.changes.translations == correct_translations
-    end
+      assert changeset.changes.authorization_total_cents == 4064
+      assert changeset.changes.auto_fulfill == false
 
-    test "with new OrderLineItem with product_id" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        status: "active",
-        name: "Fruit Combo",
-        item_mode: "all",
-        account_id: account.id,
-        translations: %{
-          "zh-CN" => %{
-            "name" => "水果套餐"
-          },
-          "lala" => %{
-            "name" => "LOL Fruit Combo"
-          }
-        }
-      })
-      product_item1 = Repo.insert!(%ProductItem{
-        status: "active",
-        name: "Apple Large",
-        account_id: account.id,
-        product_id: product.id,
-        source_quantity: 2
-      })
-      price_end_time1 = Timex.shift(Timex.now(), days: 1)
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item1.id,
-        status: "active",
-        label: "regular",
-        name: "Regular Price",
-        charge_amount_cents: 1000,
-        order_unit: "EA",
-        charge_unit: "EA",
-        tax_one_percentage: 5,
-        tax_two_percentage: 7,
-        tax_three_percentage: 1,
-        end_time: price_end_time1
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item1.id,
-        status: "active",
-        caption: "Bulk price is good",
-        label: "blulk",
-        name: "Bulk Price",
-        charge_amount_cents: 899,
-        order_unit: "EA",
-        charge_unit: "EA",
-        minimum_order_quantity: 4,
-        tax_one_percentage: 5,
-        tax_two_percentage: 7,
-        tax_three_percentage: 1,
-        end_time: price_end_time1
-      })
-
-      product_item2 = Repo.insert!(%ProductItem{
-        status: "active",
-        name: "Orange Large",
-        account_id: account.id,
-        product_id: product.id
-      })
-      price_end_time2 = Timex.shift(Timex.now(), days: 2)
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item2.id,
-        status: "active",
-        label: "regular",
-        name: "Regular Price",
-        charge_amount_cents: 1000,
-        order_unit: "EA",
-        charge_unit: "EA",
-        end_time: price_end_time2
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item2.id,
-        status: "active",
-        caption: "Bulk price is good",
-        label: "blulk",
-        name: "Bulk Price",
-        charge_amount_cents: 899,
-        order_unit: "EA",
-        charge_unit: "EA",
-        minimum_order_quantity: 3,
-        end_time: price_end_time2
-      })
-
-      order = Repo.insert!(%Order{ account_id: account.id })
-
-      changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
-        "account_id" => account.id,
-        "order_id" => order.id,
-        "product_id" => product.id,
-        "order_quantity" => 1
-      })
-
-      correct_translations = %{
-        "zh-CN" => %{
-          "name" => "水果套餐"
-        },
-        "lala" => %{
-          "name" => "LOL Fruit Combo"
-        }
-      }
-
-      assert changeset.changes.name == product.name
-      assert changeset.changes.price_end_time == price_end_time1
-      assert changeset.changes.order_quantity == 1
-      assert changeset.changes.charge_quantity == Decimal.new(1)
-      assert changeset.changes.sub_total_cents == 2000
-      assert changeset.changes.tax_one_cents == 50
-      assert changeset.changes.tax_two_cents == 70
-      assert changeset.changes.tax_three_cents == 10
-      assert changeset.changes.grand_total_cents == 2130
-      assert changeset.changes.translations == correct_translations
-
-      changeset = OrderLineItem.changeset(%OrderLineItem{}, %{
-        "account_id" => account.id,
-        "order_id" => order.id,
-        "product_id" => product.id,
-        "order_quantity" => 3
-      })
-
-      assert changeset.changes.name == product.name
-      assert changeset.changes.price_end_time == price_end_time1
-      assert changeset.changes.order_quantity == 3
-      assert changeset.changes.charge_quantity == Decimal.new(3)
-      assert changeset.changes.sub_total_cents == 5697
-      assert changeset.changes.tax_one_cents == 150
-      assert changeset.changes.tax_two_cents == 210
-      assert changeset.changes.tax_three_cents == 30
-      assert changeset.changes.grand_total_cents == 6087
       assert changeset.changes.translations == correct_translations
     end
   end
 
   describe "balance!/1" do
-    test "with custom OrderLineItem" do
+    test "on custom order line item" do
       account = Repo.insert!(%Account{})
       order = Repo.insert!(%Order{
         account_id: account.id
       })
+
       item = Repo.insert!(%OrderLineItem{
         account_id: account.id,
+        order_id: order.id,
         name: "Custom Line",
         is_leaf: true,
         parent_id: nil,
-        order_id: order.id,
         order_quantity: 1,
         charge_quantity: 1,
         sub_total_cents: 0,
         tax_one_cents: 0,
         tax_two_cents: 0,
         tax_three_cents: 0,
-        grand_total_cents: 0
+        grand_total_cents: 0,
+        authorization_total_cents: 0,
+        auto_fulfill: false
       })
 
       OrderLineItem.balance!(item)
@@ -309,44 +289,26 @@ defmodule BlueJet.OrderLineItemTest do
       assert length(children) == 0
     end
 
-    test "with OrderLineItem with ProductItem" do
-      account = Repo.insert!(%Account{})
-      sku = Repo.insert!(%Sku{
-        account_id: account.id,
-        status: "active",
-        name: "Apple",
-        print_name: "APPLED",
-        unit_of_measure: "EA"
-      })
-      product = Repo.insert!(%Product{
-        status: "active",
-        name: "Apple",
-        account_id: account.id
-      })
-      product_item = Repo.insert!(%ProductItem{
-        status: "active",
-        account_id: account.id,
-        product_id: product.id,
-        sku_id: sku.id,
-        name: "Apple",
-        source_quantity: 5
-      })
+    test "on order line item with product variant" do
+      %{ account: account, variant: variant } = create_product_with_variants()
+
       order = Repo.insert!(%Order{
         account_id: account.id
       })
       order_line_item = Repo.insert!(%OrderLineItem{
         account_id: account.id,
-        is_leaf: false,
-        parent_id: nil,
         order_id: order.id,
-        charge_quantity: 3,
+        product_id: variant.id,
+        is_leaf: false,
         order_quantity: 3,
-        product_item_id: product_item.id,
+        charge_quantity: 3,
         sub_total_cents: 1000,
         tax_one_cents: 20,
         tax_two_cents: 10,
         tax_three_cents: 60,
-        grand_total_cents: 1090
+        grand_total_cents: 1090,
+        authorization_total_cents: 1090,
+        auto_fulfill: false
       })
 
       children = order_line_item |> OrderLineItem.balance!() |> OrderLineItem.balance!() |> Ecto.assoc(:children) |> Repo.all()
@@ -361,121 +323,101 @@ defmodule BlueJet.OrderLineItemTest do
       assert child.tax_three_cents == order_line_item.tax_three_cents
       assert child.grand_total_cents == order_line_item.grand_total_cents
       assert child.is_leaf
-      assert child.sku_id == product_item.sku_id
+      assert child.source_id == variant.source_id
+      assert child.source_type == variant.source_type
     end
 
-    test "with OrderLineItem with Product" do
-      account = Repo.insert!(%Account{})
-      sku1 = Repo.insert!(%Sku{
-        account_id: account.id,
-        status: "active",
-        name: "Apple",
-        print_name: "APPLED",
-        unit_of_measure: "EA"
-      })
-      sku2 = Repo.insert!(%Sku{
-        account_id: account.id,
-        status: "active",
-        name: "Orange",
-        print_name: "ORANGE",
-        unit_of_measure: "EA"
-      })
-      product = Repo.insert!(%Product{
-        status: "active",
-        name: "Fruit Combo",
-        item_mode: "any",
-        account_id: account.id
-      })
-      product_item1 = Repo.insert!(%ProductItem{
-        status: "active",
-        account_id: account.id,
-        product_id: product.id,
-        sku_id: sku1.id,
-        name: "Apple",
-        source_quantity: 5
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item1.id,
-        status: "active",
-        label: "regular",
-        name: "Regular Price",
-        charge_amount_cents: 1000,
-        order_unit: "EA",
-        charge_unit: "EA"
-      })
-      product_item2 = Repo.insert!(%ProductItem{
-        status: "active",
-        account_id: account.id,
-        product_id: product.id,
-        sku_id: sku2.id,
-        name: "Orange",
-        source_quantity: 3
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_item_id: product_item2.id,
-        status: "active",
-        label: "regular",
-        name: "Regular Price",
-        charge_amount_cents: 1000,
-        order_unit: "EA",
-        charge_unit: "EA"
-      })
-      order = Repo.insert!(%Order{
-        account_id: account.id
-      })
-      order_line_item = Repo.insert!(%OrderLineItem{
-        account_id: account.id,
-        name: product.name,
-        is_leaf: false,
-        parent_id: nil,
-        order_id: order.id,
-        charge_quantity: 3,
-        order_quantity: 3,
-        product_id: product.id,
-        sub_total_cents: 6000,
-        tax_one_cents: 0,
-        tax_two_cents: 0,
-        tax_three_cents: 0,
-        grand_total_cents: 6000
-      })
+    # test "with OrderLineItem with Product" do
+    #   account = Repo.insert!(%Account{})
+    #   sku1 = Repo.insert!(%Sku{
+    #     account_id: account.id,
+    #     status: "active",
+    #     name: "Apple",
+    #     print_name: "APPLED",
+    #     unit_of_measure: "EA"
+    #   })
+    #   sku2 = Repo.insert!(%Sku{
+    #     account_id: account.id,
+    #     status: "active",
+    #     name: "Orange",
+    #     print_name: "ORANGE",
+    #     unit_of_measure: "EA"
+    #   })
+    #   product = Repo.insert!(%Product{
+    #     status: "active",
+    #     name: "Fruit Combo",
+    #     item_mode: "any",
+    #     account_id: account.id
+    #   })
+    #   product_item1 = Repo.insert!(%ProductItem{
+    #     status: "active",
+    #     account_id: account.id,
+    #     product_id: product.id,
+    #     sku_id: sku1.id,
+    #     name: "Apple",
+    #     source_quantity: 5
+    #   })
+    #   Repo.insert!(%Price{
+    #     account_id: account.id,
+    #     product_item_id: product_item1.id,
+    #     status: "active",
+    #     label: "regular",
+    #     name: "Regular Price",
+    #     charge_amount_cents: 1000,
+    #     order_unit: "EA",
+    #     charge_unit: "EA"
+    #   })
+    #   product_item2 = Repo.insert!(%ProductItem{
+    #     status: "active",
+    #     account_id: account.id,
+    #     product_id: product.id,
+    #     sku_id: sku2.id,
+    #     name: "Orange",
+    #     source_quantity: 3
+    #   })
+    #   Repo.insert!(%Price{
+    #     account_id: account.id,
+    #     product_item_id: product_item2.id,
+    #     status: "active",
+    #     label: "regular",
+    #     name: "Regular Price",
+    #     charge_amount_cents: 1000,
+    #     order_unit: "EA",
+    #     charge_unit: "EA"
+    #   })
+    #   order = Repo.insert!(%Order{
+    #     account_id: account.id
+    #   })
+    #   order_line_item = Repo.insert!(%OrderLineItem{
+    #     account_id: account.id,
+    #     name: product.name,
+    #     is_leaf: false,
+    #     parent_id: nil,
+    #     order_id: order.id,
+    #     charge_quantity: 3,
+    #     order_quantity: 3,
+    #     product_id: product.id,
+    #     sub_total_cents: 6000,
+    #     tax_one_cents: 0,
+    #     tax_two_cents: 0,
+    #     tax_three_cents: 0,
+    #     grand_total_cents: 6000
+    #   })
 
-      children =
-        order_line_item
-        |> OrderLineItem.balance!()
-        |> OrderLineItem.balance!()
-        |> Ecto.assoc(:children)
-        |> Repo.all()
-      child1 = Enum.at(children, 0)
-      child2 = Enum.at(children, 1)
+    #   children =
+    #     order_line_item
+    #     |> OrderLineItem.balance!()
+    #     |> OrderLineItem.balance!()
+    #     |> Ecto.assoc(:children)
+    #     |> Repo.all()
+    #   child1 = Enum.at(children, 0)
+    #   child2 = Enum.at(children, 1)
 
-      assert length(children) == 2
-      assert child1.order_quantity == 3
-      assert child1.sub_total_cents == 3000
-      assert child2.order_quantity == 3
-      assert child2.sub_total_cents == 3000
-
-
-      # IO.inspect "#{order_line_item.name} x #{order_line_item.order_quantity} #{order_line_item.grand_total_cents}"
-      # Enum.each(children, fn(child) ->
-      #   IO.inspect "- #{child.name} x #{child.order_quantity} #{child.grand_total_cents}"
-      #   grandchildren = Ecto.assoc(child, :children) |> Repo.all()
-
-      #   Enum.each(grandchildren, fn(grandchild) ->
-      #     IO.inspect "-- #{grandchild.name} x #{grandchild.order_quantity} #{child.grand_total_cents}"
-      #   end)
-      # end)
-
-      # assert child.order_quantity == 15
-      # assert child.charge_quantity == Decimal.new(15)
-      # assert child.sub_total_cents == order_line_item.sub_total_cents
-      # assert child.tax_one_cents == order_line_item.tax_one_cents
-      # assert child.tax_two_cents == order_line_item.tax_two_cents
-      # assert child.tax_three_cents == order_line_item.tax_three_cents
-      # assert child.grand_total_cents == order_line_item.grand_total_cents
-      # assert child.is_leaf
-      # assert child.sku_id == product_item.sku_id
-    end
+    #   assert length(children) == 2
+    #   assert child1.order_quantity == 3
+    #   assert child1.sub_total_cents == 3000
+    #   assert child2.order_quantity == 3
+    #   assert child2.sub_total_cents == 3000
+    # end
   end
 end

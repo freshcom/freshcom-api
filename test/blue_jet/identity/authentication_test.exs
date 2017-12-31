@@ -30,7 +30,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert token.access_token
       assert token.token_type
       assert token.expires_in
-      assert token.refresh_token == refresh_token.id
+      assert token.refresh_token == "urt-live-" <> refresh_token.id
     end
 
     test "with invalid user" do
@@ -52,7 +52,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert token.access_token
       assert token.token_type
       assert token.expires_in
-      assert token.refresh_token == refresh_token.id
+      assert token.refresh_token == "urt-live-" <> refresh_token.id
     end
 
     test "with invalid user" do
@@ -66,37 +66,31 @@ defmodule BlueJet.Identity.AuthenticationTest do
   end
 
   describe "create_token_by_refresh_token/1" do
-    test "with Storefront Refresh Token" do
-      refresh_token_id = Ecto.UUID.generate()
-      {:ok, token} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, account_id: Ecto.UUID.generate() })
+    test "with publishable refresh token" do
+      %{ account: account } = create_identity("guest")
+      rt = Repo.insert!(%RefreshToken{ account_id: account.id })
+
+      {:ok, token} = Authentication.create_token_by_refresh_token(rt)
 
       assert token.access_token
       assert token.token_type
       assert token.expires_in
-      assert token.refresh_token == refresh_token_id
+      assert token.refresh_token == "prt-live-" <> rt.id
     end
 
-    test "with User Account Refresh Token" do
-      refresh_token_id = Ecto.UUID.generate()
-      {:ok, token} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, account_id: Ecto.UUID.generate(), user_id: Ecto.UUID.generate() })
+    test "with user refresh token" do
+      %{ user: user, account: account } = create_identity("administrator")
+      rt = Repo.insert!(%RefreshToken{ user_id: user.id, account_id: account.id })
+
+      {:ok, token} = Authentication.create_token_by_refresh_token(rt)
 
       assert token.access_token
       assert token.token_type
       assert token.expires_in
-      assert token.refresh_token == refresh_token_id
+      assert token.refresh_token == "urt-live-" <> rt.id
     end
 
-    test "with User Global Refresh Token" do
-      refresh_token_id = Ecto.UUID.generate()
-      {:ok, token} = Authentication.create_token_by_refresh_token(%RefreshToken{ id: refresh_token_id, user_id: Ecto.UUID.generate() })
-
-      assert token.access_token
-      assert token.token_type
-      assert token.expires_in
-      assert token.refresh_token == refresh_token_id
-    end
-
-    test "with nil Refresh Token" do
+    test "with nil refresh token" do
       {:error, %{ error: :invalid_grant }} = Authentication.create_token_by_refresh_token(nil)
     end
   end

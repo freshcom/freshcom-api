@@ -62,8 +62,13 @@ defmodule BlueJet.Identity.Account do
   end
 
   def put_test_account_id(account = %{ id: live_account_id, mode: "live" }) do
-    test_account = Repo.get_by!(Account, mode: "test", live_account_id: live_account_id)
-    %{ account | test_account_id: test_account.id }
+    test_account = Repo.get_by(Account, mode: "test", live_account_id: live_account_id)
+
+    case test_account do
+      nil -> account
+
+      other -> %{ account | test_account_id: test_account.id }
+    end
   end
   def put_test_account_id(account), do: account
 

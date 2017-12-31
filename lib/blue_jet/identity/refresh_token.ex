@@ -40,6 +40,7 @@ defmodule BlueJet.Identity.RefreshToken do
   def changeset(struct, params \\ %{}) do
     struct
     |> cast(params, [:account_id, :user_id])
+    |> validate_required(:account_id)
     |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:user_id)
   end

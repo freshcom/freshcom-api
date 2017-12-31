@@ -12,12 +12,15 @@ defmodule BlueJet.Goods.Stockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
+  import BlueJet.Identity.Shortcut
 
+  alias BlueJet.Translation
   alias BlueJet.Goods.Stockable
 
   schema "stockables" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "draft"
     field :code, :string
     field :name, :string
@@ -80,6 +83,9 @@ defmodule BlueJet.Goods.Stockable do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
     |> validate()

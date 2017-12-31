@@ -10,11 +10,12 @@ defmodule BlueJet.Identity.IdentityTest do
       request = %AccessRequest{
         vas: %{},
         fields: %{
-          email: Faker.Internet.email(),
-          first_name: Faker.Name.first_name(),
-          last_name: Faker.Name.last_name(),
-          account_name: Faker.Company.name(),
-          password: "test1234"
+          "email" => Faker.Internet.email(),
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "account_name" => Faker.Company.name(),
+          "password" => "test1234",
+          "default_locale" => "en"
         }
       }
 
@@ -23,7 +24,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       assert user.account_id == nil
       assert user.default_account_id != nil
-      assert length(user.refresh_tokens) == 1
+      assert length(user.refresh_tokens) == 2
       assert length(user.account_memberships) == 1
       assert Enum.at(user.account_memberships, 0).role == "administrator"
     end
@@ -34,10 +35,10 @@ defmodule BlueJet.Identity.IdentityTest do
       request = %AccessRequest{
         vas: vas,
         fields: %{
-          email: Faker.Internet.email(),
-          first_name: Faker.Name.first_name(),
-          last_name: Faker.Name.last_name(),
-          password: "test1234"
+          "email" => Faker.Internet.email(),
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "password" => "test1234"
         }
       }
 
@@ -56,10 +57,10 @@ defmodule BlueJet.Identity.IdentityTest do
       request = %AccessRequest{
         vas: vas,
         fields: %{
-          email: Faker.Internet.email(),
-          first_name: Faker.Name.first_name(),
-          last_name: Faker.Name.last_name(),
-          password: "test1234"
+          "email" => Faker.Internet.email(),
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "password" => "test1234"
         }
       }
 
