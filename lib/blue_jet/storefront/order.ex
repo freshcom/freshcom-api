@@ -180,7 +180,9 @@ defmodule BlueJet.Storefront.Order do
 
   def required_fields, do: [:account_id, :status, :fulfillment_status, :payment_status]
 
-  # TODO: if changeing from cart to opened status we need to check inventory
+  @doc """
+  Returns the validated changeset.
+  """
   def validate(changeset = %{ data: %{ __meta__: %{ state: :built } } }) do
     changeset
   end
@@ -196,6 +198,7 @@ defmodule BlueJet.Storefront.Order do
     |> validate_customer_id()
   end
 
+  # TODO:
   defp validate_inventory(changeset) do
     changeset
   end
