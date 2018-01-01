@@ -167,9 +167,12 @@ defmodule BlueJet.Storefront do
 
   def do_create_order(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Order.changeset(%Order{}, fields, request.locale, account.default_locale)
+    changeset = Order.changeset(
+      %Order{ account_id: account.id },
+      request.fields,
+      request.locale,
+      account.default_locale
+    )
 
     with {:ok, order} <- Repo.insert(changeset) do
       order_response(order, request)

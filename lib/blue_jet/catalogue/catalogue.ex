@@ -382,6 +382,83 @@ defmodule BlueJet.Catalogue do
   #
   # ProductCollectionMembership
   #
+  def list_product_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "catalogue.list_product_collection_membership") do
+      request
+      |> AccessRequest.transform_by_role()
+      |> do_list_product_collection_membership
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_product_collection_membership(request = %{
+    role: role,
+    account: account,
+    params: %{ "collection_id" => collection_id },
+    pagination: pagination
+  }) when role in ["guest", "customer"] do
+    data_query =
+      ProductCollectionMembership.Query.default()
+      |> ProductCollectionMembership.Query.with_active_product()
+      |> ProductCollectionMembership.Query.for_collection(collection_id)
+      |> ProductCollectionMembership.Query.for_account(account.id)
+
+    total_count = Repo.aggregate(data_query, :count, :id)
+
+    preloads = ProductCollectionMembership.Query.preloads(request.preloads, role: request.role)
+    pcms =
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: total_count,
+        total_count: total_count
+      },
+      data: pcms
+    }
+
+    {:ok, response}
+  end
+
+  def do_list_product_collection_membership(request = %{
+    account: account,
+    params: %{ "collection_id" => collection_id },
+    pagination: pagination
+  }) do
+    IO.inspect pagination
+    data_query =
+      ProductCollectionMembership.Query.default()
+      |> ProductCollectionMembership.Query.for_collection(collection_id)
+      |> ProductCollectionMembership.Query.for_account(account.id)
+
+    total_count = Repo.aggregate(data_query, :count, :id)
+
+    preloads = ProductCollectionMembership.Query.preloads(request.preloads, role: request.role)
+    pcms =
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: total_count,
+        total_count: total_count
+      },
+      data: pcms
+    }
+
+    {:ok, response}
+  end
+
   defp product_collection_membership_response(nil, _), do: {:error, :not_found}
 
   defp product_collection_membership_response(product_collection_membership, request = %{ account: account }) do

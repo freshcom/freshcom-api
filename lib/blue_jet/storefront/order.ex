@@ -414,9 +414,9 @@ defmodule BlueJet.Storefront.Order do
   def process(order), do: {:ok, order}
 
   def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    order = %{ order | account: get_account(order) }
     order =
       order
-      |> Map.put(:account, get_account(order))
       |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
       |> process_leaf_line_items(changeset)
       |> process_auto_fulfill()
@@ -433,6 +433,7 @@ defmodule BlueJet.Storefront.Order do
       OrderLineItem.Query.default()
       |> OrderLineItem.Query.for_order(order.id)
       |> OrderLineItem.Query.leaf()
+      |> Repo.all()
 
     Enum.each(leaf_line_items, fn(line_item) ->
       OrderLineItem.process(line_item, order, changeset)

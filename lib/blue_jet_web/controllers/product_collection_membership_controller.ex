@@ -6,20 +6,20 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  # def index(conn = %{ assigns: assigns }, params) do
-  #   request = %AccessRequest{
-  #     vas: assigns[:vas],
-  #     search: params["search"],
-  #     filter: assigns[:filter],
-  #     pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
-  #     preloads: assigns[:preloads],
-  #     locale: assigns[:locale]
-  #   }
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "collection_id" => params["product_collection_id"] },
+      filter: assigns[:filter],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-  #  {:ok, %AccessResponse{ data: product_collection_memberships, meta: meta }} = Catalogue.list_product_collection_membership(request)
+    {:ok, %AccessResponse{ data: product_collection_memberships, meta: meta }} = Catalogue.list_product_collection_membership(request)
 
-  #   render(conn, "index.json-api", data: product_collection_memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-  # end
+    render(conn, "index.json-api", data: product_collection_memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  end
 
   def create(conn = %{ assigns: assigns }, %{ "product_collection_id" => pc_id, "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
     request = %AccessRequest{

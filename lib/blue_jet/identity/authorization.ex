@@ -50,6 +50,7 @@ defmodule BlueJet.Identity.Authorization do
     "catalogue.create_product_collection",
     "catalogue.get_product_collection",
     "catalogue.update_product_collection",
+    "catalogue.list_product_collection_membership",
     "catalogue.create_product_collection_membership",
     "catalogue.delete_product_collection_membership",
 
@@ -114,6 +115,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.list_price",
       "catalogue.get_price",
       "catalogue.list_product_collection",
+      "catalogue.list_product_collection_membership",
 
       "crm.get_customer",
       "crm.create_customer",
@@ -148,6 +150,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
       "catalogue.list_product_collection",
       "catalogue.get_product_collection",
+      "catalogue.list_product_collection_membership",
 
       "crm.get_customer",
       "crm.update_customer",
@@ -209,6 +212,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.create_product_collection",
       "catalogue.get_product_collection",
       "catalogue.update_product_collection",
+      "catalogue.list_product_collection_membership",
       "catalogue.create_product_collection_membership",
       "catalogue.delete_product_collection_membership",
 
@@ -283,6 +287,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.get_price",
       "catalogue.list_product_collection",
       "catalogue.get_product_collection",
+      "catalogue.list_product_collection_membership",
 
       "distribution.list_fulfillment",
       "distribution.create_fulfillment",
@@ -345,6 +350,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.update_product_collection",
       "catalogue.create_product_collection_membership",
       "catalogue.delete_product_collection_membership",
+      "catalogue.list_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
@@ -440,6 +446,7 @@ defmodule BlueJet.Identity.Authorization do
       "catalogue.update_product_collection",
       "catalogue.create_product_collection_membership",
       "catalogue.delete_product_collection_membership",
+      "catalogue.list_product_collection_membership",
 
       "crm.list_customer",
       "crm.create_customer",
