@@ -325,7 +325,7 @@ defmodule BlueJet.Catalogue.Product do
     use BlueJet, :query
 
     def default() do
-      from p in Product
+      from p in Product, order_by: [desc: p.updated_at]
     end
 
     def for_account(query, account_id) do

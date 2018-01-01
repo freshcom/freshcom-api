@@ -36,11 +36,11 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
     end
 
     create unique_index(:products, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:products, :account_id)
     create index(:products, [:account_id, :status])
     create index(:products, [:account_id, :name])
-    create index(:products, [:account_id, :label])
+    create index(:products, [:account_id, :label], where: "label IS NOT NULL")
     create index(:products, [:account_id, :kind])
     create index(:products, [:account_id, :parent_id])
+    create index(:products, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
   end
 end

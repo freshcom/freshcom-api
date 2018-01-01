@@ -51,8 +51,11 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
     end
 
     create unique_index(:orders, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:orders, :account_id)
-    create index(:orders, :customer_id)
-    create index(:orders, :user_id)
+    create index(:orders, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:orders, [:account_id, :payment_status])
+    create index(:orders, [:account_id, :fulfillment_status])
+    create index(:orders, [:account_id, :email], where: "email IS NOT NULL")
+    create index(:orders, [:account_id, :customer_id], where: "customer_id IS NOT NULL")
+    create index(:orders, [:account_id, :user_id], where: "user_id IS NOT NULL")
   end
 end

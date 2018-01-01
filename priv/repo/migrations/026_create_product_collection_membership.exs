@@ -14,9 +14,8 @@ defmodule BlueJet.Repo.Migrations.CreateProductCollectionMembership do
     end
 
     create unique_index(:product_collection_memberships, [:product_id, :collection_id])
-    create index(:product_collection_memberships, :account_id)
-    create index(:product_collection_memberships, :collection_id)
-    create index(:product_collection_memberships, :product_id)
-    create index(:product_collection_memberships, :sort_index)
+    create index(:product_collection_memberships, [:account_id, :collection_id])
+    create index(:product_collection_memberships, [:account_id, :product_id])
+    create index(:product_collection_memberships, [:account_id, :sort_index])
   end
 end

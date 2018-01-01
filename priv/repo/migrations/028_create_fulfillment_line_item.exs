@@ -32,8 +32,9 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
     create unique_index(:fulfillment_line_items, [:account_id, :code], where: "code IS NOT NULL")
     create index(:fulfillment_line_items, :account_id)
     create index(:fulfillment_line_items, [:account_id, :status])
+    create index(:fulfillment_line_items, [:account_id, :label], where: "label IS NOT NULL")
     create index(:fulfillment_line_items, [:account_id, :fulfillment_id])
-    create index(:fulfillment_line_items, [:account_id, :source_id, :source_type])
-    create index(:fulfillment_line_items, [:account_id, :goods_id, :goods_type])
+    create index(:fulfillment_line_items, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
+    create index(:fulfillment_line_items, [:account_id, :goods_id, :goods_type], where: "goods_id IS NOT NULL")
   end
 end

@@ -38,9 +38,11 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
     create unique_index(:customers, [:account_id, :code], where: "code IS NOT NULL")
     create unique_index(:customers, [:account_id, :status, :email], where: "status != 'deleted'")
     create unique_index(:customers, :user_id, where: "user_id IS NOT NULL")
-    create index(:customers, :account_id)
-    create index(:customers, :status)
-    create index(:customers, :name)
-    create index(:customers, :label)
+    create index(:customers, [:account_id, :status])
+    create index(:customers, [:account_id, :name])
+    create index(:customers, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:customers, [:account_id, :email])
+    create index(:customers, [:account_id, :sponsor_id])
+    create index(:customers, [:account_id, :enroller_id])
   end
 end

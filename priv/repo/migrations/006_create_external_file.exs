@@ -30,12 +30,13 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
     end
 
     create unique_index(:external_files, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:external_files, :account_id)
     create index(:external_files, [:account_id, :name])
+    create index(:external_files, [:account_id, :label], where: "label IS NOT NULL")
     create index(:external_files, [:account_id, :content_type])
     create index(:external_files, [:account_id, :status])
     create index(:external_files, [:account_id, :system_tag])
     create index(:external_files, [:account_id, :version_label])
     create index(:external_files, [:account_id, :user_id])
+    create index(:external_files, [:account_id, :original_id])
   end
 end

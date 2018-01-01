@@ -11,5 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreateAccountMemberships do
       timestamps()
     end
 
+    create index(:account_memberships, [:account_id, :user_id])
+    create index(:account_memberships, :user_id)
   end
 end

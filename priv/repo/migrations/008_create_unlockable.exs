@@ -23,9 +23,8 @@ defmodule BlueJet.Repo.Migrations.CreateUnlockable do
     end
 
     create unique_index(:unlockables, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:unlockables, :account_id)
     create index(:unlockables, [:account_id, :status])
     create index(:unlockables, [:account_id, :name])
-    create index(:unlockables, [:account_id, :label])
+    create index(:unlockables, [:account_id, :label], where: "label IS NOT NULL")
   end
 end

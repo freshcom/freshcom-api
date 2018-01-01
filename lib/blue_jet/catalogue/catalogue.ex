@@ -431,7 +431,6 @@ defmodule BlueJet.Catalogue do
     params: %{ "collection_id" => collection_id },
     pagination: pagination
   }) do
-    IO.inspect pagination
     data_query =
       ProductCollectionMembership.Query.default()
       |> ProductCollectionMembership.Query.for_collection(collection_id)

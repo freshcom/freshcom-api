@@ -39,9 +39,10 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
     end
 
     create unique_index(:prices, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:prices, :account_id)
-    create index(:prices, :product_id)
-    create index(:prices, :minimum_order_quantity)
-    create index(:prices, [:product_id, :status])
+    create index(:prices, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:prices, [:account_id, :product_id])
+    create index(:prices, [:account_id, :parent_id])
+    create index(:prices, [:account_id, :minimum_order_quantity])
+    create index(:prices, [:account_id, :product_id, :status])
   end
 end

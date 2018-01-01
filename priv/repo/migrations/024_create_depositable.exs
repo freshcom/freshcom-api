@@ -25,9 +25,8 @@ defmodule BlueJet.Repo.Migrations.CreatePointDeposit do
     end
 
     create unique_index(:depositables, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:depositables, :account_id)
     create index(:depositables, [:account_id, :status])
     create index(:depositables, [:account_id, :name])
-    create index(:depositables, [:account_id, :label])
+    create index(:depositables, [:account_id, :label], where: "label IS NOT NULL")
   end
 end

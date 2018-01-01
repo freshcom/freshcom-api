@@ -57,10 +57,11 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
     end
 
     create unique_index(:order_line_items, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:order_line_items, :parent_id)
-    create index(:order_line_items, :account_id)
-    create index(:order_line_items, :order_id)
-    create index(:order_line_items, :price_id)
-    create index(:order_line_items, :product_id)
+    create index(:order_line_items, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:order_line_items, [:account_id, :parent_id])
+    create index(:order_line_items, [:account_id, :order_id])
+    create index(:order_line_items, [:account_id, :price_id])
+    create index(:order_line_items, [:account_id, :product_id])
+    create index(:order_line_items, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
   end
 end

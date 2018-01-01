@@ -18,8 +18,7 @@ defmodule BlueJet.Repo.Migrations.CreateUnlock do
       timestamps()
     end
 
-    create index(:unlocks, [:account_id])
-    create index(:unlocks, [:customer_id])
-    create index(:unlocks, [:unlockable_id])
+    create index(:unlocks, [:account_id, :customer_id])
+    create index(:unlocks, [:account_id, :unlockable_id])
   end
 end

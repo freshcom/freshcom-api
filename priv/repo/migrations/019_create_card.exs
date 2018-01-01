@@ -34,9 +34,8 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
     end
 
     create unique_index(:cards, [:account_id, :code], where: "code IS NOT NULL")
-    create unique_index(:cards, [:owner_id, :owner_type, :fingerprint])
-    create index(:cards, :account_id)
+    create unique_index(:cards, [:account_id, :owner_id, :owner_type, :fingerprint])
     create index(:cards, [:account_id, :status])
-    create index(:cards, [:account_id, :label])
+    create index(:cards, [:account_id, :label], where: "label IS NOT NULL")
   end
 end

@@ -24,10 +24,9 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
     end
 
     create unique_index(:external_file_collections, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:external_file_collections, :account_id)
     create index(:external_file_collections, [:account_id, :status])
     create index(:external_file_collections, [:account_id, :name])
-    create index(:external_file_collections, [:account_id, :label])
-    create index(:external_file_collections, [:owner_type, :owner_id])
+    create index(:external_file_collections, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:external_file_collections, [:account_id, :owner_type, :owner_id], where: "owner_id IS NOT NULL")
   end
 end

@@ -28,11 +28,10 @@ defmodule BlueJet.Repo.Migrations.CreatePointTransaction do
     end
 
     create unique_index(:point_transactions, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:point_transactions, :account_id)
-    create index(:point_transactions, :status)
-    create index(:point_transactions, :name)
-    create index(:point_transactions, :label)
-    create index(:point_transactions, :reason_label)
-    create index(:point_transactions, :point_account_id)
+    create index(:point_transactions, [:account_id, :status])
+    create index(:point_transactions, [:account_id, :name])
+    create index(:point_transactions, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:point_transactions, [:account_id, :reason_label])
+    create index(:point_transactions, [:account_id, :point_account_id])
   end
 end

@@ -18,5 +18,6 @@ defmodule BlueJet.Repo.Migrations.CreateAccount do
       timestamps()
     end
 
+    create index(:accounts, :live_account_id)
   end
 end

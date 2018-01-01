@@ -16,7 +16,6 @@ defmodule BlueJet.Repo.Migrations.CreatePointAccount do
       timestamps()
     end
 
-    create unique_index(:point_accounts, [:customer_id])
-    create index(:point_accounts, [:account_id])
+    create index(:point_accounts, [:account_id, :customer_id])
   end
 end

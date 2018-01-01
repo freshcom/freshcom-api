@@ -21,8 +21,7 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillment do
     end
 
     create unique_index(:fulfillments, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:fulfillments, :account_id)
     create index(:fulfillments, [:account_id, :name])
-    create index(:fulfillments, [:account_id, :label])
+    create index(:fulfillments, [:account_id, :label], where: "label IS NOT NULL")
   end
 end

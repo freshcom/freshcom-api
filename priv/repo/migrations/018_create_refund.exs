@@ -36,8 +36,7 @@ defmodule BlueJet.Repo.Migrations.CreateRefund do
     end
 
     create unique_index(:refunds, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:refunds, :account_id)
-    create index(:refunds, [:account_id, :label])
+    create index(:refunds, [:account_id, :label], where: "label IS NOT NULL")
     create index(:refunds, [:account_id, :payment_id])
   end
 end
