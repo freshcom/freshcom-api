@@ -59,6 +59,7 @@ defmodule BlueJet.Identity.Authorization do
     "crm.get_customer",
     "crm.update_customer",
     "crm.delete_customer",
+    "crm.list_point_transaction",
     "crm.create_point_transaction",
 
     "storefront.list_order",
@@ -154,6 +155,7 @@ defmodule BlueJet.Identity.Authorization do
 
       "crm.get_customer",
       "crm.update_customer",
+      "crm.list_point_transaction",
       "crm.create_point_transaction",
 
       "storefront.list_order",
@@ -221,6 +223,7 @@ defmodule BlueJet.Identity.Authorization do
       "crm.get_customer",
       "crm.update_customer",
       "crm.delete_customer",
+      "crm.list_point_transaction",
       "crm.create_point_transaction",
       "crm.get_point_transaction",
 
@@ -357,6 +360,7 @@ defmodule BlueJet.Identity.Authorization do
       "crm.get_customer",
       "crm.update_customer",
       "crm.delete_customer",
+      "crm.list_point_transaction",
       "crm.create_point_transaction",
       "crm.get_point_transaction",
 
@@ -453,6 +457,7 @@ defmodule BlueJet.Identity.Authorization do
       "crm.get_customer",
       "crm.update_customer",
       "crm.delete_customer",
+      "crm.list_point_transaction",
       "crm.create_point_transaction",
       "crm.get_point_transaction",
 

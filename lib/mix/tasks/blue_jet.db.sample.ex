@@ -34,7 +34,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         "email" => "user1@example.com",
         "password" => "test1234",
         "account_name" => "Outersky",
-        "default_locale" => "en"
+        "default_locale" => "zh-CN"
       }
     })
 
@@ -98,7 +98,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "充值$50",
       "print_name" => "充值$50",
       "amount" => 5000
-    }, "en", account1.default_locale)
+    })
     deposit_50 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -108,7 +108,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "source_quantity" => 1
-    }, "en", account1.default_locale)
+    })
     product = Repo.insert!(changeset)
 
     Repo.insert!(%ProductCollectionMembership{
@@ -122,11 +122,11 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => test_account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 5000,
       "charge_unit" => "EA",
       "order_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -143,7 +143,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "充值$100",
       "print_name" => "充值$100",
       "amount" => 10000
-    }, "en", account1.default_locale)
+    })
     deposit_100 = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -153,18 +153,18 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "maximum_public_order_quantity" => 9999,
       "source_quantity" => 1
-    }, "en", account1.default_locale)
+    })
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => test_account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 10000,
       "charge_unit" => "EA",
       "order_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -186,21 +186,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "100504",
       "status" => "active",
-      "name" => "Oyster Flavoured Sauce",
+      "name" => "李锦记熊猫蚝油",
       "print_name" => "OYSTER FLAVOURED SAUCE",
-      "unit_of_measure" => "bottle",
+      "unit_of_measure" => "瓶",
       "stackable" => false,
       "storage_type" => "room",
-      "specification" => "510g per bottle",
-      "storage_description" => "Store in room temperature, avoid direct sun light."
-    }, "en", account1.default_locale)
+      "specification" => "每瓶510克。",
+      "storage_description" => "常温保存，避免爆嗮。"
+    })
     stockable_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_oyster_sauce, %{
-      "name" => "李锦记熊猫蚝油",
-      "specification" => "每瓶510克。",
-      "storage_description" => "常温保存，避免爆嗮。"
-    }, "zh-CN", account1.default_locale)
+      "name" => "Oyster Flavoured Sauce",
+      "specification" => "510g per bottle",
+      "storage_description" => "Store in room temperature, avoid direct sun light."
+    }, "en", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -210,21 +210,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "100502",
       "status" => "active",
-      "name" => "Chili Oil with Black Bean",
+      "name" => "老干妈豆豉辣椒油",
       "print_name" => "CHILI OIL BLACK BEAN",
-      "unit_of_measure" => "bottle",
+      "unit_of_measure" => "瓶",
       "stackable" => false,
       "storage_type" => "room",
-      "specification" => "280g per bottle",
-      "storage_description" => "Store in room temperature, avoid direct sun light. After open keep refrigerated."
-    }, "en", account1.default_locale)
+      "specification" => "每瓶280克。",
+      "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
+    })
     stockable_chili_oil = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_chili_oil, %{
-      "name" => "老干妈豆豉辣椒油",
-      "specification" => "每瓶280克。",
-      "storage_description" => "常温保存，避免爆嗮，开启后冷藏。"
-    }, "zh-CN", account1.default_locale)
+      "name" => "Chili Oil with Black Bean",
+      "specification" => "280g per bottle",
+      "storage_description" => "Store in room temperature, avoid direct sun light. After open keep refrigerated."
+    }, "en", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -234,21 +234,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "100503",
       "status" => "active",
-      "name" => "Seasoned Soy Sauce",
+      "name" => "李锦记蒸鱼豉油",
       "print_name" => "SEASONED SOY SAUCE",
-      "unit_of_measure" => "bottle",
+      "unit_of_measure" => "瓶",
       "stackable" => false,
       "storage_type" => "room",
-      "specification" => "410ml per bottle",
-      "storage_description" => "Store in room temperature, avoid direct sun light."
-    }, "en", account1.default_locale)
+      "specification" => "每瓶410毫升。",
+      "storage_description" => "常温保存，避免爆嗮。"
+    })
     stockable_seasoned_soy_sauce = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_seasoned_soy_sauce, %{
-      "name" => "李锦记蒸鱼豉油",
-      "specification" => "每瓶410毫升。",
-      "storage_description" => "常温保存，避免爆嗮。"
-    }, "zh-CN", account1.default_locale)
+      "name" => "Seasoned Soy Sauce",
+      "specification" => "410ml per bottle",
+      "storage_description" => "Store in room temperature, avoid direct sun light."
+    }, "en", account1.default_locale)
     Repo.update!(changeset)
 
     ########################
@@ -258,21 +258,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "code" => "100508",
       "status" => "active",
-      "name" => "Fish",
+      "name" => "鱼",
       "print_name" => "FISH",
-      "unit_of_measure" => "EA",
+      "unit_of_measure" => "条",
       "stackable" => false,
       "storage_type" => "cool",
-      "specification" => "About 2lb per fish",
-      "storage_description" => "Keep refrigerated"
-    }, "en", account1.default_locale)
+      "specification" => "每条约2磅",
+      "storage_description" => "冷藏保存"
+    })
     stockable_fish = Repo.insert!(changeset)
 
     changeset = Stockable.changeset(stockable_fish, %{
-      "name" => "鱼",
-      "specification" => "每条约2磅",
-      "storage_description" => "冷藏保存"
-    }, "zh-CN", account1.default_locale)
+      "name" => "Fish",
+      "specification" => "About 2lb per fish",
+      "storage_description" => "Keep refrigerated"
+    }, "en", account1.default_locale)
     Repo.update!(changeset)
 
     #######
@@ -280,8 +280,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "account_id" => account1_id,
       "status" => "draft",
       "kind" => "with_variants",
-      "name" => "Sauce"
-    }, "en", account1.default_locale)
+      "name" => "调料"
+    })
     product = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -295,7 +295,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "sort_index" => 9999,
       "source_quantity" => 1,
       "primary" => true
-    }, "en", account1.default_locale)
+    })
     item_seasoned_soy_sauce = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -308,7 +308,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
       "source_quantity" => 1
-    }, "en", account1.default_locale)
+    })
     item_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
@@ -318,17 +318,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name" => "Regular",
       "charge_amount_cents" => 599,
       "charge_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_oyster_sauce.id,
       "status" => "active",
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 1099,
       "charge_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Product.changeset(item_seasoned_soy_sauce, %{
@@ -357,21 +357,21 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "maximum_public_order_quantity" => 9999,
       "sort_index" => 9999,
       "source_quantity" => 1,
-    }, "en", account1.default_locale)
+    })
     product = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "name" => "Regular",
+      "name" => "原价",
       "estimate_by_default" => true,
       "estimate_average_percentage" => 200,
       "estimate_maximum_percentage" => 250,
       "charge_amount_cents" => 1599,
-      "charge_unit" => "LB",
+      "charge_unit" => "磅",
       "order_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Product.changeset(product, %{
@@ -386,8 +386,8 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "status" => "draft",
       "kind" => "combo",
       "maximum_public_order_quantity" => 9999,
-      "name" => "Sauce Combo"
-    }, "en", account1.default_locale)
+      "name" => "调料套餐"
+    })
     product = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -400,7 +400,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "sort_index" => 9999,
       "source_quantity" => 1
-    }, "en", account1.default_locale)
+    })
     item_oyster_sauce = Repo.insert!(changeset)
 
     changeset = Product.changeset(%Product{}, %{
@@ -413,35 +413,35 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       "name_sync" => "sync_with_source",
       "sort_index" => 9999,
       "source_quantity" => 1
-    }, "en", account1.default_locale)
+    })
     item_chili_oil = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => product.id,
       "status" => "active",
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 1100,
       "charge_unit" => "EA"
-    }, "en", account1.default_locale)
+    })
     price = Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_oyster_sauce.id,
       "parent_id" => price.id,
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 500
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Price.changeset(%Price{}, %{
       "account_id" => account1_id,
       "product_id" => item_chili_oil.id,
       "parent_id" => price.id,
-      "name" => "Regular",
+      "name" => "原价",
       "charge_amount_cents" => 600
-    }, "en", account1.default_locale)
+    })
     Repo.insert!(changeset)
 
     changeset = Product.changeset(item_oyster_sauce, %{
@@ -460,46 +460,46 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     Repo.update!(changeset)
     ######
 
-    changeset = Unlockable.changeset(%Unlockable{}, %{
-      "account_id" => account1_id,
-      "code" => "HS001",
-      "status" => "active",
-      "name" => "New Associate Trainning",
-      "print_name" => "NEW ASSOC TRAIN",
-      "caption" => "Get it",
-      "description" => "Now"
-    }, "en", account1.default_locale)
-    unlockable = Repo.insert!(changeset)
+    # changeset = Unlockable.changeset(%Unlockable{}, %{
+    #   "account_id" => account1_id,
+    #   "code" => "HS001",
+    #   "status" => "active",
+    #   "name" => "New Associate Trainning",
+    #   "print_name" => "NEW ASSOC TRAIN",
+    #   "caption" => "Get it",
+    #   "description" => "Now"
+    # })
+    # unlockable = Repo.insert!(changeset)
 
-    changeset = Product.changeset(%Product{}, %{
-      "account_id" => account1_id,
-      "source_id" => unlockable.id,
-      "source_type" => "Unlockable",
-      "status" => "draft",
-      "name" => "Unlockable Product",
-      "name_sync" => "sync_with_source",
-      "primary" => true,
-      "maximum_public_order_quantity" => 9999,
-      "sort_index" => 9999,
-      "source_quantity" => 1,
-      "caption" => "Get it",
-      "description" => "Now"
-    }, "en", account1.default_locale)
-    product = Repo.insert!(changeset)
+    # changeset = Product.changeset(%Product{}, %{
+    #   "account_id" => account1_id,
+    #   "source_id" => unlockable.id,
+    #   "source_type" => "Unlockable",
+    #   "status" => "draft",
+    #   "name" => "Unlockable Product",
+    #   "name_sync" => "sync_with_source",
+    #   "primary" => true,
+    #   "maximum_public_order_quantity" => 9999,
+    #   "sort_index" => 9999,
+    #   "source_quantity" => 1,
+    #   "caption" => "Get it",
+    #   "description" => "Now"
+    # })
+    # product = Repo.insert!(changeset)
 
-    changeset = Price.changeset(%Price{}, %{
-      "account_id" => account1_id,
-      "product_id" => product.id,
-      "status" => "active",
-      "name" => "Regular",
-      "charge_amount_cents" => 300,
-      "charge_unit" => "EA"
-    }, "en", account1.default_locale)
-    Repo.insert!(changeset)
+    # changeset = Price.changeset(%Price{}, %{
+    #   "account_id" => account1_id,
+    #   "product_id" => product.id,
+    #   "status" => "active",
+    #   "name" => "原价",
+    #   "charge_amount_cents" => 300,
+    #   "charge_unit" => "EA"
+    # })
+    # Repo.insert!(changeset)
 
-    changeset = Product.changeset(product, %{
-      "status" => "active"
-    })
-    Repo.update!(changeset)
+    # changeset = Product.changeset(product, %{
+    #   "status" => "active"
+    # })
+    # Repo.update!(changeset)
   end
 end

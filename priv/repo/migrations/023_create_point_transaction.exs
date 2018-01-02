@@ -24,6 +24,8 @@ defmodule BlueJet.Repo.Migrations.CreatePointTransaction do
 
       add :point_account_id, references(:point_accounts, type: :binary_id, on_delete: :delete_all), null: false
 
+      add :committed_at, :utc_datetime
+
       timestamps()
     end
 

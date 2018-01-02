@@ -16,6 +16,7 @@ defmodule BlueJetWeb.PointTransactionView do
     :description,
     :custom_data,
 
+    :committed_at,
     :inserted_at
   ]
 

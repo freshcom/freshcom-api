@@ -45,6 +45,7 @@ defmodule BlueJet.Catalogue do
       |> Product.Query.in_collection(filter[:collection_id])
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Product.Query.for_account(account.id)
+      |> default_order_if_no_collection_id(filter[:collection_id])
 
     total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
@@ -55,6 +56,7 @@ defmodule BlueJet.Catalogue do
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Repo.aggregate(:count, :id)
 
+    IO.inspect all_count
     preloads = Product.Query.preloads(request.preloads, role: request.role)
     products =
       data_query
@@ -78,6 +80,9 @@ defmodule BlueJet.Catalogue do
 
   defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
   defp root_only_if_no_parent_id(query, _), do: query
+
+  defp default_order_if_no_collection_id(query, nil), do: Product.Query.default_order(query)
+  defp default_order_if_no_collection_id(query, _), do: query
 
   defp product_response(nil, _), do: {:error, :not_found}
 

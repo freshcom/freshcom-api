@@ -449,7 +449,6 @@ defmodule BlueJet.Storefront.Order do
       |> OrderLineItem.Query.for_order(order.id)
       |> OrderLineItem.Query.with_auto_fulfill()
       |> OrderLineItem.Query.leaf()
-      |> OrderLineItem.Query.with_positive_amount()
       |> Repo.all()
 
     case length(af_line_items) do

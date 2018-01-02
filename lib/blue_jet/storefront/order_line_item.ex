@@ -585,11 +585,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
     })
 
     if depositable.target_type == "PointAccount" do
+      {:ok, %{ data: point_account }} = CRM.do_get_point_account(%AccessRequest{
+        account: account,
+        params: %{ "customer_id" => order.customer_id }
+      })
+
       {:ok, _} = CRM.do_create_point_transaction(%AccessRequest{
         account: account,
+        params: %{ "point_account_id" => point_account.id },
         fields: %{
           "status" => "committed",
-          "customer_id" => order.customer_id,
           "amount" => line_item.order_quantity * depositable.amount,
           "reason_label" => "self_deposit",
           "source_id" => line_item.id,
@@ -602,8 +607,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def process(line_item = %__MODULE__{ source_id: source_id, source_type: "PointTransaction" }, _, %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
+    account = get_account(line_item)
     {:ok, %{ data: _ }} = CRM.do_update_point_transaction(%AccessRequest{
-      vas: %{ account_id: line_item.account_id },
+      account: account,
       params: %{ "id" => source_id },
       fields: %{
         "status" => "committed"
@@ -715,7 +721,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     use BlueJet, :query
 
     def default() do
-      from(oli in OrderLineItem, order_by: [desc: oli.inserted_at])
+      from(oli in OrderLineItem, order_by: [asc: oli.inserted_at])
     end
 
     def for_order(query, order_id) do
@@ -753,11 +759,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
 
     def root() do
-      from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
+      from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [asc: oli.inserted_at])
     end
 
     def root(query) do
-      from(oli in query, where: is_nil(oli.parent_id), order_by: [desc: oli.inserted_at])
+      from oli in query, where: is_nil(oli.parent_id)
     end
 
     def leaf(query) do
