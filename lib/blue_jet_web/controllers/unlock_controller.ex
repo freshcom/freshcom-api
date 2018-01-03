@@ -1,6 +1,8 @@
 defmodule BlueJetWeb.UnlockController do
   use BlueJetWeb, :controller
 
+  alias JaSerializer.Params
+
   alias BlueJet.Storefront
 
   action_fallback BlueJetWeb.FallbackController
@@ -20,6 +22,28 @@ defmodule BlueJetWeb.UnlockController do
     case Storefront.list_unlock(request) do
       {:ok, %{ data: unlocks, meta: meta }} ->
         render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      other -> other
+    end
+  end
+
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Unlock" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
+
+    case Storefront.create_unlock(request) do
+      {:ok, %{ data: unlock, meta: meta }} ->
+        conn
+        |> put_status(:created)
+        |> render("show.json-api", data: unlock, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
 
       other -> other
     end

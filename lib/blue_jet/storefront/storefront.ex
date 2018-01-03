@@ -534,6 +534,42 @@ defmodule BlueJet.Storefront do
     {:ok, response}
   end
 
+  defp unlock_response(nil, _), do: {:error, :not_found}
+
+  defp unlock_response(unlock, request = %{ account: account }) do
+    preloads = Unlock.Query.preloads(request.preloads, role: request.role)
+
+    unlock =
+      unlock
+      |> Repo.preload(preloads)
+      |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Translation.translate(request.locale, account.default_locale)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}
+  end
+
+  def create_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.create_unlock") do
+      request
+      |> do_create_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_unlock(request = %{ account: account }) do
+    changeset = Unlock.changeset(%Unlock{ account_id: account.id, account: account }, request.fields)
+
+    with {:ok, unlock} <- Repo.insert(changeset) do
+      unlock_response(unlock, request)
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
   # TODO: If customer should scope by customer
   def get_unlock(request) do
     with {:ok, request} <- preprocess_request(request, "storefront.get_unlock") do
@@ -552,18 +588,6 @@ defmodule BlueJet.Storefront do
       |> Unlock.Query.for_account(account.id)
       |> Repo.get(id)
 
-    if unlock do
-      preloads = Unlock.Query.preloads(request.preloads, role: request.role)
-
-      unlock =
-        unlock
-        |> Repo.preload(preloads)
-        |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-        |> Translation.translate(request.locale, account.default_locale)
-
-      {:ok, %AccessResponse{ data: unlock, meta: %{ locale: request.locale } }}
-    else
-      {:error, :not_found}
-    end
+    unlock_response(unlock, request)
   end
 end

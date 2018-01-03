@@ -3,6 +3,8 @@ defmodule BlueJet.Storefront.Unlock do
 
   use Trans, translates: [:custom_data], container: :translations
 
+  import BlueJet.Identity.Shortcut
+
   alias BlueJet.Translation
   alias BlueJet.AccessRequest
 
@@ -12,10 +14,12 @@ defmodule BlueJet.Storefront.Unlock do
   alias BlueJet.Storefront.Unlock
 
   schema "unlocks" do
+    field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
+    field :sort_index, :integer, default: 0
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
-
-    field :account_id, Ecto.UUID
 
     field :source_id, Ecto.UUID
     field :source_type, :string
@@ -37,6 +41,7 @@ defmodule BlueJet.Storefront.Unlock do
   def system_fields do
     [
       :id,
+      :account_id,
       :inserted_at,
       :updated_at
     ]
@@ -51,30 +56,34 @@ defmodule BlueJet.Storefront.Unlock do
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields() -- [:status]
+    writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :unlockable_id]
+    writable_fields() -- [:unlockable_id, :customer_id]
   end
 
   def required_fields do
-    [:unlockable_id, :account_id]
+    [:account_id, :unlockable_id, :customer_id]
   end
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
     |> foreign_key_constraint(:account_id)
+    |> unique_constraint(:unlockable_id, name: :unlocks_customer_id_unlockable_id_index)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ "en") do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def get_unlockable(%{ unlockable_id: nil }, _), do: nil
@@ -115,16 +124,16 @@ defmodule BlueJet.Storefront.Unlock do
   defmodule Query do
     use BlueJet, :query
 
+    def default() do
+      from(u in Unlock, order_by: [desc: u.inserted_at])
+    end
+
     def for_account(query, account_id) do
       from(u in query, where: u.account_id == ^account_id)
     end
 
     def preloads(_, _) do
       []
-    end
-
-    def default() do
-      from(u in Unlock, order_by: [desc: u.inserted_at])
     end
   end
 end

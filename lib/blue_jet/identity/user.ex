@@ -66,7 +66,10 @@ defmodule BlueJet.Identity.User do
   def required_fields, do: [:email, :default_account_id]
 
   ##########
-  defp validate_current_password(changeset = %{ changes: %{ password: _ } }) do
+  defp validate_current_password(changeset = %{
+    data: %{ __meta__: %{ state: :loaded } },
+    changes: %{ password: _ }
+  }) do
     encrypted_password = get_field(changeset, :encrypted_password)
     current_password = get_field(changeset, :current_password)
 

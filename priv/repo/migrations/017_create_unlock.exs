@@ -6,6 +6,8 @@ defmodule BlueJet.Repo.Migrations.CreateUnlock do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
+      add :sort_index, :integer, null: false
+
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
 
@@ -18,6 +20,7 @@ defmodule BlueJet.Repo.Migrations.CreateUnlock do
       timestamps()
     end
 
+    create unique_index(:unlocks, [:customer_id, :unlockable_id])
     create index(:unlocks, [:account_id, :customer_id])
     create index(:unlocks, [:account_id, :unlockable_id])
   end

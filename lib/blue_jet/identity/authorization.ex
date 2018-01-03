@@ -73,6 +73,7 @@ defmodule BlueJet.Identity.Authorization do
     "storefront.update_order_line_item",
     "storefront.delete_order_line_item",
     "storefront.list_unlock",
+    "storefront.create_unlock",
     "storefront.get_unlock",
 
     "balance.list_payment",
@@ -240,6 +241,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
       "storefront.list_unlock",
+      "storefront.create_unlock",
       "storefront.get_unlock",
 
       "balance.list_payment",
@@ -379,6 +381,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
       "storefront.list_unlock",
+      "storefront.create_unlock",
       "storefront.get_unlock",
 
       "balance.list_payment",
@@ -477,6 +480,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.update_order_line_item",
       "storefront.delete_order_line_item",
       "storefront.list_unlock",
+      "storefront.create_unlock",
       "storefront.get_unlock",
 
       "balance.list_payment",
