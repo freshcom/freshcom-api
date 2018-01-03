@@ -1,7 +1,6 @@
 defmodule BlueJet.Identity.User do
   use BlueJet, :data
 
-  alias Ecto.Changeset
   alias BlueJet.Repo
 
   alias BlueJet.Identity.User
@@ -17,6 +16,7 @@ defmodule BlueJet.Identity.User do
     field :first_name, :string
     field :last_name, :string
 
+    field :current_password, :string, virtual: true
     field :password, :string, virtual: true
 
     timestamps()
@@ -32,26 +32,66 @@ defmodule BlueJet.Identity.User do
   def system_fields do
     [
       :id,
+      :default_account_id,
+      :account_id,
       :encrypted_password,
       :inserted_at,
       :updated_at
     ]
   end
 
+  @doc """
+  Returns a list of fields that is changable by user input.
+  """
   def writable_fields do
-    (User.__schema__(:fields) -- system_fields()) ++ [:password]
+    (User.__schema__(:fields) -- system_fields()) ++ [:password, :current_password]
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:default_account_id]
+  @doc """
+  Returns a list of fields that can be changed for the given user.
+  """
+  def castable_fields(_), do: writable_fields()
+
+  @doc """
+  Returns a list of required fields for the given `changeset`
+  """
+  def required_fields(%{ data: %{ __meta__: %{ state: :built } } }), do: required_fields() ++ [:password]
+
+  def required_fields(%{ data: %{ __meta__: %{ state: :loaded } }, changes: %{ password: _ } }) do
+    required_fields() ++ [:current_password]
   end
 
+  def required_fields(%{ data: %{ __meta__: %{ state: :loaded } } }), do: required_fields()
+
+  def required_fields, do: [:email, :default_account_id]
+
+  ##########
+  defp validate_current_password(changeset = %{ changes: %{ password: _ } }) do
+    encrypted_password = get_field(changeset, :encrypted_password)
+    current_password = get_field(changeset, :current_password)
+
+    if checkpw(current_password, encrypted_password) do
+      changeset
+    else
+      add_error(changeset, :current_password, "is incorrect")
+    end
+  end
+
+  defp validate_current_password(changeset), do: changeset
+
+  defp checkpw(nil, _), do: false
+  defp checkpw(_, nil), do: false
+  defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
+
+  @doc """
+  Returns the validated changeset.
+  """
   def validate(changeset) do
+    required_fields = required_fields(changeset)
+
     changeset
-    |> validate_required([:email, :password, :default_account_id])
+    |> validate_required(required_fields)
+    |> validate_current_password()
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
     |> foreign_key_constraint(:default_account_id)
@@ -67,20 +107,13 @@ defmodule BlueJet.Identity.User do
     struct
     |> cast(params, castable_fields(struct))
     |> validate()
-    |> put_username()
     |> put_encrypted_password()
   end
 
-  defp put_encrypted_password(changeset = %Changeset{ valid?: true, changes: %{ password: password } })  do
+  defp put_encrypted_password(changeset = %{ valid?: true, changes: %{ password: password } })  do
     put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
   end
   defp put_encrypted_password(changeset), do: changeset
-
-  defp put_username(changeset = %Changeset{ changes: %{ username: _ } }), do: changeset
-  defp put_username(changeset = %Changeset{ valid?: true }) do
-    put_change(changeset, :username, get_field(changeset, :email))
-  end
-  defp put_username(changeset), do: changeset
 
   def get_role(user, account) do
     membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)

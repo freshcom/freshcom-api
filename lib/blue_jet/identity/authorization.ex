@@ -7,6 +7,7 @@ defmodule BlueJet.Identity.Authorization do
   @testable_endpoints [
     "identity.get_account",
     "identity.get_user",
+    "identity.update_user",
     "identity.get_refresh_token",
 
     "file_storage.list_external_file",
@@ -138,6 +139,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.update_user",
       "identity.delete_user",
 
       "file_storage.get_external_file",
@@ -185,6 +187,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.update_user",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -254,6 +257,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.update_user",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -308,6 +312,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.get_user",
+      "identity.update_user",
       "identity.get_refresh_token",
 
       "file_storage.list_external_file",
@@ -404,6 +409,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_account",
       "identity.create_user",
       "identity.get_user",
+      "identity.update_user",
       "identity.delete_user",
       "identity.get_refresh_token",
 

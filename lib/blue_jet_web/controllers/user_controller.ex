@@ -52,17 +52,25 @@ defmodule BlueJetWeb.UserController do
     end
   end
 
-  def update(conn, %{"id" => id, "data" => data = %{"type" => "user", "attributes" => _user_params}}) do
-    user = Repo.get!(User, id)
-    changeset = User.changeset(user, Params.to_attributes(data))
+  def update(conn = %{ assigns: assigns }, params = %{ "data" => data = %{ "type" => "User" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => params["id"] },
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-    case Repo.update(changeset) do
-      {:ok, user} ->
-        render(conn, "show.json-api", data: user)
-      {:error, changeset} ->
+    case Identity.update_user(request) do
+      {:ok, %{ data: user, meta: meta }} ->
+        render(conn, "show.json-api", data: user, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: changeset)
+        |> render(:errors, data: extract_errors(errors))
+
+      other -> other
     end
   end
 

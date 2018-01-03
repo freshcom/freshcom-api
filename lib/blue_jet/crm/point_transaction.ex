@@ -11,7 +11,6 @@ defmodule BlueJet.CRM.PointTransaction do
   import BlueJet.Identity.Shortcut
 
   alias Ecto.Changeset
-  alias Ecto.Multi
 
   alias BlueJet.Translation
 
@@ -122,7 +121,7 @@ defmodule BlueJet.CRM.PointTransaction do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  def process(point_transaction, changeset = %{
+  def process(point_transaction, %{
     data: %{ status: "pending" },
     changes: %{ status: "committed" }
   }) do
@@ -157,7 +156,7 @@ defmodule BlueJet.CRM.PointTransaction do
     end
 
     def limit(query, limit) do
-      from pt in PointTransaction, limit: ^limit
+      from pt in query, limit: ^limit
     end
 
     def for_point_account(query, point_account_id) do

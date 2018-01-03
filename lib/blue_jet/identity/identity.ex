@@ -74,7 +74,8 @@ defmodule BlueJet.Identity do
       Multi.new()
       |> Multi.append(create_account(%{ "name" => fields["account_name"], "default_locale" => fields["default_locale"] }))
       |> Multi.run(:user, fn(%{ account: account }) ->
-          Repo.insert(User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account.id })))
+          changeset = User.changeset(%User{ default_account_id: account.id }, fields)
+          Repo.insert(changeset)
         end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
           account_membership = Repo.insert!(
@@ -111,8 +112,9 @@ defmodule BlueJet.Identity do
         account_id
       end
 
+      changeset = User.changeset(%User{ default_account_id: account_id, account_id: account_id }, fields)
       Multi.new()
-      |> Multi.insert(:user, User.changeset(%User{}, Map.merge(fields, %{ "default_account_id" => account_id, "account_id" => account_id })))
+      |> Multi.insert(:user, changeset)
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
           Repo.insert(
             AccountMembership.changeset(%AccountMembership{}, %{
@@ -310,6 +312,32 @@ defmodule BlueJet.Identity do
     User
     |> Repo.get(user_id)
     |> user_response(request)
+  end
+
+  def update_user(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.update_user") do
+      request
+      |> do_update_user()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_update_user(request = %{ role: role, vas: vas }) when role not in ["administrator"] do
+    user = Repo.get(User, vas[:user_id])
+
+    with %User{} <- user,
+         changeset <- User.changeset(user, request.fields),
+         {:ok, user} <- Repo.update(changeset)
+    do
+      user_response(user, request)
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      nil ->
+        {:error, :not_found}
+    end
   end
 
   def delete_user(request = %{ vas: vas, params: %{ "id" => id } }) do

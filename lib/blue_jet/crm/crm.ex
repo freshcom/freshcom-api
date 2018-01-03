@@ -1,7 +1,6 @@
 defmodule BlueJet.CRM do
   use BlueJet, :context
 
-  alias Ecto.Changeset
   alias Ecto.Multi
 
   alias BlueJet.Identity
