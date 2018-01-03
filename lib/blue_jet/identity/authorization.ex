@@ -75,6 +75,7 @@ defmodule BlueJet.Identity.Authorization do
     "storefront.list_unlock",
     "storefront.create_unlock",
     "storefront.get_unlock",
+    "storefront.delete_unlock",
 
     "balance.list_payment",
     "balance.create_payment",
@@ -243,6 +244,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.create_unlock",
       "storefront.get_unlock",
+      "storefront.delete_unlock",
 
       "balance.list_payment",
       "balance.create_payment",
@@ -383,6 +385,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.create_unlock",
       "storefront.get_unlock",
+      "storefront.delete_unlock",
 
       "balance.list_payment",
       "balance.create_payment",
@@ -482,6 +485,7 @@ defmodule BlueJet.Identity.Authorization do
       "storefront.list_unlock",
       "storefront.create_unlock",
       "storefront.get_unlock",
+      "storefront.delete_unlock",
 
       "balance.list_payment",
       "balance.create_payment",

@@ -64,4 +64,17 @@ defmodule BlueJetWeb.UnlockController do
       other -> other
     end
   end
+
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id }
+    }
+
+    case Storefront.delete_unlock(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
+
+      other -> other
+    end
+  end
 end

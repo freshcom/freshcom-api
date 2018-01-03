@@ -590,4 +590,28 @@ defmodule BlueJet.Storefront do
 
     unlock_response(unlock, request)
   end
+
+
+  def delete_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.delete_unlock") do
+      request
+      |> do_delete_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_unlock(%{ account: account, params: %{ "id" => id } }) do
+    unlock =
+      Unlock.Query.default()
+      |> Unlock.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    if unlock do
+      Repo.delete!(unlock)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
+  end
 end
