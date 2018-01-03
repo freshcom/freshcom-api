@@ -495,4 +495,27 @@ defmodule BlueJet.CRM do
       other -> other
     end
   end
+
+  def delete_point_transaction(request) do
+    with {:ok, request} <- preprocess_request(request, "crm.delete_point_transaction") do
+      request
+      |> do_delete_point_transaction()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_point_transaction(%{ account: account, params: %{ "id" => id } }) do
+    point_transaction =
+      PointTransaction.Query.default()
+      |> PointTransaction.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    if point_transaction.amount == 0 do
+      Repo.delete!(point_transaction)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
+  end
 end

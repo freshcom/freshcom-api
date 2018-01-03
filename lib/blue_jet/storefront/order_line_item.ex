@@ -596,7 +596,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
         fields: %{
           "status" => "committed",
           "amount" => line_item.order_quantity * depositable.amount,
-          "reason_label" => "self_deposit",
+          "reason_label" => "deposit_by_depositable",
           "source_id" => line_item.id,
           "source_type" => "OrderLineItem"
         }

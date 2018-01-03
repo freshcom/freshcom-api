@@ -60,4 +60,17 @@ defmodule BlueJetWeb.PointTransactionController do
       other -> other
     end
   end
+
+  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id }
+    }
+
+    case CRM.delete_point_transaction(request) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
+
+      other -> other
+    end
+  end
 end
