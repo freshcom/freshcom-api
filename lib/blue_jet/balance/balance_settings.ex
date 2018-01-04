@@ -57,10 +57,7 @@ defmodule BlueJet.Balance.BalanceSettings do
     |> cast(params, castable_fields(struct))
   end
 
-  def for_account(%{ mode: "test", live_account_id: account_id }) do
-    Repo.get_by!(BalanceSettings, account_id: account_id)
-  end
-  def for_account(%{ id: account_id, mode: "live" }) do
+  def for_account(%{ id: account_id }) do
     Repo.get_by!(BalanceSettings, account_id: account_id)
   end
 

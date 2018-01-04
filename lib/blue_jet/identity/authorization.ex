@@ -86,6 +86,8 @@ defmodule BlueJet.Identity.Authorization do
     "balance.update_card",
     "balance.delete_card",
     "balance.create_refund",
+    "balance.get_settings",
+    "balance.update_settings",
 
     "distribution.list_fulfillment",
     "distribution.create_fulfillment",

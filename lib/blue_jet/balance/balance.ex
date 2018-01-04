@@ -23,9 +23,12 @@ defmodule BlueJet.Balance do
     end)
   end
 
-  def handle_event("identity.account.created", %{ account: account }) do
+  def handle_event("identity.account.created", %{ account: account, test_account: test_account }) do
     changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: account.id })
     balance_settings = Repo.insert!(changeset)
+
+    changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: test_account.id })
+    Repo.insert!(changeset)
 
     {:ok, balance_settings}
   end
