@@ -103,5 +103,12 @@ defmodule BlueJetWeb.Router do
     # Data Trading
     ####
     resources "/data_imports", DataImportController, only: [:index, :create, :show, :delete]
+
+
+    #
+    # Notification
+    #
+    resources "/emails", EmailController, only: [:index]
+    resources "/email_templates", EmailTemplateController, only: [:index]
   end
 end

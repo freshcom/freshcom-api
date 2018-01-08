@@ -57,5 +57,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
     create unique_index(:payments, [:account_id, :code], where: "code IS NOT NULL")
     create index(:payments, [:account_id, :status])
     create index(:payments, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:payments, [:account_id, :owner_id, :owner_type], where: "owner_id IS NOT NULL")
+    create index(:payments, [:account_id, :target_id, :target_type], where: "target_id IS NOT NULL")
   end
 end

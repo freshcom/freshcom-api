@@ -15,6 +15,8 @@ defmodule BlueJet.Identity.User do
     field :encrypted_password, :string
     field :first_name, :string
     field :last_name, :string
+    field :email_confirmed, :boolean, default: false
+    field :password_reset_token, :string
 
     field :current_password, :string, virtual: true
     field :password, :string, virtual: true

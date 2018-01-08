@@ -100,6 +100,8 @@ defmodule BlueJet.Identity.Authorization do
     "distribution.update_fulfillment_line_item",
     "distribution.delete_fulfillment_line_item",
 
+    "notification.list_email",
+
     "data_trading.create_data_import"
   ]
 
@@ -411,7 +413,10 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.create_fulfillment_line_item",
       "distribution.show_fulfillment_line_item",
       "distribution.update_fulfillment_line_item",
-      "distribution.delete_fulfillment_line_item"
+      "distribution.delete_fulfillment_line_item",
+
+      "notification.list_email",
+      "notification.list_email_template"
     ],
 
     "administrator" => [
@@ -515,6 +520,9 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.show_fulfillment_line_item",
       "distribution.update_fulfillment_line_item",
       "distribution.delete_fulfillment_line_item",
+
+      "notification.list_email",
+      "notification.list_email_template",
 
       "data_trading.create_data_import"
     ]

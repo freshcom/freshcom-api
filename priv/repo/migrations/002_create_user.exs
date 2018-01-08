@@ -10,6 +10,9 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       add :encrypted_password, :string
       add :first_name, :string
       add :last_name, :string
+      add :email_confirmed, :boolean, null: false
+      add :password_reset_token, :string
+
       add :account_id, references(:accounts, type: :binary_id)
       add :default_account_id, references(:accounts, type: :binary_id)
 
@@ -18,6 +21,6 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
 
     create unique_index(:users, [:account_id, :email])
     create unique_index(:users, [:account_id, :username])
-    create index(:users, :account_id)
+    create index(:users, [:account_id, :password_reset_token])
   end
 end

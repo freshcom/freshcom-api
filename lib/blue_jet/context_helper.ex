@@ -31,6 +31,7 @@ defmodule BlueJet.ContextHelpers do
     |> offset(^offset)
   end
 
+  def search(query, columns, keyword), do: search_default_locale(query, columns, keyword)
   def search(query, _, _, _, _), do: query # TODO: remove this
   def search(query, _, nil, _, _, _), do: query
   def search(query, _, "", _, _, _), do: query
