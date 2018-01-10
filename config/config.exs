@@ -56,7 +56,7 @@ config :blue_jet, :balance, %{
 }
 
 config :blue_jet, :identity, %{
-  listeners: [BlueJet.Balance]
+  listeners: [BlueJet.Balance, BlueJet.Notification]
 }
 
 config :blue_jet, :distribution, %{

@@ -5,8 +5,7 @@ defmodule BlueJet.Plugs.Authentication do
   def init(exception_paths), do: exception_paths
 
   def call(conn, exception_paths \\ []) do
-    with false <- Enum.member?(exception_paths, conn.request_path),
-         [auth] <- get_req_header(conn, "authorization"),
+    with [auth] <- get_req_header(conn, "authorization"),
          ["Bearer", access_token] <- String.split(auth),
          {:ok, verified_authorization_payload} <- verify_access_token(access_token),
          {:ok, verified_authorization_scope} <- extract_authorization_scope(verified_authorization_payload)
@@ -15,7 +14,12 @@ defmodule BlueJet.Plugs.Authentication do
       assign(conn, :vas, verified_authorization_scope)
     else
       true -> conn
-      _ -> halt send_resp(conn, 401, "")
+      _ ->
+        if Enum.member?(exception_paths, conn.request_path) do
+          assign(conn, :vas, %{})
+        else
+          halt send_resp(conn, 401, "")
+        end
     end
   end
 

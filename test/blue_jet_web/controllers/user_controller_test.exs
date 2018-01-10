@@ -34,7 +34,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with valid attrs", %{ conn: conn } do
-      %{ user: user } = create_identity("customer")
+      %{ user: user } = create_global_identity("customer")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
@@ -54,7 +54,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with password but not providing current password", %{ conn: conn } do
-      %{ user: user } = create_identity("customer")
+      %{ user: user } = create_global_identity("customer")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
@@ -73,7 +73,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with password and providing wrong current password", %{ conn: conn } do
-      %{ user: user } = create_identity("customer")
+      %{ user: user } = create_global_identity("customer")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
@@ -93,7 +93,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with password and providing correct current password", %{ conn: conn } do
-      %{ user: user } = create_identity("customer")
+      %{ user: user } = create_global_identity("customer")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 

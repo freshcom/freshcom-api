@@ -23,7 +23,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
 
   describe "create_token_by_password/2" do
     test "with valid user and password" do
-      %{ user: user } = create_identity("administrator")
+      %{ user: user } = create_global_identity("administrator")
       refresh_token = Repo.insert!(%RefreshToken{ user_id: user.id, account_id: user.default_account_id })
       {:ok, token} = Authentication.create_token_by_password(user, "test1234")
 
@@ -38,14 +38,14 @@ defmodule BlueJet.Identity.AuthenticationTest do
     end
 
     test "with invalid password" do
-      %{ user: user } = create_identity("administrator")
+      %{ user: user } = create_global_identity("administrator")
       {:error, %{ error: :invalid_grant }} = Authentication.create_token_by_password(user, "invalid")
     end
   end
 
   describe "create_token_by_password/3" do
     test "with valid user and password" do
-      %{ user: user, account: account } = create_identity("administrator")
+      %{ user: user, account: account } = create_global_identity("administrator")
       refresh_token = Repo.insert!(%RefreshToken{ user_id: user.id, account_id: account.id })
       {:ok, token} = Authentication.create_token_by_password(user, "test1234", account.id)
 
@@ -60,14 +60,14 @@ defmodule BlueJet.Identity.AuthenticationTest do
     end
 
     test "with invalid password" do
-      %{ user: user } = create_identity("administrator")
+      %{ user: user } = create_global_identity("administrator")
       {:error, %{ error: :invalid_grant }} = Authentication.create_token_by_password(user, "invalid", Ecto.UUID.generate())
     end
   end
 
   describe "create_token_by_refresh_token/1" do
     test "with publishable refresh token" do
-      %{ account: account } = create_identity("guest")
+      %{ account: account } = create_global_identity("guest")
       rt = Repo.insert!(%RefreshToken{ account_id: account.id })
 
       {:ok, token} = Authentication.create_token_by_refresh_token(rt)
@@ -79,7 +79,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
     end
 
     test "with user refresh token" do
-      %{ user: user, account: account } = create_identity("administrator")
+      %{ user: user, account: account } = create_global_identity("administrator")
       rt = Repo.insert!(%RefreshToken{ user_id: user.id, account_id: account.id })
 
       {:ok, token} = Authentication.create_token_by_refresh_token(rt)

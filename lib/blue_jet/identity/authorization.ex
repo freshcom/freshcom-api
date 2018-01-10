@@ -9,6 +9,7 @@ defmodule BlueJet.Identity.Authorization do
     "identity.get_user",
     "identity.update_user",
     "identity.get_refresh_token",
+    "identity.create_password_reset_token",
 
     "file_storage.list_external_file",
     "file_storage.create_external_file",
@@ -101,18 +102,25 @@ defmodule BlueJet.Identity.Authorization do
     "distribution.delete_fulfillment_line_item",
 
     "notification.list_email",
+    "notification.list_email_template",
+    "notification.create_email_template",
+    "notification.get_email_template",
+    "notification.update_email_template",
+    "notification.delete_email_template",
 
     "data_trading.create_data_import"
   ]
 
   @role_endpoints %{
     "anonymous" => [
-      "identity.create_user"
+      "identity.create_user",
+      "identity.create_password_reset_token"
     ],
 
     "guest" => [
       "identity.create_user",
       "identity.get_account",
+      "identity.create_password_reset_token",
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
@@ -148,6 +156,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.delete_user",
+      "identity.create_password_reset_token",
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
@@ -187,7 +196,7 @@ defmodule BlueJet.Identity.Authorization do
     ],
 
     "marketing_specialist" => [
-
+      "identity.create_password_reset_token",
     ],
 
     "support_specialist" => [
@@ -195,6 +204,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_account",
       "identity.get_user",
       "identity.update_user",
+      "identity.create_password_reset_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -268,6 +278,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_account",
       "identity.get_user",
       "identity.update_user",
+      "identity.create_password_reset_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -324,6 +335,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.get_refresh_token",
+      "identity.create_password_reset_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -416,7 +428,11 @@ defmodule BlueJet.Identity.Authorization do
       "distribution.delete_fulfillment_line_item",
 
       "notification.list_email",
-      "notification.list_email_template"
+      "notification.list_email_template",
+      "notification.create_email_template",
+      "notification.get_email_template",
+      "notification.update_email_template",
+      "notification.delete_email_template"
     ],
 
     "administrator" => [
@@ -428,6 +444,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.delete_user",
       "identity.get_refresh_token",
+      "identity.create_password_reset_token",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -523,6 +540,10 @@ defmodule BlueJet.Identity.Authorization do
 
       "notification.list_email",
       "notification.list_email_template",
+      "notification.create_email_template",
+      "notification.get_email_template",
+      "notification.update_email_template",
+      "notification.delete_email_template",
 
       "data_trading.create_data_import"
     ]

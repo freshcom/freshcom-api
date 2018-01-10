@@ -4,7 +4,7 @@ defmodule BlueJetWeb.Router do
   pipeline :api do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
-    plug BlueJet.Plugs.Authentication, ["/v1/token"]
+    plug BlueJet.Plugs.Authentication, ["/v1/token", "/v1/password_reset_tokens"]
     plug BlueJet.Plugs.Locale, nil
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
@@ -37,6 +37,8 @@ defmodule BlueJetWeb.Router do
     patch "/user", UserController, :update
 
     get "/refresh_token", RefreshTokenController, :show
+
+    post "/password_reset_tokens", PasswordResetTokenController, :create
 
     ####
     # File Storage
@@ -109,6 +111,6 @@ defmodule BlueJetWeb.Router do
     # Notification
     #
     resources "/emails", EmailController, only: [:index]
-    resources "/email_templates", EmailTemplateController, only: [:index]
+    resources "/email_templates", EmailTemplateController, only: [:create, :show, :update, :index, :delete]
   end
 end

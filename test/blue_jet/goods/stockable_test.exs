@@ -30,7 +30,7 @@ defmodule BlueJet.StockableTest do
     end
 
     test "with struct in :loaded state, valid params" do
-      %{ account: account } = create_identity("guest")
+      %{ account: account } = create_global_identity("guest")
       struct = Ecto.put_meta(%Stockable{ account_id: account.id }, state: :loaded)
       changeset = Stockable.changeset(struct, @valid_params)
 

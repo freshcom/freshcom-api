@@ -134,6 +134,12 @@ defmodule BlueJet.Identity.User do
     %{ user | role: get_role(user, account) }
   end
 
+  def refresh_password_reset_token(user) do
+    user
+    |> change(password_reset_token: Ecto.UUID.generate())
+    |> Repo.update!()
+  end
+
   defmodule Query do
     use BlueJet, :query
 
@@ -143,6 +149,10 @@ defmodule BlueJet.Identity.User do
 
     def global(query) do
       from u in query, where: is_nil(u.account_id)
+    end
+
+    def for_account(query, account_id) do
+      from(u in query, where: u.account_id == ^account_id)
     end
 
     def member_of_account(query, account_id) do

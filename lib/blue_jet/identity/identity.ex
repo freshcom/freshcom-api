@@ -239,6 +239,60 @@ defmodule BlueJet.Identity do
     end
   end
 
+  #
+  # Password Reset Token
+  #
+  def create_password_reset_token(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.create_password_reset_token") do
+      request
+      |> do_create_password_reset_token()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  @doc """
+  Create a password reset token. The created token will be saved to the database
+  but will not be returned in the response.
+
+  When the provided account is nil, this function will only search for global user
+  and if found will create the token then sent an corresponding email to the user.
+
+  When an account is provided, this function will only search for account
+  user and if found will create the token. An corresponding email may or may not be send
+  depending on if a trigger is set to the account.
+  """
+  def do_create_password_reset_token(request = %{ account: nil }) do
+    user =
+      User.Query.default()
+      |> User.Query.global()
+      |> Repo.get_by(email: request.fields["email"])
+
+    case user do
+      nil -> {:error, :not_found}
+
+      _ ->
+        User.refresh_password_reset_token(user)
+        {:ok, %AccessResponse{}}
+    end
+  end
+
+  def do_create_password_reset_token(request = %{ account: account }) do
+    user =
+      User.Query.default()
+      |> User.Query.for_account(account.id)
+      |> Repo.get_by(email: request.fields["email"])
+
+    case user do
+      nil -> {:error, :not_found}
+
+      _ ->
+        User.refresh_password_reset_token(user)
+        run_event_handler("identity.password_reset_token.created", %{ account: account, user: user })
+        {:ok, %AccessResponse{}}
+    end
+  end
+
   ####
   # User
   ####

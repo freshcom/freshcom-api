@@ -8,17 +8,17 @@ defmodule BlueJet.Repo.Migrations.CreateNotificationTrigger do
       add :name, :string
       add :system_label, :string
 
-      add :endpoint, :string
+      add :event_id, :string, null: false
       add :description, :text
 
-      add :target_id, :binary_id
-      add :target_type, :string
+      add :target_id, :binary_id, null: false
+      add :target_type, :string, null: false
 
       timestamps()
     end
 
     create index(:notification_triggers, [:account_id, :name])
-    create index(:notification_triggers, [:account_id, :endpoint], where: "endpoint IS NOT NULL")
+    create index(:notification_triggers, [:account_id, :event_id])
     create index(:notification_triggers, [:account_id, :target_id, :target_type], where: "target_id IS NOT NULL")
   end
 end

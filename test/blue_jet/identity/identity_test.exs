@@ -30,7 +30,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "with guest vas" do
-      %{ account: account, vas: vas } = create_identity("guest")
+      %{ account: account, vas: vas } = create_global_identity("guest")
 
       request = %AccessRequest{
         vas: vas,
@@ -52,7 +52,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "with customer vas" do
-      %{ vas: vas } = create_identity("customer")
+      %{ vas: vas } = create_global_identity("customer")
 
       request = %AccessRequest{
         vas: vas,
@@ -70,7 +70,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "get_user/1" do
     test "with customer vas" do
-      %{ vas: vas, user: %{ id: user_id } } = create_identity("customer")
+      %{ vas: vas, user: %{ id: user_id } } = create_global_identity("customer")
 
       request = %AccessRequest{
         vas: vas
@@ -92,7 +92,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "update_account/1" do
     test "with administrator vas" do
-      %{ vas: vas } = create_identity("administrator")
+      %{ vas: vas } = create_global_identity("administrator")
 
       new_name = Faker.Company.name()
       request = %AccessRequest{
@@ -106,7 +106,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "with developer vas" do
-      %{ vas: vas } = create_identity("developer")
+      %{ vas: vas } = create_global_identity("developer")
 
       request = %AccessRequest{
         vas: vas

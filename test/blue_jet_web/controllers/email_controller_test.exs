@@ -19,7 +19,7 @@ defmodule BlueJetWeb.EmailControllerTest do
     end
 
     test "with a valid request", %{ conn: conn } do
-      %{ user: user } = create_identity("administrator")
+      %{ user: user } = create_global_identity("administrator")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
