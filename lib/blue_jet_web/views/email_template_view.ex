@@ -6,7 +6,11 @@ defmodule BlueJetWeb.EmailTemplateView do
     :system_label,
 
     :name,
-    :content,
+    :subject, :string,
+    :reply_to, :string,
+    :to,
+    :content_html,
+    :content_text,
     :description,
 
     :inserted_at,

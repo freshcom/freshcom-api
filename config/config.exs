@@ -36,6 +36,21 @@ config :mime, :types, %{
 config :blue_jet, BlueJet.Gettext,
   default_locale: "en"
 
+config :blue_jet, BlueJet.GlobalMailer,
+  adapter: Bamboo.PostmarkAdapter,
+  api_key: System.get_env("POSTMARK_API_KEY")
+
+config :blue_jet, BlueJet.AccountMailer,
+  adapter: Bamboo.SMTPAdapter,
+  server: "email-smtp.us-west-2.amazonaws.com",
+  port: System.get_env("SMTP_PORT"),
+  username: System.get_env("SMTP_USERNAME"), # or {:system, "SMTP_USERNAME"}
+  password: System.get_env("SMTP_PASSWORD"), # or {:system, "SMTP_PASSWORD"}
+  tls: :always, # can be `:always` or `:never`
+  # allowed_tls_versions: [:"tlsv1", :"tlsv1.1", :"tlsv1.2"], # or {":system", ALLOWED_TLS_VERSIONS"} w/ comma seprated values (e.g. "tlsv1.1,tlsv1.2")
+  ssl: false, # can be `true`
+  retries: 0
+
 defmodule JaKeyFormatter do
   def camelize(key) do
     Inflex.camelize(key, :lower)

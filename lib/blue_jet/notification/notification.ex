@@ -1,15 +1,29 @@
 defmodule BlueJet.Notification do
   use BlueJet, :context
 
+  alias BlueJet.GlobalMailer
+
   alias BlueJet.Notification.NotificationTrigger
   alias BlueJet.Notification.Email
   alias BlueJet.Notification.EmailTemplate
 
-  def handle_event(event_id, data = %{ account: account }) when not is_nil(account) do
+  def handle_event("identity.password_reset_token.created", %{ account: nil, user: user, email: email }) do
+    case user do
+      nil ->
+        Email.Factory.password_reset_not_registered_email(email)
+        |> GlobalMailer.deliver_later()
+
+      _ ->
+        Email.Factory.password_reset_email(user)
+        |> GlobalMailer.deliver_later()
+    end
+  end
+
+  def handle_event(event, data = %{ account: account }) when not is_nil(account) do
     triggers =
       NotificationTrigger.Query.default()
       |> NotificationTrigger.Query.for_account(account.id)
-      |> NotificationTrigger.Query.for_event(event_id)
+      |> NotificationTrigger.Query.for_event(event)
       |> Repo.all()
 
     Enum.each(triggers, fn(trigger) ->
@@ -211,6 +225,86 @@ defmodule BlueJet.Notification do
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found}
+    end
+  end
+
+
+  #
+  # MARK: Trigger
+  #
+  def list_notification_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.list_notification_trigger") do
+      request
+      |> do_list_notification_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_notification_trigger(request = %{ account: account, filter: filter, pagination: pagination }) do
+    data_query =
+      NotificationTrigger.Query.default()
+      |> search([:name], request.search)
+      |> filter_by(status: filter[:status])
+      |> NotificationTrigger.Query.for_account(account.id)
+
+    total_count = Repo.aggregate(data_query, :count, :id)
+    all_count =
+      NotificationTrigger.Query.default()
+      |> filter_by(status: filter[:status])
+      |> NotificationTrigger.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
+
+    preloads = NotificationTrigger.Query.preloads(request.preloads, role: request.role)
+    notification_triggers =
+      data_query
+      |> paginate(size: pagination[:size], number: pagination[:number])
+      |> Repo.all()
+      |> Repo.preload(preloads)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: notification_triggers
+    }
+
+    {:ok, response}
+  end
+
+  defp notification_trigger_response(nil, _), do: {:error, :not_found}
+
+  defp notification_trigger_response(notification_trigger, request) do
+    preloads = NotificationTrigger.Query.preloads(request.preloads, role: request.role)
+
+    notification_trigger =
+      notification_trigger
+      |> Repo.preload(preloads)
+
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: notification_trigger }}
+  end
+
+  def create_notification_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.create_notification_trigger") do
+      request
+      |> do_create_notification_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_notification_trigger(request = %{ account: account }) do
+    changeset = NotificationTrigger.changeset(%NotificationTrigger{ account_id: account.id }, request.fields)
+
+    with {:ok, notification_trigger} <- Repo.insert(changeset) do
+      notification_trigger_response(notification_trigger, request)
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 end

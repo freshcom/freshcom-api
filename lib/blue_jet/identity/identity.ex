@@ -1,6 +1,8 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
 
+  alias BlueJet.Mailer
+
   alias BlueJet.Identity.Authorization
   alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.User
@@ -263,16 +265,25 @@ defmodule BlueJet.Identity do
   depending on if a trigger is set to the account.
   """
   def do_create_password_reset_token(request = %{ account: nil }) do
-    user =
-      User.Query.default()
-      |> User.Query.global()
-      |> Repo.get_by(email: request.fields["email"])
+    email = request.fields["email"]
+    changeset =
+      Ecto.Changeset.change(%User{}, %{ email: email })
+      |> Ecto.Changeset.validate_required(:email)
+      |> Ecto.Changeset.validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
 
-    case user do
-      nil -> {:error, :not_found}
+    with true <- changeset.valid?,
+         user = %User{} <- User.Query.default() |> User.Query.global() |> Repo.get_by(email: email)
+    do
+      User.refresh_password_reset_token(user)
+      run_event_handler("identity.password_reset_token.created", %{ account: nil, user: user, email: email })
 
-      _ ->
-        User.refresh_password_reset_token(user)
+      {:ok, %AccessResponse{}}
+    else
+      false ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
+
+      nil ->
+        run_event_handler("identity.password_reset_token.created", %{ account: nil, user: nil, email: email })
         {:ok, %AccessResponse{}}
     end
   end

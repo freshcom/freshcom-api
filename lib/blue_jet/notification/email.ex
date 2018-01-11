@@ -38,6 +38,35 @@ defmodule BlueJet.Notification.Email do
     []
   end
 
+  defmodule Factory do
+    alias Bamboo.Email, as: E
+    alias Bamboo.PostmarkHelper, as: Postmark
+
+    def password_reset_email(user) do
+      E.new_email()
+      |> Postmark.template("4561302", %{
+          brand_name: "Freshcom",
+          brand_url: System.get_env("MARKETING_WEBSITE_URL"),
+          name: user.first_name || user.name,
+          action_url: password_reset_url(user.password_reset_token),
+          support_url: System.get_env("SUPPORT_WEBSITE_URL"),
+          company_name: System.get_env("COMPANY_NAME"),
+          company_address: System.get_env("COMPANY_ADDRESS")
+         })
+      |> E.to("roy@freshcom.io")
+      |> E.from(sender())
+    end
+
+    defp password_reset_url(password_reset_token) do
+      base_url = System.get_env("PASSWORD_RESET_URL")
+      "#{base_url}?token=#{password_reset_token}"
+    end
+
+    defp sender do
+      System.get_env("GLOBAL_MAIL_SENDER")
+    end
+  end
+
   defmodule Query do
     use BlueJet, :query
 

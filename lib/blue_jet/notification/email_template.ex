@@ -9,7 +9,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     field :system_label, :string
 
     field :name, :string
-    field :content, :string
+    field :subject, :string
+    field :to, :string
+    field :reply_to, :string
+    field :content_html, :string
+    field :content_text, :string
     field :description, :string
 
     timestamps()
@@ -32,12 +36,12 @@ defmodule BlueJet.Notification.EmailTemplate do
   end
 
   def castable_fields() do
-    [:name, :content, :description]
+    writable_fields()
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name, :content])
+    |> validate_required([:account_id, :name, :to, :subject, :content_html])
     |> foreign_key_constraint(:account_id)
   end
 
@@ -45,6 +49,33 @@ defmodule BlueJet.Notification.EmailTemplate do
     struct
     |> cast(params, castable_fields())
     |> validate()
+  end
+
+  def extract_variables("identity.password_reset_token.created", %{ account: account, user: user }) do
+    %{
+      user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :email]),
+      account: Map.take(account, [:name])
+    }
+  end
+
+  def render_html(%{ content_html: content_html }, variables) do
+    :bbmustache.render(content_html, variables, key_type: :atom)
+  end
+
+  def render_text(%{ content_text: nil }, _) do
+    nil
+  end
+
+  def render_text(%{ content_text: content_text }, variables) do
+    :bbmustache.render(content_text, variables, key_type: :atom)
+  end
+
+  def render_subject(%{ subject: subject }, variables) do
+    :bbmustache.render(subject, variables, key_type: :atom)
+  end
+
+  def render_to(%{ to: to }, variables) do
+    :bbmustache.render(to, variables, key_type: :atom)
   end
 
   defmodule Query do

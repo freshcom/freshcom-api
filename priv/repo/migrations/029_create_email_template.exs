@@ -8,7 +8,11 @@ defmodule BlueJet.Repo.Migrations.CreateEmailTemplate do
       add :system_label, :string
 
       add :name, :string, null: false
-      add :content, :text
+      add :subject, :string, null: false
+      add :reply_to, :string
+      add :to, :string
+      add :content_html, :text
+      add :content_text, :text
       add :description, :text
 
       timestamps()

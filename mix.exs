@@ -54,7 +54,10 @@ defmodule BlueJet.Mixfile do
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
       {:uri_query, "~> 0.1.2"},
       {:csv, "~> 2.0.0"},
-      {:bbmustache, "~> 1.5.0"}
+      {:bbmustache, "~> 1.5.0"},
+      {:bamboo, "~> 0.8"},
+      {:bamboo_postmark, "~> 0.4"},
+      {:bamboo_smtp, "~> 1.4.0"}
     ]
   end
 
