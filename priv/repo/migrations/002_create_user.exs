@@ -19,6 +19,7 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       timestamps()
     end
 
+    create unique_index(:users, [:email], where: "account_id IS NULL")
     create unique_index(:users, [:account_id, :email])
     create unique_index(:users, [:account_id, :username])
     create unique_index(:users, [:account_id, :password_reset_token])

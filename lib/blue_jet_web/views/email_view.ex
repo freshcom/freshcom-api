@@ -5,9 +5,13 @@ defmodule BlueJetWeb.EmailView do
   attributes [
     :status,
 
-    :recipient_email,
-    :sender_email,
-    :content,
+    :subject,
+    :to,
+    :from,
+    :reply_to,
+    :content_html,
+    :content_text,
+    :locale,
 
     :inserted_at,
     :updated_at

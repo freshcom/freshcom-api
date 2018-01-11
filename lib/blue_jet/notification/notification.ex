@@ -7,6 +7,45 @@ defmodule BlueJet.Notification do
   alias BlueJet.Notification.Email
   alias BlueJet.Notification.EmailTemplate
 
+  # Creates the default email template and notification trigger for account when
+  # an account is first created.
+  def handle_event("identity.account.created", %{ account: account, test_account: test_account }) do
+    # Live account
+    template =
+      account
+      |> EmailTemplate.AccountDefault.password_reset()
+      |> Repo.insert!()
+    account
+    |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
+    |> Repo.insert!()
+
+    template =
+      account
+      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> Repo.insert!()
+    account
+    |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
+    |> Repo.insert!()
+
+    # Test account
+    template =
+      test_account
+      |> EmailTemplate.AccountDefault.password_reset()
+      |> Repo.insert!()
+    test_account
+    |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
+    |> Repo.insert!()
+    template =
+      test_account
+      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> Repo.insert!()
+    test_account
+    |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
+    |> Repo.insert!()
+
+    {:ok, nil}
+  end
+
   def handle_event("identity.password_reset_token.created", %{ account: nil, user: user, email: email }) do
     case user do
       nil ->
@@ -49,7 +88,7 @@ defmodule BlueJet.Notification do
   def do_list_email(request = %{ account: account, filter: filter, pagination: pagination }) do
     data_query =
       Email.Query.default()
-      |> search([:recipient_email], request.search)
+      |> search([:to, :subject], request.search)
       |> filter_by(status: filter[:status])
       |> Email.Query.for_account(account.id)
 
@@ -94,7 +133,7 @@ defmodule BlueJet.Notification do
   def do_list_email_template(request = %{ account: account, filter: filter, pagination: pagination }) do
     data_query =
       EmailTemplate.Query.default()
-      |> search([:name], request.search)
+      |> search([:name], request.search, request.locale, account.default_locale)
       |> filter_by(status: filter[:status])
       |> EmailTemplate.Query.for_account(account.id)
 
@@ -111,6 +150,7 @@ defmodule BlueJet.Notification do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
@@ -126,12 +166,13 @@ defmodule BlueJet.Notification do
 
   defp email_template_response(nil, _), do: {:error, :not_found}
 
-  defp email_template_response(email_template, request) do
+  defp email_template_response(email_template, request = %{ account: account }) do
     preloads = EmailTemplate.Query.preloads(request.preloads, role: request.role)
 
     email_template =
       email_template
       |> Repo.preload(preloads)
+      |> Translation.translate(request.locale, account.default_locale)
 
     {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: email_template }}
   end
@@ -146,7 +187,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_create_email_template(request = %{ account: account }) do
-    changeset = EmailTemplate.changeset(%EmailTemplate{ account_id: account.id}, request.fields)
+    changeset = EmailTemplate.changeset(%EmailTemplate{ account_id: account.id}, request.fields, request.locale, account.default_locale)
 
     with {:ok, email_template} <- Repo.insert(changeset) do
       email_template_response(email_template, request)
@@ -192,7 +233,7 @@ defmodule BlueJet.Notification do
       |> Repo.get(id)
 
     with %EmailTemplate{} <- email_template,
-         changeset <- EmailTemplate.changeset(email_template, request.fields),
+         changeset <- EmailTemplate.changeset(email_template, request.fields, request.locale, account.default_locale),
          {:ok, email_template} <- Repo.update(changeset)
     do
       email_template_response(email_template, request)

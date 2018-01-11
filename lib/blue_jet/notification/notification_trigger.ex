@@ -66,8 +66,8 @@ defmodule BlueJet.Notification.NotificationTrigger do
     to = EmailTemplate.render_to(template, template_variables)
 
     E.new_email()
-    |> E.to(to)
-    |> E.from("support@freshcom.io")
+    |> E.to("roy@freshcom.io")
+    |> E.from({account.name, "support@freshcom.io"})
     |> E.html_body(html_body)
     |> E.text_body(text_body)
     |> E.subject(subject)
@@ -76,6 +76,32 @@ defmodule BlueJet.Notification.NotificationTrigger do
 
   def process(trigger, _) do
     {:ok, trigger}
+  end
+
+  defmodule AccountDefault do
+    alias BlueJet.Notification.NotificationTrigger
+
+    def send_password_reset_email(account, email_template) do
+      %NotificationTrigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send password reset email",
+        event: "identity.password_reset_token.created",
+        action_type: "send_email",
+        action_target: email_template.id
+      }
+    end
+
+    def send_email_confirmation_email(account, email_template) do
+      %NotificationTrigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send email confirmation email",
+        event: "identity.user.created",
+        action_type: "send_email",
+        action_target: email_template.id
+      }
+    end
   end
 
   defmodule Query do

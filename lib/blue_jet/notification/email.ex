@@ -9,10 +9,13 @@ defmodule BlueJet.Notification.Email do
 
     field :status, :string, default: "pending"
 
-    field :recipient_email, :string
-    field :sender_email, :string
-
-    field :content, :string
+    field :subject, :string
+    field :to, :string
+    field :from, :string
+    field :reply_to, :string
+    field :content_html, :string
+    field :content_text, :string
+    field :locale, :string
 
     timestamps()
 
@@ -58,7 +61,7 @@ defmodule BlueJet.Notification.Email do
     end
 
     defp password_reset_url(password_reset_token) do
-      base_url = System.get_env("PASSWORD_RESET_URL")
+      base_url = System.get_env("RESET_PASSWORD_URL")
       "#{base_url}?token=#{password_reset_token}"
     end
 

@@ -6,14 +6,17 @@ defmodule BlueJet.Repo.Migrations.CreateEmailTemplate do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :system_label, :string
-
       add :name, :string, null: false
+
       add :subject, :string, null: false
-      add :reply_to, :string
       add :to, :string
+      add :reply_to, :string
+      add :from, :string
       add :content_html, :text
       add :content_text, :text
       add :description, :text
+
+      add :translations, :map, null: false, default: "{}"
 
       timestamps()
     end

@@ -1,6 +1,18 @@
 defmodule BlueJet.Notification.EmailTemplate do
   use BlueJet, :data
 
+  use Trans, translates: [
+    :name,
+    :subject,
+    :to,
+    :reply_to,
+    :content_html,
+    :content_text,
+    :description
+  ], container: :translations
+
+  import BlueJet.Identity.Shortcut
+
   alias BlueJet.Notification.Email
 
   schema "email_templates" do
@@ -15,6 +27,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     field :content_html, :string
     field :content_text, :string
     field :description, :string
+
+    field :translations, :map, default: %{}
 
     timestamps()
 
@@ -35,6 +49,10 @@ defmodule BlueJet.Notification.EmailTemplate do
     __MODULE__.__schema__(:fields) -- system_fields()
   end
 
+  def translatable_fields do
+    __MODULE__.__trans__(:fields)
+  end
+
   def castable_fields() do
     writable_fields()
   end
@@ -45,16 +63,29 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> foreign_key_constraint(:account_id)
   end
 
-  def changeset(struct, params) do
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
     struct
     |> cast(params, castable_fields())
     |> validate()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def extract_variables("identity.password_reset_token.created", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :email]),
-      account: Map.take(account, [:name])
+      account: Map.take(account, [:name]),
+      freshcom_reset_password_url: System.get_env("RESET_PASSWORD_URL")
+    }
+  end
+
+  def extract_variables("identity.user.created", %{ account: account, user: user }) do
+    %{
+      user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
+      account: Map.take(account, [:name]),
+      freshcom_confirm_email_url: System.get_env("CONFIRM_EMAIL_URL")
     }
   end
 
@@ -76,6 +107,40 @@ defmodule BlueJet.Notification.EmailTemplate do
 
   def render_to(%{ to: to }, variables) do
     :bbmustache.render(to, variables, key_type: :atom)
+  end
+
+  defmodule AccountDefault do
+    alias BlueJet.Notification.EmailTemplate
+
+    def password_reset(account) do
+      password_reset_html = File.read!("lib/blue_jet/notification/email_templates/password_reset.html")
+      password_reset_text = File.read!("lib/blue_jet/notification/email_templates/password_reset.txt")
+
+      %EmailTemplate{
+        account_id: account.id,
+        system_label: "default",
+        name: "Password Reset",
+        subject: "Reset your password for {{account.name}}",
+        to: "{{user.email}}",
+        content_html: password_reset_html,
+        content_text: password_reset_text
+      }
+    end
+
+    def email_confirmation(account) do
+      email_confirmation_html = File.read!("lib/blue_jet/notification/email_templates/email_confirmation.html")
+      email_confirmation_text = File.read!("lib/blue_jet/notification/email_templates/email_confirmation.txt")
+
+      %EmailTemplate{
+        account_id: account.id,
+        system_label: "default",
+        name: "Email Confirmation",
+        subject: "Reset your password for {{account.name}}",
+        to: "{{user.email}}",
+        content_html: email_confirmation_html,
+        content_text: email_confirmation_text
+      }
+    end
   end
 
   defmodule Query do
