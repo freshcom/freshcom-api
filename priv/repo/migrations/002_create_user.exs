@@ -4,24 +4,36 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
   def change do
     create table(:users, primary_key: false) do
       add :id, :binary_id, primary_key: true
+      add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
+      add :default_account_id, references(:accounts, type: :binary_id), null: false
       add :status, :string
-      add :username, :string
-      add :email, :string, null: false
+
+      add :username, :string, null: false
+      add :email, :string
       add :encrypted_password, :string
+      add :name, :string
       add :first_name, :string
       add :last_name, :string
-      add :email_confirmed, :boolean, null: false
-      add :password_reset_token, :string
 
-      add :account_id, references(:accounts, type: :binary_id)
-      add :default_account_id, references(:accounts, type: :binary_id)
+      add :email_confirmation_token, :string
+      add :email_confirmed, :boolean, null: false
+      add :email_confirmed_at, :utc_datetime
+
+      add :password_reset_token, :string
+      add :password_reset_token_expires_at, :utc_datetime
+      add :password_updated_at, :utc_datetime
 
       timestamps()
     end
 
     create unique_index(:users, [:email], where: "account_id IS NULL")
+    create unique_index(:users, [:username], where: "account_id IS NULL")
+    create unique_index(:users, [:password_reset_token])
+    create unique_index(:users, [:email_confirmation_token])
+
     create unique_index(:users, [:account_id, :email])
     create unique_index(:users, [:account_id, :username])
-    create unique_index(:users, [:account_id, :password_reset_token])
+
+    create index(:users, [:account_id, :status])
   end
 end

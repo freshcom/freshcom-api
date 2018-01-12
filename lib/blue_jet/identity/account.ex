@@ -3,6 +3,10 @@ defmodule BlueJet.Identity.Account do
 
   use Trans, translates: [
     :name,
+    :company_name,
+    :website_url,
+    :support_email,
+    :tech_email,
     :caption,
     :description,
     :custom_data
@@ -10,15 +14,19 @@ defmodule BlueJet.Identity.Account do
 
   alias BlueJet.Repo
 
-  alias BlueJet.Identity.Account
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.RefreshToken
 
   schema "accounts" do
-    field :name, :string
-    field :default_locale, :string
     field :mode, :string
     field :test_account_id, Ecto.UUID, virtual: true
+
+    field :name, :string
+    field :company_name, :string
+    field :default_locale, :string
+    field :website_url, :string
+    field :support_email, :string
+    field :tech_email, :string
 
     field :caption, :string
     field :description, :string
@@ -27,42 +35,46 @@ defmodule BlueJet.Identity.Account do
 
     timestamps()
 
-    belongs_to :live_account, Account
-    has_one :test_account, Account, foreign_key: :live_account_id
+    belongs_to :live_account, __MODULE__
+    has_one :test_account, __MODULE__, foreign_key: :live_account_id
     has_many :memberships, AccountMembership
     has_many :refresh_tokens, RefreshToken
   end
 
   @type t :: Ecto.Schema.t
-
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :mode,
+    :test_account_id,
+    :live_account_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Account.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Account.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(account, params, locale) do
+  def changeset(account, params, locale \\ nil) do
+    locale = locale || account.default_locale
+
     account
     |> cast(params, writable_fields())
-    |> validate_required([:default_locale])
+    |> validate_required([:name, :default_locale])
     |> Translation.put_change(translatable_fields(), locale, account.default_locale)
   end
 
+  @doc """
+  Return the account with `test_account_id` fields added. If given account does not
+  have a test account then the original account is returned.
+  """
   def put_test_account_id(account = %{ id: live_account_id, mode: "live" }) do
-    test_account = Repo.get_by(Account, mode: "test", live_account_id: live_account_id)
+    test_account = Repo.get_by(__MODULE__, mode: "test", live_account_id: live_account_id)
 
     case test_account do
       nil -> account
@@ -70,13 +82,14 @@ defmodule BlueJet.Identity.Account do
       other -> %{ account | test_account_id: test_account.id }
     end
   end
+
   def put_test_account_id(account), do: account
 
   defmodule Query do
     use BlueJet, :query
 
     def default() do
-      from(a in Account, order_by: [desc: :inserted_at])
+      from(a in __MODULE__, order_by: [desc: :inserted_at])
     end
 
     def has_member(query, user_id) do

@@ -1,7 +1,6 @@
 defmodule BlueJet.Identity.AccountMembership do
   use BlueJet, :data
 
-  alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.User
 
@@ -14,33 +13,34 @@ defmodule BlueJet.Identity.AccountMembership do
     belongs_to :user, User
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    AccountMembership.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
+  defp castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:user_id, :account_id]
+
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:user_id]
   end
 
-  def required_fields(_) do
-    [:role, :user_id, :account_id]
+  defp required_fields() do
+    [:user_id, :role]
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required(required_fields(changeset))
-    |> foreign_key_constraint(:account_id)
+    |> validate_required(required_fields())
     |> foreign_key_constraint(:user_id)
   end
 
@@ -53,16 +53,15 @@ defmodule BlueJet.Identity.AccountMembership do
     |> validate()
   end
 
-
   defmodule Query do
     use BlueJet, :query
 
-    def preloads(:account) do
-      [account: Account.Query.default()]
-    end
-
     def default() do
       from(a in AccountMembership, order_by: [desc: :inserted_at])
+    end
+
+    def preloads(:account) do
+      [account: Account.Query.default()]
     end
   end
 end
