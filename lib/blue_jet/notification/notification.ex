@@ -348,4 +348,22 @@ defmodule BlueJet.Notification do
       other -> other
     end
   end
+
+  def get_notification_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.get_notification_trigger") do
+      request
+      |> do_get_notification_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_get_notification_trigger(request = %{ account: account, params: %{ "id" => id } }) do
+    notification_trigger =
+      NotificationTrigger.Query.default()
+      |> NotificationTrigger.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    notification_trigger_response(notification_trigger, request)
+  end
 end

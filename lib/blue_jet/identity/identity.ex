@@ -1,8 +1,6 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
 
-  alias BlueJet.Mailer
-
   alias BlueJet.Identity.Authorization
   alias BlueJet.Identity.Authentication
   alias BlueJet.Identity.User

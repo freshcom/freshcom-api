@@ -18,7 +18,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
     field :description, :string
 
     field :action_target, :string
-    field :action_type, :string # sendEmail, invokeWebhook, sendSMS
+    field :action_type, :string # send_email, invoke_webhook, send_sms
 
     timestamps()
   end
@@ -55,7 +55,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
 
   def process(
     %{ event: event, action_type: "send_email", action_target: template_id },
-    data = %{ account: account, user: user })
+    data = %{ account: account })
   do
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
     template_variables = EmailTemplate.extract_variables(event, data)

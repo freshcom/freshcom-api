@@ -56,15 +56,9 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
           "type" => "NotificationTrigger",
           "attributes" => %{
             "name" => "Password Reset Email Trigger",
-            "eventId" => "password_reset_token.created"
-          },
-          "relationships" => %{
-            "target": %{
-              "data": %{
-                "id": Ecto.UUID.generate(),
-                "type": "EmailTemplate"
-              }
-            }
+            "event" => "password_reset_token.created",
+            "actionType" => "sendEmail",
+            "actionTarget" => Ecto.UUID.generate()
           }
         }
       })
@@ -73,33 +67,35 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
     end
   end
 
-  # describe "GET /v1/notification_triggers/:id" do
-  #   test "with no access token", %{ conn: conn } do
-  #     conn = get(conn, "/v1/notification_triggers/invalid")
+  describe "GET /v1/notification_triggers/:id" do
+    test "with no access token", %{ conn: conn } do
+      conn = get(conn, "/v1/notification_triggers/invalid")
 
-  #     assert conn.status == 401
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with a valid request", %{ conn: conn } do
-  #     %{ user: user, account: account } = create_global_identity("administrator")
-  #     {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
-  #       account: account,
-  #       fields: %{
-  #         "name" => "Email Verification",
-  #         "content" => "<html></html>"
-  #       }
-  #     })
+    test "with a valid request", %{ conn: conn } do
+      %{ user: user, account: account } = create_global_identity("administrator")
+      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
+        account: account,
+        fields: %{
+          "name" => "Send password reset email",
+          "event" => "identity.password_reset_token.created",
+          "action_type" => "send_email",
+          "action_target" => Ecto.UUID.generate()
+        }
+      })
 
-  #     uat = create_access_token(user.username, "test1234")
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      uat = create_access_token(user.username, "test1234")
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
-  #     conn = get(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = get(conn, "/v1/notification_triggers/#{notification_trigger.id}")
 
-  #     assert conn.status == 200
-  #     assert json_response(conn, 200)["data"]["id"] == notification_trigger.id
-  #     assert json_response(conn, 200)["data"]["attributes"]["name"] == "Email Verification"
-  #   end
-  # end
+      assert conn.status == 200
+      assert json_response(conn, 200)["data"]["id"] == notification_trigger.id
+      assert json_response(conn, 200)["data"]["attributes"]["name"] == "Send password reset email"
+    end
+  end
 
   # describe "PATCH /v1/notification_triggers/:id" do
   #   test "with no access token", %{ conn: conn } do
