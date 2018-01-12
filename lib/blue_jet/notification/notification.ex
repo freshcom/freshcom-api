@@ -269,7 +269,6 @@ defmodule BlueJet.Notification do
     end
   end
 
-
   #
   # MARK: Trigger
   #
@@ -365,5 +364,28 @@ defmodule BlueJet.Notification do
       |> Repo.get(id)
 
     notification_trigger_response(notification_trigger, request)
+  end
+
+  def delete_notification_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.delete_notification_trigger") do
+      request
+      |> do_delete_notification_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_notification_trigger(%{ account: account, params: %{ "id" => id } }) do
+    notification_trigger =
+      NotificationTrigger.Query.default()
+      |> NotificationTrigger.Query.for_account(account.id)
+      |> Repo.get(id)
+
+    if notification_trigger do
+      Repo.delete!(notification_trigger)
+      {:ok, %AccessResponse{}}
+    else
+      {:error, :not_found}
+    end
   end
 end

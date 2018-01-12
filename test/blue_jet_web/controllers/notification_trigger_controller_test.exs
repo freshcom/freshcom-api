@@ -141,29 +141,31 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
   #   end
   # end
 
-  # describe "DELETE /v1/notification_triggers/:id" do
-  #   test "with no access token", %{ conn: conn } do
-  #     conn = delete(conn, "/v1/notification_triggers/invalid")
+  describe "DELETE /v1/notification_triggers/:id" do
+    test "with no access token", %{ conn: conn } do
+      conn = delete(conn, "/v1/notification_triggers/invalid")
 
-  #     assert conn.status == 401
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with a valid request", %{ conn: conn } do
-  #     %{ user: user, account: account } = create_global_identity("administrator")
-  #     {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
-  #       account: account,
-  #       fields: %{
-  #         "name" => "Email Verification",
-  #         "content" => "<html></html>"
-  #       }
-  #     })
+    test "with a valid request", %{ conn: conn } do
+      %{ user: user, account: account } = create_global_identity("administrator")
+      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
+        account: account,
+        fields: %{
+          "name" => "Send password reset email",
+          "event" => "identity.password_reset_token.created",
+          "action_type" => "send_email",
+          "action_target" => Ecto.UUID.generate()
+        }
+      })
 
-  #     uat = create_access_token(user.username, "test1234")
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      uat = create_access_token(user.username, "test1234")
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
-  #     conn = delete(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = delete(conn, "/v1/notification_triggers/#{notification_trigger.id}")
 
-  #     assert conn.status == 204
-  #   end
-  # end
+      assert conn.status == 204
+    end
+  end
 end
