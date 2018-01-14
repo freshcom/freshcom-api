@@ -58,11 +58,11 @@ defmodule BlueJet.Identity do
           Repo.insert(changeset)
         end)
       |> Multi.run(:prt_live, fn(%{ account: account }) ->
-          prt_live = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id }))
+          prt_live = Repo.insert!(%RefreshToken{ account_id: account.id })
           {:ok, prt_live}
          end)
       |> Multi.run(:prt_test, fn(%{ test_account: test_account }) ->
-          prt_test = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id }))
+          prt_test = Repo.insert!(%RefreshToken{ account_id: test_account.id })
           {:ok, prt_test}
          end)
       |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
@@ -89,11 +89,11 @@ defmodule BlueJet.Identity do
           {:ok, account_membership}
         end)
       |> Multi.run(:urt_live, fn(%{ account: account, user: user}) ->
-          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: account.id, user_id: user.id }))
+          refresh_token = Repo.insert!(%RefreshToken{ account_id: account.id, user_id: user.id })
           {:ok, refresh_token}
         end)
       |> Multi.run(:urt_test, fn(%{ test_account: test_account, user: user}) ->
-          refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account.id, user_id: user.id }))
+          refresh_token = Repo.insert!(%RefreshToken{ account_id: test_account.id, user_id: user.id })
           {:ok, refresh_token}
         end)
     end
@@ -126,7 +126,7 @@ defmodule BlueJet.Identity do
         end)
       |> Multi.run(:urt_live, fn(%{ user: user }) ->
           if live_account_id do
-            refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: live_account_id, user_id: user.id }))
+            refresh_token = Repo.insert!(%RefreshToken{ account_id: live_account_id, user_id: user.id })
             {:ok, refresh_token}
           else
             {:ok, nil}
@@ -134,7 +134,7 @@ defmodule BlueJet.Identity do
         end)
       |> Multi.run(:urt_test, fn(%{ user: user }) ->
           if test_account_id do
-            refresh_token = Repo.insert!(RefreshToken.changeset(%RefreshToken{}, %{ account_id: test_account_id, user_id: user.id }))
+            refresh_token = Repo.insert!(%RefreshToken{ account_id: test_account_id, user_id: user.id })
             {:ok, refresh_token}
           else
             {:ok, nil}
@@ -452,7 +452,7 @@ defmodule BlueJet.Identity do
       |> Repo.get_by(account_id: account.id)
 
     if refresh_token do
-      refresh_token = %{ refresh_token | prefixed_id: RefreshToken.prefix_id(refresh_token) }
+      refresh_token = %{ refresh_token | prefixed_id: RefreshToken.get_prefixed_id(refresh_token) }
       {:ok, %AccessResponse{ data: refresh_token }}
     else
       {:error, :not_found}

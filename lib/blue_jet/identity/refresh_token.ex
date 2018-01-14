@@ -4,13 +4,13 @@ defmodule BlueJet.Identity.RefreshToken do
 
   Refresh Token are long lived token that the client use to get a new Access Token.
   Refresh Token can be revoked easily in case it is compromised. Refresh Token
-  can be obtained using Resource Owner's credential or from the FreshCom Dashboard.
+  can be obtained using Resource Owner's credential or from the Freshcom Dashboard.
 
   There is two types of Refresh Token:
-  - Storefront Refresh Token
+  - Publishable Refresh Token
   - User Refresh Token
 
-  Refresh Token with `user_id` set to `nil` is considered a Storefront Refresh Token and
+  Refresh Token with `user_id` set to `nil` is considered a Publishable Refresh Token and
   it never epxires.
 
   Refresh Token with `user_id` set to a specific User's ID is considered a User Refresh Token
@@ -20,7 +20,6 @@ defmodule BlueJet.Identity.RefreshToken do
 
   alias BlueJet.Repo
   alias BlueJet.Identity.User
-  alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.Account
 
   schema "refresh_tokens" do
@@ -34,23 +33,13 @@ defmodule BlueJet.Identity.RefreshToken do
     belongs_to :user, User
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params \\ %{}) do
-    struct
-    |> cast(params, [:account_id, :user_id])
-    |> validate_required(:account_id)
-    |> foreign_key_constraint(:account_id)
-    |> foreign_key_constraint(:user_id)
-  end
-
-  def prefix_id(refresh_token = %{ id: id, user_id: nil }) do
+  def get_prefixed_id(refresh_token = %{ id: id, user_id: nil }) do
     refresh_token = Repo.preload(refresh_token, :account)
     mode = refresh_token.account.mode
     "prt-#{mode}-#{id}"
   end
-  def prefix_id(refresh_token = %{ id: id }) do
+
+  def get_prefixed_id(refresh_token = %{ id: id }) do
     refresh_token = Repo.preload(refresh_token, :account)
     mode = refresh_token.account.mode
     "urt-#{mode}-#{id}"
@@ -80,6 +69,8 @@ defmodule BlueJet.Identity.RefreshToken do
   end
 
   defmodule Query do
+    alias BlueJet.Identity.RefreshToken
+
     def for_user(user_id) do
       from(rt in RefreshToken, where: rt.user_id == ^user_id)
     end

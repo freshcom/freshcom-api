@@ -246,4 +246,43 @@ defmodule BlueJet.UserTest do
       refute changeset.valid?
     end
   end
+
+  describe "get_role/2" do
+    test "when the user has a role for that account" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      user = Repo.insert!(%User{
+        username: Faker.String.base64(5),
+        default_account_id: account.id
+      })
+      Repo.insert!(%AccountMembership{
+        user_id: user.id,
+        account_id: account.id,
+        role: "developer"
+      })
+
+      assert User.get_role(user, account) == "developer"
+    end
+
+    test "when uesr is not part of the account" do
+      user = %User{ id: Ecto.UUID.generate() }
+      account = %Account{ id: Ecto.UUID.generate() }
+
+      assert User.get_role(user, account) == nil
+    end
+  end
+
+  test "refresh_password_reset_token/1" do
+    account = Repo.insert!(%Account{
+      name: Faker.Company.name()
+    })
+    user = Repo.insert!(%User{
+      username: Faker.String.base64(5),
+      default_account_id: account.id
+    })
+
+    user = User.refresh_password_reset_token(user)
+    assert user.password_reset_token
+  end
 end
