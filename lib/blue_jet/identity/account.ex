@@ -88,8 +88,11 @@ defmodule BlueJet.Identity.Account do
   defmodule Query do
     use BlueJet, :query
 
+    alias BlueJet.Identity.Account
+
+
     def default() do
-      from(a in __MODULE__, order_by: [desc: :inserted_at])
+      from(a in Account, order_by: [desc: :inserted_at])
     end
 
     def has_member(query, user_id) do

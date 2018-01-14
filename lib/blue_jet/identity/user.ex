@@ -73,6 +73,29 @@ defmodule BlueJet.Identity.User do
 
   defp required_fields(%{ data: %{ __meta__: %{ state: :loaded } } }), do: required_fields()
 
+  defp username_valid?(username, nil), do: true
+
+  defp username_valid?(username, account_id) do
+    existing_user =
+      __MODULE__.Query.default()
+      |> __MODULE__.Query.member_of_account(account_id)
+      |> Repo.get_by(username: username)
+
+    !existing_user
+  end
+
+  defp validate_username(changeset = %{ valid?: true, changes: %{ username: username } }) do
+    account_id = get_field(changeset, :account_id)
+
+    if username_valid?(username, account_id) do
+      changeset
+    else
+      add_error(changeset, :username, "Username already taken.", [validation: :unique])
+    end
+  end
+
+  defp validate_username(changeset), do: changeset
+
   defp validate_current_password(changeset = %{
     valid?: true,
     data: %{ __meta__: %{ state: :loaded } },
@@ -99,13 +122,17 @@ defmodule BlueJet.Identity.User do
 
     changeset
     |> validate_required(required_fields)
-    |> validate_current_password()
     |> validate_length(:username, min: 5)
+    |> validate_username()
     |> unique_constraint(:username)
     |> unique_constraint(:username, name: :users_account_id_username_index)
-    |> validate_length(:password, min: 8)
+
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-    |> unique_constraint(:email, name: :users_account_id_email_index)
+    |> unique_constraint(:email)
+
+    |> validate_current_password()
+    |> validate_length(:password, min: 8)
+
     |> foreign_key_constraint(:default_account_id)
     |> foreign_key_constraint(:account_id)
   end
@@ -145,6 +172,8 @@ defmodule BlueJet.Identity.User do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Identity.User
 
     def default() do
       from(u in User, order_by: [desc: :inserted_at])

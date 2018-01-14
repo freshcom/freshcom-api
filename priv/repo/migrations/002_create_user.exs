@@ -31,7 +31,6 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
     create unique_index(:users, [:password_reset_token])
     create unique_index(:users, [:email_confirmation_token])
 
-    create unique_index(:users, [:account_id, :email])
     create unique_index(:users, [:account_id, :username])
 
     create index(:users, [:account_id, :status])
