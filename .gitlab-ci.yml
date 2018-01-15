@@ -17,5 +17,8 @@ before_script:
   - mix ecto.reset
 
 test:
+  only:
+    - develop
+    - master
   script:
     - mix test test/blue_jet/identity
