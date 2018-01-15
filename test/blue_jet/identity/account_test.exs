@@ -21,14 +21,12 @@ defmodule BlueJet.AccountTest do
     test "when live account is deleted test account should be automatically deleted" do
       live_account = Repo.insert!(%Account{
         mode: "live",
-        name: Faker.Company.name(),
-        default_locale: "en"
+        name: Faker.Company.name()
       })
       test_account = Repo.insert!(%Account{
         mode: "test",
         live_account_id: live_account.id,
-        name: live_account.name,
-        default_locale: live_account.default_locale
+        name: live_account.name
       })
 
       Repo.delete!(live_account)
@@ -40,10 +38,12 @@ defmodule BlueJet.AccountTest do
     test "when given params is invalid" do
       changeset = Account.changeset(%Account{}, %{
         name: Faker.Company.name(),
-        default_locale: "en"
+        default_locale: "test"
       })
 
       assert changeset.valid?
+      assert changeset.changes[:name]
+      assert changeset.changes[:default_locale]
     end
 
     test "when given params is valid" do
@@ -51,20 +51,28 @@ defmodule BlueJet.AccountTest do
 
       refute changeset.valid?
     end
+
+    test "when updating default locale should not be changeable" do
+      account = %Account{}
+      changeset =
+        account
+        |> Ecto.put_meta(state: :loaded)
+        |> Account.changeset(%{ default_locale: "test" })
+
+      refute changeset.changes[:default_locale]
+    end
   end
 
   describe "put_test_account_id/1" do
     test "when given account is a live account" do
       live_account = Repo.insert!(%Account{
         mode: "live",
-        name: Faker.Company.name(),
-        default_locale: "en"
+        name: Faker.Company.name()
       })
       test_account = Repo.insert!(%Account{
         mode: "test",
         live_account_id: live_account.id,
-        name: live_account.name,
-        default_locale: live_account.default_locale
+        name: live_account.name
       })
 
       assert Account.put_test_account_id(live_account).test_account_id == test_account.id

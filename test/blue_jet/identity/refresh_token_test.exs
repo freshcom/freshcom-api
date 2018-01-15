@@ -5,7 +5,38 @@ defmodule BlueJet.RefreshTokenTest do
   alias BlueJet.Identity.User
   alias BlueJet.Identity.RefreshToken
 
-  describe "prefix_id" do
+  describe "schema" do
+    test "when account is deleted its refresh token should automatically be removed" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      refresh_token = Repo.insert!(%RefreshToken{
+        account_id: account.id
+      })
+
+      Repo.delete!(account)
+      refute Repo.get(RefreshToken, refresh_token.id)
+    end
+
+    test "when user is deleted its refresh token should automatically be removed" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      user = Repo.insert!(%User{
+        username: Faker.String.base64(5),
+        default_account_id: account.id
+      })
+      refresh_token = Repo.insert!(%RefreshToken{
+        account_id: account.id,
+        user_id: user.id
+      })
+
+      Repo.delete!(user)
+      refute Repo.get(RefreshToken, refresh_token.id)
+    end
+  end
+
+  describe "get_prefixed_id/1" do
     test "when its a prt and account is in test mode" do
       account = Repo.insert!(%Account{
         name: Faker.Company.name(),

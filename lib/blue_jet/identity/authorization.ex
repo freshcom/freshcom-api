@@ -199,8 +199,7 @@ defmodule BlueJet.Identity.Authorization do
       "balance.delete_card"
     ],
 
-    "marketing_specialist" => [
-      "identity.create_password_reset_token",
+    "business_analyst" => [
     ],
 
     "support_specialist" => [
@@ -275,6 +274,10 @@ defmodule BlueJet.Identity.Authorization do
       "balance.update_card",
       "balance.delete_card",
       "balance.create_refund"
+    ],
+
+    "marketing_specialist" => [
+      "identity.create_password_reset_token"
     ],
 
     "goods_specialist" => [
@@ -583,7 +586,7 @@ defmodule BlueJet.Identity.Authorization do
     if found do
       {:ok, role}
     else
-      {:error, role}
+      {:error, :role_not_allowed}
     end
   end
 
@@ -616,8 +619,11 @@ defmodule BlueJet.Identity.Authorization do
     do
       {:ok, role}
     else
-      nil -> authorize(vas, %{ id: live_account_id, mode: "live" }, endpoint)
-      {:error, _} -> {:error, :role_not_allowed}
+      nil ->
+        authorize(vas, %{ id: live_account_id, mode: "live" }, endpoint)
+
+      {:error, _} ->
+        {:error, :role_not_allowed}
     end
   end
 end

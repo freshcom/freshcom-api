@@ -23,7 +23,7 @@ defmodule BlueJet.Identity.Account do
 
     field :name, :string
     field :company_name, :string
-    field :default_locale, :string
+    field :default_locale, :string, default: "en"
     field :website_url, :string
     field :support_email, :string
     field :tech_email, :string
@@ -31,7 +31,7 @@ defmodule BlueJet.Identity.Account do
     field :caption, :string
     field :description, :string
     field :custom_data, :map, default: %{}
-    field :translations, :map, defualt: %{}
+    field :translations, :map, default: %{}
 
     timestamps()
 
@@ -60,13 +60,23 @@ defmodule BlueJet.Identity.Account do
     __MODULE__.__trans__(:fields)
   end
 
-  def changeset(account, params, locale \\ nil) do
-    locale = locale || account.default_locale
+  defp castable_fields(%{ __meta__: %{ state: :built }}) do
+    writable_fields()
+  end
 
-    account
-    |> cast(params, writable_fields())
-    |> validate_required([:name, :default_locale])
-    |> Translation.put_change(translatable_fields(), locale, account.default_locale)
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:default_locale]
+  end
+
+  def changeset(account, params, locale \\ nil) do
+    changeset =
+      account
+      |> cast(params, castable_fields(account))
+      |> validate_required([:name])
+
+    locale = locale || get_field(changeset, :default_locale)
+    default_locale = get_field(changeset, :default_locale)
+    Translation.put_change(changeset, translatable_fields(), locale, default_locale)
   end
 
   @doc """

@@ -7,33 +7,34 @@ defmodule BlueJet.AccountMembershipTest do
 
   describe "schema" do
     test "when account is deleted membership should be automatically deleted" do
-      account = Repo.insert!(%Account{
-        mode: "live",
-        name: Faker.Company.name(),
-        default_locale: "en"
+      account1 = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      account2 = Repo.insert!(%Account{
+        name: Faker.Company.name()
       })
       user = Repo.insert!(%User{
-        email: Faker.Internet.safe_email()
+        username: Faker.String.base64(5),
+        default_account_id: account2.id
       })
 
       membership = Repo.insert!(%AccountMembership{
-        account_id: account.id,
+        account_id: account1.id,
         user_id: user.id,
         role: "developer"
       })
 
-      Repo.delete!(account)
+      Repo.delete!(account1)
       refute Repo.get(AccountMembership, membership.id)
     end
 
     test "when user is deleted membership should be automatically deleted" do
       account = Repo.insert!(%Account{
-        mode: "live",
-        name: Faker.Company.name(),
-        default_locale: "en"
+        name: Faker.Company.name()
       })
       user = Repo.insert!(%User{
-        email: Faker.Internet.safe_email()
+        username: Faker.String.base64(5),
+        default_account_id: account.id
       })
 
       membership = Repo.insert!(%AccountMembership{

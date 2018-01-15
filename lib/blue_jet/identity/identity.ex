@@ -49,12 +49,10 @@ defmodule BlueJet.Identity do
     alias BlueJet.Identity
 
     def create_account(fields) do
-      default_locale = fields["default_locale"]
-
       Multi.new()
-      |> Multi.insert(:account, Account.changeset(%Account{ mode: "live", default_locale: default_locale }, fields, default_locale))
+      |> Multi.insert(:account, Account.changeset(%Account{ mode: "live" }, fields))
       |> Multi.run(:test_account, fn(%{ account: account }) ->
-          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test", default_locale: default_locale }, fields, default_locale)
+          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
           Repo.insert(changeset)
         end)
       |> Multi.run(:prt_live, fn(%{ account: account }) ->
@@ -71,12 +69,17 @@ defmodule BlueJet.Identity do
     end
 
     def create_global_user(fields) do
+      account_fields =
+        fields
+        |> Map.take(["default_locale"])
+        |> Map.put("name", fields["account_name"])
+
       Multi.new()
-      |> Multi.append(create_account(%{ "name" => fields["account_name"], "default_locale" => fields["default_locale"] }))
+      |> Multi.append(create_account(account_fields))
       |> Multi.run(:user, fn(%{ account: account }) ->
           changeset = User.changeset(%User{ default_account_id: account.id }, fields)
           Repo.insert(changeset)
-        end)
+         end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
           account_membership = Repo.insert!(
             AccountMembership.changeset(%AccountMembership{}, %{
@@ -87,15 +90,15 @@ defmodule BlueJet.Identity do
           )
 
           {:ok, account_membership}
-        end)
+         end)
       |> Multi.run(:urt_live, fn(%{ account: account, user: user}) ->
           refresh_token = Repo.insert!(%RefreshToken{ account_id: account.id, user_id: user.id })
           {:ok, refresh_token}
-        end)
+         end)
       |> Multi.run(:urt_test, fn(%{ test_account: test_account, user: user}) ->
           refresh_token = Repo.insert!(%RefreshToken{ account_id: test_account.id, user_id: user.id })
           {:ok, refresh_token}
-        end)
+         end)
     end
 
     def create_account_user(account_id, fields) do

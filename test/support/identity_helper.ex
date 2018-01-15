@@ -30,15 +30,15 @@ defmodule BlueJet.Identity.TestHelper do
       account_id: account.id,
       role: role
     })
-    Repo.insert!(%RefreshToken{
+    urt = Repo.insert!(%RefreshToken{
       user_id: user.id,
       account_id: account.id
     })
-    Repo.insert!(%RefreshToken{
+    prt = Repo.insert!(%RefreshToken{
       account_id: account.id
     })
 
-    %{ vas: %{ account_id: account.id, user_id: user.id }, account: account, user: user }
+    %{ vas: %{ account_id: account.id, user_id: user.id }, account: account, user: user, urt: urt, prt: prt }
   end
 
   def create_account_identity(role) do
