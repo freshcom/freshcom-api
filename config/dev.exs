@@ -52,4 +52,5 @@ config :blue_jet, BlueJet.Repo,
   adapter: Ecto.Adapters.Postgres,
   database: "blue_jet_dev",
   hostname: "localhost",
+  username: System.get_env("DB_USERNAME"),
   pool_size: 10

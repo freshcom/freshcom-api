@@ -5,6 +5,8 @@ services:
 
 variables:
   MIX_ENV: "test"
+  DB_USERNAME: "postgres"
+  DB_HOSTNAME: "postgres"
 
 before_script:
   - apt-get update
