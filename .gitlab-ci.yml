@@ -7,6 +7,7 @@ variables:
   MIX_ENV: "test"
   DB_USERNAME: "postgres"
   DB_HOSTNAME: "postgres"
+  GLOBAL_MAIL_SENDER: "support@freshcom.io"
 
 before_script:
   - apt-get update
