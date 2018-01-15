@@ -21,7 +21,7 @@ defmodule BlueJet.Goods.Stockable do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    field :status, :string, default: "draft"
+    field :status, :string, default: "active"
     field :code, :string
     field :name, :string
     field :label, :string
@@ -50,56 +50,48 @@ defmodule BlueJet.Goods.Stockable do
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Stockable.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Stockable.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name, :unit_of_measure])
+    |> validate_required([:account_id, :name, :unit_of_measure])
     |> foreign_key_constraint(:account_id)
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  defp put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  defp put_print_name(changeset), do: changeset
+
   def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
     default_locale = default_locale || get_default_locale(struct)
     locale = locale || default_locale
 
     struct
-    |> cast(params, castable_fields(struct))
+    |> cast(params, writable_fields())
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
-
-  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
-
-  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
-    put_change(changeset, :print_name, get_field(changeset, :name))
-  end
-
-  def put_print_name(changeset), do: changeset
 
   ######
   # External Resources

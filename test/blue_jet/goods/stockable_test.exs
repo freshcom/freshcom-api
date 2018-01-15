@@ -2,65 +2,81 @@ defmodule BlueJet.StockableTest do
   use BlueJet.DataCase
   import BlueJet.Identity.TestHelper
 
+  alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
 
-  @valid_params %{
-    account_id: Ecto.UUID.generate(),
-    status: "active",
-    name: "Apple",
-    print_name: "APPLE",
-    unit_of_measure: "EA",
-    custom_data: %{
-      kind: "Gala"
-    }
-  }
-  @invalid_params %{}
+  # @valid_params %{
+  #   account_id: Ecto.UUID.generate(),
+  #   status: "active",
+  #   name: "Apple",
+  #   print_name: "APPLE",
+  #   unit_of_measure: "EA",
+  #   custom_data: %{
+  #     kind: "Gala"
+  #   }
+  # }
+  # @invalid_params %{}
 
-  describe "changeset/2" do
-    test "with struct in :built state, valid params, en locale" do
-      changeset = Stockable.changeset(%Stockable{}, @valid_params)
+  test "writable_fields/0" do
+    assert Stockable.writable_fields() == [
+      :status,
+      :code,
+      :name,
+      :label,
+      :print_name,
+      :unit_of_measure,
+      :variable_weight,
+      :storage_type,
+      :storage_size,
+      :stackable,
+      :specification,
+      :storage_description,
+      :caption,
+      :description,
+      :custom_data,
+      :avatar_id
+    ]
+  end
 
-      assert changeset.valid?
-      assert changeset.changes.account_id
-      assert changeset.changes.status
-      assert changeset.changes.name
-      assert changeset.changes.print_name
-      assert changeset.changes.unit_of_measure
-      assert changeset.changes.custom_data
-    end
-
-    test "with struct in :loaded state, valid params" do
-      %{ account: account } = create_global_identity("guest")
-      struct = Ecto.put_meta(%Stockable{ account_id: account.id }, state: :loaded)
-      changeset = Stockable.changeset(struct, @valid_params)
-
-      assert changeset.valid?
-      assert changeset.changes.status
-      assert changeset.changes.name
-      assert changeset.changes.print_name
-      assert changeset.changes.unit_of_measure
-      assert changeset.changes.custom_data
-      refute Map.get(changeset.changes, :account_id)
-    end
-
-    test "with struct in :built state, invalid params" do
-      changeset = Stockable.changeset(%Stockable{}, @invalid_params)
+  describe "validate/1" do
+    test "when missing required fields" do
+      changeset =
+        change(%Stockable{ account_id: Ecto.UUID.generate() }, %{})
+        |> Stockable.validate()
 
       refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:name, :unit_of_measure]
     end
   end
 
   describe "changeset/4" do
-    test "with struct in :built state, valid params, zh-CN locale" do
-      changeset = Stockable.changeset(%Stockable{}, @valid_params, "zh-CN", "en")
+    test "when given valid fields without locale" do
+      account = Repo.insert!(%Account{})
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
 
       assert changeset.valid?
-      assert changeset.changes.account_id
-      assert changeset.changes.status
-      assert changeset.changes.translations["zh-CN"]
-      refute Map.get(changeset.changes, :name)
-      refute Map.get(changeset.changes, :print_name)
-      refute Map.get(changeset.changes, :custom_data)
+      assert Map.keys(changeset.changes) == [:name, :print_name, :unit_of_measure]
+    end
+
+    test "when given valid fields with locale" do
+      account = Repo.insert!(%Account{})
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      }, "en", "zh-CN")
+
+      assert changeset.valid?
+      assert Map.keys(changeset.changes) == [:translations]
+    end
+
+    test "when given invalid fields" do
+      account = Repo.insert!(%Account{})
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{})
+
+      refute changeset.valid?
     end
   end
 end
