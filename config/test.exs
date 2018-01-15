@@ -13,7 +13,7 @@ config :logger, level: :warn
 config :blue_jet, BlueJet.Repo,
   adapter: Ecto.Adapters.Postgres,
   database: "blue_jet_test",
-  hostname: "localhost",
+  hostname: if(System.get_env("CI"), do: "postgres", else: "localhost"),
   pool: Ecto.Adapters.SQL.Sandbox
 
 config :comeonin, :bcrypt_log_rounds, 4
