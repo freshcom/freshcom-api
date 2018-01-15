@@ -2,15 +2,33 @@
   "skip_files": [
     "test/support",
     "lib/mix/tasks",
-    "web/channels",
 
     "lib/blue_jet.ex",
+    "lib/blue_jet/application.ex",
     "lib/blue_jet/repo.ex",
     "lib/blue_jet/endpoint.ex",
 
-    "web/gettext.ex",
-    "web/router.ex",
-    "web/web.ex",
-    "view"
+    "lib/blue_jet_web",
+    "lib/blue_jet/balance",
+    "lib/blue_jet/catalogue",
+    "lib/blue_jet/crm",
+    "lib/blue_jet/data_trading",
+    "lib/blue_jet/distribution",
+    "lib/blue_jet/file_storage",
+    "lib/blue_jet/goods",
+    "lib/blue_jet/mailer",
+    "lib/blue_jet/notification",
+    "lib/blue_jet/oauth",
+    "lib/blue_jet/registration",
+    "lib/blue_jet/storefront",
+    "lib/blue_jet/stripe",
+    "lib/blue_jet/context_helper.ex",
+    "lib/blue_jet/custom_data.ex",
+    "lib/blue_jet/remote_csv.ex",
+    "lib/blue_jet/request.ex",
+    "lib/blue_jet/response.ex",
+    "lib/blue_jet/translation.ex",
+    "lib/blue_jet/utils.ex",
+    "lib/blue_jet/validation.ex"
   ]
 }

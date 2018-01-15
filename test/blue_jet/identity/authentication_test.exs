@@ -49,7 +49,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert response.error_description
     end
 
-    test "when using valid credentials with no scope" do
+    test "when using valid credentials without scope" do
       %{ user: user } = create_global_identity("administrator")
 
       {:ok, response} = Authentication.create_token(%{
@@ -102,7 +102,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert response.token_type
     end
 
-    test "when using urt" do
+    test "when using urt without scope" do
       %{ urt: urt } = create_global_identity("administrator")
       {:ok, response} = Authentication.create_token(%{
         "grant_type" => "refresh_token",
@@ -112,6 +112,30 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert response.expires_in
       assert response.access_token
       assert response.refresh_token
+      assert response.token_type
+    end
+
+    test "when using urt with scope" do
+      %{ urt: urt, account: account, user: user } = create_global_identity("administrator")
+      test_account = Repo.insert!(%Account{
+        mode: "test",
+        name: account.name,
+        live_account_id: account.id
+      })
+      test_refresh_token = Repo.insert!(%RefreshToken{
+        account_id: test_account.id,
+        user_id: user.id
+      })
+
+      {:ok, response} = Authentication.create_token(%{
+        "grant_type" => "refresh_token",
+        "refresh_token" => RefreshToken.get_prefixed_id(urt),
+        "scope" => "account_id:#{test_account.id}"
+      })
+
+      assert response.expires_in
+      assert response.access_token
+      assert response.refresh_token == RefreshToken.get_prefixed_id(test_refresh_token)
       assert response.token_type
     end
   end
