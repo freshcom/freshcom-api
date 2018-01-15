@@ -56,6 +56,8 @@ defmodule BlueJet.Identity.AccountMembership do
   defmodule Query do
     use BlueJet, :query
 
+    alias BlueJet.Identity.AccountMembership
+
     def default() do
       from(a in AccountMembership, order_by: [desc: :inserted_at])
     end

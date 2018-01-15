@@ -54,7 +54,7 @@ defmodule BlueJet.Identity do
       |> Multi.run(:test_account, fn(%{ account: account }) ->
           changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
           Repo.insert(changeset)
-        end)
+         end)
       |> Multi.run(:prt_live, fn(%{ account: account }) ->
           prt_live = Repo.insert!(%RefreshToken{ account_id: account.id })
           {:ok, prt_live}
@@ -180,9 +180,9 @@ defmodule BlueJet.Identity do
     end
   end
 
-  ####
-  # Account
-  ####
+  #
+  # MARK: Account
+  #
   def list_account(request) do
     with {:ok, request} <- preprocess_request(request, "identity.list_account") do
       request
@@ -230,11 +230,15 @@ defmodule BlueJet.Identity do
     end
   end
 
-  # TODO: also need to update the test account accordingly
   def do_update_account(request = %{ account: account, fields: fields }) do
-    changeset = Account.changeset(account, fields, request.locale)
+    live_changeset = Account.changeset(account, fields, request.locale)
 
-    with {:ok, account} <- Repo.update(changeset) do
+    test_account = Repo.get_by(Account, live_account_id: account.id)
+    test_changeset = Account.changeset(test_account, fields, request.locale)
+
+    with {:ok, account} <- Repo.update(live_changeset),
+         {:ok, test_account} <- Repo.update(test_changeset)
+    do
       account = Translation.translate(account, request.locale, account.default_locale)
       {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
     else
@@ -243,7 +247,7 @@ defmodule BlueJet.Identity do
   end
 
   #
-  # Password Reset Token
+  # MARK: Password Reset Token
   #
   def create_password_reset_token(request) do
     with {:ok, request} <- preprocess_request(request, "identity.create_password_reset_token") do
@@ -290,13 +294,17 @@ defmodule BlueJet.Identity do
   end
 
   def do_create_password_reset_token(request = %{ account: account }) do
+    email = request.fields["email"]
+
     user =
       User.Query.default()
       |> User.Query.for_account(account.id)
       |> Repo.get_by(email: request.fields["email"])
 
     case user do
-      nil -> {:error, :not_found}
+      nil ->
+        run_event_handler("identity.password_reset_token.created", %{ account: nil, user: nil, email: email })
+        {:ok, %AccessResponse{}}
 
       _ ->
         User.refresh_password_reset_token(user)
@@ -305,9 +313,9 @@ defmodule BlueJet.Identity do
     end
   end
 
-  ####
-  # User
-  ####
+  #
+  # MARK: User
+  #
   defp user_response(nil, _), do: {:error, :not_found}
 
   defp user_response(user, request = %{ account: account }) do
@@ -426,7 +434,7 @@ defmodule BlueJet.Identity do
   def do_delete_user(%{ account: account, params: %{ "id" => id } }) do
     user =
       User.Query.default()
-      |> User.Query.member_of_account(account.id)
+      |> User.Query.for_account(account.id)
       |> Repo.get(id)
 
     if user do

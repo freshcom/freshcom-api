@@ -73,7 +73,7 @@ defmodule BlueJet.Identity.User do
 
   defp required_fields(%{ data: %{ __meta__: %{ state: :loaded } } }), do: required_fields()
 
-  defp username_valid?(username, nil), do: true
+  defp username_valid?(_, nil), do: true
 
   defp username_valid?(username, account_id) do
     existing_user =

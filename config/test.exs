@@ -18,3 +18,9 @@ config :blue_jet, BlueJet.Repo,
   pool: Ecto.Adapters.SQL.Sandbox
 
 config :comeonin, :bcrypt_log_rounds, 4
+
+config :blue_jet, BlueJet.GlobalMailer,
+  adapter: Bamboo.TestAdapter
+
+config :blue_jet, BlueJet.AccountMailer,
+  adapter: Bamboo.TestAdapter

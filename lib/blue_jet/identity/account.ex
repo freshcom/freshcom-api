@@ -89,7 +89,7 @@ defmodule BlueJet.Identity.Account do
     case test_account do
       nil -> account
 
-      other -> %{ account | test_account_id: test_account.id }
+      _ -> %{ account | test_account_id: test_account.id }
     end
   end
 

@@ -15,7 +15,9 @@ defmodule BlueJet.Identity.TestHelper do
   end
 
   def create_global_identity(role) do
-    account = Repo.insert!(%Account{})
+    account = Repo.insert!(%Account{
+      name: Faker.Company.name()
+    })
     email = Faker.Internet.email()
     user = Repo.insert!(%User{
       email: email,
@@ -41,8 +43,8 @@ defmodule BlueJet.Identity.TestHelper do
     %{ vas: %{ account_id: account.id, user_id: user.id }, account: account, user: user, urt: urt, prt: prt }
   end
 
-  def create_account_identity(role) do
-    account = Repo.insert!(%Account{})
+  def create_account_identity(role, account \\ nil) do
+    account = account || Repo.insert!(%Account{})
     email = Faker.Internet.email()
     user = Repo.insert!(%User{
       email: email,

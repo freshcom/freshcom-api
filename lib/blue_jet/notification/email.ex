@@ -45,6 +45,21 @@ defmodule BlueJet.Notification.Email do
     alias Bamboo.Email, as: E
     alias Bamboo.PostmarkHelper, as: Postmark
 
+    # TODO: Update real template number
+    def password_reset_not_registered_email(email) do
+      E.new_email()
+      |> Postmark.template("4561302", %{
+          brand_name: "Freshcom",
+          brand_url: System.get_env("MARKETING_WEBSITE_URL"),
+          email: email,
+          support_url: System.get_env("SUPPORT_WEBSITE_URL"),
+          company_name: System.get_env("COMPANY_NAME"),
+          company_address: System.get_env("COMPANY_ADDRESS")
+         })
+      |> E.to("roy@freshcom.io")
+      |> E.from(sender())
+    end
+
     def password_reset_email(user) do
       E.new_email()
       |> Postmark.template("4561302", %{
