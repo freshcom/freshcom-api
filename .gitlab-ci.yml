@@ -21,4 +21,4 @@ test:
     - develop
     - master
   script:
-    - mix test test/blue_jet/identity
+    - mix coveralls test/blue_jet/identity
