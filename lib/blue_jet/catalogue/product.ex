@@ -136,13 +136,6 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_status()
-    |> validate_source()
-  end
-
   def validate_status(changeset) do
     kind = get_field(changeset, :kind)
     validate_status(changeset, kind)
@@ -225,13 +218,19 @@ defmodule BlueJet.Catalogue.Product do
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     cond do
-      aip_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_all_item_internal", full_error_message: true])
-      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_at_least_one_internal_price", full_error_message: true])
+      item_count == 0 || aip_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_internal_item", full_error_message: true])
+      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
       true -> changeset
     end
   end
   defp validate_status(changeset, _), do: changeset
 
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_status()
+    |> validate_source()
+  end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

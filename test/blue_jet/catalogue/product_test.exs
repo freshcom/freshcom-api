@@ -4,6 +4,7 @@ defmodule BlueJet.Catalogue.ProductTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.Price
 
   describe "schema" do
     test "when account is deleted product is automatically deleted" do
@@ -113,7 +114,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:name]
     end
 
-    test "when given product with variants with invalid status" do
+    test "when given product with variants with invalid internal status due to missing internal variant" do
       changeset =
         change(%Product{}, %{
           kind: "with_variants",
@@ -129,6 +130,74 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert error_info[:validation] == "require_internal_variant"
     end
 
+    test "when given product with variants with valid internal status" do
+      account = Repo.insert!(%Account{})
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_with_variants.id,
+        kind: "variant",
+        status: "internal",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_with_variants, %{
+          status: "internal"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
+    test "when given product with variants with invalid active status due to missing active variant" do
+      changeset =
+        change(%Product{}, %{
+          kind: "with_variants",
+          name: Faker.String.base64(5),
+          status: "active"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_primary_active_variant"
+    end
+
+    test "when given product with variants with valid active status" do
+      account = Repo.insert!(%Account{})
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_with_variants.id,
+        primary: true,
+        kind: "variant",
+        status: "active",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_with_variants, %{
+          status: "active"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
+    #
+    # MARK: Product combo
+    #
     test "when given product combo and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "combo" })
@@ -138,6 +207,86 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:name]
     end
 
+    test "when given product combo with invalid internal status due to missing internal item" do
+      changeset =
+        change(%Product{}, %{
+          kind: "combo",
+          name: Faker.String.base64(5),
+          status: "internal"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_internal_item"
+    end
+
+    test "when given product combo with invalid internal status due to missing internal price" do
+      account = Repo.insert!(%Account{})
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_combo.id,
+        kind: "item",
+        status: "internal",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_combo, %{
+          status: "internal"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_internal_price"
+    end
+
+    test "when given product combo with valid internal status" do
+      account = Repo.insert!(%Account{})
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product_combo.id,
+        status: "internal",
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2),
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_combo.id,
+        kind: "item",
+        status: "internal",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_combo, %{
+          status: "internal"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
+    #
+    # MARK: Product variant
+    #
     test "when given product variant and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "variant" })
@@ -147,6 +296,9 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:name, :parent_id, :source_id, :source_type]
     end
 
+    #
+    # MARK: Product item
+    #
     test "when given product item and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "item" })
