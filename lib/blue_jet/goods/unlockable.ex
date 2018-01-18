@@ -9,12 +9,14 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
+  import BlueJet.Identity.Shortcut
 
-  alias BlueJet.Goods.Unlockable
+  alias BlueJet.Translation
 
   schema "unlockables" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "draft"
     field :code, :string
     field :name, :string
@@ -35,44 +37,28 @@ defmodule BlueJet.Goods.Unlockable do
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Unlockable.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Unlockable.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
     |> validate_required([:account_id, :status, :name])
     |> foreign_key_constraint(:account_id)
-  end
-
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
-    |> validate()
-    |> put_print_name()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
@@ -82,6 +68,17 @@ defmodule BlueJet.Goods.Unlockable do
   end
 
   def put_print_name(changeset), do: changeset
+
+  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
+    default_locale = default_locale || get_default_locale(struct)
+    locale = locale || default_locale
+
+    struct
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_print_name()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
 
   ######
   # External Resources
@@ -99,6 +96,8 @@ defmodule BlueJet.Goods.Unlockable do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Goods.Unlockable
 
     def default() do
       from(u in Unlockable, order_by: [desc: :updated_at])

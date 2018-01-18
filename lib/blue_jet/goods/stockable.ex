@@ -15,7 +15,6 @@ defmodule BlueJet.Goods.Stockable do
   import BlueJet.Identity.Shortcut
 
   alias BlueJet.Translation
-  alias BlueJet.Goods.Stockable
 
   schema "stockables" do
     field :account_id, Ecto.UUID
@@ -109,6 +108,8 @@ defmodule BlueJet.Goods.Stockable do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Goods.Stockable
 
     def default() do
       from(s in Stockable, order_by: [desc: :updated_at])

@@ -8,7 +8,7 @@ defmodule BlueJet.AccessRequest do
             search: "",
             filter: %{},
             sort: %{},
-            pagination: %{},
+            pagination: %{ size: 25, number: 1 },
             counts: %{ all: %{} },
 
             account: nil,

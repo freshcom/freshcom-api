@@ -128,8 +128,9 @@ defmodule BlueJet.Goods do
   def do_create_stockable(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
 
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Stockable.changeset(%Stockable{}, fields, request.locale, account.default_locale)
+    changeset = Stockable.changeset(%Stockable{
+      account_id: account.id
+    }, request.fields, request.locale, account.default_locale)
 
     with {:ok, stockable} <- Repo.insert(changeset) do
       stockable_response(stockable, request)
