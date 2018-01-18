@@ -26,7 +26,6 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Goods
 
-  alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
 
@@ -65,41 +64,44 @@ defmodule BlueJet.Catalogue.Product do
 
     timestamps()
 
-    belongs_to :parent, Product
-    has_many :items, Product, foreign_key: :parent_id, on_delete: :delete_all
-    has_many :variants, Product, foreign_key: :parent_id, on_delete: :delete_all
+    belongs_to :parent, __MODULE__
+    has_many :items, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
+    has_many :variants, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
 
     has_many :prices, Price, on_delete: :delete_all
     has_one :default_price, Price
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Product.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Product.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
+  defp castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :kind]
+
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:kind, :source_id, :source_type]
   end
 
-  def required_fields(changeset) do
+  defp required_fields(changeset) do
     kind = get_field(changeset, :kind)
 
-    common = [:account_id, :kind, :status, :name_sync, :name, :primary]
+    common = [:kind, :status, :name_sync, :name, :primary]
     case kind do
       "simple" -> common ++ [:source_quantity, :maximum_public_order_quantity, :source_id, :source_type]
       "with_variants" -> common
@@ -110,19 +112,16 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_status()
-    |> validate_source()
-  end
-
-  def validate_source(changeset) do
+  def validate_source(changeset = %{ valid?: true }) do
     kind = get_field(changeset, :kind)
     validate_source(changeset, kind)
   end
+
+  def validate_source(changeset), do: changeset
+
   defp validate_source(changeset, "with_variants"), do: changeset
   defp validate_source(changeset, "combo"), do: changeset
+
   defp validate_source(changeset, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
@@ -135,6 +134,13 @@ defmodule BlueJet.Catalogue.Product do
       nil -> Changeset.add_error(changeset, :source_id, "is invalid")
       _ -> changeset
     end
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_status()
+    |> validate_source()
   end
 
   def validate_status(changeset) do
@@ -163,7 +169,7 @@ defmodule BlueJet.Catalogue.Product do
     id = get_field(changeset, :id)
 
     active_primary_item = if id do
-      Repo.get_by(Product, parent_id: id, status: "active", primary: true)
+      Repo.get_by(__MODULE__, parent_id: id, status: "active", primary: true)
     else
       nil
     end
@@ -206,7 +212,7 @@ defmodule BlueJet.Catalogue.Product do
     aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
     case aiv_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_at_least_one_internal_variant", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_internal_variant", full_error_message: true])
       _ -> changeset
     end
   end
@@ -323,6 +329,8 @@ defmodule BlueJet.Catalogue.Product do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Catalogue.Product
 
     def default() do
       from p in Product

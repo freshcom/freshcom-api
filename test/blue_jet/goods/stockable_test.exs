@@ -1,4 +1,4 @@
-defmodule BlueJet.StockableTest do
+defmodule BlueJet.Goods.StockableTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.Account

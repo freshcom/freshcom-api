@@ -1,4 +1,4 @@
-defmodule BlueJet.Identity.IdentityTest do
+defmodule BlueJet.GoodsTest do
   use BlueJet.DataCase
 
   import BlueJet.Identity.TestHelper

@@ -1,4 +1,4 @@
-defmodule BlueJet.UnlockableTest do
+defmodule BlueJet.Goods.UnlockableTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.Account

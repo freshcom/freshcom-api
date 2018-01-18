@@ -10,7 +10,6 @@ defmodule BlueJet.FileStorage.ExternalFile do
 
   import BlueJet.Identity.Shortcut
 
-  alias BlueJet.FileStorage.ExternalFile
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
 
   schema "external_files" do
@@ -45,39 +44,34 @@ defmodule BlueJet.FileStorage.ExternalFile do
     has_many :collection_memberships, ExternalFileCollectionMembership, foreign_key: :file_id
   end
 
-  def system_fields do
-    [
-      :id,
-      :system_tag,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :user_id,
+    :account_id,
+    :system_tag,
+    :original_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    ExternalFile.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    ExternalFile.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :user_id, :customer_id]
-  end
-
-  def required_fields do
-    [:account_id, :status, :name, :content_type, :size_bytes, :user_id]
+  defp required_fields do
+    [:status, :name, :content_type, :size_bytes]
   end
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> foreign_key_constraint(:account_id)
-    |> foreign_key_constraint(:user_id)
   end
 
   @doc """
@@ -88,7 +82,7 @@ defmodule BlueJet.FileStorage.ExternalFile do
     locale = locale || default_locale
 
     struct
-    |> cast(params, castable_fields(struct))
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -107,7 +101,7 @@ defmodule BlueJet.FileStorage.ExternalFile do
       put_url(ef, opts)
     end)
   end
-  def put_url(struct = %ExternalFile{}, opts), do: %{ struct | url: url(struct, opts) }
+  def put_url(struct = %__MODULE__{}, opts), do: %{ struct | url: url(struct, opts) }
   def put_url(struct, _), do: struct
 
   def url(struct, opts \\ []) do
@@ -132,6 +126,8 @@ defmodule BlueJet.FileStorage.ExternalFile do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.FileStorage.ExternalFile
 
     def default() do
       from(ef in ExternalFile, order_by: [desc: ef.updated_at])

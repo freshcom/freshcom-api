@@ -3,18 +3,17 @@ defmodule BlueJet.TranslationTest do
 
   alias Ecto.Changeset
   alias BlueJet.Translation
-  alias BlueJet.Inventory.Sku
-  alias BlueJet.FileStorage.ExternalFileCollection
+  alias BlueJet.Goods.Stockable
 
   describe "put_change/4" do
-    test "with en locale" do
+    test "when both locale and default locale not provided" do
       original_changeset = %Changeset{}
-      new_changeset = Translation.put_change(original_changeset, %{}, "en")
+      new_changeset = Translation.put_change(original_changeset, %{})
 
       assert new_changeset == original_changeset
     end
 
-    test "with zh-CN locale" do
+    test "with locale and default locale is different" do
       data = %{}
       types = %{ name: :string, caption: :string, translations: :map }
 
@@ -22,7 +21,7 @@ defmodule BlueJet.TranslationTest do
       original_changeset = Changeset.cast({data, types}, params, Map.keys(types))
       translatable_fields = [:name, :caption]
 
-      new_changeset = Translation.put_change(original_changeset, translatable_fields, "zh-CN")
+      new_changeset = Translation.put_change(original_changeset, translatable_fields, "zh-CN", "en")
 
       assert new_changeset != original_changeset
       assert new_changeset.changes.translations["zh-CN"]["name"] == params[:name]
@@ -33,27 +32,25 @@ defmodule BlueJet.TranslationTest do
     end
   end
 
-  describe "translate/2" do
-    test "when locale is en" do
+  describe "translate/3" do
+    test "when locale and defaut locale is the same" do
       struct = %{}
-      translated = Translation.translate(struct, "en")
+      translated = Translation.translate(struct, "en", "en")
 
       assert struct == translated
     end
 
-    test "when locale is not en" do
-      sku = %Sku{
+    test "when locale and default locale is different" do
+      stockable = %Stockable{
         name: "Apple",
         caption: "Good Apple",
-        translations: %{ "zh-CN" => %{ "name" => "苹果", "caption" => "好苹果" } },
-        external_file_collections: [%ExternalFileCollection{ name: "Primary Images", translations: %{ "zh-CN" => %{ "name" => "主要图片" } } }]
+        translations: %{ "zh-CN" => %{ "name" => "苹果", "caption" => "好苹果" } }
       }
-      translated = Translation.translate(sku, "zh-CN")
+      translated = Translation.translate(stockable, "zh-CN", "en")
 
-      assert translated != sku
+      assert translated != stockable
       assert translated.name == "苹果"
       assert translated.caption == "好苹果"
-      assert Enum.at(translated.external_file_collections, 0).name == "主要图片"
     end
   end
 end

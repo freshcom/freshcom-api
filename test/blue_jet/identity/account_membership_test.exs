@@ -1,4 +1,4 @@
-defmodule BlueJet.AccountMembershipTest do
+defmodule BlueJet.Identity.AccountMembershipTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.Account

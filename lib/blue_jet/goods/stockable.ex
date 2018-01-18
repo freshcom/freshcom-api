@@ -69,8 +69,7 @@ defmodule BlueJet.Goods.Stockable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name, :unit_of_measure])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:name, :unit_of_measure])
   end
 
   defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset

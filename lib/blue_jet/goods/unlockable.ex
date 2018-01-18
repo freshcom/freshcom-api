@@ -57,8 +57,7 @@ defmodule BlueJet.Goods.Unlockable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:status, :name])
   end
 
   def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset

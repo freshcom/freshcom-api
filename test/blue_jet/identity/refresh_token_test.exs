@@ -1,4 +1,4 @@
-defmodule BlueJet.RefreshTokenTest do
+defmodule BlueJet.Identity.RefreshTokenTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.Account

@@ -59,8 +59,7 @@ defmodule BlueJet.Goods.Depositable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name, :amount, :target_type])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:status, :name, :amount, :target_type])
   end
 
   def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset

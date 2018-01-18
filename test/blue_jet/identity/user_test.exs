@@ -1,4 +1,4 @@
-defmodule BlueJet.UserTest do
+defmodule BlueJet.Identity.UserTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.Account

@@ -1,5 +1,7 @@
 defmodule BlueJet.CustomData do
-
+  @moduledoc """
+  This module is deperecated
+  """
   def put_change(changeset, params, system_fields) do
     custom_fields = Map.keys(params) -- system_fields
     custom_data = Map.take(params, custom_fields)
