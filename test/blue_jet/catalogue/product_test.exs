@@ -18,6 +18,42 @@ defmodule BlueJet.Catalogue.ProductTest do
       refute Repo.get(Product, product.id)
     end
 
+    test "when parent is deleted variant should be automatically deleted" do
+      account = Repo.insert!(%Account{})
+      product_with_variants = Repo.insert!(%Product{
+        kind: "with_variants",
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      product_variant = Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_with_variants.id,
+        kind: "variant",
+        name: Faker.String.base64(5)
+      })
+
+      Repo.delete!(product_with_variants)
+      refute Repo.get(Product, product_variant.id)
+    end
+
+    test "when parent is deleted item should be automatically deleted" do
+      account = Repo.insert!(%Account{})
+      product_combo = Repo.insert!(%Product{
+        kind: "combo",
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      product_item = Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_combo.id,
+        kind: "item",
+        name: Faker.String.base64(5)
+      })
+
+      Repo.delete!(product_combo)
+      refute Repo.get(Product, product_item.id)
+    end
+
     test "defaults" do
       product = %Product{}
 
@@ -284,6 +320,83 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert changeset.valid?
     end
 
+    test "when given product combo with invalid active status due to missing active item" do
+      changeset =
+        change(%Product{}, %{
+          kind: "combo",
+          name: Faker.String.base64(5),
+          status: "active"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_active_item"
+    end
+
+    test "when given product combo with invalid active status due to missing active price" do
+      account = Repo.insert!(%Account{})
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_combo.id,
+        kind: "item",
+        status: "active",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_combo, %{
+          status: "active"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_active_price"
+    end
+
+    test "when given product combo with valid active status" do
+      account = Repo.insert!(%Account{})
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product_combo.id,
+        status: "active",
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2),
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Product{
+        account_id: account.id,
+        parent_id: product_combo.id,
+        kind: "item",
+        status: "active",
+        name: Faker.String.base64(5)
+      })
+
+      changeset =
+        change(product_combo, %{
+          status: "active"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
     #
     # MARK: Product variant
     #
@@ -294,6 +407,140 @@ defmodule BlueJet.Catalogue.ProductTest do
 
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [:name, :parent_id, :source_id, :source_type]
+    end
+
+    test "when given product varaint with invalid internal status due to missing internal price" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(%Product{}, %{
+          account_id: account.id,
+          status: "internal",
+          kind: "variant",
+          parent_id: product_with_variants.id,
+          name: Faker.String.base64(5),
+          source_id: stockable.id,
+          source_type: "Stockable"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_internal_price"
+    end
+
+    test "when given product varaint with valid internal status" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      product_variant = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "variant",
+        parent_id: product_with_variants.id,
+        name: Faker.String.base64(5),
+        source_id: stockable.id,
+        source_type: "Stockable"
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product_variant.id,
+        status: "internal",
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2),
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(product_variant, %{ status: "internal" })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
+    test "when given product varaint with invalid active status due to missing internal price" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(%Product{}, %{
+          account_id: account.id,
+          status: "active",
+          kind: "variant",
+          parent_id: product_with_variants.id,
+          name: Faker.String.base64(5),
+          source_id: stockable.id,
+          source_type: "Stockable"
+        })
+        |> Product.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == "require_active_price"
+    end
+
+    test "when given product varaint with valid active status" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_with_variants = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "with_variants",
+        name: Faker.String.base64(5)
+      })
+      product_variant = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "variant",
+        parent_id: product_with_variants.id,
+        name: Faker.String.base64(5),
+        source_id: stockable.id,
+        source_type: "Stockable"
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product_variant.id,
+        status: "active",
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2),
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(product_variant, %{ status: "active" })
+        |> Product.validate()
+
+      assert changeset.valid?
     end
 
     #
@@ -307,47 +554,78 @@ defmodule BlueJet.Catalogue.ProductTest do
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [:name, :parent_id, :source_id, :source_type]
     end
+
+    test "when given product item with valid internal status" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(%Product{}, %{
+          account_id: account.id,
+          status: "internal",
+          kind: "item",
+          parent_id: product_combo.id,
+          name: Faker.String.base64(5),
+          source_id: stockable.id,
+          source_type: "Stockable"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
+
+    test "when given product item with valid active status" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      product_combo = Repo.insert!(%Product{
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+      changeset =
+        change(%Product{}, %{
+          account_id: account.id,
+          status: "active",
+          kind: "item",
+          parent_id: product_combo.id,
+          name: Faker.String.base64(5),
+          source_id: stockable.id,
+          source_type: "Stockable"
+        })
+        |> Product.validate()
+
+      assert changeset.valid?
+    end
   end
 
-  # describe "changeset/1" do
-  #   test "with struct in :built state, valid params, en locale" do
-  #     changeset = Product.changeset(%Product{}, @valid_params)
+  describe "changeset/4" do
+    test "when given name sync is sync with source" do
+      account = Repo.insert!(%Account{})
+      stockable = Repo.insert!(%Stockable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        unit_of_measure: Faker.String.base64(2)
+      })
+      changeset = Product.changeset(%Product{ account_id: account.id, }, %{
+        name_sync: "sync_with_source",
+        source_id: stockable.id,
+        source_type: "Stockable"
+      })
 
-  #     assert changeset.valid?
-  #     assert changeset.changes.account_id
-  #     assert changeset.changes.status
-  #     assert changeset.changes.name
-  #     assert changeset.changes.item_mode
-  #   end
-
-  #   test "with struct in :built state, valid params, zh-CN locale" do
-  #     changeset = Product.changeset(%Product{}, @valid_params, "zh-CN")
-
-  #     assert changeset.valid?
-  #     assert changeset.changes.account_id
-  #     assert changeset.changes.status
-  #     assert changeset.changes.item_mode
-  #     assert changeset.changes.translations["zh-CN"]
-  #     refute Map.get(changeset.changes, :name)
-  #     refute Map.get(changeset.changes, :custom_data)
-  #   end
-
-  #   test "with struct in :loaded state, valid params" do
-  #     struct = Ecto.put_meta(%Product{ account_id: Ecto.UUID.generate() }, state: :loaded)
-  #     changeset = Product.changeset(struct, @valid_params)
-
-  #     assert changeset.valid?
-  #     assert changeset.changes.status
-  #     assert changeset.changes.name
-  #     assert changeset.changes.item_mode
-  #     assert changeset.changes.custom_data
-  #     refute Map.get(changeset.changes, :account_id)
-  #   end
-
-  #   test "with struct in :built state, invalid params" do
-  #     changeset = Product.changeset(%Product{}, @invalid_params)
-
-  #     refute changeset.valid?
-  #   end
-  # end
+      assert changeset.valid?
+      assert changeset.changes[:name] == stockable.name
+    end
+  end
 end

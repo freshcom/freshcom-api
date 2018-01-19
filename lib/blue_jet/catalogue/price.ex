@@ -15,7 +15,6 @@ defmodule BlueJet.Catalogue.Price do
 
   alias BlueJet.Repo
   alias BlueJet.Translation
-  alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.Product
 
   schema "prices" do
@@ -50,48 +49,32 @@ defmodule BlueJet.Catalogue.Price do
     timestamps()
 
     belongs_to :product, Product
-    belongs_to :parent, Price
-    has_many :children, Price, foreign_key: :parent_id, on_delete: :delete_all
+    belongs_to :parent, __MODULE__
+    has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :account_id,
+    :translations,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Price.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Price.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
-  # TODO: Fix so that charge_amount_cents cannot be set if the price is for a product
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :product_id, :product_item_id]
-  end
-
-  def required_fields(changeset) do
-    common_required = [:account_id, :product_id, :status, :currency_code, :charge_amount_cents, :charge_unit]
+  defp required_fields(changeset) do
+    common_required = [:name, :product_id, :status, :currency_code, :charge_amount_cents, :charge_unit]
     case get_field(changeset, :estimate_by_default) do
       true -> common_required ++ [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
       _ -> common_required
     end
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope(:product)
-    |> validate_status()
   end
 
   def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
@@ -141,6 +124,21 @@ defmodule BlueJet.Catalogue.Price do
     end
   end
   defp validate_status(changeset, _), do: changeset
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_assoc_account_scope(:product)
+    |> validate_status()
+  end
+
+  defp castable_fields(%{ __meta__: %{ state: :built }}) do
+    writable_fields()
+  end
+
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:product_id]
+  end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

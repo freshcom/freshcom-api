@@ -112,12 +112,12 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  def validate_source(changeset = %{ valid?: true }) do
+  defp validate_source(changeset = %{ valid?: true }) do
     kind = get_field(changeset, :kind)
     validate_source(changeset, kind)
   end
 
-  def validate_source(changeset), do: changeset
+  defp validate_source(changeset), do: changeset
 
   defp validate_source(changeset, "with_variants"), do: changeset
   defp validate_source(changeset, "combo"), do: changeset
@@ -136,7 +136,7 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  def validate_status(changeset) do
+  defp validate_status(changeset) do
     kind = get_field(changeset, :kind)
     validate_status(changeset, kind)
   end
@@ -144,6 +144,7 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "variant") do
     validate_status(changeset, "simple")
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "simple") do
     id = get_field(changeset, :id)
 
@@ -158,6 +159,7 @@ defmodule BlueJet.Catalogue.Product do
       _ -> changeset
     end
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "with_variants") do
     id = get_field(changeset, :id)
 
@@ -172,6 +174,7 @@ defmodule BlueJet.Catalogue.Product do
       _ -> changeset
     end
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = Ecto.assoc(changeset.data, :items) |> Repo.aggregate(:count, :id)
@@ -181,14 +184,16 @@ defmodule BlueJet.Catalogue.Product do
     active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
 
     cond do
-      active_item_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_all_item_active", full_error_message: true])
-      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_at_least_one_active_price", full_error_message: true])
+      item_count == 0 || active_item_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_active_item", full_error_message: true])
+      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
       true -> changeset
     end
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "variant") do
     validate_status(changeset, "simple")
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "simple") do
     prices = Ecto.assoc(changeset.data, :prices)
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
@@ -199,6 +204,7 @@ defmodule BlueJet.Catalogue.Product do
       Changeset.add_error(changeset, :status, "A Product must have a Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
     end
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "with_variants") do
     variants = Ecto.assoc(changeset.data, :variants)
     active_or_internal_variants = from(p in variants, where: p.status in ["active", "internal"])
@@ -209,6 +215,7 @@ defmodule BlueJet.Catalogue.Product do
       _ -> changeset
     end
   end
+
   defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = items |> Repo.aggregate(:count, :id)
@@ -223,11 +230,14 @@ defmodule BlueJet.Catalogue.Product do
       true -> changeset
     end
   end
+
   defp validate_status(changeset, _), do: changeset
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
+    |> foreign_key_constraint(:parent_id)
+    |> validate_assoc_account_scope(:parent)
     |> validate_status()
     |> validate_source()
   end

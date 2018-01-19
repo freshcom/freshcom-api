@@ -1,22 +1,110 @@
-# defmodule BlueJet.PriceTest do
-#   use BlueJet.DataCase
+defmodule BlueJet.Catalogue.PriceTest do
+  use BlueJet.DataCase
 
-#   import Money.Sigils
+  alias BlueJet.Identity.Account
+  alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.Product
 
-#   alias BlueJet.Identity.Account
-#   alias BlueJet.Storefront.Price
-#   alias BlueJet.Storefront.ProductItem
-#   alias BlueJet.Storefront.Product
+  describe "schema" do
+    test "defaults" do
+      price = %Price{}
 
-#   describe "schema" do
-#     test "defaults" do
-#       struct = %Product{}
+      assert price.status == "draft"
+      assert price.currency_code == "CAD"
+      assert price.estimate_by_default == false
+      assert price.minimum_order_quantity == 1
+      assert price.tax_one_percentage == Decimal.new(0)
+      assert price.tax_two_percentage == Decimal.new(0)
+      assert price.tax_three_percentage == Decimal.new(0)
+      assert price.custom_data == %{}
+      assert price.translations == %{}
+    end
 
-#       assert struct.item_mode == "any"
-#       assert struct.custom_data == %{}
-#       assert struct.translations == %{}
-#     end
-#   end
+    test "when product is deleted price should be automatically deleted" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      price = Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2)
+      })
+
+      Repo.delete!(product)
+      refute Repo.get(Price, price.id)
+    end
+
+    test "when parent is deleted price should be automatically deleted" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      parent = Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2)
+      })
+      price = Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        parent_id: parent.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2)
+      })
+
+      Repo.delete!(parent)
+      refute Repo.get(Price, price.id)
+    end
+  end
+
+  test "writable_fields/0" do
+    assert Price.writable_fields() == [
+      :status,
+      :code,
+      :name,
+      :label,
+      :currency_code,
+      :charge_amount_cents,
+      :charge_unit,
+      :order_unit,
+      :estimate_by_default,
+      :estimate_average_percentage,
+      :estimate_maximum_percentage,
+      :minimum_order_quantity,
+      :tax_one_percentage,
+      :tax_two_percentage,
+      :tax_three_percentage,
+      :start_time,
+      :end_time,
+      :caption,
+      :description,
+      :custom_data,
+      :product_id,
+      :parent_id
+    ]
+  end
+
+  describe "validate/1" do
+    test "when given price missing required fields" do
+      changeset =
+        change(%Price{}, %{})
+        |> Price.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:name, :product_id, :charge_amount_cents, :charge_unit]
+    end
+  end
 
 #   describe "query_for/1" do
 #     test "with product_item_id and order_quantity" do
@@ -197,5 +285,5 @@
 #       assert length(prices) == 2
 #       assert prices -- [target_price1, target_price2] == []
 #     end
-#   end
-# end
+#  end
+end
