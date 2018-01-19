@@ -81,11 +81,11 @@ defmodule BlueJet.Catalogue.Price do
     moq = get_field(changeset, :minimum_order_quantity)
     product_id = get_field(changeset, :product_id)
 
-    price = Repo.get_by(Price, product_id: product_id, minimum_order_quantity: moq, status: "active")
+    price = Repo.get_by(__MODULE__, product_id: product_id, minimum_order_quantity: moq, status: "active")
 
     case price do
       nil -> changeset
-      _ -> Changeset.add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :can_only_active_one_per_moq, full_error_message: true])
+      _ -> Changeset.add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :minimum_order_quantity_taken, full_error_message: true])
     end
   end
   def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
@@ -100,13 +100,13 @@ defmodule BlueJet.Catalogue.Price do
     product_id = get_field(changeset, :product_id)
 
     other_active_prices = cond do
-      price_id && product_id -> from(p in Price, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status == "active")
-      !price_id && product_id -> from(p in Price, where: p.product_id == ^product_id, where: p.status == "active")
+      price_id && product_id -> from(p in __MODULE__, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status == "active")
+      !price_id && product_id -> from(p in __MODULE__, where: p.product_id == ^product_id, where: p.status == "active")
     end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: "cannot_change_status_of_only_active_price_of_active_product", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: :active_product_depends_on_active_price, full_error_message: true])
       _ -> changeset
     end
   end
@@ -115,11 +115,11 @@ defmodule BlueJet.Catalogue.Price do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
-    other_active_or_internal_prices = from(p in Price, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    other_active_or_internal_prices = from(p in __MODULE__, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: "cannot_change_status_of_only_internal_price_of_internal_product", full_error_message: true])
+      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: :internal_product_depends_on_internal_price, full_error_message: true])
       _ -> changeset
     end
   end
@@ -159,7 +159,7 @@ defmodule BlueJet.Catalogue.Price do
     parent_id = get_field(changeset, :parent_id)
 
     if parent_id do
-      parent = Repo.get(Price, parent_id)
+      parent = Repo.get(__MODULE__, parent_id)
       put_change(changeset, :status, parent.status)
     else
       changeset
@@ -171,7 +171,7 @@ defmodule BlueJet.Catalogue.Price do
     parent_id = get_field(changeset, :parent_id)
 
     if parent_id do
-      parent = Repo.get(Price, parent_id)
+      parent = Repo.get(__MODULE__, parent_id)
       put_change(changeset, :label, parent.label)
     else
       changeset
@@ -183,7 +183,7 @@ defmodule BlueJet.Catalogue.Price do
     parent_id = get_field(changeset, :parent_id)
 
     if parent_id do
-      parent = Repo.get(Price, parent_id)
+      parent = Repo.get(__MODULE__, parent_id)
       changeset = put_change(changeset, :charge_unit, parent.charge_unit)
 
       new_translations =
@@ -202,7 +202,7 @@ defmodule BlueJet.Catalogue.Price do
     parent_id = get_field(changeset, :parent_id)
 
     if parent_id do
-      parent = Repo.get(Price, parent_id)
+      parent = Repo.get(__MODULE__, parent_id)
       put_change(changeset, :minimum_order_quantity, parent.minimum_order_quantity)
     else
       changeset
@@ -232,8 +232,9 @@ defmodule BlueJet.Catalogue.Price do
     D.new(p) |> D.div(D.new(100))
   end
 
+  # TODO: Refactor this
   def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
-    query = from p in Price,
+    query = from p in __MODULE__,
       where: p.status == "active",
       where: p.product_item_id == ^product_item_id,
       where: p.minimum_order_quantity <= ^order_quantity,
@@ -242,7 +243,7 @@ defmodule BlueJet.Catalogue.Price do
     query |> first()
   end
   def query_for(product_id: product_id, order_quantity: order_quantity) do
-    query = from p in Price,
+    query = from p in __MODULE__,
       where: p.status == "active",
       where: p.product_id == ^product_id,
       where: p.minimum_order_quantity <= ^order_quantity,
@@ -251,32 +252,34 @@ defmodule BlueJet.Catalogue.Price do
     query |> first()
   end
   def query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) do
-    query = from p in Price,
+    query = from p in __MODULE__,
       select: %{ row_number: fragment("ROW_NUMBER() OVER (PARTITION BY product_item_id ORDER BY minimum_order_quantity DESC)"), id: p.id },
       where: p.status == "active",
       where: p.product_item_id in ^product_item_ids,
       where: p.minimum_order_quantity <= ^order_quantity
 
     query = from pp in subquery(query),
-      join: p in Price, on: pp.id == p.id,
+      join: p in ^__MODULE__, on: pp.id == p.id,
       where: pp.row_number == 1,
       select: p
 
     query
   end
 
-  def balance!(price) do
+  def balance(price) do
     children = Ecto.assoc(price, :children) |> Repo.all()
     charge_amount_cents = Enum.reduce(children, 0, fn(child, acc) ->
       acc + child.charge_amount_cents
     end)
 
-    changeset = Price.changeset(price, %{ "charge_amount_cents" => charge_amount_cents })
+    changeset = __MODULE__.changeset(price, %{ "charge_amount_cents" => charge_amount_cents })
     Repo.update!(changeset)
   end
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Catalogue.Price
 
     def default() do
       from(p in Price, order_by: [desc: :inserted_at])

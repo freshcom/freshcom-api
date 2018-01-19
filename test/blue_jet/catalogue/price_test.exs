@@ -104,186 +104,194 @@ defmodule BlueJet.Catalogue.PriceTest do
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [:name, :product_id, :charge_amount_cents, :charge_unit]
     end
+
+    test "when given invalid active status due to already existing price with same minimum order quantity" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        status: "active",
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      })
+      price = %Price{
+        account_id: account.id,
+        product_id: product.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      }
+      changeset =
+        change(price, %{ status: "active" })
+        |> Price.validate()
+
+      refute changeset.valid?
+
+      assert Keyword.keys(changeset.errors) == [:status]
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == :minimum_order_quantity_taken
+    end
+
+    test "when given invalid draft status due to internal product require a internal price" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        status: "internal",
+        name: Faker.String.base64(5)
+      })
+      price = %Price{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        product_id: product.id,
+        status: "internal",
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      }
+      changeset =
+        change(price, %{ status: "draft" })
+        |> Price.validate()
+
+      refute changeset.valid?
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == :internal_product_depends_on_internal_price
+    end
+
+    test "when given invalid draft status due to active product require an active price" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        status: "active",
+        name: Faker.String.base64(5)
+      })
+      price = %Price{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        product_id: product.id,
+        status: "active",
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      }
+      changeset =
+        change(price, %{ status: "draft" })
+        |> Price.validate()
+
+      refute changeset.valid?
+
+      {_, error_info} = changeset.errors[:status]
+      assert error_info[:validation] == :active_product_depends_on_active_price
+    end
   end
 
-#   describe "query_for/1" do
-#     test "with product_item_id and order_quantity" do
-#       account = Repo.insert!(%Account{})
-#       product = Repo.insert!(%Product{
-#         status: "active",
-#         name: "Apple",
-#         account_id: account.id
-#       })
-#       product_item = Repo.insert!(%ProductItem{
-#         status: "active",
-#         name: "Apple",
-#         account_id: account.id,
-#         product_id: product.id
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       price3 = Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: ~M[100],
-#         minimum_order_quantity: 3,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       price8 = Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: ~M[100],
-#         minimum_order_quantity: 8,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         minimum_order_quantity: 20,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
+  describe "changeset/4" do
+    test "when child attributes is different from parent status" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      price = Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        status: "active",
+        label: "regular",
+        name: Faker.String.base64(5),
+        charge_amount_cents: 500,
+        charge_unit: "CU",
+        order_unit: "OU",
+        minimum_order_quantity: 6
+      })
 
-#       price = Price.query_for(product_item_id: product_item.id, order_quantity: 3) |> Repo.one()
-#       assert price == price3
+      changeset = Price.changeset(%Price{ account_id: account.id }, %{
+        product_id: product.id,
+        parent_id: price.id
+      })
 
-#       price = Price.query_for(product_item_id: product_item.id, order_quantity: 5) |> Repo.one()
-#       assert price == price3
+      assert changeset.changes[:status] == "active"
+      assert changeset.changes[:label] == "regular"
+      assert changeset.changes[:charge_unit] == "CU"
+      assert changeset.changes[:minimum_order_quantity] == 6
+    end
 
-#       price = Price.query_for(product_item_id: product_item.id, order_quantity: 11) |> Repo.one()
-#       assert price == price8
-#     end
+    test "when given price is not estimate by default" do
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+        product_id: Ecto.UUID.generate(),
+        charge_unit: "CU"
+      })
 
-#     test "with product_item_ids and order_quantity" do
-#       account = Repo.insert!(%Account{})
-#       product = Repo.insert!(%Product{
-#         status: "active",
-#         name: "Apple",
-#         account_id: account.id
-#       })
-#       product_item1 = Repo.insert!(%ProductItem{
-#         status: "active",
-#         name: "Apple Large",
-#         account_id: account.id,
-#         product_id: product.id
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item1.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item1.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         minimum_order_quantity: 3,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       target_price1 = Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item1.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: ~M[100],
-#         minimum_order_quantity: 8,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item1.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         minimum_order_quantity: 20,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
+      assert changeset.changes[:order_unit] == "CU"
+    end
 
-#       product_item2 = Repo.insert!(%ProductItem{
-#         status: "active",
-#         account_id: account.id,
-#         product_id: product.id,
-#         name: "Apple Large"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item2.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item2.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         minimum_order_quantity: 3,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       target_price2 = Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item2.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: ~M[100],
-#         minimum_order_quantity: 10,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
-#       Repo.insert!(%Price{
-#         account_id: account.id,
-#         product_item_id: product_item2.id,
-#         status: "active",
-#         label: "regular",
-#         name: "Regular Price",
-#         charge_amount_cents: 100,
-#         minimum_order_quantity: 20,
-#         order_unit: "EA",
-#         charge_unit: "EA"
-#       })
+    test "when given price is estimate by default" do
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+        product_id: Ecto.UUID.generate(),
+        estimate_by_default: true,
+        charge_unit: "CU"
+      })
 
-#       prices = Price.query_for(product_item_ids: [product_item1.id, product_item2.id], order_quantity: 10) |> Repo.all()
-#       assert length(prices) == 2
-#       assert prices -- [target_price1, target_price2] == []
-#     end
-#  end
+      refute changeset.changes[:order_unit]
+    end
+
+    test "when given locale is different than default_locale" do
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+        name: Faker.String.base64(5),
+        charge_unit: Faker.String.base64(2),
+        order_unit: Faker.String.base64(2)
+      }, "en", "zh-CN")
+
+      assert Map.keys(changeset.changes) == [:translations]
+    end
+  end
+
+  describe "balance/1" do
+    test "when price charge_amount_cents is different than the sum of children" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      price = Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 100,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        parent_id: price.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 200,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      })
+      Repo.insert!(%Price{
+        account_id: account.id,
+        product_id: product.id,
+        parent_id: price.id,
+        name: Faker.String.base64(5),
+        charge_amount_cents: 800,
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2)
+      })
+
+      price = Price.balance(price)
+
+      assert price.charge_amount_cents == 1000
+    end
+  end
 end

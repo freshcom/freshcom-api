@@ -10,12 +10,9 @@
 
     "lib/blue_jet_web",
     "lib/blue_jet/balance",
-    "lib/blue_jet/catalogue",
     "lib/blue_jet/crm",
     "lib/blue_jet/data_trading",
     "lib/blue_jet/distribution",
-    "lib/blue_jet/file_storage",
-    "lib/blue_jet/goods",
     "lib/blue_jet/mailer",
     "lib/blue_jet/notification",
     "lib/blue_jet/oauth",
@@ -27,8 +24,6 @@
     "lib/blue_jet/remote_csv.ex",
     "lib/blue_jet/request.ex",
     "lib/blue_jet/response.ex",
-    "lib/blue_jet/translation.ex",
     "lib/blue_jet/utils.ex",
-    "lib/blue_jet/validation.ex"
   ]
 }

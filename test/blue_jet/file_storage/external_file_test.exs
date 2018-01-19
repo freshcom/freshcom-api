@@ -3,16 +3,6 @@ defmodule BlueJet.FileStorage.ExternalFileTest do
 
   alias BlueJet.FileStorage.ExternalFile
 
-  @valid_params %{
-    account_id: Ecto.UUID.generate(),
-    user_id: Ecto.UUID.generate(),
-    name: Faker.Lorem.word(),
-    status: "pending",
-    content_type: "image/png",
-    size_bytes: 42
-  }
-  @invalid_params %{}
-
   test "writable_fields/0" do
     assert ExternalFile.writable_fields() == [
       :status,

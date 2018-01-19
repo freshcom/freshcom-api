@@ -685,7 +685,7 @@ defmodule BlueJet.Catalogue do
       {:ok, price} = Repo.transaction(fn ->
         price = Repo.update!(changeset)
         if price.parent do
-          Price.balance!(price.parent)
+          Price.balance(price.parent)
         end
 
         price
