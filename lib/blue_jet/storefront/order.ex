@@ -45,8 +45,6 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
 
-  @type t :: Ecto.Schema.t
-
   schema "orders" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
@@ -101,21 +99,24 @@ defmodule BlueJet.Storefront.Order do
     has_many :root_line_items, OrderLineItem
   end
 
-  def system_fields do
-    [
-      :account_id,
-      :system_tag,
-      :sub_total_cents,
-      :tax_one_cents,
-      :tax_two_cents,
-      :tax_three_cents,
-      :grant_total_cents,
-      :placed_at,
-      :confirmation_email_sent_at,
-      :receipt_email_sent_at,
-      :created_by_id
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :account_id,
+    :system_tag,
+    :payment_status,
+    :fulfillment_status,
+    :sub_total_cents,
+    :tax_one_cents,
+    :tax_two_cents,
+    :tax_three_cents,
+    :grant_total_cents,
+    :authorization_total_cents,
+    :placed_at,
+    :confirmation_email_sent_at,
+    :receipt_email_sent_at,
+    :created_by_id
+  ]
 
   def delivery_address_fields do
     [
@@ -132,20 +133,14 @@ defmodule BlueJet.Storefront.Order do
   Returns a list of fields that is changable by user input.
   """
   def writable_fields do
-    Order.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
-
-  @doc """
-  Returns a list of fields that can be changed for the given order.
-  """
-  def castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields() -- [:status]
-  def castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields()
 
   @doc """
   Returns a list of fields that can be translated.
   """
   def translatable_fields do
-    Order.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
   @doc """
@@ -178,7 +173,7 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  def required_fields, do: [:account_id, :status, :fulfillment_status, :payment_status]
+  def required_fields, do: [:status]
 
   @doc """
   Returns the validated changeset.
@@ -193,7 +188,6 @@ defmodule BlueJet.Storefront.Order do
     changeset
     |> validate_required(required_fields)
     |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-    |> foreign_key_constraint(:account_id)
     |> validate_inventory()
     |> validate_customer_id()
   end
@@ -218,10 +212,13 @@ defmodule BlueJet.Storefront.Order do
       case ordered_unlockable_count do
         0 -> changeset
 
-        _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: "order_with_unlockable_must_associate_customer", full_error_message: true])
+        _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: :required_for_unlockable, full_error_message: true])
       end
     end
   end
+
+  defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields() -- [:status]
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields()
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

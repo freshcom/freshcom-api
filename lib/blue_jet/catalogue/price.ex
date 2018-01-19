@@ -53,6 +53,8 @@ defmodule BlueJet.Catalogue.Price do
     has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
+  @type t :: Ecto.Schema.t
+
   @system_fields [
     :id,
     :account_id,
