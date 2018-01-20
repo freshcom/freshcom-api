@@ -90,6 +90,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       :caption,
       :description,
       :custom_data,
+      :translations,
       :product_id,
       :parent_id
     ]

@@ -66,6 +66,11 @@ config :ja_serializer,
 
 config :blue_jet, :s3, prefix: "uploads"
 
+config :blue_jet, :storefront, %{
+  balance_data: BlueJet.Balance.Data,
+  distribution_data: BlueJet.Distribution.Data
+}
+
 config :blue_jet, :balance, %{
   listeners: [BlueJet.Storefront, BlueJet.CRM]
 }

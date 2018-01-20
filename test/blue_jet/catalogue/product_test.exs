@@ -86,6 +86,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       :caption,
       :description,
       :custom_data,
+      :translations,
       :source_id,
       :source_type,
       :avatar_id,

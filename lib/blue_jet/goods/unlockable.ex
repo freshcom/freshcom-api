@@ -42,7 +42,6 @@ defmodule BlueJet.Goods.Unlockable do
   @system_fields [
     :id,
     :account_id,
-    :translations,
     :inserted_at,
     :updated_at
   ]

@@ -24,3 +24,8 @@ config :blue_jet, BlueJet.GlobalMailer,
 
 config :blue_jet, BlueJet.AccountMailer,
   adapter: Bamboo.TestAdapter
+
+config :blue_jet, :storefront, %{
+  balance_data: BlueJet.Storefront.BalanceDataMock,
+  distribution_data: BlueJet.Storefront.DistributionDataMock
+}

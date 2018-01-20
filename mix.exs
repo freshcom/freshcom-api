@@ -59,7 +59,8 @@ defmodule BlueJet.Mixfile do
       {:bamboo, "~> 0.8"},
       {:bamboo_postmark, "~> 0.4"},
       {:bamboo_smtp, "~> 1.4.0"},
-      {:excoveralls, "~> 0.8", only: :test}
+      {:excoveralls, "~> 0.8", only: :test},
+      {:mox, "~> 0.3.1", only: :test}
     ]
   end
 

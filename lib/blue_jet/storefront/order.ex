@@ -38,12 +38,12 @@ defmodule BlueJet.Storefront.Order do
   alias Ecto.Changeset
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
-  alias BlueJet.Balance
+
   alias BlueJet.CRM
   alias BlueJet.Distribution
 
-  alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.{BalanceData, DistributionData}
+  alias BlueJet.Storefront.{Order, OrderLineItem}
 
   schema "orders" do
     field :account_id, Ecto.UUID
@@ -118,6 +118,8 @@ defmodule BlueJet.Storefront.Order do
     :created_by_id
   ]
 
+  @email_regex ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
+
   def delivery_address_fields do
     [
       :delivery_address_line_one,
@@ -143,54 +145,19 @@ defmodule BlueJet.Storefront.Order do
     __MODULE__.__trans__(:fields)
   end
 
-  @doc """
-  Returns a list of required fields for the given `changeset`
-  """
-  def required_fields(%{ data: %{ __meta__: %{ state: :built } } }), do: required_fields()
+  defp required_fields(%{ data: %{ __meta__: %{ state: :built } } }), do: required_fields()
 
-  def required_fields(changeset) do
-    first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :last_name)
-    name = get_field(changeset, :name)
+  defp required_fields(changeset) do
     fulfillment_method = get_field(changeset, :fulfillment_method)
 
-    required_fields = required_fields() ++ [:email, :fulfillment_method]
+    case fulfillment_method do
+      "ship" -> required_fields() ++ (delivery_address_fields() -- [:delivery_address_line_two])
 
-    required_fields = case fulfillment_method do
-      "ship" -> required_fields ++ (delivery_address_fields() -- [:delivery_address_line_two])
-
-      _ -> required_fields
-    end
-
-    cond do
-      name -> required_fields
-
-      first_name -> required_fields ++ [:last_name]
-
-      last_name -> required_fields ++ [:first_name]
-
-      true -> required_fields ++ [:first_name, :last_name]
+      _ -> required_fields()
     end
   end
 
-  def required_fields, do: [:status]
-
-  @doc """
-  Returns the validated changeset.
-  """
-  def validate(changeset = %{ data: %{ __meta__: %{ state: :built } } }) do
-    changeset
-  end
-
-  def validate(changeset) do
-    required_fields = required_fields(changeset)
-
-    changeset
-    |> validate_required(required_fields)
-    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-    |> validate_inventory()
-    |> validate_customer_id()
-  end
+  defp required_fields, do: [:name, :status, :email, :fulfillment_method]
 
   # TODO:
   defp validate_inventory(changeset) do
@@ -217,6 +184,23 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
+  @doc """
+  Returns the validated changeset.
+  """
+  def validate(changeset = %{ data: %{ __meta__: %{ state: :built } } }) do
+    changeset
+  end
+
+  def validate(changeset) do
+    required_fields = required_fields(changeset)
+
+    changeset
+    |> validate_required(required_fields)
+    |> validate_format(:email, @email_regex)
+    |> validate_inventory()
+    |> validate_customer_id()
+  end
+
   defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields() -- [:status]
   defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields()
 
@@ -229,13 +213,12 @@ defmodule BlueJet.Storefront.Order do
 
     struct
     |> cast(params, castable_fields(struct))
+    |> put_name()
     |> validate()
     |> put_opened_at()
-    |> put_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  ########
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
   defp put_name(changeset = %{ valid?: true }) do
@@ -253,7 +236,6 @@ defmodule BlueJet.Storefront.Order do
 
   defp put_name(changeset), do: changeset
 
-  ######
   defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     Changeset.put_change(changeset, :opened_at, Ecto.DateTime.utc())
   end
@@ -266,12 +248,6 @@ defmodule BlueJet.Storefront.Order do
   Returns the balanced order.
   """
   def balance(struct) do
-    changeset = changeset_for_balance(struct)
-    Repo.update!(changeset)
-  end
-
-  ######
-  defp changeset_for_balance(struct) do
     query =
       struct
       |> Ecto.assoc(:root_line_items)
@@ -299,7 +275,7 @@ defmodule BlueJet.Storefront.Order do
       false
     end
 
-    Changeset.change(
+    changeset = Changeset.change(
       struct,
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,
@@ -309,6 +285,7 @@ defmodule BlueJet.Storefront.Order do
       authorization_total_cents: authorization_total_cents,
       is_estimate: is_estimate
     )
+    Repo.update!(changeset)
   end
 
   @doc """
@@ -327,7 +304,7 @@ defmodule BlueJet.Storefront.Order do
   field of the order may not be up to date yet.
   """
   def get_payment_status(order) do
-    payments = Balance.list_payment_for_target("Order", order.id)
+    payments = BalanceData.list_payment_for_target("Order", order.id)
 
     total_paid_amount_cents =
       payments
@@ -346,7 +323,11 @@ defmodule BlueJet.Storefront.Order do
 
     cond do
       order.grand_total_cents == 0 -> "paid"
+      total_authorized_amount_cents == 0 && total_paid_amount_cents == 0 -> "pending"
+
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
+      total_authorized_amount_cents == 0 && total_gross_amount_cents == 0 -> "refunded"
+
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
       total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
@@ -424,7 +405,6 @@ defmodule BlueJet.Storefront.Order do
 
   def process(order, _), do: {:ok, order}
 
-  ######
   defp process_leaf_line_items(order, changeset) do
     leaf_line_items =
       OrderLineItem.Query.default()
@@ -439,7 +419,6 @@ defmodule BlueJet.Storefront.Order do
     order
   end
 
-  ######
   defp process_auto_fulfill(order) do
     af_line_items =
       OrderLineItem
@@ -452,32 +431,27 @@ defmodule BlueJet.Storefront.Order do
       0 -> {:ok, nil}
 
       _ ->
-        account = get_account(order)
-
-        {:ok, %{ data: fulfillment }} = Distribution.do_create_fulfillment(%AccessRequest{
-          account: account,
-          fields: %{
-            "source_id" => order.id,
-            "source_type" => "Order"
-          }
+        fulfillment = DistributionData.create_fulfillment(%{
+          account_id: order.account_id,
+          source_id: order.id,
+          source_tye: "Order"
         })
+
+        account = get_account(order)
 
         Enum.each(af_line_items, fn(line_item) ->
           translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
 
-          {:ok, %{ data: _ }} = Distribution.do_create_fulfillment_line_item(%AccessRequest{
-            account: account,
-            fields: %{
-              "fulfillment_id" => fulfillment.id,
-              "name" => line_item.name,
-              "status" => "fulfilled",
-              "quantity" => line_item.order_quantity,
-              "source_id" => line_item.id,
-              "source_type" => "OrderLineItem",
-              "goods_id" => line_item.source_id,
-              "goods_type" => line_item.source_type,
-              "translations" => translations
-            }
+          DistributionData.create_fulfillment_line_item(%{
+            fulfillment_id: fulfillment.id,
+            name: line_item.name,
+            status: "fulfilled",
+            quantity: line_item.order_quantity,
+            source_id: line_item.id,
+            source_type: "OrderLineItem",
+            goods_id: line_item.source_id,
+            goods_type: line_item.source_type,
+            translations: translations
           })
         end)
     end

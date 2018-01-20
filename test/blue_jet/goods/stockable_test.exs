@@ -35,6 +35,7 @@ defmodule BlueJet.Goods.StockableTest do
       :caption,
       :description,
       :custom_data,
+      :translations,
       :avatar_id
     ]
   end

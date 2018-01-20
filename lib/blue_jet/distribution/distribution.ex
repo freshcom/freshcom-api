@@ -6,6 +6,26 @@ defmodule BlueJet.Distribution do
   alias BlueJet.Distribution.Fulfillment
   alias BlueJet.Distribution.FulfillmentLineItem
 
+  defmodule Data do
+    def create_fulfillment(fields) do
+      fulfillment = %Fulfillment{
+        account_id: fields[:account_id]
+      }
+
+      Fulfillment.changeset(fulfillment, fields)
+      |> Repo.insert!()
+    end
+
+    def create_fulfillment_line_item(fields) do
+      fli = %FulfillmentLineItem{
+        account_id: fields[:account_id]
+      }
+
+      FulfillmentLineItem.changeset(fli, fields)
+      |> Repo.insert!()
+    end
+  end
+
   def run_event_handler(name, data) do
     listeners = Map.get(Application.get_env(:blue_jet, :distribution, %{}), :listeners, [])
 

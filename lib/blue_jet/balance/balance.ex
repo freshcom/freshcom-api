@@ -9,6 +9,14 @@ defmodule BlueJet.Balance do
   alias BlueJet.Balance.Card
   alias BlueJet.Balance.BalanceSettings
 
+  defmodule Data do
+    def list_payment_for_target(target_type, target_id) do
+      Payment.Query.default()
+      |> Payment.Query.for_target(target_type, target_id)
+      |> Repo.all()
+    end
+  end
+
   def run_event_handler(name, data) do
     listeners = Map.get(Application.get_env(:blue_jet, :balance, %{}), :listeners, [])
 
@@ -245,12 +253,6 @@ defmodule BlueJet.Balance do
     }
 
     {:ok, response}
-  end
-
-  def list_payment_for_target(target_type, target_id) do
-    Payment.Query.default()
-    |> Payment.Query.for_target(target_type, target_id)
-    |> Repo.all()
   end
 
   defp payment_response(nil, _), do: {:error, :not_found}

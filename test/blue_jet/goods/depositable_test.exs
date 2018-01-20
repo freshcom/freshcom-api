@@ -31,6 +31,7 @@ defmodule BlueJet.Goods.DepositableTest do
       :caption,
       :description,
       :custom_data,
+      :translations,
       :avatar_id
     ]
   end

@@ -54,7 +54,6 @@ defmodule BlueJet.Goods.Stockable do
   @system_fields [
     :id,
     :account_id,
-    :translations,
     :inserted_at,
     :updated_at
   ]

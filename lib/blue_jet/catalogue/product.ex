@@ -77,7 +77,6 @@ defmodule BlueJet.Catalogue.Product do
   @system_fields [
     :id,
     :account_id,
-    :translations,
     :inserted_at,
     :updated_at
   ]

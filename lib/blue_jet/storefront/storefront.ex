@@ -5,8 +5,8 @@ defmodule BlueJet.Storefront do
   alias Ecto.Multi
 
   alias BlueJet.CRM
-  alias BlueJet.Balance
 
+  alias BlueJet.Storefront.BalanceData
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Unlock
@@ -282,7 +282,7 @@ defmodule BlueJet.Storefront do
       |> Repo.get(id)
 
     if order do
-      payments = Balance.list_payment_for_target("Order", id)
+      payments = BalanceData.list_payment_for_target("Order", id)
       case length(payments) do
         0 ->
           Repo.delete!(order)
