@@ -156,71 +156,53 @@ defmodule BlueJet.Catalogue.Price do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_status(changeset = %Changeset{ valid?: true }) do
-    parent_id = get_field(changeset, :parent_id)
-
-    if parent_id do
-      parent = Repo.get(__MODULE__, parent_id)
-      put_change(changeset, :status, parent.status)
-    else
-      changeset
-    end
+  def put_status(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :status, parent.status)
   end
+
   def put_status(changeset), do: changeset
 
-  def put_label(changeset = %Changeset{ valid?: true }) do
-    parent_id = get_field(changeset, :parent_id)
-
-    if parent_id do
-      parent = Repo.get(__MODULE__, parent_id)
-      put_change(changeset, :label, parent.label)
-    else
-      changeset
-    end
+  def put_label(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :label, parent.label)
   end
+
   def put_label(changeset), do: changeset
 
-  def put_charge_unit(changeset = %Changeset{ valid?: true }) do
-    parent_id = get_field(changeset, :parent_id)
+  def put_charge_unit(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    changeset = put_change(changeset, :charge_unit, parent.charge_unit)
 
-    if parent_id do
-      parent = Repo.get(__MODULE__, parent_id)
-      changeset = put_change(changeset, :charge_unit, parent.charge_unit)
-
-      new_translations =
-        changeset
-        |> Changeset.get_field(:translations)
-        |> Translation.merge_translations(parent.translations, ["charge_unit"])
-
-      put_change(changeset, :translations, new_translations)
-    else
+    new_translations =
       changeset
-    end
+      |> Changeset.get_field(:translations)
+      |> Translation.merge_translations(parent.translations, ["charge_unit"])
+
+    put_change(changeset, :translations, new_translations)
   end
+
   def put_charge_unit(changeset), do: changeset
 
-  def put_minimum_order_quantity(changeset = %Changeset{ valid?: true }) do
-    parent_id = get_field(changeset, :parent_id)
-
-    if parent_id do
-      parent = Repo.get(__MODULE__, parent_id)
-      put_change(changeset, :minimum_order_quantity, parent.minimum_order_quantity)
-    else
-      changeset
-    end
+  def put_minimum_order_quantity(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :minimum_order_quantity, parent.minimum_order_quantity)
   end
+
   def put_minimum_order_quantity(changeset), do: changeset
 
-  def put_order_unit(changeset = %Changeset{ valid?: true, changes: %{ charge_unit: charge_unit } }) do
+  def put_order_unit(changeset = %{ changes: %{ charge_unit: charge_unit } }) do
     case get_field(changeset, :estimate_by_default) do
       false -> put_change(changeset, :order_unit, charge_unit)
       _ -> changeset
     end
   end
-  def put_order_unit(changeset = %Changeset{ valid?: true, changes: %{ estimate_by_default: false } }) do
+
+  def put_order_unit(changeset = %{ changes: %{ estimate_by_default: false } }) do
     charge_unit = get_field(changeset, :charge_unit)
     put_change(changeset, :order_unit, charge_unit)
   end
+
   def put_order_unit(changeset), do: changeset
 
   def get_estimate_average_rate(%{ estimate_average_percentage: nil }), do: nil

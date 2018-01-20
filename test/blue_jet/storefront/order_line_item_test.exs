@@ -268,6 +268,55 @@ defmodule BlueJet.OrderLineItemTest do
   end
 
   describe "schema" do
+    test "when order is deleted line item should be deleted automatically" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        charge_quantity: 1,
+        auto_fulfill: false
+      })
+      Repo.delete!(order)
+
+      refute Repo.get(OrderLineItem, oli.id)
+    end
+
+    test "when parent is deleted, children should be deleted automatically" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      parent_oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        charge_quantity: 1,
+        auto_fulfill: false
+      })
+      child_oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        parent_id: parent_oli.id,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        charge_quantity: 1,
+        auto_fulfill: false
+      })
+
+      Repo.delete!(parent_oli)
+
+      refute Repo.get(OrderLineItem, child_oli.id)
+    end
+
     test "defaults" do
       oli = %OrderLineItem{}
 
@@ -281,6 +330,36 @@ defmodule BlueJet.OrderLineItemTest do
       assert oli.custom_data == %{}
       assert oli.translations == %{}
     end
+  end
+
+  test "writable_fields/0" do
+    assert OrderLineItem.writable_fields() == [
+      :code,
+      :name,
+      :label,
+      :fulfillment_status,
+      :print_name,
+      :is_leaf,
+      :order_quantity,
+      :charge_quantity,
+      :sub_total_cents,
+      :tax_one_cents,
+      :tax_two_cents,
+      :tax_three_cents,
+      :authorization_total_cents,
+      :is_estimate,
+      :auto_fulfill,
+      :caption,
+      :description,
+      :custom_data,
+      :translations,
+      :source_id,
+      :source_type,
+      :order_id,
+      :price_id,
+      :product_id,
+      :parent_id,
+    ]
   end
 
   describe "changeset/4" do

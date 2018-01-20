@@ -27,9 +27,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
 
-  alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.Unlock
+  alias BlueJet.Storefront.{Order, Unlock}
 
   schema "order_line_items" do
     field :account_id, Ecto.UUID
@@ -87,43 +85,37 @@ defmodule BlueJet.Storefront.OrderLineItem do
     has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  @doc """
-  Returns a list of fields that is managed by the system.
-  """
-  def system_fields do
-    [
-      :id,
-      :account_id,
-      :price_name,
-      :price_label,
-      :price_caption,
-      :price_order_unit,
-      :price_charge_unit,
-      :price_currency_code,
-      :price_charge_amount_cents,
-      :price_estimate_cents,
-      :price_tax_one_percentage,
-      :price_tax_two_percentage,
-      :price_tax_three_percentage,
-      :price_end_time,
-      :grand_total_cents,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :price_name,
+    :price_label,
+    :price_caption,
+    :price_order_unit,
+    :price_charge_unit,
+    :price_currency_code,
+    :price_charge_amount_cents,
+    :price_estimate_average_percentage,
+    :price_estimate_maximum_percentage,
+    :price_estimate_by_default,
+    :price_estimate_cents,
+    :price_tax_one_percentage,
+    :price_tax_two_percentage,
+    :price_tax_three_percentage,
+    :price_end_time,
+    :grand_total_cents,
+    :inserted_at,
+    :updated_at
+  ]
 
   @doc """
   Returns a list of fields that is changable by user input.
   """
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
-
-  @doc """
-  Returns a list of fields that can be changed for the given order line item.
-  """
-  def castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
-  def castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
 
   @doc """
   Returns a list of fields that can be translated.
@@ -136,7 +128,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Returns the required fields for the given `changeset`.
   """
   def required_fields(changeset), do: required_fields(changeset.data, changeset.changes)
-  defp required_fields, do: [:account_id, :order_id, :order_quantity]
+  defp required_fields, do: [:order_id, :order_quantity]
   defp required_fields(%{ __meta__: %{ state: :built } }, %{ product_id: _ }), do: required_fields()
   defp required_fields(%{ __meta__: %{ state: :built } }, %{ source_type: "PointTransaction" }), do: required_fields()
   defp required_fields(%{ __meta__: %{ state: :built } }, _), do: required_fields() ++ [:sub_total_cents]
@@ -175,13 +167,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     changeset
     |> validate_required(required_fields)
-    |> foreign_key_constraint(:account_id)
     |> foreign_key_constraint(:order_id)
     |> foreign_key_constraint(:price_id)
     |> foreign_key_constraint(:product_id)
     |> foreign_key_constraint(:parent_id)
     |> validate_assoc_account_scope([:order, :price, :product, :parent])
   end
+
+  defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -719,6 +713,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Storefront.OrderLineItem
 
     def default() do
       from(oli in OrderLineItem, order_by: [asc: oli.inserted_at])

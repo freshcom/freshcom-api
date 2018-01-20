@@ -298,7 +298,7 @@ defmodule BlueJet.Catalogue.Product do
 
   def get_source(_, _), do: nil
 
-  def put_name(changeset = %Changeset{ valid?: true, changes: %{ name_sync: "sync_with_source" } }, _) do
+  def put_name(changeset = %{ changes: %{ name_sync: "sync_with_source" } }, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
@@ -319,6 +319,7 @@ defmodule BlueJet.Catalogue.Product do
       changeset
     end
   end
+
   def put_name(changeset, _), do: changeset
 
   ####

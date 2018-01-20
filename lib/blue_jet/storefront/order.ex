@@ -221,9 +221,9 @@ defmodule BlueJet.Storefront.Order do
 
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
-  defp put_name(changeset = %{ valid?: true }) do
+  defp put_name(changeset) do
     first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
 
     cond do
       first_name && last_name ->
