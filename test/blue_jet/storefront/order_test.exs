@@ -3,7 +3,6 @@ defmodule BlueJet.OrderTest do
 
   import Mox
 
-  alias Ecto.Changeset
   alias BlueJet.Identity.Account
   alias BlueJet.CRM.Customer
 
@@ -382,7 +381,147 @@ defmodule BlueJet.OrderTest do
   end
 
   describe "get_fulfillment_status/1" do
+    test "when no line item is fulfilled or returned" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
 
+      result = Order.get_fulfillment_status(order)
+
+      assert result == "pending"
+    end
+
+    test "when some line item is fulfilled" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "fulfilled",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      result = Order.get_fulfillment_status(order)
+
+      assert result == "partially_fulfilled"
+    end
+
+    test "when all line item is fulfilled" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "fulfilled",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "fulfilled",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      result = Order.get_fulfillment_status(order)
+
+      assert result == "fulfilled"
+    end
+
+    test "when some line item is returned" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "returned",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      result = Order.get_fulfillment_status(order)
+
+      assert result == "partially_returned"
+    end
+
+    test "when all line item is returned" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "returned",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        fulfillment_status: "returned",
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      result = Order.get_fulfillment_status(order)
+
+      assert result == "returned"
+    end
   end
 
   describe "process/2" do
@@ -391,7 +530,7 @@ defmodule BlueJet.OrderTest do
       order = Repo.insert!(%Order{
         account_id: account.id
       })
-      af_oli = Repo.insert!(%OrderLineItem{
+      Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
         charge_quantity: 1,
@@ -422,82 +561,4 @@ defmodule BlueJet.OrderTest do
       verify!()
     end
   end
-
-  # describe "required_fields/2" do
-  #   test "on new order" do
-  #     changeset = Changeset.change(%Order{})
-  #     required_fields = Order.required_fields(changeset)
-
-  #     assert required_fields == [
-  #       :account_id,
-  #       :status,
-  #       :fulfillment_status,
-  #       :payment_status
-  #     ]
-  #   end
-
-  #   test "on existing order" do
-  #     order = Ecto.put_meta(%Order{}, state: :loaded)
-  #     changeset = Changeset.change(order)
-  #     required_fields = Order.required_fields(changeset)
-
-  #     assert required_fields == [
-  #       :account_id,
-  #       :status,
-  #       :fulfillment_status,
-  #       :payment_status,
-  #       :email,
-  #       :fulfillment_method,
-  #       :first_name,
-  #       :last_name
-  #     ]
-  #   end
-
-  #   test "on existing order with name" do
-  #     order = Ecto.put_meta(%Order{}, state: :loaded)
-  #     changeset = Changeset.change(order, %{ name: "Roy" })
-  #     required_fields = Order.required_fields(changeset)
-
-  #     assert required_fields == [
-  #       :account_id,
-  #       :status,
-  #       :fulfillment_status,
-  #       :payment_status,
-  #       :email,
-  #       :fulfillment_method
-  #     ]
-  #   end
-
-  #   test "on existing order with first name" do
-  #     order = Ecto.put_meta(%Order{}, state: :loaded)
-  #     changeset = Changeset.change(order, %{ first_name: "Roy" })
-  #     required_fields = Order.required_fields(changeset)
-
-  #     assert required_fields == [
-  #       :account_id,
-  #       :status,
-  #       :fulfillment_status,
-  #       :payment_status,
-  #       :email,
-  #       :fulfillment_method,
-  #       :last_name
-  #     ]
-  #   end
-
-  #   test "on existing order with last name" do
-  #     order = Ecto.put_meta(%Order{}, state: :loaded)
-  #     changeset = Changeset.change(order, %{ last_name: "Roy" })
-  #     required_fields = Order.required_fields(changeset)
-
-  #     assert required_fields == [
-  #       :account_id,
-  #       :status,
-  #       :fulfillment_status,
-  #       :payment_status,
-  #       :email,
-  #       :fulfillment_method,
-  #       :first_name
-  #     ]
-  #   end
-  # end
 end
