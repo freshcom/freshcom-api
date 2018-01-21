@@ -27,5 +27,7 @@ config :blue_jet, BlueJet.AccountMailer,
 
 config :blue_jet, :storefront, %{
   balance_data: BlueJet.Storefront.BalanceDataMock,
-  distribution_data: BlueJet.Storefront.DistributionDataMock
+  distribution_data: BlueJet.Storefront.DistributionDataMock,
+  catalogue_data: BlueJet.Storefront.CatalogueDataMock,
+  identity_data: BlueJet.Storefront.IdentityDataMock
 }

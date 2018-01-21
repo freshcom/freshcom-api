@@ -68,7 +68,9 @@ config :blue_jet, :s3, prefix: "uploads"
 
 config :blue_jet, :storefront, %{
   balance_data: BlueJet.Balance.Data,
-  distribution_data: BlueJet.Distribution.Data
+  distribution_data: BlueJet.Distribution.Data,
+  catalogue_data: BlueJet.Catalogue.Data,
+  identity_data: BlueJet.Identity.Data
 }
 
 config :blue_jet, :balance, %{

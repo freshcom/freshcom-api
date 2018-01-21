@@ -9,6 +9,16 @@ defmodule BlueJet.Catalogue do
   alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.Price
 
+  defmodule Data do
+    def get_product(id) do
+      Repo.get(Product, id)
+    end
+
+    def get_price(id) do
+      Repo.get(Price, id)
+    end
+  end
+
   defmodule Shortcut do
     alias BlueJet.Catalogue
 
@@ -56,7 +66,6 @@ defmodule BlueJet.Catalogue do
       |> root_only_if_no_parent_id(filter[:parent_id])
       |> Repo.aggregate(:count, :id)
 
-    IO.inspect all_count
     preloads = Product.Query.preloads(request.preloads, role: request.role)
     products =
       data_query

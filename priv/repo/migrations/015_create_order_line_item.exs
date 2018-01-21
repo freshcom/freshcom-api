@@ -6,7 +6,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
       add :code, :string
-      add :name, :string
+      add :name, :string, null: false
       add :label, :string
 
       add :fulfillment_status, :string, null: false

@@ -24,9 +24,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.CRM
   alias BlueJet.Distribution
 
-  alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.{Product, Price}
 
+  alias BlueJet.Storefront.{IdentityData, CatalogueData}
   alias BlueJet.Storefront.{Order, Unlock}
 
   schema "order_line_items" do
@@ -76,12 +76,16 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :source_id, Ecto.UUID
     field :source_type, :string
 
+    field :product_id, Ecto.UUID
+    field :product, :map, virtual: true
+
+    field :price_id, Ecto.UUID
+    field :price, :map, virtual: true
+
     timestamps()
 
-    belongs_to :order, Order
-    belongs_to :price, Price
-    belongs_to :product, Product
     belongs_to :parent, __MODULE__
+    belongs_to :order, Order
     has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
@@ -124,15 +128,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     __MODULE__.__trans__(:fields)
   end
 
-  @doc """
-  Returns the required fields for the given `changeset`.
-  """
-  def required_fields(changeset), do: required_fields(changeset.data, changeset.changes)
-  defp required_fields, do: [:order_id, :order_quantity]
-  defp required_fields(%{ __meta__: %{ state: :built } }, %{ product_id: _ }), do: required_fields()
-  defp required_fields(%{ __meta__: %{ state: :built } }, %{ source_type: "PointTransaction" }), do: required_fields()
-  defp required_fields(%{ __meta__: %{ state: :built } }, _), do: required_fields() ++ [:sub_total_cents]
-  defp required_fields(%{ __meta__: %{ state: :loaded } }, _), do: []
+  defp required_fields, do: [:order_id, :name, :order_quantity, :charge_quantity, :sub_total_cents, :grand_total_cents, :authorization_total_cents, :auto_fulfill]
 
   @doc """
   Returns the source of the given product.
@@ -159,57 +155,101 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def get_source(_, _), do: nil
 
+  def validate_order_id(changeset = %{ valid?: true, changes: %{ order_id: order_id } }) do
+    account_id = get_field(changeset, :account_id)
+    order = Repo.get(Order, order_id)
+
+    if order && order.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :order, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  def validate_order_id(changeset), do: changeset
+
+  def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+    account_id = get_field(changeset, :account_id)
+    product = CatalogueData.get_product(product_id)
+
+    if product && product.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  def validate_product_id(changeset), do: changeset
+
+  def validate_price_id(changeset = %{ valid?: true, changes: %{ price_id: price_id } }) do
+    account_id = get_field(changeset, :account_id)
+    product_id = get_field(changeset, :product_id)
+    price = CatalogueData.get_price(price_id)
+
+    if price && price.account_id == account_id && price.product_id == product_id do
+      changeset
+    else
+      add_error(changeset, :price, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  def validate_price_id(changeset), do: changeset
+
   @doc """
   Returns the validated changeset.
   """
   def validate(changeset) do
-    required_fields = required_fields(changeset)
-
     changeset
-    |> validate_required(required_fields)
+    |> validate_required(required_fields())
     |> foreign_key_constraint(:order_id)
-    |> foreign_key_constraint(:price_id)
-    |> foreign_key_constraint(:product_id)
     |> foreign_key_constraint(:parent_id)
-    |> validate_assoc_account_scope([:order, :price, :product, :parent])
+    |> validate_order_id()
+    |> validate_product_id()
+    |> validate_price_id()
   end
 
   defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
   defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
-    locale = locale || default_locale
-
-    struct
-    |> cast(params, castable_fields(struct))
-    |> validate()
-    |> put_is_leaf()
-    |> put_name()
-    |> put_print_name()
-    |> put_price_id()
-    |> put_price_fields()
-    |> put_is_estimate()
-    |> put_charge_quantity()
-    |> put_amount_fields()
-    |> put_auto_fulfill()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  defp put_is_leaf(changeset = %{ changes: %{ product_id: _ } }) do
+    put_change(changeset, :is_leaf, false)
   end
 
-  #######
+  defp put_is_leaf(changeset), do: changeset
+
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  defp put_name(changeset = %{ changes: %{ product_id: product_id }}) do
+    product = CatalogueData.get_product(product_id)
+    translations =
+      get_field(changeset, :translations)
+      |> Translation.merge_translations(product.translations, ["name"])
+
+    changeset
+    |> put_change(:name, product.name)
+    |> put_change(:translations, translations)
+  end
+
+  defp put_name(changeset), do: changeset
+
+  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  defp put_print_name(changeset = %{ data: %{ print_name: nil } }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  defp put_print_name(changeset), do: changeset
+
   defp put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
 
-  defp put_auto_fulfill(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+  defp put_auto_fulfill(changeset = %{ changes: %{ product_id: product_id } }) do
     account = get_account(changeset.data)
-    product = get_product(%{ product_id: product_id, product: nil, account: account })
+    product = CatalogueData.get_product(product_id)
 
     put_change(changeset, :auto_fulfill, product.auto_fulfill)
   end
 
-  defp put_auto_fulfill(changeset = %{ data: %{ auto_fulfill: nil }, valid?: true }) do
+  defp put_auto_fulfill(changeset = %{ data: %{ auto_fulfill: nil } }) do
     grand_total_cents = get_field(changeset, :grand_total_cents)
 
     if grand_total_cents >= 0 do
@@ -221,39 +261,31 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp put_auto_fulfill(changeset), do: changeset
 
+  @doc """
+  Builds a changeset based on the `struct` and `params`.
+  """
+  def changeset(oli, params, locale \\ nil, default_locale \\ nil) do
+    oli = %{ oli | account: IdentityData.get_account(oli) }
+    default_locale = default_locale || oli.account.default_locale
+    locale = locale || default_locale
+
+    oli
+    |> cast(params, castable_fields(oli))
+    |> put_is_leaf()
+    |> put_name()
+    |> put_print_name()
+    |> validate()
+    |> put_price_id()
+    |> put_price_fields()
+    |> put_is_estimate()
+    |> put_charge_quantity()
+    |> put_amount_fields()
+    |> put_auto_fulfill()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
   #######
-  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
 
-  defp put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
-    put_change(changeset, :print_name, get_field(changeset, :name))
-  end
-
-  defp put_print_name(changeset), do: changeset
-
-  #######
-  defp put_is_leaf(changeset = %Changeset{ valid?: true, changes: %{ product_id: _ } }) do
-    put_change(changeset, :is_leaf, false)
-  end
-
-  defp put_is_leaf(changeset), do: changeset
-
-  #######
-  defp put_name(changeset = %Changeset{ valid?: true, changes: %{ name: _ } }) do
-    changeset
-  end
-
-  defp put_name(changeset = %Changeset{ valid?: true, changes: %{ product_id: product_id }}) do
-    product = Repo.get!(Product, product_id)
-    translations =
-      get_field(changeset, :translations)
-      |> Translation.merge_translations(product.translations, ["name"])
-
-    changeset
-    |> put_change(:name, product.name)
-    |> put_change(:translations, translations)
-  end
-
-  defp put_name(changeset), do: changeset
 
   #######
   defp put_is_estimate(changeset = %Changeset{ valid?: true, changes: %{ is_estimate: _ } }) do

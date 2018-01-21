@@ -8,6 +8,18 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
 
+  defmodule Data do
+    def get_account(%{ account_id: nil }), do: nil
+    def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
+    def get_account(%{ account: account }), do: account
+    def get_account(id), do: Repo.get!(Account, id)
+
+    def get_default_locale(%{ account_id: nil }), do: nil
+    def get_default_locale(%{ account_id: account_id, account: nil }), do: get_account(account_id).default_locale
+    def get_default_locale(%{ account: account }), do: account.default_locale
+    def get_default_locale(%{ account_id: account_id }), do: get_account(account_id).default_locale
+  end
+
   defmodule Shortcut do
     alias BlueJet.Identity
 
