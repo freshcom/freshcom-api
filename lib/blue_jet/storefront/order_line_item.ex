@@ -11,8 +11,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   ], container: :translations
 
   import BlueJet.Identity.Shortcut
-  import BlueJet.Catalogue.Shortcut
-  import BlueJet.Goods.Shortcut
 
   alias Decimal, as: D
   alias Ecto.Changeset
@@ -24,7 +22,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.CRM
   alias BlueJet.Distribution
 
-  alias BlueJet.Catalogue.{Product, Price}
+  alias BlueJet.Catalogue.{Price}
 
   alias BlueJet.Storefront.{IdentityData, CatalogueData, GoodsData}
   alias BlueJet.Storefront.{Order, Unlock}
@@ -149,7 +147,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  def get_source(oli = %{ source_id: source_id, source_type: source_type }) do
+  def get_source(%{ source_id: source_id, source_type: source_type }) do
     GoodsData.get_goods(source_type, source_id)
   end
 
@@ -343,8 +341,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  defp put_charge_quantity(changeset), do: changeset
-
   defp put_amount_fields(changeset) do
     if get_field(changeset, :price_id) do
       refresh_amount_fields(changeset, :with_price)
@@ -434,7 +430,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
 
   defp put_auto_fulfill(changeset = %{ changes: %{ product_id: product_id } }) do
-    account = get_account(changeset.data)
     product = get_field(changeset, :product) || CatalogueData.get_product(product_id)
 
     changeset
@@ -577,7 +572,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
         _ -> Repo.update!(changeset)
       end
 
-      __MODULE__.balance!(updated_child)
+      __MODULE__.balance(updated_child)
     end)
 
     oli

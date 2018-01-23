@@ -17,14 +17,9 @@ defmodule BlueJet.Catalogue.Product do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias Ecto.Changeset
 
-  alias BlueJet.AccessRequest
   alias BlueJet.Translation
-
-  alias BlueJet.Goods
 
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
@@ -272,9 +267,6 @@ defmodule BlueJet.Catalogue.Product do
   def put_name(changeset = %{ changes: %{ name_sync: "sync_with_source" } }, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
-    account_id = get_field(changeset, :account_id)
-
-    account = get_field(changeset, :account) || IdentityData.get_account(account_id)
     source = get_field(changeset, :source) || GoodsData.get_goods(source_type, source_id)
 
     if source do

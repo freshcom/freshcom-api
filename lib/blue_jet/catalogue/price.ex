@@ -272,12 +272,12 @@ defmodule BlueJet.Catalogue.Price do
       from(p in Price, where: p.product_id == ^product_id, order_by: [asc: :minimum_order_quantity])
     end
 
-    def with_order_quantity(order_quantity) do
-      from(p in Price, where: p.minimum_order_quantity <= ^order_quantity)
+    def with_order_quantity(query, order_quantity) do
+      from(p in query, where: p.minimum_order_quantity <= ^order_quantity)
     end
 
-    def with_status(status) do
-      from p in Price, where: p.status == ^status
+    def with_status(query, status) do
+      from p in query, where: p.status == ^status
     end
 
     def active_by_moq() do
