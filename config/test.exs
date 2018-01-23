@@ -39,5 +39,6 @@ config :blue_jet, :storefront, %{
   distribution_data: BlueJet.Storefront.DistributionDataMock,
   catalogue_data: BlueJet.Storefront.CatalogueDataMock,
   identity_data: BlueJet.Storefront.IdentityDataMock,
-  goods_data: BlueJet.Storefront.GoodsDataMock
+  goods_data: BlueJet.Storefront.GoodsDataMock,
+  crm_data: BlueJet.Storefront.CrmDataMock
 }

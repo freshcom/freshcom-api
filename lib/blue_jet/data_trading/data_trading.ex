@@ -1,7 +1,7 @@
 defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
-  alias BlueJet.CRM
+  alias BlueJet.Crm
   alias BlueJet.Goods
   alias BlueJet.Catalogue
 
@@ -72,12 +72,12 @@ defmodule BlueJet.DataTrading do
     customer = get_customer(row, account)
     case customer do
       nil ->
-        {:ok, _} = CRM.do_create_customer(%AccessRequest{
+        {:ok, _} = Crm.do_create_customer(%AccessRequest{
           account: account,
           fields: fields
         })
       customer ->
-        {:ok, _} = CRM.do_update_customer(%AccessRequest{
+        {:ok, _} = Crm.do_update_customer(%AccessRequest{
           account: account,
           params: %{ "id" => customer.id },
           fields: fields
@@ -168,7 +168,7 @@ defmodule BlueJet.DataTrading do
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
-        result = CRM.do_get_customer(%AccessRequest{
+        result = Crm.do_get_customer(%AccessRequest{
           account: account,
           params: %{ "code" => row[code_key] }
         })
@@ -222,7 +222,7 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_customer(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: customer}} = CRM.do_get_customer(%AccessRequest{
+    {:ok, %{ data: customer}} = Crm.do_get_customer(%AccessRequest{
       account: account,
       params: %{ "id" => id }
     })
@@ -230,7 +230,7 @@ defmodule BlueJet.DataTrading do
     customer
   end
   defp get_customer(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = CRM.do_get_customer(%AccessRequest{
+    result = Crm.do_get_customer(%AccessRequest{
       account: account,
       params: %{ "code" => code }
     })

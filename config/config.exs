@@ -80,12 +80,12 @@ config :blue_jet, :storefront, %{
   distribution_data: BlueJet.Distribution.Data,
   catalogue_data: BlueJet.Catalogue.Data,
   identity_data: BlueJet.Identity.Data,
-  goods_data: BlueJet.Goods.Data
+  goods_data: BlueJet.Goods.Data,
+  crm_data: BlueJet.Crm.Data
 }
 
-
 config :blue_jet, :balance, %{
-  listeners: [BlueJet.Storefront, BlueJet.CRM]
+  listeners: [BlueJet.Storefront, BlueJet.Crm]
 }
 
 config :blue_jet, :identity, %{

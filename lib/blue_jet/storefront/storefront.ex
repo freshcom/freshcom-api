@@ -4,7 +4,7 @@ defmodule BlueJet.Storefront do
   alias Ecto.Changeset
   alias Ecto.Multi
 
-  alias BlueJet.CRM
+  alias BlueJet.Crm
 
   alias BlueJet.Storefront.BalanceData
   alias BlueJet.Storefront.Order
@@ -77,7 +77,7 @@ defmodule BlueJet.Storefront do
   # Order
   ####
   defp transform_order_request_by_role(request = %{ role: "customer" }) do
-    {:ok, %{ data: customer }} = CRM.do_get_customer(request)
+    {:ok, %{ data: customer }} = Crm.do_get_customer(request)
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 
@@ -309,7 +309,7 @@ defmodule BlueJet.Storefront do
   #   end
   # end
   # def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
-  #   {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
+  #   {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
 
   #   filter = Map.merge(filter, %{ customer_id: customer.id })
   #   query =
@@ -481,7 +481,7 @@ defmodule BlueJet.Storefront do
   # Unlock
   #
   defp transform_unlock_request_by_role(request = %{ role: "customer" }) do
-    {:ok, %{ data: customer }} = CRM.do_get_customer(request)
+    {:ok, %{ data: customer }} = Crm.do_get_customer(request)
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 

@@ -23,7 +23,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     alias BlueJet.Catalogue.Price
     alias BlueJet.Identity
     alias BlueJet.AccessRequest
-    alias BlueJet.CRM
+    alias BlueJet.Crm
 
     ensure_started(Repo, [])
 
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     test_account1_id = account1.test_account_id
 
-    {:ok, %{ data: _ }} = CRM.create_customer(%AccessRequest{
+    {:ok, %{ data: _ }} = Crm.create_customer(%AccessRequest{
       vas: %{ account_id: account1_id },
       fields: %{
         "first_name" => "Tiffany",

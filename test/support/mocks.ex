@@ -8,3 +8,4 @@ Mox.defmock(BlueJet.Storefront.DistributionDataMock, for: BlueJet.Storefront.Dis
 Mox.defmock(BlueJet.Storefront.CatalogueDataMock, for: BlueJet.Storefront.CatalogueData)
 Mox.defmock(BlueJet.Storefront.IdentityDataMock, for: BlueJet.Storefront.IdentityData)
 Mox.defmock(BlueJet.Storefront.GoodsDataMock, for: BlueJet.Storefront.GoodsData)
+Mox.defmock(BlueJet.Storefront.CrmDataMock, for: BlueJet.Storefront.CrmData)

@@ -1,4 +1,4 @@
-defmodule BlueJet.CRM.Customer do
+defmodule BlueJet.Crm.Customer do
   use BlueJet, :data
 
   use Trans, translates: [
@@ -14,8 +14,8 @@ defmodule BlueJet.CRM.Customer do
 
   alias BlueJet.Translation
 
-  alias BlueJet.CRM.Customer
-  alias BlueJet.CRM.PointAccount
+  alias BlueJet.Crm.Customer
+  alias BlueJet.Crm.PointAccount
 
   @type t :: Ecto.Schema.t
 

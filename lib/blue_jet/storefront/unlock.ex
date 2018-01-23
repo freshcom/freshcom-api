@@ -9,7 +9,7 @@ defmodule BlueJet.Storefront.Unlock do
   alias BlueJet.AccessRequest
 
   alias BlueJet.Goods
-  alias BlueJet.CRM
+  alias BlueJet.Crm
 
   alias BlueJet.Storefront.Unlock
 
@@ -101,7 +101,7 @@ defmodule BlueJet.Storefront.Unlock do
 
   def get_customer(%{ customer_id: nil }, _), do: nil
   def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
-    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
+    {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
       account: account,
       params: %{ "id" => customer_id },
       locale: locale

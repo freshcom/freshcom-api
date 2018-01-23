@@ -6,267 +6,11 @@ defmodule BlueJet.OrderLineItemTest do
   alias Decimal, as: D
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock}
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
+  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock, CrmDataMock}
   alias BlueJet.Catalogue.{Product, Price}
-  alias BlueJet.Goods.Stockable
-
-  def create_product_with_variants do
-    account = Repo.insert!(%Account{})
-    stockable = Repo.insert!(%Stockable{
-      account_id: account.id,
-      status: "active",
-      name: "Apple",
-      unit_of_measure: "EA"
-    })
-
-    product = Repo.insert!(%Product{
-      account_id: account.id,
-      status: "active",
-      kind: "with_variants",
-      name: "Apple",
-      translations: %{
-        "zh-CN": %{
-          name: "苹果"
-        }
-      }
-    })
-    variant = Repo.insert!(%Product{
-      status: "active",
-      kind: "variant",
-      name: "Apple Large",
-      account_id: account.id,
-      parent_id: product.id,
-      source_type: "Stockable",
-      source_id: stockable.id,
-      source_quantity: 5,
-      translations: %{
-        "zh-CN": %{
-          name: "苹果 大号"
-        }
-      }
-    })
-
-    %{ account: account, product: product, variant: variant }
-  end
-
-  def create_exact_regular_and_bulk_price(product = %{ kind: "variant" }, account) do
-    regular_price = Repo.insert!(%Price{
-      account_id: account.id,
-      product_id: product.id,
-      status: "active",
-      name: "Regular",
-      label: "regular",
-      caption: "This is regular price",
-      charge_amount_cents: 1000,
-      order_unit: "EA",
-      charge_unit: "EA",
-      translations: %{
-        "zh-CN": %{
-          name: "原价"
-        }
-      }
-    })
-
-    bulk_price = Repo.insert!(%Price{
-      account_id: account.id,
-      product_id: product.id,
-      status: "active",
-      name: "Bulk",
-      label: "bulk",
-      caption: "This is bulk price",
-      charge_amount_cents: 899,
-      order_unit: "EA",
-      charge_unit: "EA",
-      minimum_order_quantity: 3,
-      tax_one_percentage: D.new(5),
-      tax_two_percentage: D.new(7),
-      tax_three_percentage: D.new(1),
-      translations: %{
-        "zh-CN": %{
-          name: "团购价"
-        }
-      }
-    })
-    %{ regular: regular_price, bulk: bulk_price }
-  end
-
-  def create_exact_regular_and_bulk_price(product = %{ kind: "combo" }, account) do
-    items = assoc(product, :items) |> Repo.all()
-
-    regular_price = Repo.insert!(%Price{
-      account_id: account.id,
-      product_id: product.id,
-      status: "active",
-      name: "Regular",
-      label: "regular",
-      caption: "This is regular price",
-      charge_amount_cents: 1000,
-      order_unit: "EA",
-      charge_unit: "EA",
-      translations: %{
-        "zh-CN": %{
-          name: "原价"
-        }
-      }
-    })
-
-    Enum.each(items, fn(item) ->
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_id: item.id,
-        parent_id: regular_price.id,
-        status: "active",
-        name: "Regular",
-        label: "regular",
-        caption: "This is regular price",
-        charge_amount_cents: 1000,
-        order_unit: "EA",
-        charge_unit: "EA",
-        translations: %{
-          "zh-CN": %{
-            name: "原价"
-          }
-        }
-      })
-    end)
-
-    bulk_price = Repo.insert!(%Price{
-      account_id: account.id,
-      product_id: product.id,
-      status: "active",
-      name: "Bulk",
-      label: "bulk",
-      caption: "This is bulk price",
-      charge_amount_cents: 899,
-      order_unit: "EA",
-      charge_unit: "EA",
-      minimum_order_quantity: 3,
-      tax_one_percentage: D.new(5),
-      tax_two_percentage: D.new(7),
-      tax_three_percentage: D.new(1),
-      translations: %{
-        "zh-CN": %{
-          name: "团购价"
-        }
-      }
-    })
-
-    Enum.each(items, fn(item) ->
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_id: item.id,
-        parent_id: bulk_price.id,
-        status: "active",
-        name: "Bulk",
-        label: "bulk",
-        caption: "This is bulk price",
-        charge_amount_cents: 899,
-        order_unit: "EA",
-        charge_unit: "EA",
-        minimum_order_quantity: 3,
-        tax_one_percentage: D.new(5),
-        tax_two_percentage: D.new(7),
-        tax_three_percentage: D.new(1),
-        translations: %{
-          "zh-CN": %{
-            name: "团购价"
-          }
-        }
-      })
-    end)
-
-    regular_price = Repo.preload(regular_price, :children)
-    bulk_price = Repo.preload(bulk_price, :children)
-    %{ regular: regular_price, bulk: bulk_price }
-  end
-
-  def create_estimated_price(product, account) do
-    Repo.insert!(%Price{
-      account_id: account.id,
-      product_id: product.id,
-      status: "active",
-      name: "Regular",
-      label: "regular",
-      caption: "This is regular price",
-      charge_amount_cents: 899,
-      order_unit: "EA",
-      charge_unit: "LB",
-      estimate_by_default: true,
-      estimate_average_percentage: 150,
-      estimate_maximum_percentage: 200,
-      minimum_order_quantity: 1,
-      tax_one_percentage: D.new(5),
-      tax_two_percentage: D.new(7),
-      tax_three_percentage: D.new(1),
-      translations: %{
-        "zh-CN": %{
-          name: "原价"
-        }
-      }
-    })
-  end
-
-  def create_product_combo do
-    account = Repo.insert!(%Account{})
-    stockable1 = Repo.insert!(%Stockable{
-      account_id: account.id,
-      status: "active",
-      name: "Apple",
-      unit_of_measure: "EA"
-    })
-    stockable2 = Repo.insert!(%Stockable{
-      account_id: account.id,
-      status: "active",
-      name: "Orange",
-      unit_of_measure: "EA"
-    })
-
-    product = Repo.insert!(%Product{
-      account_id: account.id,
-      status: "active",
-      kind: "combo",
-      name: "Fruit Combo",
-      translations: %{
-        "zh-CN": %{
-          name: "水果套餐"
-        }
-      }
-    })
-
-    Repo.insert!(%Product{
-      account_id: account.id,
-      parent_id: product.id,
-      source_id: stockable1.id,
-      source_type: "Stockable",
-      status: "active",
-      kind: "item",
-      name: "Apple",
-      translations: %{
-        "zh-CN": %{
-          name: "苹果"
-        }
-      }
-    })
-
-    Repo.insert!(%Product{
-      account_id: account.id,
-      parent_id: product.id,
-      source_id: stockable2.id,
-      source_type: "Stockable",
-      status: "active",
-      kind: "item",
-      name: "Orange",
-      translations: %{
-        "zh-CN": %{
-          name: "橙子"
-        }
-      }
-    })
-
-    product = Repo.preload(product, :items)
-    %{ product: product, account: account }
-  end
+  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
+  alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
 
   describe "schema" do
     test "when order is deleted line item should be deleted automatically" do
@@ -630,6 +374,69 @@ defmodule BlueJet.OrderLineItemTest do
 
     # TODO:
     test "when oli is for product combo" do
+    end
+  end
+
+  describe "process/1" do
+    test "when source is an unlockable" do
+      account = Repo.insert!(%Account{})
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      order = Repo.insert!(%Order{
+        account_id: account.id,
+        customer_id: customer.id
+      })
+      order_changeset = change(order, %{ status: "opened" })
+
+      OrderLineItem.process(%OrderLineItem{
+        account_id: account.id,
+        source_id: unlockable.id,
+        source_type: "Unlockable"
+      }, order, order_changeset)
+
+      assert Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
+    end
+
+    test "when source is an depositable" do
+      account = Repo.insert!(%Account{})
+      depositable = Repo.insert!(%Depositable{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        amount: 5000,
+        target_type: "PointAccount"
+      })
+      GoodsDataMock
+      |> expect(:get_depositable, fn(_) -> depositable end)
+
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+      point_account = %PointAccount{
+        customer_id: customer.id
+      }
+      point_transaction = %PointTransaction{}
+      CrmDataMock
+      |> expect(:get_point_account, fn(_) -> point_account end)
+      |> expect(:create_point_transaction, fn(_) -> point_transaction end)
+
+      order = Repo.insert!(%Order{
+        account_id: account.id,
+        customer_id: customer.id
+      })
+      order_changeset = change(order, %{ status: "opened" })
+
+      OrderLineItem.process(%OrderLineItem{
+        account_id: account.id,
+        source_id: depositable.id,
+        source_type: "Depositable"
+      }, order, order_changeset)
     end
   end
 end

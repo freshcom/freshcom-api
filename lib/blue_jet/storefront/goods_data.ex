@@ -4,6 +4,8 @@ defmodule BlueJet.Storefront.GoodsData do
   @goods_data Application.get_env(:blue_jet, :storefront)[:goods_data]
 
   @callback get_goods(String.t, String.t) :: Stockable.t | Unlockable.t | Depositable.t
+  @callback get_depositable(String.t) :: Depositable.t
 
   defdelegate get_goods(type, id), to: @goods_data
+  defdelegate get_depositable(id), to: @goods_data
 end

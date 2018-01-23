@@ -1,4 +1,4 @@
-defmodule BlueJet.CRM.PointTransaction do
+defmodule BlueJet.Crm.PointTransaction do
   use BlueJet, :data
 
   use Trans, translates: [
@@ -14,8 +14,8 @@ defmodule BlueJet.CRM.PointTransaction do
 
   alias BlueJet.Translation
 
-  alias BlueJet.CRM.PointTransaction
-  alias BlueJet.CRM.PointAccount
+  alias BlueJet.Crm.PointTransaction
+  alias BlueJet.Crm.PointAccount
 
   schema "point_transactions" do
     field :account_id, Ecto.UUID

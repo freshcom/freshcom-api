@@ -17,6 +17,10 @@ defmodule BlueJet.Goods do
     def get_goods("Depositable", id) do
       Repo.get(Depositable, id)
     end
+
+    def get_depositable(id) do
+      Repo.get(Depositable, id)
+    end
   end
 
   defmodule Shortcut do

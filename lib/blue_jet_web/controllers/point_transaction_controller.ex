@@ -2,7 +2,7 @@ defmodule BlueJetWeb.PointTransactionController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.CRM
+  alias BlueJet.Crm
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -17,7 +17,7 @@ defmodule BlueJetWeb.PointTransactionController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: point_transactions, meta: meta }} = CRM.list_point_transaction(request)
+    {:ok, %AccessResponse{ data: point_transactions, meta: meta }} = Crm.list_point_transaction(request)
 
     render(conn, "index.json-api", data: point_transactions, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -30,7 +30,7 @@ defmodule BlueJetWeb.PointTransactionController do
       preloads: assigns[:preloads]
     }
 
-    case CRM.create_point_transaction(request) do
+    case Crm.create_point_transaction(request) do
       {:ok, %{ data: point_transaction, meta: meta }} ->
         conn
         |> put_status(:created)
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.PointTransactionController do
       locale: assigns[:locale]
     }
 
-    case CRM.get_point_transaction(request) do
+    case Crm.get_point_transaction(request) do
       {:ok, %{ data: point_transaction, meta: meta }} ->
         render(conn, "show.json-api", data: point_transaction, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -67,7 +67,7 @@ defmodule BlueJetWeb.PointTransactionController do
       params: %{ "id" => id }
     }
 
-    case CRM.delete_point_transaction(request) do
+    case Crm.delete_point_transaction(request) do
       {:ok, _} -> send_resp(conn, :no_content, "")
 
       other -> other

@@ -39,7 +39,7 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.AccessRequest
   alias BlueJet.Translation
 
-  alias BlueJet.CRM
+  alias BlueJet.Crm
   alias BlueJet.Distribution
 
   alias BlueJet.Storefront.{BalanceData, DistributionData}
@@ -355,7 +355,7 @@ defmodule BlueJet.Storefront.Order do
   def get_customer(%{ customer_id: nil }, _), do: nil
 
   def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
-    {:ok, %{ data: customer }} = CRM.do_get_customer(%AccessRequest{
+    {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
       account: account,
       params: %{ "id" => customer_id },
       locale: locale

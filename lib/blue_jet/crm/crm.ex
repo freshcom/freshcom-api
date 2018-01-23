@@ -1,13 +1,24 @@
-defmodule BlueJet.CRM do
+defmodule BlueJet.Crm do
   use BlueJet, :context
 
   alias Ecto.Multi
 
   alias BlueJet.Identity
 
-  alias BlueJet.CRM.Customer
-  alias BlueJet.CRM.PointAccount
-  alias BlueJet.CRM.PointTransaction
+  alias BlueJet.Crm.Customer
+  alias BlueJet.Crm.PointAccount
+  alias BlueJet.Crm.PointTransaction
+
+  defmodule Data do
+    def get_point_account(customer_id) do
+      Repo.get_by(PointAccount, customer_id: customer_id)
+    end
+
+    def create_point_transaction(fields) do
+      Ecto.change(%PointTransaction{}, fields)
+      |> Repo.insert!()
+    end
+  end
 
   def handle_event("balance.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
     customer = Repo.get!(Customer, customer_id)

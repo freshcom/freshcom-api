@@ -4,7 +4,7 @@ defmodule BlueJet.OrderTest do
   import Mox
 
   alias BlueJet.Identity.Account
-  alias BlueJet.CRM.Customer
+  alias BlueJet.Crm.Customer
 
   alias BlueJet.Storefront.{Order, OrderLineItem}
   alias BlueJet.Storefront.{BalanceDataMock, DistributionDataMock}
