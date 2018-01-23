@@ -33,8 +33,6 @@ defmodule BlueJet.Storefront.Order do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
-
   alias BlueJet.Storefront.{BalanceData, DistributionData, IdentityData, CrmData}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 

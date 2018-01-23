@@ -21,54 +21,9 @@ defmodule BlueJet.Goods do
     def get_depositable(id) do
       Repo.get(Depositable, id)
     end
-  end
 
-  defmodule Shortcut do
-    alias BlueJet.Goods
-    import BlueJet.Identity.Shortcut
-
-    def get_goods(goods_info, struct, locale \\ nil)
-
-    def get_goods(%{ id: id, type: "Stockable" }, struct, locale) do
-      account = get_account(struct)
-      response = Goods.do_get_stockable(%AccessRequest{
-        account: account,
-        params: %{ "id" => id },
-        locale: locale || account.default_locale
-      })
-
-      case response do
-        {:ok, %{ data: stockable }} -> stockable
-        {:error, _} -> nil
-      end
-    end
-
-    def get_goods(%{ id: id, type: "Unlockable" }, struct, locale) do
-      account = get_account(struct)
-      response = Goods.do_get_unlockable(%AccessRequest{
-        account: account,
-        params: %{ "id" => id },
-        locale: locale || account.default_locale
-      })
-
-      case response do
-        {:ok, %{ data: unlockable }} -> unlockable
-        {:error, _} -> nil
-      end
-    end
-
-    def get_goods(%{ id: id, type: "Depositable" }, struct, locale) do
-      account = get_account(struct)
-      response = Goods.do_get_depositable(%AccessRequest{
-        account: account,
-        params: %{ "id" => id },
-        locale: locale || account.default_locale
-      })
-
-      case response do
-        {:ok, %{ data: depositable }} -> depositable
-        {:error, _} -> nil
-      end
+    def get_unlockable(id) do
+      Repo.get(Unlockable, id)
     end
   end
 

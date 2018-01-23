@@ -11,10 +11,6 @@ defmodule BlueJet.Catalogue.Price do
   ], container: :translations
 
   alias Decimal, as: D
-  alias Ecto.Changeset
-
-  alias BlueJet.Repo
-  alias BlueJet.Translation
   alias BlueJet.Catalogue.Product
 
   schema "prices" do
@@ -78,7 +74,7 @@ defmodule BlueJet.Catalogue.Price do
     end
   end
 
-  def validate_status(changeset = %Changeset{ changes: %{ status: "active" } }) do
+  def validate_status(changeset = %{ changes: %{ status: "active" } }) do
     moq = get_field(changeset, :minimum_order_quantity)
     product_id = get_field(changeset, :product_id)
 
@@ -86,17 +82,17 @@ defmodule BlueJet.Catalogue.Price do
 
     case price do
       nil -> changeset
-      _ -> Changeset.add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :minimum_order_quantity_taken, full_error_message: true])
+      _ -> add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :minimum_order_quantity_taken, full_error_message: true])
     end
   end
-  def validate_status(changeset = %Changeset{ changes: %{ status: _ } }) do
+  def validate_status(changeset = %{ changes: %{ status: _ } }) do
     product_id = get_field(changeset, :product_id)
     product = Repo.get_by(Product, id: product_id)
 
     validate_status(changeset, product.status)
   end
   def validate_status(changeset), do: changeset
-  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, "active") do
+  defp validate_status(changeset = %{ changes: %{ status: _ } }, "active") do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
@@ -107,12 +103,12 @@ defmodule BlueJet.Catalogue.Price do
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: :active_product_depends_on_active_price, full_error_message: true])
+      0 -> add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: :active_product_depends_on_active_price, full_error_message: true])
       _ -> changeset
     end
   end
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "internal"), do: changeset
-  defp validate_status(changeset = %Changeset{ changes: %{ status: _ } }, "internal") do
+  defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "internal"), do: changeset
+  defp validate_status(changeset = %{ changes: %{ status: _ } }, "internal") do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
@@ -120,7 +116,7 @@ defmodule BlueJet.Catalogue.Price do
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
-      0 -> Changeset.add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: :internal_product_depends_on_internal_price, full_error_message: true])
+      0 -> add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: :internal_product_depends_on_internal_price, full_error_message: true])
       _ -> changeset
     end
   end
@@ -176,7 +172,7 @@ defmodule BlueJet.Catalogue.Price do
 
     new_translations =
       changeset
-      |> Changeset.get_field(:translations)
+      |> get_field(:translations)
       |> Translation.merge_translations(parent.translations, ["charge_unit"])
 
     put_change(changeset, :translations, new_translations)

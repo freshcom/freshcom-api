@@ -3,15 +3,9 @@ defmodule BlueJet.Storefront.Unlock do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias BlueJet.Translation
-  alias BlueJet.AccessRequest
-
-  alias BlueJet.Goods
-  alias BlueJet.Crm
-
   alias BlueJet.Storefront.Unlock
+  alias BlueJet.Storefront.{GoodsData, CrmData}
 
   schema "unlocks" do
     field :account_id, Ecto.UUID
@@ -63,63 +57,49 @@ defmodule BlueJet.Storefront.Unlock do
   end
 
   def required_fields do
-    [:account_id, :unlockable_id, :customer_id]
+    [:unlockable_id, :customer_id]
   end
 
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> foreign_key_constraint(:account_id)
     |> unique_constraint(:unlockable_id, name: :unlocks_customer_id_unlockable_id_index)
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(unlock, params, locale \\ nil, default_locale \\ nil) do
+    unlock = %{ unlock | account: IdentityData.get_account(unlock) }
+    default_locale = default_locale || unlock.account.default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields(struct))
+    unlock
+    |> cast(params, castable_fields(unlock))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def get_unlockable(%{ unlockable_id: nil }, _), do: nil
-  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }, options = %{ account: account, locale: locale }) do
-    {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => unlockable_id },
-      locale: locale,
-      preloads: options[:preloads] || []
-    })
+  #
+  # MARK: External Resources
+  #
+  def get_unlockable(%{ unlockable_id: nil }), do: nil
+  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }), do: GoodsData.get_unlockable(unlockable_id)
+  def get_unlockable(%{ unlockable: unlockable }), do: unlockable
 
-    unlockable
-  end
-  def get_unlockable(%{ unlockable: unlockable }, _), do: unlockable
+  def get_customer(%{ customer_id: nil }), do: nil
+  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmData.get_customer(customer_id)
+  def get_customer(%{ customer: customer }), do: customer
 
-  def get_customer(%{ customer_id: nil }, _), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
-    {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
-      account: account,
-      params: %{ "id" => customer_id },
-      locale: locale
-    })
-
-    customer
-  end
-  def get_customer(%{ customer: customer }, _), do: customer
-
-  def put_external_resources(unlock, {:unlockable, unlockable_preloads}, options) do
-    %{ unlock | unlockable: get_unlockable(unlock, Map.put(options, :preloads, unlockable_preloads)) }
+  def put_external_resources(unlock, {:unlock, nil}, _) do
+    %{ unlock | unlockable: get_unlockable(unlock) }
   end
 
-  def put_external_resources(unlock, {:customer, nil}, options) do
-    %{ unlock | customer: get_customer(unlock, options) }
+  def put_external_resources(unlock, {:customer, nil}, _) do
+    %{ unlock | customer: get_customer(unlock) }
   end
 
-  def put_external_resources(order, _, _), do: order
+  def put_external_resources(unlock, _, _), do: unlock
 
   defmodule Query do
     use BlueJet, :query

@@ -9,7 +9,6 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
   alias BlueJet.Goods.IdentityData
 
   schema "unlockables" do

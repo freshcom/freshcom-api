@@ -8,7 +8,6 @@ defmodule BlueJet.Catalogue.ProductCollection do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.ProductCollection
   alias BlueJet.Catalogue.ProductCollectionMembership

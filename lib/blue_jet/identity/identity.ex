@@ -283,6 +283,7 @@ defmodule BlueJet.Identity do
   """
   def do_create_password_reset_token(request = %{ account: nil }) do
     email = request.fields["email"]
+    email_regex = ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
     changeset =
       Ecto.Changeset.change(%User{}, %{ email: email })
       |> Ecto.Changeset.validate_required(:email)

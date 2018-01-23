@@ -4,10 +4,7 @@ defmodule BlueJet.Catalogue do
   alias Ecto.Changeset
   alias BlueJet.FileStorage
 
-  alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.ProductCollection
-  alias BlueJet.Catalogue.ProductCollectionMembership
-  alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
   defmodule Data do
     def get_product(id) do
@@ -25,21 +22,6 @@ defmodule BlueJet.Catalogue do
     def get_price(id) do
       Repo.get(Price, id)
     end
-  end
-
-  defmodule Shortcut do
-    alias BlueJet.Catalogue
-
-    def get_product(%{ product_id: nil }), do: nil
-    def get_product(%{ product_id: id, product: nil, account: account }) do
-      {:ok, %{ data: product }} = Catalogue.do_get_product(%AccessRequest{
-        account: account,
-        params: %{ "id" => id }
-      })
-
-      product
-    end
-    def get_product(%{ product: product }), do: product
   end
 
   ######

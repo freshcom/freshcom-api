@@ -11,7 +11,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   ], container: :translations
 
   alias Decimal, as: D
-  alias BlueJet.Translation
   alias BlueJet.Catalogue.{Price}
   alias BlueJet.Storefront.{IdentityData, CatalogueData, GoodsData, CrmData, DistributionData}
   alias BlueJet.Storefront.{Order, Unlock}

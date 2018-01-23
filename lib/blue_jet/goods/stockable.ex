@@ -12,7 +12,6 @@ defmodule BlueJet.Goods.Stockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Translation
   alias BlueJet.Goods.IdentityData
 
   schema "stockables" do

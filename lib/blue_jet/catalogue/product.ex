@@ -17,10 +17,6 @@ defmodule BlueJet.Catalogue.Product do
     :custom_data
   ], container: :translations
 
-  alias Ecto.Changeset
-
-  alias BlueJet.Translation
-
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.{IdentityData, GoodsData}
@@ -136,11 +132,11 @@ defmodule BlueJet.Catalogue.Product do
     validate_status(changeset, kind)
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "variant") do
+  defp validate_status(changeset = %{ changes: %{ status: "active" } }, "variant") do
     validate_status(changeset, "simple")
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "simple") do
+  defp validate_status(changeset = %{ changes: %{ status: "active" } }, "simple") do
     id = get_field(changeset, :id)
 
     active_price = if id do
@@ -150,12 +146,12 @@ defmodule BlueJet.Catalogue.Product do
     end
 
     case active_price do
-      nil -> Changeset.add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+      nil -> add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
       _ -> changeset
     end
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "with_variants") do
+  defp validate_status(changeset = %{ changes: %{ status: "active" } }, "with_variants") do
     id = get_field(changeset, :id)
 
     active_primary_item = if id do
@@ -165,12 +161,12 @@ defmodule BlueJet.Catalogue.Product do
     end
 
     case active_primary_item do
-      nil -> Changeset.add_error(changeset, :status, "A Product with variants must have a Primary Active Variant in order to be marked Active.", [validation: "require_primary_active_variant", full_error_message: true])
+      nil -> add_error(changeset, :status, "A Product with variants must have a Primary Active Variant in order to be marked Active.", [validation: "require_primary_active_variant", full_error_message: true])
       _ -> changeset
     end
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "active" } }, "combo") do
+  defp validate_status(changeset = %{ changes: %{ status: "active" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = Ecto.assoc(changeset.data, :items) |> Repo.aggregate(:count, :id)
     active_item_count = from(p in items, where: p.status == "active") |> Repo.aggregate(:count, :id)
@@ -179,39 +175,39 @@ defmodule BlueJet.Catalogue.Product do
     active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
 
     cond do
-      item_count == 0 || active_item_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_active_item", full_error_message: true])
-      active_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+      item_count == 0 || active_item_count != item_count -> add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_active_item", full_error_message: true])
+      active_price_count == 0 -> add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
       true -> changeset
     end
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "variant") do
+  defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "variant") do
     validate_status(changeset, "simple")
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "simple") do
+  defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "simple") do
     prices = Ecto.assoc(changeset.data, :prices)
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     if ai_price_count > 0 do
       changeset
     else
-      Changeset.add_error(changeset, :status, "A Product must have a Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
+      add_error(changeset, :status, "A Product must have a Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
     end
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "with_variants") do
+  defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "with_variants") do
     variants = Ecto.assoc(changeset.data, :variants)
     active_or_internal_variants = from(p in variants, where: p.status in ["active", "internal"])
     aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
     case aiv_count do
-      0 -> Changeset.add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_internal_variant", full_error_message: true])
+      0 -> add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_internal_variant", full_error_message: true])
       _ -> changeset
     end
   end
 
-  defp validate_status(changeset = %Changeset{ changes: %{ status: "internal" } }, "combo") do
+  defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = items |> Repo.aggregate(:count, :id)
     aip_count = from(p in items, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
@@ -220,8 +216,8 @@ defmodule BlueJet.Catalogue.Product do
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     cond do
-      item_count == 0 || aip_count != item_count -> Changeset.add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_internal_item", full_error_message: true])
-      ai_price_count == 0 -> Changeset.add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
+      item_count == 0 || aip_count != item_count -> add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_internal_item", full_error_message: true])
+      ai_price_count == 0 -> add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
       true -> changeset
     end
   end
@@ -272,7 +268,7 @@ defmodule BlueJet.Catalogue.Product do
     if source do
       new_translations =
         changeset
-        |> Changeset.get_field(:translations)
+        |> get_field(:translations)
         |> Translation.merge_translations(source.translations, ["name"])
 
       changeset
