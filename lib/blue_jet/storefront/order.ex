@@ -33,16 +33,9 @@ defmodule BlueJet.Storefront.Order do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
-  alias Ecto.Changeset
-  alias BlueJet.AccessRequest
   alias BlueJet.Translation
 
-  alias BlueJet.Crm
-  alias BlueJet.Distribution
-
-  alias BlueJet.Storefront.{BalanceData, DistributionData}
+  alias BlueJet.Storefront.{BalanceData, DistributionData, IdentityData, CrmData}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
   schema "orders" do
@@ -179,7 +172,7 @@ defmodule BlueJet.Storefront.Order do
       case ordered_unlockable_count do
         0 -> changeset
 
-        _ -> Changeset.add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: :required_for_unlockable, full_error_message: true])
+        _ -> add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: :required_for_unlockable, full_error_message: true])
       end
     end
   end
@@ -207,12 +200,13 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(order, params, locale \\ nil, default_locale \\ nil) do
+    order = %{ order | account: IdentityData.get_account(order) }
+    default_locale = default_locale || order.account.default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields(struct))
+    order
+    |> cast(params, castable_fields(order))
     |> put_name()
     |> validate()
     |> put_opened_at()
@@ -234,10 +228,8 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  defp put_name(changeset), do: changeset
-
   defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    Changeset.put_change(changeset, :opened_at, Ecto.DateTime.utc())
+    put_change(changeset, :opened_at, Ecto.DateTime.utc())
   end
 
   defp put_opened_at(changeset), do: changeset
@@ -275,7 +267,7 @@ defmodule BlueJet.Storefront.Order do
       false
     end
 
-    changeset = Changeset.change(
+    changeset = change(
       struct,
       sub_total_cents: sub_total_cents,
       tax_one_cents: tax_one_cents,
@@ -293,7 +285,7 @@ defmodule BlueJet.Storefront.Order do
   """
   def refresh_payment_status(order) do
     order
-    |> Changeset.change(payment_status: get_payment_status(order))
+    |> change(payment_status: get_payment_status(order))
     |> Repo.update!()
   end
 
@@ -352,30 +344,20 @@ defmodule BlueJet.Storefront.Order do
     {:ok, nil}
   end
 
-  def get_customer(%{ customer_id: nil }, _), do: nil
+  #
+  # MARK: External Resources
+  #
+  def get_customer(%{ customer_id: nil }), do: nil
+  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmData.get_customer(customer_id)
+  def get_customer(%{ customer: customer }), do: customer
 
-  def get_customer(%{ customer_id: customer_id, customer: nil }, %{ account: account, locale: locale }) do
-    {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
-      account: account,
-      params: %{ "id" => customer_id },
-      locale: locale
-    })
-
-    customer
-  end
-
-  def get_customer(%{ customer: customer }, _), do: customer
-
-  ######
-  # External Resources
-  #####
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
     owner_type: "Order"
 
-  def put_external_resources(order, {:customer, nil}, options) do
-    %{ order | customer: get_customer(order, options) }
+  def put_external_resources(order, {:customer, nil}, _) do
+    %{ order | customer: get_customer(order) }
   end
 
   def put_external_resources(order, _, _), do: order
@@ -391,8 +373,8 @@ defmodule BlueJet.Storefront.Order do
   """
   def process(order), do: {:ok, order}
 
-  def process(order, changeset = %Changeset{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = %{ order | account: get_account(order) }
+  def process(order, changeset = %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    order = %{ order | account: IdentityData.get_account(order) }
     order =
       order
       |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
@@ -437,8 +419,6 @@ defmodule BlueJet.Storefront.Order do
           source_tye: "Order"
         })
 
-        account = get_account(order)
-
         Enum.each(af_line_items, fn(line_item) ->
           translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
 
@@ -461,7 +441,7 @@ defmodule BlueJet.Storefront.Order do
 
   def refresh_fulfillment_status(order) do
     order
-    |> Changeset.change(fulfillment_status: get_fulfillment_status(order))
+    |> change(fulfillment_status: get_fulfillment_status(order))
     |> Repo.update!()
   end
 

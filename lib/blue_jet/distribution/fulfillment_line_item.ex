@@ -103,6 +103,12 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
       from(fli in query, where: fli.account_id == ^account_id)
     end
 
+    def for_source(query, source_type, source_id) do
+      from fli in query,
+        where: fli.source_type == ^source_type,
+        where: fli.source_id == ^source_id
+    end
+
     def preloads(_, _) do
       []
     end

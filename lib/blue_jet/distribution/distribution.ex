@@ -24,6 +24,12 @@ defmodule BlueJet.Distribution do
       FulfillmentLineItem.changeset(fli, fields)
       |> Repo.insert!()
     end
+
+    def list_fulfillment_line_item(%{ source_type: source_type, source_id: source_id }) do
+      FulfillmentLineItem.Query.default()
+      |> FulfillmentLineItem.Query.for_source(source_type, source_id)
+      |> Repo.all()
+    end
   end
 
   def run_event_handler(name, data) do

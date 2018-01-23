@@ -7,10 +7,11 @@ defmodule BlueJet.OrderLineItemTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
-  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock, CrmDataMock}
+  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock, CrmDataMock, DistributionDataMock}
   alias BlueJet.Catalogue.{Product, Price}
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
+  alias BlueJet.Distribution.{FulfillmentLineItem}
 
   describe "schema" do
     test "when order is deleted line item should be deleted automatically" do
@@ -448,6 +449,66 @@ defmodule BlueJet.OrderLineItemTest do
       }, order, order_changeset)
 
       verify!()
+    end
+  end
+
+  describe "get_fulfillment_status/1" do
+    test "when grand total cents is less than 0" do
+      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ grand_total_cents: -100 })
+      assert result == "fulfilled"
+    end
+
+    test "when there is no fulfillment line item" do
+      flis = []
+      DistributionDataMock
+      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+
+      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
+
+      verify!()
+      assert result == "pending"
+    end
+
+    test "when all corresponding fulfillment line item is returned" do
+      flis = [
+        %FulfillmentLineItem{ status: "returned", quantity: 2 },
+        %FulfillmentLineItem{ status: "returned", quantity: 3 }
+      ]
+      DistributionDataMock
+      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+
+      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
+
+      verify!()
+      assert result == "returned"
+    end
+
+    test "when some of the fulfillment line item is fulfilled" do
+      flis = [
+        %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
+        %FulfillmentLineItem{ status: "pending", quantity: 1 }
+      ]
+      DistributionDataMock
+      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+
+      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
+
+      verify!()
+      assert result == "partially_fulfilled"
+    end
+
+    test "when all of fulfillment line item is fulfilled" do
+      flis = [
+        %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
+        %FulfillmentLineItem{ status: "fulfilled", quantity: 3 }
+      ]
+      DistributionDataMock
+      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+
+      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
+
+      verify!()
+      assert result == "fulfilled"
     end
   end
 end

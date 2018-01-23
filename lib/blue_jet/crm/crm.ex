@@ -15,8 +15,16 @@ defmodule BlueJet.Crm do
     end
 
     def create_point_transaction(fields) do
-      Ecto.change(%PointTransaction{}, fields)
+      Ecto.Changeset.change(%PointTransaction{}, fields)
       |> Repo.insert!()
+    end
+
+    def get_point_transaction(id) do
+      Repo.get(PointTransaction, id)
+    end
+
+    def get_customer(id) do
+      Repo.get(Customer, id)
     end
   end
 

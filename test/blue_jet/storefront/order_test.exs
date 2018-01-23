@@ -7,7 +7,7 @@ defmodule BlueJet.OrderTest do
   alias BlueJet.Crm.Customer
 
   alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Storefront.{BalanceDataMock, DistributionDataMock}
+  alias BlueJet.Storefront.{BalanceDataMock, DistributionDataMock, IdentityDataMock}
   alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
 
   describe "schema" do
@@ -129,6 +129,12 @@ defmodule BlueJet.OrderTest do
 
   describe "changeset/4" do
     test "when given opened status" do
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       order =
         %Order{ id: Ecto.UUID.generate() }
         |> put_meta(state: :loaded)
@@ -140,11 +146,18 @@ defmodule BlueJet.OrderTest do
         status: "opened"
       })
 
+      verify!()
       assert changeset.valid?
       assert changeset.changes[:opened_at]
     end
 
     test "when given first name and last name" do
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       order =
         %Order{ id: Ecto.UUID.generate() }
         |> put_meta(state: :loaded)
@@ -157,6 +170,7 @@ defmodule BlueJet.OrderTest do
         status: "opened"
       })
 
+      verify!()
       assert changeset.valid?
       assert changeset.changes[:opened_at]
       assert changeset.changes[:name]
@@ -541,6 +555,9 @@ defmodule BlueJet.OrderTest do
   describe "process/2" do
     test "when given order has auto fulfillabe line item" do
       account = Repo.insert!(%Account{})
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       order = Repo.insert!(%Order{
         account_id: account.id
       })

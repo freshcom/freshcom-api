@@ -10,19 +10,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias Decimal, as: D
-
-  alias BlueJet.AccessRequest
   alias BlueJet.Translation
-
-  alias BlueJet.Crm
-  alias BlueJet.Distribution
-
   alias BlueJet.Catalogue.{Price}
-
-  alias BlueJet.Storefront.{IdentityData, CatalogueData, GoodsData, CrmData}
+  alias BlueJet.Storefront.{IdentityData, CatalogueData, GoodsData, CrmData, DistributionData}
   alias BlueJet.Storefront.{Order, Unlock}
 
   schema "order_line_items" do
@@ -132,17 +123,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def get_source(product)
 
   def get_source(oli = %{ source_id: source_id, source_type: "PointTransaction" }) do
-    account = get_account(oli)
-    response = Crm.do_get_point_transaction(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: point_transaction }} -> point_transaction
-      {:error, _} -> nil
-    end
+    CrmData.get_point_transaction(source_id)
   end
 
   def get_source(%{ source_id: source_id, source_type: source_type }) do
@@ -662,17 +643,12 @@ defmodule BlueJet.Storefront.OrderLineItem do
   It will always return the correct fulfillment status where as the `fulfillment_status`
   field of the order line item may not be up to date yet.
   """
-  def get_fulfillment_status(%{ grant_total_cents: grand_total_cents }) when grand_total_cents < 0 do
+  def get_fulfillment_status(%{ grand_total_cents: grand_total_cents }) when grand_total_cents < 0 do
     "fulfilled"
   end
 
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
-    account = get_account(oli)
-    {:ok, %{ data: flis }} = Distribution.do_list_fulfillment_line_item(%AccessRequest{
-      account: account,
-      filter: %{ source_id: oli.id, source_type: "OrderLineItem" },
-      pagination: %{ size: 1000, number: 1 }
-    })
+    flis = DistributionData.list_fulfillment_line_item(%{ source_type: "OrderLineItem", source_id: oli.id })
 
     fulfillable_quantity = oli.order_quantity
     fulfilled_quantity =
