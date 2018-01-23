@@ -378,7 +378,7 @@ defmodule BlueJet.Storefront do
       Multi.new()
       |> Multi.insert(:oli, changeset)
       |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-          {:ok, OrderLineItem.balance!(oli)}
+          {:ok, OrderLineItem.balance(oli)}
          end)
       |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
           order = Repo.get!(Order, balanced_oli.order_id)
@@ -421,7 +421,7 @@ defmodule BlueJet.Storefront do
         Multi.new()
         |> Multi.update(:oli, changeset)
         |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-            {:ok, OrderLineItem.balance!(oli)}
+            {:ok, OrderLineItem.balance(oli)}
            end)
         |> Multi.run(:balanced_order, fn(%{ balanced_oli: oli }) ->
             order = Repo.get!(Order, oli.order_id)

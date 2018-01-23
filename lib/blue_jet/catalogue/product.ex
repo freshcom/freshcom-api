@@ -28,6 +28,7 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
+  alias BlueJet.Catalogue.{IdentityData, GoodsData}
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -126,12 +127,12 @@ defmodule BlueJet.Catalogue.Product do
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
 
-    account = get_account(%{ account: nil, account_id: account_id })
-    source = get_source(%{ account: account, source_id: source_id, source_type: source_type })
+    source = get_field(changeset, :source) || GoodsData.get_goods(source_type, source_id)
 
-    case source do
-      nil -> Changeset.add_error(changeset, :source_id, "is invalid")
-      _ -> changeset
+    if source && source.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :source, "is invalid")
     end
   end
 
@@ -232,89 +233,60 @@ defmodule BlueJet.Catalogue.Product do
 
   defp validate_status(changeset, _), do: changeset
 
+  defp validate_parent_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+    account_id = get_field(changeset, :account_id)
+    product = Repo.get(Product, product_id)
+
+    if product && product.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  defp validate_parent_id(changeset), do: changeset
+
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
-    |> foreign_key_constraint(:parent_id)
-    |> validate_assoc_account_scope(:parent)
     |> validate_status()
     |> validate_source()
+    |> validate_parent_id()
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def changeset(product, params, locale \\ nil, default_locale \\ nil) do
+    product = %{ product | account: IdentityData.get_account(product) }
+    default_locale = default_locale || product.account.default_locale
+    locale = locale || default_locale
+
+    product
+    |> cast(params, castable_fields(product))
     |> put_name(locale)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
-
-  def get_source(product, locale \\ nil)
-
-  def get_source(product = %{ source_id: source_id, source_type: "Stockable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_stockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: stockable }} -> stockable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(product = %{ source_id: source_id, source_type: "Unlockable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: unlockable }} -> unlockable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(product = %{ source_id: source_id, source_type: "Depositable" }, locale) do
-    account = get_account(product)
-    response = Goods.do_get_depositable(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      locale: locale || account.default_locale
-    })
-
-    case response do
-      {:ok, %{ data: depositable }} -> depositable
-      {:error, _} -> nil
-    end
-  end
-
-  def get_source(_, _), do: nil
 
   def put_name(changeset = %{ changes: %{ name_sync: "sync_with_source" } }, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
 
-    account = get_account(%{ account: nil, account_id: account_id })
-    source = get_source(%{ account: account, source_id: source_id, source_type: source_type })
+    account = get_field(changeset, :account) || IdentityData.get_account(account_id)
+    source = get_field(changeset, :source) || GoodsData.get_goods(source_type, source_id)
 
     if source do
-      changeset = put_change(changeset, :name, "#{source.name}")
-
       new_translations =
         changeset
         |> Changeset.get_field(:translations)
         |> Translation.merge_translations(source.translations, ["name"])
 
-      put_change(changeset, :translations, new_translations)
+      changeset
+      |> put_change(:name, source.name)
+      |> put_change(:source, source)
+      |> put_change(:translations, new_translations)
     else
       changeset
     end

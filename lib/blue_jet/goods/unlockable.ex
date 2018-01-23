@@ -9,9 +9,8 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias BlueJet.Translation
+  alias BlueJet.Goods.IdentityData
 
   schema "unlockables" do
     field :account_id, Ecto.UUID
@@ -67,11 +66,12 @@ defmodule BlueJet.Goods.Unlockable do
 
   def put_print_name(changeset), do: changeset
 
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(unlockable, params, locale \\ nil, default_locale \\ nil) do
+    unlockable = %{ unlockable | account: IdentityData.get_account(unlockable) }
+    default_locale = default_locale || unlockable.account.default_locale
     locale = locale || default_locale
 
-    struct
+    unlockable
     |> cast(params, writable_fields())
     |> validate()
     |> put_print_name()

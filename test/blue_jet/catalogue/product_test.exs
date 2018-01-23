@@ -1,10 +1,13 @@
 defmodule BlueJet.Catalogue.ProductTest do
   use BlueJet.DataCase
 
+  import Mox
+
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
+  alias BlueJet.Catalogue.{IdentityDataMock, GoodsDataMock}
 
   describe "schema" do
     test "when account is deleted product is automatically deleted" do
@@ -108,34 +111,40 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given invalid source" do
-      account = Repo.insert!(%Account{})
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> nil end)
+
       changeset =
-        change(%Product{ account_id: account.id }, %{
+        change(%Product{}, %{
           source_id: Ecto.UUID.generate(),
           source_type: "Stockable",
           name: Faker.String.base64(5)
         })
         |> Product.validate()
 
+      verify!()
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:source_id]
+      assert Keyword.keys(changeset.errors) == [:source]
     end
 
     test "when given valid source" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+      account_id = Ecto.UUID.generate()
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
+        account_id: account_id
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       changeset =
-        change(%Product{ account_id: account.id }, %{
+        change(%Product{ account_id: account_id }, %{
           source_id: stockable.id,
           source_type: "Stockable",
           name: Faker.String.base64(5)
         })
         |> Product.validate()
 
+      verify!()
       assert changeset.valid?
     end
 
@@ -443,11 +452,15 @@ defmodule BlueJet.Catalogue.ProductTest do
 
     test "when given product varaint with valid internal status" do
       account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
+
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+        account_id: account.id
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       product_with_variants = Repo.insert!(%Product{
         account_id: account.id,
         kind: "with_variants",
@@ -474,6 +487,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         change(product_variant, %{ status: "internal" })
         |> Product.validate()
 
+      verify!()
       assert changeset.valid?
     end
 
@@ -510,11 +524,15 @@ defmodule BlueJet.Catalogue.ProductTest do
 
     test "when given product varaint with valid active status" do
       account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
+
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+        account_id: account.id
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       product_with_variants = Repo.insert!(%Product{
         account_id: account.id,
         kind: "with_variants",
@@ -541,6 +559,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         change(product_variant, %{ status: "active" })
         |> Product.validate()
 
+      verify!()
       assert changeset.valid?
     end
 
@@ -558,11 +577,15 @@ defmodule BlueJet.Catalogue.ProductTest do
 
     test "when given product item with valid internal status" do
       account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
+
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
         account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+        name: Faker.String.base64(5)
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       product_combo = Repo.insert!(%Product{
         account_id: account.id,
         kind: "combo",
@@ -580,16 +603,21 @@ defmodule BlueJet.Catalogue.ProductTest do
         })
         |> Product.validate()
 
+      verify!()
       assert changeset.valid?
     end
 
     test "when given product item with valid active status" do
       account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
+
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+        account_id: account.id
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       product_combo = Repo.insert!(%Product{
         account_id: account.id,
         kind: "combo",
@@ -607,24 +635,32 @@ defmodule BlueJet.Catalogue.ProductTest do
         })
         |> Product.validate()
 
+      verify!()
       assert changeset.valid?
     end
   end
 
   describe "changeset/4" do
     test "when given name sync is sync with source" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
+      account = %Account{ id: Ecto.UUID.generate() }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
+        account_id: account.id
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
+
       changeset = Product.changeset(%Product{ account_id: account.id, }, %{
         name_sync: "sync_with_source",
         source_id: stockable.id,
         source_type: "Stockable"
       })
 
+      verify!()
       assert changeset.valid?
       assert changeset.changes[:name] == stockable.name
     end

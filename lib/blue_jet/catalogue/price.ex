@@ -268,6 +268,18 @@ defmodule BlueJet.Catalogue.Price do
       from(p in Price, order_by: [desc: :inserted_at])
     end
 
+    def for_product(product_id) do
+      from(p in Price, where: p.product_id == ^product_id, order_by: [asc: :minimum_order_quantity])
+    end
+
+    def with_order_quantity(order_quantity) do
+      from(p in Price, where: p.minimum_order_quantity <= ^order_quantity)
+    end
+
+    def with_status(status) do
+      from p in Price, where: p.status == ^status
+    end
+
     def active_by_moq() do
       from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])
     end

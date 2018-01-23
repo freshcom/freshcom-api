@@ -1,8 +1,11 @@
 defmodule BlueJet.Goods.DepositableTest do
   use BlueJet.DataCase
 
+  import Mox
+
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Depositable
+  alias BlueJet.Goods.IdentityDataMock
 
   describe "schema" do
     test "when account is deleted depositable should be automatically deleted" do
@@ -49,7 +52,12 @@ defmodule BlueJet.Goods.DepositableTest do
 
   describe "changeset/4" do
     test "when given valid fields without locale" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
         name: Faker.String.base64(5),
         amount: 500,
@@ -61,7 +69,12 @@ defmodule BlueJet.Goods.DepositableTest do
     end
 
     test "when given valid fields with locale" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
         name: Faker.String.base64(5),
         amount: 500,
@@ -73,7 +86,12 @@ defmodule BlueJet.Goods.DepositableTest do
     end
 
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{})
 
       refute changeset.valid?

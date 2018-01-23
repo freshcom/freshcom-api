@@ -17,6 +17,14 @@ defmodule BlueJet.Catalogue do
     def get_price(id) do
       Repo.get(Price, id)
     end
+
+    def get_price(%{ product_id: product_id, status: status, order_quantity: order_quantity }) do
+      Price.Query.for_product(product_id)
+      |> Price.Query.with_status(status)
+      |> Price.Query.with_order_quantity(order_quantity)
+      |> first()
+      |> Repo.one()
+    end
   end
 
   defmodule Shortcut do

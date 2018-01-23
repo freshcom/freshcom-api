@@ -1,11 +1,13 @@
 defmodule BlueJet.GoodsTest do
   use BlueJet.DataCase
 
+  import Mox
   import BlueJet.Identity.TestHelper
 
   alias BlueJet.AccessRequest
   alias BlueJet.Goods
   alias BlueJet.Goods.Stockable
+  alias BlueJet.Goods.IdentityDataMock
 
   describe "list_stockable/1" do
     test "when using customer identity" do
@@ -20,6 +22,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when using developer identity" do
       %{ vas: vas, account: account } = create_global_identity("developer")
+
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),
@@ -50,7 +53,11 @@ defmodule BlueJet.GoodsTest do
     end
 
     test "when using developer identity" do
-      %{ vas: vas } = create_global_identity("developer")
+      %{ vas: vas, account: account } = create_global_identity("developer")
+
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       request = %AccessRequest{
         vas: vas,
         fields: %{
@@ -60,6 +67,7 @@ defmodule BlueJet.GoodsTest do
       }
       {:ok, response} = Goods.create_stockable(request)
 
+      verify!()
       assert response.data.id
     end
   end
@@ -106,6 +114,10 @@ defmodule BlueJet.GoodsTest do
 
     test "when using developer identity" do
       %{ vas: vas, account: account } = create_global_identity("developer")
+
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),

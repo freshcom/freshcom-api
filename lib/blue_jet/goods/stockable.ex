@@ -12,9 +12,8 @@ defmodule BlueJet.Goods.Stockable do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias BlueJet.Translation
+  alias BlueJet.Goods.IdentityData
 
   schema "stockables" do
     field :account_id, Ecto.UUID
@@ -79,11 +78,12 @@ defmodule BlueJet.Goods.Stockable do
 
   defp put_print_name(changeset), do: changeset
 
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(stockable, params, locale \\ nil, default_locale \\ nil) do
+    stockable = %{ stockable | account: IdentityData.get_account(stockable) }
+    default_locale = default_locale || stockable.account.default_locale
     locale = locale || default_locale
 
-    struct
+    stockable
     |> cast(params, writable_fields())
     |> validate()
     |> put_print_name()

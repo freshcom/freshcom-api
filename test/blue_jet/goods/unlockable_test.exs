@@ -1,8 +1,11 @@
 defmodule BlueJet.Goods.UnlockableTest do
   use BlueJet.DataCase
 
+  import Mox
+
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Unlockable
+  alias BlueJet.Goods.IdentityDataMock
 
   describe "schema" do
     test "when account is deleted unlockable should be automatically deleted" do
@@ -45,7 +48,12 @@ defmodule BlueJet.Goods.UnlockableTest do
 
   describe "changeset/4" do
     test "when given valid fields without locale" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{
         name: Faker.String.base64(5)
       })
@@ -55,7 +63,12 @@ defmodule BlueJet.Goods.UnlockableTest do
     end
 
     test "when given valid fields with locale" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{
         name: Faker.String.base64(5)
       }, "en", "zh-CN")
@@ -65,7 +78,12 @@ defmodule BlueJet.Goods.UnlockableTest do
     end
 
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{})
 
       refute changeset.valid?

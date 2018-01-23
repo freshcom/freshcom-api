@@ -7,7 +7,7 @@ defmodule BlueJet.OrderLineItemTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock}
+  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock}
   alias BlueJet.Catalogue.{Product, Price}
   alias BlueJet.Goods.Stockable
 
@@ -79,9 +79,9 @@ defmodule BlueJet.OrderLineItemTest do
       order_unit: "EA",
       charge_unit: "EA",
       minimum_order_quantity: 3,
-      tax_one_percentage: Decimal.new(5),
-      tax_two_percentage: Decimal.new(7),
-      tax_three_percentage: Decimal.new(1),
+      tax_one_percentage: D.new(5),
+      tax_two_percentage: D.new(7),
+      tax_three_percentage: D.new(1),
       translations: %{
         "zh-CN": %{
           name: "团购价"
@@ -142,9 +142,9 @@ defmodule BlueJet.OrderLineItemTest do
       order_unit: "EA",
       charge_unit: "EA",
       minimum_order_quantity: 3,
-      tax_one_percentage: Decimal.new(5),
-      tax_two_percentage: Decimal.new(7),
-      tax_three_percentage: Decimal.new(1),
+      tax_one_percentage: D.new(5),
+      tax_two_percentage: D.new(7),
+      tax_three_percentage: D.new(1),
       translations: %{
         "zh-CN": %{
           name: "团购价"
@@ -165,9 +165,9 @@ defmodule BlueJet.OrderLineItemTest do
         order_unit: "EA",
         charge_unit: "EA",
         minimum_order_quantity: 3,
-        tax_one_percentage: Decimal.new(5),
-        tax_two_percentage: Decimal.new(7),
-        tax_three_percentage: Decimal.new(1),
+        tax_one_percentage: D.new(5),
+        tax_two_percentage: D.new(7),
+        tax_three_percentage: D.new(1),
         translations: %{
           "zh-CN": %{
             name: "团购价"
@@ -381,7 +381,7 @@ defmodule BlueJet.OrderLineItemTest do
       ]
     end
 
-    test "when orer_id is invalid" do
+    test "when order_id is invalid" do
       account = Repo.insert!(%Account{})
       order = Repo.insert!(%Order{
         account_id: account.id
@@ -475,261 +475,161 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_account, fn(_) -> account end)
 
       product = %Product{
+        id: Ecto.UUID.generate(),
         account_id: account.id,
         name: Faker.String.base64(5)
       }
       CatalogueDataMock
-      |> expect(:get_product, 2, fn(_) -> product end)
+      |> expect(:get_product, fn(_) -> product end)
+      |> expect(:get_price, fn(_) -> nil end)
 
       oli = %OrderLineItem{ account_id: account.id }
-      changeset = OrderLineItem.changeset(oli, %{ product_id: Ecto.UUID.generate() })
+      changeset = OrderLineItem.changeset(oli, %{
+        product_id: Ecto.UUID.generate(),
+        sub_total_cents: 1000,
+        tax_one_cents: 500,
+        tax_two_cents: 300,
+        tax_three_cents: 200
+      })
 
       verify!()
       assert changeset.changes[:is_leaf] == false
       assert changeset.changes[:name] == product.name
       assert changeset.changes[:print_name] == product.name
       assert changeset.changes[:auto_fulfill] == false
+      assert changeset.changes[:charge_quantity] == D.new(1)
+      assert changeset.changes[:sub_total_cents] == 1000
+      assert changeset.changes[:grand_total_cents] == 2000
+      assert changeset.changes[:authorization_total_cents] == 2000
     end
 
-    # test "when given line item with price id" do
-    #   account = %Account{
-    #     id: Ecto.UUID.generate()
-    #   }
-    #   IdentityDataMock
-    #   |> expect(:get_account, fn(_) -> account end)
+    test "when given line item with price id" do
+      account = %Account{
+        id: Ecto.UUID.generate()
+      }
+      IdentityDataMock
+      |> expect(:get_account, fn(_) -> account end)
 
-    # end
+      product = %Product{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      }
+      price = %Price{
+        id: Ecto.UUID.generate(),
+        product_id: product.id,
+        name: Faker.String.base64(5),
+        label: Faker.String.base64(5),
+        caption: Faker.String.base64(5),
+        order_unit: Faker.String.base64(2),
+        charge_unit: Faker.String.base64(2),
+        currency_code: Faker.String.base64(3),
+        charge_amount_cents: 500,
+        estimate_average_percentage: D.new(150),
+        estimate_maximum_percentage: D.new(200),
+        estimate_by_default: true,
+        tax_one_percentage: D.new(7),
+        tax_two_percentage: D.new(10),
+        tax_three_percentage: D.new(15)
+      }
+      CatalogueDataMock
+      |> expect(:get_product, fn(_) -> product end)
+      |> expect(:get_price, fn(_) -> price end)
 
-    # test "when given line item with product id" do
-    #   account = Repo.insert!(%Account{})
-    #   oli = %OrderLineItem{ account_id: account.id }
-    #   changeset = OrderLineItem.changeset(oli, %{ product_id: Ecto.UUID.generate() })
+      oli = %OrderLineItem{ account_id: account.id }
+      changeset = OrderLineItem.changeset(oli, %{ product_id: Ecto.UUID.generate() })
 
-    #   assert changeset.changes[:is_leaf] == false
-    # end
+      verify!()
+      assert changeset.changes[:price_name] == price.name
+      assert changeset.changes[:price_label] == price.label
+      assert changeset.changes[:price_caption] == price.caption
+      assert changeset.changes[:price_order_unit] == price.order_unit
+      assert changeset.changes[:price_charge_unit] == price.charge_unit
+      assert changeset.changes[:price_currency_code] == price.currency_code
+      assert changeset.changes[:price_charge_amount_cents] == price.charge_amount_cents
+      assert changeset.changes[:price_estimate_average_percentage] == price.estimate_average_percentage
+      assert changeset.changes[:price_estimate_maximum_percentage] == price.estimate_maximum_percentage
+      assert changeset.changes[:price_estimate_by_default] == price.estimate_by_default
+      assert changeset.changes[:price_tax_one_percentage] == price.tax_one_percentage
+      assert changeset.changes[:price_tax_two_percentage] == price.tax_two_percentage
+      assert changeset.changes[:price_tax_three_percentage] == price.tax_three_percentage
+      assert changeset.changes[:is_estimate] == true
+      assert changeset.changes[:charge_quantity] == price.estimate_average_percentage |> D.div(D.new(100)) |> D.mult(D.new(1))
+      assert changeset.changes[:sub_total_cents] == 750
+      assert changeset.changes[:tax_one_cents] == 53
+      assert changeset.changes[:tax_two_cents] == 75
+      assert changeset.changes[:tax_three_cents] == 113
+      assert changeset.changes[:grand_total_cents] == 991
+      assert changeset.changes[:authorization_total_cents] == 1320
+    end
   end
 
-  # describe "changeset/4" do
-  #   test "on new order line item with product variant and exact price" do
-  #     %{ account: account, variant: variant } = create_product_with_variants()
-  #     %{ bulk: bulk_price } = create_exact_regular_and_bulk_price(variant, account)
+  describe "balance/1" do
+    test "when is leaf and has no parent" do
+      oli = %OrderLineItem{ is_leaf: true }
+      assert OrderLineItem.balance(oli) == oli
+    end
 
-  #     order = Repo.insert!(%Order{ account_id: account.id })
-  #     order_quantity = 3
+    test "when oli is for simple product" do
+      account = Repo.insert!(%Account{})
 
-  #     changeset = OrderLineItem.changeset(%OrderLineItem{
-  #       account_id: account.id
-  #     }, %{
-  #       "order_id" => order.id,
-  #       "product_id" => variant.id,
-  #       "order_quantity" => order_quantity
-  #     })
+      stockable = %Stockable{
+        id: Ecto.UUID.generate(),
+        name: Faker.String.base64(5)
+      }
+      GoodsDataMock
+      |> expect(:get_goods, fn(_, _) -> stockable end)
 
-  #     correct_translations = %{
-  #       "zh-CN" => %{
-  #         "name" => "苹果 大号",
-  #         "price_name" => "团购价"
-  #       }
-  #     }
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.String.base64(5),
+        source_quantity: 2,
+        source_id: stockable.id,
+        source_type: "Stockable"
+      })
 
-  #     assert changeset.valid?
-  #     assert changeset.changes.name == variant.name
+      CatalogueDataMock
+      |> expect(:get_product, fn(_) -> product end)
 
-  #     assert changeset.changes.is_leaf == false
-  #     assert changeset.changes.order_quantity == order_quantity
-  #     assert changeset.changes.charge_quantity == D.new(order_quantity)
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        product_id: product.id,
+        order_id: order.id,
+        is_leaf: false,
+        auto_fulfill: false,
+        charge_quantity: Decimal.new(2),
+        sub_total_cents: 500,
+        tax_one_cents: 200,
+        tax_two_cents: 500,
+        tax_three_cents: 300,
+        grand_total_cents: 1500,
+        authorization_total_cents: 1500
+      })
 
-  #     assert changeset.changes.price_id == bulk_price.id
-  #     assert changeset.changes.price_name == bulk_price.name
-  #     assert changeset.changes.price_label == bulk_price.label
-  #     assert changeset.changes.price_caption == bulk_price.caption
-  #     assert changeset.changes.price_order_unit == bulk_price.order_unit
-  #     assert changeset.changes.price_charge_unit == bulk_price.charge_unit
-  #     assert changeset.changes.price_currency_code == bulk_price.currency_code
-  #     assert changeset.changes.price_charge_amount_cents == bulk_price.charge_amount_cents
-  #     assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
-  #     assert changeset.changes.price_tax_one_percentage == bulk_price.tax_one_percentage
-  #     assert changeset.changes.price_tax_two_percentage == bulk_price.tax_two_percentage
-  #     assert changeset.changes.price_tax_three_percentage == bulk_price.tax_three_percentage
-  #     assert changeset.changes.price_estimate_by_default == bulk_price.estimate_by_default
+      OrderLineItem.balance(oli)
 
-  #     assert changeset.changes.sub_total_cents == bulk_price.charge_amount_cents * order_quantity
-  #     assert changeset.changes.tax_one_cents == 135
-  #     assert changeset.changes.tax_two_cents == 189
-  #     assert changeset.changes.tax_three_cents == 27
-  #     assert changeset.changes.grand_total_cents == 3048
-  #     assert changeset.changes.authorization_total_cents == 3048
-  #     assert changeset.changes.auto_fulfill == false
+      child = Repo.get_by(OrderLineItem, parent_id: oli.id)
+      assert child.is_leaf == true
+      assert child.name == stockable.name
+      assert child.source_id == stockable.id
+      assert child.source_type == "Stockable"
+      assert child.order_id == oli.order_id
+      assert child.sub_total_cents == oli.sub_total_cents
+      assert child.tax_one_cents == oli.tax_one_cents
+      assert child.tax_two_cents == oli.tax_two_cents
+      assert child.tax_three_cents == oli.tax_three_cents
+      assert child.grand_total_cents == oli.grand_total_cents
+      assert child.authorization_total_cents == oli.authorization_total_cents
+      assert child.auto_fulfill == oli.auto_fulfill
+      assert child.order_quantity == oli.order_quantity * product.source_quantity
+      assert child.charge_quantity == oli.charge_quantity
+    end
 
-  #     assert changeset.changes.translations == correct_translations
-  #   end
-
-  #   test "on new order line item with product variant and estimated price" do
-  #     %{ account: account, variant: variant } = create_product_with_variants()
-  #     estimated_price = create_estimated_price(variant, account)
-
-  #     order = Repo.insert!(%Order{ account_id: account.id })
-  #     order_quantity = 2
-
-  #     changeset = OrderLineItem.changeset(%OrderLineItem{
-  #       account_id: account.id
-  #     }, %{
-  #       "order_id" => order.id,
-  #       "product_id" => variant.id,
-  #       "order_quantity" => order_quantity
-  #     })
-
-  #     correct_translations = %{
-  #       "zh-CN" => %{
-  #         "name" => "苹果 大号",
-  #         "price_name" => "原价"
-  #       }
-  #     }
-
-  #     assert changeset.valid?
-  #     assert changeset.changes.name == variant.name
-
-  #     assert changeset.changes.is_leaf == false
-  #     assert changeset.changes.order_quantity == order_quantity
-  #     assert changeset.changes.charge_quantity == Price.get_estimate_average_rate(estimated_price) |> D.mult(D.new(order_quantity))
-
-  #     assert changeset.changes.price_id == estimated_price.id
-  #     assert changeset.changes.price_name == estimated_price.name
-  #     assert changeset.changes.price_label == estimated_price.label
-  #     assert changeset.changes.price_caption == estimated_price.caption
-  #     assert changeset.changes.price_order_unit == estimated_price.order_unit
-  #     assert changeset.changes.price_charge_unit == estimated_price.charge_unit
-  #     assert changeset.changes.price_currency_code == estimated_price.currency_code
-  #     assert changeset.changes.price_charge_amount_cents == estimated_price.charge_amount_cents
-  #     assert changeset.changes.price_estimate_by_default == estimated_price.estimate_by_default
-  #     assert changeset.changes.price_tax_one_percentage == estimated_price.tax_one_percentage
-  #     assert changeset.changes.price_tax_two_percentage == estimated_price.tax_two_percentage
-  #     assert changeset.changes.price_tax_three_percentage == estimated_price.tax_three_percentage
-  #     assert changeset.changes.price_estimate_by_default == estimated_price.estimate_by_default
-
-  #     assert changeset.changes.sub_total_cents == 2697
-  #     assert changeset.changes.tax_one_cents == 135
-  #     assert changeset.changes.tax_two_cents == 189
-  #     assert changeset.changes.tax_three_cents == 27
-  #     assert changeset.changes.grand_total_cents == 3048
-  #     assert changeset.changes.authorization_total_cents == 4064
-  #     assert changeset.changes.auto_fulfill == false
-
-  #     assert changeset.changes.translations == correct_translations
-  #   end
-  # end
-
-  # describe "balance!/1" do
-  #   test "on custom order line item" do
-  #     account = Repo.insert!(%Account{})
-  #     order = Repo.insert!(%Order{
-  #       account_id: account.id
-  #     })
-
-  #     item = Repo.insert!(%OrderLineItem{
-  #       account_id: account.id,
-  #       order_id: order.id,
-  #       name: "Custom Line",
-  #       is_leaf: true,
-  #       parent_id: nil,
-  #       order_quantity: 1,
-  #       charge_quantity: 1,
-  #       sub_total_cents: 0,
-  #       tax_one_cents: 0,
-  #       tax_two_cents: 0,
-  #       tax_three_cents: 0,
-  #       grand_total_cents: 0,
-  #       authorization_total_cents: 0,
-  #       auto_fulfill: false
-  #     })
-
-  #     OrderLineItem.balance!(item)
-  #     children = Ecto.assoc(item, :children) |> Repo.all()
-
-  #     assert length(children) == 0
-  #   end
-
-  #   test "on order line item with product variant" do
-  #     %{ account: account, variant: variant } = create_product_with_variants()
-
-  #     order = Repo.insert!(%Order{
-  #       account_id: account.id
-  #     })
-  #     order_line_item = Repo.insert!(%OrderLineItem{
-  #       account_id: account.id,
-  #       order_id: order.id,
-  #       product_id: variant.id,
-  #       is_leaf: false,
-  #       order_quantity: 3,
-  #       charge_quantity: 3,
-  #       sub_total_cents: 1000,
-  #       tax_one_cents: 20,
-  #       tax_two_cents: 10,
-  #       tax_three_cents: 60,
-  #       grand_total_cents: 1090,
-  #       authorization_total_cents: 1090,
-  #       auto_fulfill: false
-  #     })
-
-  #     children = order_line_item |> OrderLineItem.balance!() |> OrderLineItem.balance!() |> Ecto.assoc(:children) |> Repo.all()
-  #     child = Enum.at(children, 0)
-
-  #     assert length(children) == 1
-  #     assert child.order_quantity == 15
-  #     assert child.charge_quantity == Decimal.new(15)
-  #     assert child.sub_total_cents == order_line_item.sub_total_cents
-  #     assert child.tax_one_cents == order_line_item.tax_one_cents
-  #     assert child.tax_two_cents == order_line_item.tax_two_cents
-  #     assert child.tax_three_cents == order_line_item.tax_three_cents
-  #     assert child.grand_total_cents == order_line_item.grand_total_cents
-  #     assert child.is_leaf
-  #     assert child.source_id == variant.source_id
-  #     assert child.source_type == variant.source_type
-  #   end
-
-  #   test "on order line item with product combo" do
-  #     %{ account: account, product: product } = create_product_combo()
-  #     %{ regular: price } = create_exact_regular_and_bulk_price(product, account)
-
-  #     order = Repo.insert!(%Order{
-  #       account_id: account.id
-  #     })
-  #     order_line_item = Repo.insert!(%OrderLineItem{
-  #       account_id: account.id,
-  #       order_id: order.id,
-  #       product_id: product.id,
-  #       price_id: price.id,
-  #       is_leaf: false,
-  #       order_quantity: 1,
-  #       charge_quantity: 1,
-  #       sub_total_cents: 1000,
-  #       tax_one_cents: 20,
-  #       tax_two_cents: 10,
-  #       tax_three_cents: 60,
-  #       grand_total_cents: 1090,
-  #       authorization_total_cents: 1090,
-  #       auto_fulfill: false
-  #     })
-
-  #     children = order_line_item |> OrderLineItem.balance!() |> OrderLineItem.balance!() |> Ecto.assoc(:children) |> Repo.all()
-  #     child1 = Enum.at(children, 0)
-  #     child2 = Enum.at(children, 1)
-  #     gchild1 = assoc(child1, :children) |> Repo.one()
-  #     gchild2 = assoc(child2, :children) |> Repo.one()
-
-  #     child_product_ids = Enum.map(children, fn(child) -> child.product_id end)
-  #     target_product_ids = Enum.map(product.items, fn(item) -> item.id end)
-
-  #     child_price_ids = Enum.map(children, fn(child) -> child.price_id end)
-  #     target_price_ids = Enum.map(price.children, fn(child) -> child.id end)
-
-  #     gchild_source_ids = [gchild1.source_id, gchild2.source_id]
-  #     target_source_ids = Enum.map(product.items, fn(item) -> item.source_id end)
-
-  #     assert length(children) == 2
-  #     assert child_product_ids -- target_product_ids == []
-  #     assert child_price_ids -- target_price_ids == []
-  #     assert gchild_source_ids -- target_source_ids == []
-  #   end
-  # end
+    # TODO:
+    test "when oli is for product combo" do
+    end
+  end
 end

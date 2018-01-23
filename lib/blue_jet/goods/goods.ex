@@ -5,6 +5,20 @@ defmodule BlueJet.Goods do
   alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable
 
+  defmodule Data do
+    def get_goods("Stockable", id) do
+      Repo.get(Stockable, id)
+    end
+
+    def get_goods("Unlockable", id) do
+      Repo.get(Unlockable, id)
+    end
+
+    def get_goods("Depositable", id) do
+      Repo.get(Depositable, id)
+    end
+  end
+
   defmodule Shortcut do
     alias BlueJet.Goods
     import BlueJet.Identity.Shortcut

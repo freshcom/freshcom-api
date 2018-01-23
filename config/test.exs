@@ -25,9 +25,19 @@ config :blue_jet, BlueJet.GlobalMailer,
 config :blue_jet, BlueJet.AccountMailer,
   adapter: Bamboo.TestAdapter
 
+config :blue_jet, :goods, %{
+  identity_data: BlueJet.Goods.IdentityDataMock
+}
+
+config :blue_jet, :catalogue, %{
+  identity_data: BlueJet.Catalogue.IdentityDataMock,
+  goods_data: BlueJet.Catalogue.GoodsDataMock
+}
+
 config :blue_jet, :storefront, %{
   balance_data: BlueJet.Storefront.BalanceDataMock,
   distribution_data: BlueJet.Storefront.DistributionDataMock,
   catalogue_data: BlueJet.Storefront.CatalogueDataMock,
-  identity_data: BlueJet.Storefront.IdentityDataMock
+  identity_data: BlueJet.Storefront.IdentityDataMock,
+  goods_data: BlueJet.Storefront.GoodsDataMock
 }
