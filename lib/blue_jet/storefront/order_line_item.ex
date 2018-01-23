@@ -585,7 +585,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the processed order line item.
   """
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Unlockable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
+  def process(line_item = %{ source_id: nil }) do
+    {:ok, line_item}
+  end
+
+  def process(line_item = %{ source_id: source_id, source_type: "Unlockable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     %Unlock{ account_id: line_item.account_id }
     |> change(%{
         unlockable_id: source_id,
@@ -594,9 +598,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
         source_type: "OrderLineItem"
        })
     |> Repo.insert!()
+
+    {:ok, line_item}
   end
 
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "Depositable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
+  def process(line_item = %{ source_id: source_id, source_type: "Depositable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     depositable = GoodsData.get_depositable(source_id)
 
     if depositable.target_type == "PointAccount" do
@@ -610,20 +616,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
         source_id: line_item.id,
         source_type: "OrderLineItem"
       })
-    else
-      line_item
     end
+
+    {:ok, line_item}
   end
 
-  def process(line_item = %__MODULE__{ source_id: source_id, source_type: "PointTransaction" }, _, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) when not is_nil(source_id) do
-    account = get_account(line_item)
-    {:ok, %{ data: _ }} = Crm.do_update_point_transaction(%AccessRequest{
-      account: account,
-      params: %{ "id" => source_id },
-      fields: %{
-        "status" => "committed"
-      }
-    })
+  def process(line_item = %{ source_id: source_id, source_type: "PointTransaction" }, _, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    CrmData.update_point_transaction(source_id, %{ status: "committed" })
+    {:ok, line_item}
   end
 
   def process(line_item, _, _) do

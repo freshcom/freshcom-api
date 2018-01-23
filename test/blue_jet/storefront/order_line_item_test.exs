@@ -355,6 +355,7 @@ defmodule BlueJet.OrderLineItemTest do
 
       OrderLineItem.balance(oli)
 
+      verify!()
       child = Repo.get_by(OrderLineItem, parent_id: oli.id)
       assert child.is_leaf == true
       assert child.name == stockable.name
@@ -404,39 +405,45 @@ defmodule BlueJet.OrderLineItemTest do
     end
 
     test "when source is an depositable" do
-      account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: account.id,
+      depositable = %Depositable{
+        id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
         amount: 5000,
         target_type: "PointAccount"
-      })
+      }
       GoodsDataMock
       |> expect(:get_depositable, fn(_) -> depositable end)
 
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = %PointAccount{
-        customer_id: customer.id
-      }
+      point_account = %PointAccount{}
       point_transaction = %PointTransaction{}
       CrmDataMock
       |> expect(:get_point_account, fn(_) -> point_account end)
       |> expect(:create_point_transaction, fn(_) -> point_transaction end)
 
-      order = Repo.insert!(%Order{
-        account_id: account.id,
-        customer_id: customer.id
-      })
+      order = %Order{}
       order_changeset = change(order, %{ status: "opened" })
 
       OrderLineItem.process(%OrderLineItem{
-        account_id: account.id,
         source_id: depositable.id,
         source_type: "Depositable"
       }, order, order_changeset)
+
+      verify!()
+    end
+
+    test "when source is a point transaction" do
+      CrmDataMock
+      |> expect(:update_point_transaction, fn(_, _) -> %PointTransaction{} end)
+
+      order = %Order{}
+      order_changeset = change(order, %{ status: "opened" })
+
+      OrderLineItem.process(%OrderLineItem{
+        source_id: Ecto.UUID.generate(),
+        source_type: "PointTransaction"
+      }, order, order_changeset)
+
+      verify!()
     end
   end
 end
