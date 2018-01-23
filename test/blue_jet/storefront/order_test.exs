@@ -101,6 +101,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,
@@ -171,6 +172,7 @@ defmodule BlueJet.OrderTest do
       root1 = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 300,
         tax_one_cents: 20,
@@ -184,6 +186,7 @@ defmodule BlueJet.OrderTest do
         account_id: account.id,
         order_id: order.id,
         parent_id: root1.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 400,
         grand_total_cents: 400,
@@ -193,6 +196,7 @@ defmodule BlueJet.OrderTest do
       root2 = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         tax_one_cents: 50,
@@ -206,6 +210,7 @@ defmodule BlueJet.OrderTest do
         account_id: account.id,
         order_id: order.id,
         parent_id: root2.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 600,
         grand_total_cents: 600,
@@ -389,6 +394,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,
@@ -409,6 +415,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "fulfilled",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -419,6 +426,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,
@@ -439,6 +447,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "fulfilled",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -449,6 +458,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "fulfilled",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -470,6 +480,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "returned",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -480,6 +491,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,
@@ -500,6 +512,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "returned",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -510,6 +523,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         fulfillment_status: "returned",
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -533,6 +547,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,
@@ -542,6 +557,7 @@ defmodule BlueJet.OrderTest do
       Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
         grand_total_cents: 500,

@@ -21,6 +21,7 @@ defmodule BlueJet.OrderLineItemTest do
       oli = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         sub_total_cents: 500,
         grand_total_cents: 500,
         authorization_total_cents: 500,
@@ -40,6 +41,7 @@ defmodule BlueJet.OrderLineItemTest do
       parent_oli = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         sub_total_cents: 500,
         grand_total_cents: 500,
         authorization_total_cents: 500,
@@ -50,6 +52,7 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id,
         order_id: order.id,
         parent_id: parent_oli.id,
+        name: Faker.String.base64(5),
         sub_total_cents: 500,
         grand_total_cents: 500,
         authorization_total_cents: 500,
@@ -342,6 +345,7 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id,
         product_id: product.id,
         order_id: order.id,
+        name: Faker.String.base64(5),
         is_leaf: false,
         auto_fulfill: false,
         charge_quantity: Decimal.new(2),
