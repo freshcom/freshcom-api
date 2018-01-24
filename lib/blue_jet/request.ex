@@ -16,6 +16,8 @@ defmodule BlueJet.AccessRequest do
             preloads: [],
             locale: nil
 
+  @type t :: map
+
   def transform_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
     filter = Map.put(request.filter, :status, "active")
     counts = Map.put(request.counts, :all, %{ status: "active" })

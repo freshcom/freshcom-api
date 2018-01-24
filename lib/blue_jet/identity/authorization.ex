@@ -564,6 +564,14 @@ defmodule BlueJet.Identity.Authorization do
     ]
   }
 
+  def authorize_request(request = %{ vas: vas }, endpoint) do
+    with {:ok, %{ role: role, account: account }} <- authorize(vas, endpoint) do
+      {:ok, %{ request | role: role, account: account }}
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
   def authorize(vas, endpoint) when map_size(vas) == 0 do
     case authorize("anonymous", endpoint) do
       {:ok, role} -> {:ok, %{ role: role, account: nil }}

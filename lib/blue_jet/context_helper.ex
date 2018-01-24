@@ -1,10 +1,10 @@
 defmodule BlueJet.ContextHelpers do
   import Ecto.Query
 
-  alias BlueJet.Identity
+  alias BlueJet.Authorization
 
   def preprocess_request(request = %{ locale: locale }, endpoint) do
-    case Identity.authorize_request(request, endpoint) do
+    case Authorization.authorize_request(request, endpoint) do
       {:ok, request = %{ account: nil }} ->
         {:ok, request}
 

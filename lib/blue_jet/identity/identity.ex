@@ -172,6 +172,7 @@ defmodule BlueJet.Identity do
     end)
   end
 
+  #### TODO: TOBE REMOVED
   def authorize(vas = %{}, endpoint) do
     Authorization.authorize(vas, endpoint)
   end
@@ -183,6 +184,7 @@ defmodule BlueJet.Identity do
       {:error, _} -> {:error, :access_denied}
     end
   end
+  #####
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do

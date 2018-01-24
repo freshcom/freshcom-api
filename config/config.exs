@@ -69,8 +69,10 @@ config :ex_aws, region: System.get_env("AWS_REGION")
 
 config :blue_jet, :s3, prefix: "uploads"
 
+config :blue_jet, :authorization, BlueJet.Identity.Authorization
+
 config :blue_jet, :identity, %{
-  listeners: [BlueJet.Balance, BlueJet.Notification]
+  listeners: [BlueJet.Balance.EventHandler, BlueJet.Notification]
 }
 
 config :blue_jet, :goods, %{
@@ -79,6 +81,7 @@ config :blue_jet, :goods, %{
 
 config :blue_jet, :balance, %{
   stripe_client: BlueJet.Stripe.Client,
+  request_authorizer: BlueJet.Identity,
   identity_data: BlueJet.Identity.Data,
   listeners: [BlueJet.Storefront, BlueJet.Crm]
 }

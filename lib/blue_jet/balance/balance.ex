@@ -1,13 +1,9 @@
 defmodule BlueJet.Balance do
   use BlueJet, :context
+  use BlueJet.EventEmitter, namespace: :balance
 
-  alias Ecto.Changeset
-  alias Ecto.Multi
-
-  alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.Refund
-  alias BlueJet.Balance.Card
-  alias BlueJet.Balance.BalanceSettings
+  alias Ecto.{Changeset, Multi}
+  alias BlueJet.Balance.{Payment, Refund, Card, BalanceSettings}
 
   defmodule Data do
     def list_payment_for_target(target_type, target_id) do
@@ -17,30 +13,21 @@ defmodule BlueJet.Balance do
     end
   end
 
-  def run_event_handler(name, data) do
-    listeners = Map.get(Application.get_env(:blue_jet, :balance, %{}), :listeners, [])
+  defmodule EventHandler do
+    @behaviour BlueJet.EventHandler
 
-    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
-      with {:ok, result} <- listener.handle_event(name, data) do
-        {:ok, acc_result} = acc
-        {:cont, {:ok, acc_result ++ [{listener, result}]}}
-      else
-        {:error, errors} -> {:halt, {:error, errors}}
-        other -> {:halt, other}
-      end
-    end)
+    def handle_event("identity.account.created", %{ account: account, test_account: test_account }) do
+      changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: account.id })
+      balance_settings = Repo.insert!(changeset)
+
+      changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: test_account.id })
+      Repo.insert!(changeset)
+
+      {:ok, balance_settings}
+    end
+
+    def handle_event(_, _), do: {:ok, nil}
   end
-
-  def handle_event("identity.account.created", %{ account: account, test_account: test_account }) do
-    changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: account.id })
-    balance_settings = Repo.insert!(changeset)
-
-    changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: test_account.id })
-    Repo.insert!(changeset)
-
-    {:ok, balance_settings}
-  end
-  def handle_event(_, _), do: {:ok, nil}
 
   def update_settings(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_settings") do
@@ -301,7 +288,7 @@ defmodule BlueJet.Balance do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          run_event_handler("balance.payment.created", %{ payment: payment })
+          emit_event("balance.payment.created", %{ payment: payment })
          end)
 
     case Repo.transaction(statements) do
@@ -320,7 +307,7 @@ defmodule BlueJet.Balance do
 
   # Allow other services to change the fields of payment
   defp run_payment_before_create(fields, owner, target) do
-    with {:ok, results} <- run_event_handler("balance.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
+    with {:ok, results} <- emit_event("balance.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
       values = Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
         if fields do
@@ -379,7 +366,7 @@ defmodule BlueJet.Balance do
             Payment.process(payment, changeset)
            end)
         |> Multi.run(:after_update, fn(%{ processed_payment: payment}) ->
-            run_event_handler("balance.payment.updated", %{ payment: payment })
+            emit_event("balance.payment.updated", %{ payment: payment })
            end)
 
       {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
@@ -486,7 +473,7 @@ defmodule BlueJet.Balance do
           {:ok, payment}
          end)
       |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-          run_event_handler("balance.refund.created", %{ refund: refund })
+          emit_event("balance.refund.created", %{ refund: refund })
           {:ok, refund}
          end)
 
