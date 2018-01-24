@@ -1,5 +1,8 @@
 Mox.defmock(BlueJet.Goods.IdentityDataMock, for: BlueJet.Goods.IdentityData)
 
+Mox.defmock(BlueJet.Balance.StripeClientMock, for: BlueJet.Balance.StripeClient)
+Mox.defmock(BlueJet.Balance.IdentityDataMock, for: BlueJet.Balance.IdentityData)
+
 Mox.defmock(BlueJet.Catalogue.GoodsDataMock, for: BlueJet.Catalogue.GoodsData)
 Mox.defmock(BlueJet.Catalogue.IdentityDataMock, for: BlueJet.Catalogue.IdentityData)
 

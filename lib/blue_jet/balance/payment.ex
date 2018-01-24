@@ -7,20 +7,14 @@ defmodule BlueJet.Balance.Payment do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias Decimal, as: D
   alias Ecto.Changeset
-
-  alias BlueJet.Repo
-  alias BlueJet.Translation
 
   alias BlueJet.Balance.Payment
   alias BlueJet.Balance.Refund
   alias BlueJet.Balance.Card
   alias BlueJet.Balance.BalanceSettings
-
-  @type t :: Ecto.Schema.t
+  alias BlueJet.Balance.{StripeClient, IdentityData}
 
   schema "payments" do
     field :account_id, Ecto.UUID
@@ -71,44 +65,46 @@ defmodule BlueJet.Balance.Payment do
     field :source, :string, virtual: true
     field :save_source, :boolean, virtual: true
     field :capture, :boolean, virtual: true, default: true
+    field :capture_amount_cents, :integer, virtual: true
 
     timestamps()
 
     has_many :refunds, Refund
   end
 
-  def system_fields do
-    [
-      :id,
-      :refunded_amount_cents,
-      :transaction_fee_cents,
-      :gross_amount_cents,
-      :net_amount_cents,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :refunded_amount_cents,
+    :transaction_fee_cents,
+    :gross_amount_cents,
+    :net_amount_cents,
+    :processor_fee_cents,
+    :refunded_processor_fee_cents,
+    :freshcom_fee_cents,
+    :refunded_freshcom_fee_cents,
+    :stripe_charge_id,
+    :stripe_transfer_id,
+    :stripe_customer_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    (Payment.__schema__(:fields) -- system_fields())
-    ++ [:source, :save_source]
+    (Payment.__schema__(:fields) -- @system_fields)
+    ++ [:source, :save_source, :capture]
   end
 
   def translatable_fields do
     Payment.__trans__(:fields)
   end
 
-  def castable_fields(%Payment{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%Payment{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
-  end
-
-  def required_fields(changeset) do
+  defp required_fields(changeset) do
     status = get_field(changeset, :status)
     gateway = get_field(changeset, :gateway)
-    common = [:account_id, :gateway, :amount_cents]
+    common = [:gateway, :amount_cents]
 
     cond do
       gateway == "online" -> common ++ [:processor]
@@ -118,54 +114,62 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_paid_amount_cents()
-    |> foreign_key_constraint(:account_id)
-  end
-
-  defp validate_paid_amount_cents(changeset = %Changeset{ data: %{ status: "authorized", gateway: "online", paid_amount_cents: nil }, changes: %{ paid_amount_cents: paid_amount_cents } }) do
-    authorized_amount_cents = get_field(changeset, :authorized_amount_cents)
-    case paid_amount_cents > authorized_amount_cents do
-      true -> Changeset.add_error(changeset, :paid_amount_cents, "Paid Amount Cents cannot be greater than Authorized Amount Cents", [validation: "paid_amount_cents_must_be_smaller_or_equal_to_authorized_amount_cents", full_error_message: true])
+  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "online" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
+    authorized_amount_cents = get_field(changeset, :amount_cents)
+    case capture_amount_cents > authorized_amount_cents do
+      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", [validation: "lte_authorized_amount", full_error_message: true])
       _ -> changeset
     end
   end
-  defp validate_paid_amount_cents(changeset), do: changeset
+  defp validate_capture_amount_cents(changeset), do: changeset
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
-    |> validate()
-    |> put_gross_amount_cents()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_capture_amount_cents()
   end
 
-  def put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+  defp put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
     refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
     put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
   end
-  def put_gross_amount_cents(changeset), do: changeset
 
-  def put_net_amount_cents(changeset = %{ changes: %{ amount_cents: _ } }) do
+  defp put_gross_amount_cents(changeset), do: changeset
+
+  defp put_net_amount_cents(changeset = %{ changes: %{ amount_cents: _ } }) do
     gross_amount_cents = get_field(changeset, :gross_amount_cents)
     processor_fee_cents = get_field(changeset, :processor_fee_cents)
     refunded_processor_fee_cents = get_field(changeset, :refunded_processor_fee_cents)
-    refreshcom_fee_cents = get_field(changeset, :refreshcom_fee_cents)
-    refunded_refreshcom_fee_cents = get_field(changeset, :refunded_refreshcom_fee_cents)
-    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - refreshcom_fee_cents + refunded_refreshcom_fee_cents
+    freshcom_fee_cents = get_field(changeset, :freshcom_fee_cents)
+    refunded_freshcom_fee_cents = get_field(changeset, :refunded_freshcom_fee_cents)
+    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - freshcom_fee_cents + refunded_freshcom_fee_cents
 
     put_change(changeset, :net_amount_cents, net_amount_cents)
   end
-  def put_net_amount_cents(changeset), do: changeset
+
+  defp put_net_amount_cents(changeset), do: changeset
+
+  def changeset(payment, params, locale \\ nil, default_locale \\ nil) do
+    payment = %{ payment | account: get_account(payment) }
+    default_locale = default_locale || payment.account.default_locale
+    locale = locale || default_locale
+
+    payment
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_gross_amount_cents()
+    |> put_net_amount_cents()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
 
   ######
   # External Resources
   #####
+
+  def get_account(payment) do
+    payment.account || IdentityData.get_account(payment)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -177,23 +181,19 @@ defmodule BlueJet.Balance.Payment do
   # Business Logic
   #####
 
-  def destination_amount_cents(payment, balance_settings) do
-    payment.amount_cents - processor_fee_cents(payment, balance_settings) - freshcom_fee_cents(payment, balance_settings)
+  def get_destination_amount_cents(payment, balance_settings) do
+    payment.amount_cents - get_processor_fee_cents(payment, balance_settings) - get_freshcom_fee_cents(payment, balance_settings)
   end
 
-  def processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, balance_settings) do
+  def get_processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, balance_settings) do
     variable_rate = balance_settings.stripe_variable_fee_percentage |> D.div(D.new(100))
     variable_fee_cents = D.new(amount_cents) |> D.mult(variable_rate) |> D.round() |> D.to_integer
     variable_fee_cents + balance_settings.stripe_fixed_fee_cents
   end
 
-  def freshcom_fee_cents(%{ amount_cents: amount_cents }, balance_settings) do
+  def get_freshcom_fee_cents(%{ amount_cents: amount_cents }, balance_settings) do
     rate = balance_settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
     D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
-  end
-
-  def net_amount_cents(payment) do
-    payment.amount_cents - payment.refunded_amount_cents
   end
 
   @doc """
@@ -226,7 +226,7 @@ defmodule BlueJet.Balance.Payment do
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
-      changeset = Changeset.change(payment, status: "authorized")
+      changeset = change(payment, status: "authorized")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -237,7 +237,7 @@ defmodule BlueJet.Balance.Payment do
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
-      changeset = Changeset.change(payment, status: "paid")
+      changeset = change(payment, status: "paid")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -245,10 +245,10 @@ defmodule BlueJet.Balance.Payment do
   end
   def process(
     payment = %{ gateway: "online" },
-    %{ data: %{ status: "authorized", capture_amount: nil }, changes: %{ capture_amount: _ } }
+    %{ data: %{ status: "authorized", capture_amount_cents: nil }, changes: %{ capture_amount_cents: _ } }
   ) do
     with {:ok, payment} <- capture(payment) do
-      changeset = Changeset.change(payment, status: "paid")
+      changeset = change(payment, status: "paid")
       {:ok, Repo.update!(changeset)}
     else
       other -> other
@@ -268,6 +268,7 @@ defmodule BlueJet.Balance.Payment do
   @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
   def charge(payment = %Payment{ processor: "stripe" }) do
     payment = %{ payment | account: get_account(payment) }
+
     balance_settings = BalanceSettings.for_account(payment.account)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
@@ -311,7 +312,7 @@ defmodule BlueJet.Balance.Payment do
 
     payment =
       payment
-      |> Changeset.change(
+      |> change(
           stripe_charge_id: stripe_charge["id"],
           stripe_transfer_id: stripe_charge["transfer"]["id"],
           status: "paid",
@@ -325,10 +326,11 @@ defmodule BlueJet.Balance.Payment do
 
     {:ok, payment}
   end
+
   defp sync_with_stripe_charge(payment, %{ "captured" => false, "id" => stripe_charge_id, "amount" => authorized_amount_cents }) do
     payment =
       payment
-      |> Changeset.change(stripe_charge_id: stripe_charge_id, status: "authorized", authorized_amount_cents: authorized_amount_cents)
+      |> change(stripe_charge_id: stripe_charge_id, status: "authorized", authorized_amount_cents: authorized_amount_cents)
       |> Repo.update!()
 
     {:ok, payment}
@@ -340,7 +342,7 @@ defmodule BlueJet.Balance.Payment do
     source,
     balance_settings
   ) do
-    destination_amount_cents = destination_amount_cents(payment, balance_settings)
+    destination_amount_cents = get_destination_amount_cents(payment, balance_settings)
 
     stripe_request = %{
       amount: payment.amount_cents,
@@ -365,12 +367,13 @@ defmodule BlueJet.Balance.Payment do
   @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
     account = get_account(payment)
-    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount }, mode: account.mode)
+    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount_cents }, mode: account.mode)
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
+
   defp format_stripe_errors(stripe_errors), do: stripe_errors
 
   defmodule Query do

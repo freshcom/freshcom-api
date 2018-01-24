@@ -5,7 +5,7 @@ defmodule BlueJet.Storefront.Unlock do
 
   alias BlueJet.Translation
   alias BlueJet.Storefront.Unlock
-  alias BlueJet.Storefront.{GoodsData, CrmData}
+  alias BlueJet.Storefront.{GoodsData, CrmData, IdentityData}
 
   schema "unlocks" do
     field :account_id, Ecto.UUID

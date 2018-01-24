@@ -1,19 +1,21 @@
-defmodule StripeClient do
+defmodule BlueJet.Stripe.Client do
+  alias BlueJet.Stripe.HttpClient
+
   def post(path, body, options \\ []) do
     key = stripe_secret_key(options)
-    {:ok, response} = StripeHttpClient.post(path, body, [{"Authorization", "Bearer #{key}"}])
+    {:ok, response} = HttpClient.post(path, body, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 
   def delete(path, options \\ []) do
     key = stripe_secret_key(options)
-    {:ok, response} = StripeHttpClient.delete(path, [{"Authorization", "Bearer #{key}"}])
+    {:ok, response} = HttpClient.delete(path, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 
   def get(path, options \\ []) do
     key = stripe_secret_key(options)
-    {:ok, response} = StripeHttpClient.get(path, [{"Authorization", "Bearer #{key}"}])
+    {:ok, response} = HttpClient.get(path, [{"Authorization", "Bearer #{key}"}])
     unwrap_response(response)
   end
 

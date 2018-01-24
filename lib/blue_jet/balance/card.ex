@@ -3,16 +3,14 @@ defmodule BlueJet.Balance.Card do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias Ecto.Changeset
-  alias BlueJet.Translation
   alias BlueJet.Balance.Card
-
-  @type t :: Ecto.Schema.t
+  alias BlueJet.Balance.{StripeClient, IdentityData}
 
   schema "cards" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string
     field :last_four_digit, :string
     field :exp_month, :integer
@@ -32,32 +30,31 @@ defmodule BlueJet.Balance.Card do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :account, :map, virtual: true
-
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :brand,
+    :cardholder_name,
+    :stripe_card_id,
+    :stripe_customer_id,
+    :fingerprint,
+    :last_four_digit,
+    :country,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Card.__schema__(:fields) -- system_fields()
+    Card.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
     Card.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
   end
 
   def required_fields() do
@@ -67,27 +64,29 @@ defmodule BlueJet.Balance.Card do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> foreign_key_constraint(:account_id)
   end
 
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def changeset(card, params, locale \\ nil, default_locale \\ nil) do
+    account = card.account || IdentityData.get_account(card)
+    card = %{ card | account: account }
+    default_locale = default_locale || card.account.default_locale
+    locale = locale || default_locale
+
+    card
+    |> cast(params, writable_fields())
     |> validate()
     |> put_primary()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def query() do
-    from(c in Card, order_by: [desc: c.inserted_at, desc: c.updated_at])
-  end
-
   def put_primary(changeset = %{ changes: %{ primary: true } }) do
     changeset
   end
+
   def put_primary(changeset = %{ changes: %{ primary: false } }) do
-    Changeset.delete_change(changeset, :primary)
+    delete_change(changeset, :primary)
   end
+
   def put_primary(changeset) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
@@ -138,13 +137,13 @@ defmodule BlueJet.Balance.Card do
   """
   @spec keep_stripe_token_as_card(Map.t, Map.t) :: {:ok, String.t} | {:error, map}
   def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status, account_id: account_id }) when not is_nil(stripe_customer_id) do
-    account = get_account(%{ account_id: account_id, account: nil })
+    account = IdentityData.get_account(%{ account_id: account_id, account: nil })
 
     Repo.transaction(fn ->
       with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
            nil <- Repo.get_by(Card, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
            # Create the new card
-           card <- Repo.insert!(%Card{ status: status, source: token, stripe_customer_id: stripe_customer_id, account_id: fields[:account_id], owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
+           card <- Repo.insert!(%Card{ account_id: fields[:account_id], account: account, status: status, source: token, stripe_customer_id: stripe_customer_id, owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
            {:ok, card} <- process(card)
       do
         card.stripe_card_id
@@ -155,7 +154,7 @@ defmodule BlueJet.Balance.Card do
         # If there is existing card with different status then we update the card
         card = %Card{ stripe_card_id: stripe_card_id } ->
           card
-          |> changeset(%{ status: status })
+          |> change(%{ status: status, account: account })
           |> Repo.update!()
           |> update_stripe_card(%{ metadata: %{ fc_status: status, fc_account_id: card.account_id } })
 
@@ -170,7 +169,8 @@ defmodule BlueJet.Balance.Card do
 
   @spec process(Card.t, Map.t) :: {:ok, Card.t} | {:error, map}
   def process(card = %Card{ source: source }) when not is_nil(source) do
-    card = %{ card | account: get_account(card) }
+    account = card.account || IdentityData.get_account(card)
+    card = %{ card | account: account }
     with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
         last_four_digit: stripe_card["last4"],
@@ -185,7 +185,7 @@ defmodule BlueJet.Balance.Card do
 
       card =
         card
-        |> changeset(changes)
+        |> change(changes)
         |> Repo.update!()
 
       {:ok, card}
@@ -193,14 +193,15 @@ defmodule BlueJet.Balance.Card do
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
+
   @spec process(Card.t, Changeset.t) :: {:ok, Card.t} | {:error, map}
   def process(card, changeset = %Changeset{}) do
-    card = %{ card | account: get_account(card) }
-    if Changeset.get_change(changeset, :exp_month) || Changeset.get_change(changeset, :exp_year) do
+    card = %{ card | account: IdentityData.get_account(card) }
+    if get_change(changeset, :exp_month) || get_change(changeset, :exp_year) do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
 
-    if Changeset.get_change(changeset, :primary) do
+    if get_change(changeset, :primary) do
       Card
       |> Card.Query.for_account(card.account_id)
       |> Card.Query.with_owner(card.owner_type, card.owner_id)
@@ -210,7 +211,7 @@ defmodule BlueJet.Balance.Card do
 
     {:ok, card}
   end
-  def process(card = %Card{ primary: true }, :delete) do
+  def process(card = %{ primary: true }, :delete) do
     last_inserted_card =
       Card.Query.default()
       |> Card.Query.for_account(card.account_id)
@@ -228,28 +229,28 @@ defmodule BlueJet.Balance.Card do
 
     {:ok, card}
   end
-  def process(card = %Card{ primary: false }, :delete) do
-    card = %{ card | account: get_account(card) }
+  def process(card = %{ primary: false }, :delete) do
+    card = %{ card | account: IdentityData.get_account(card) }
     delete_stripe_card(card)
 
     {:ok, card}
   end
   def process(card, _), do: {:ok, card}
 
-  defp update_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
-    account = get_account(card)
+  defp update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
+    account = card.account || IdentityData.get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
   end
 
   @spec create_stripe_card(Cart.t, Map.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_card(card = %Card{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
-    account = get_account(card)
+  defp create_stripe_card(card = %{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
+    account = card.account || IdentityData.get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata }, mode: account.mode)
   end
 
   @spec delete_stripe_card(Cart.t) :: {:ok, map} | {:error, map}
-  defp delete_stripe_card(card = %Card{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
-    account = get_account(card)
+  defp delete_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
+    account = card.account || IdentityData.get_account(card)
     StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", mode: account.mode)
   end
 

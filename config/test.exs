@@ -29,6 +29,11 @@ config :blue_jet, :goods, %{
   identity_data: BlueJet.Goods.IdentityDataMock
 }
 
+config :blue_jet, :balance, %{
+  stripe_client: BlueJet.Balance.StripeClientMock,
+  identity_data: BlueJet.Balance.IdentityDataMock
+}
+
 config :blue_jet, :catalogue, %{
   identity_data: BlueJet.Catalogue.IdentityDataMock,
   goods_data: BlueJet.Catalogue.GoodsDataMock

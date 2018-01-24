@@ -121,7 +121,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   """
   def get_source(product)
 
-  def get_source(oli = %{ source_id: source_id, source_type: "PointTransaction" }) do
+  def get_source(%{ source_id: source_id, source_type: "PointTransaction" }) do
     CrmData.get_point_transaction(source_id)
   end
 

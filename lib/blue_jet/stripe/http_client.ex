@@ -1,4 +1,4 @@
-defmodule StripeHttpClient do
+defmodule BlueJet.Stripe.HttpClient do
   use HTTPoison.Base
 
   defp process_url(url) do

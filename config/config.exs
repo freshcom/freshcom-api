@@ -64,10 +64,23 @@ end
 config :ja_serializer,
   key_format: {:custom, JaKeyFormatter, :camelize, :underscore}
 
+config :ex_aws, region: System.get_env("AWS_REGION")
+
+
 config :blue_jet, :s3, prefix: "uploads"
+
+config :blue_jet, :identity, %{
+  listeners: [BlueJet.Balance, BlueJet.Notification]
+}
 
 config :blue_jet, :goods, %{
   identity_data: BlueJet.Identity.Data,
+}
+
+config :blue_jet, :balance, %{
+  stripe_client: BlueJet.Stripe.Client,
+  identity_data: BlueJet.Identity.Data,
+  listeners: [BlueJet.Storefront, BlueJet.Crm]
 }
 
 config :blue_jet, :catalogue, %{
@@ -84,19 +97,9 @@ config :blue_jet, :storefront, %{
   crm_data: BlueJet.Crm.Data
 }
 
-config :blue_jet, :balance, %{
-  listeners: [BlueJet.Storefront, BlueJet.Crm]
-}
-
-config :blue_jet, :identity, %{
-  listeners: [BlueJet.Balance, BlueJet.Notification]
-}
-
 config :blue_jet, :distribution, %{
   listeners: [BlueJet.Storefront]
 }
-
-config :ex_aws, region: System.get_env("AWS_REGION")
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")
 

@@ -9,7 +9,6 @@
     "lib/blue_jet/endpoint.ex",
 
     "lib/blue_jet_web",
-    "lib/blue_jet/balance",
     "lib/blue_jet/crm",
     "lib/blue_jet/data_trading",
     "lib/blue_jet/distribution",
@@ -17,7 +16,6 @@
     "lib/blue_jet/notification",
     "lib/blue_jet/oauth",
     "lib/blue_jet/registration",
-    "lib/blue_jet/storefront",
     "lib/blue_jet/stripe",
     "lib/blue_jet/context_helper.ex",
     "lib/blue_jet/custom_data.ex",

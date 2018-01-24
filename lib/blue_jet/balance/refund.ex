@@ -7,17 +7,12 @@ defmodule BlueJet.Balance.Refund do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias Decimal, as: D
   alias Ecto.Changeset
 
-  alias BlueJet.Translation
-
   alias BlueJet.Balance.Refund
   alias BlueJet.Balance.Payment
-
-  @type t :: Ecto.Schema.t
+  alias BlueJet.Balance.{StripeClient, IdentityData}
 
   schema "refunds" do
     field :account_id, Ecto.UUID
@@ -56,16 +51,21 @@ defmodule BlueJet.Balance.Refund do
     belongs_to :payment, Payment
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :processor_fee_cents,
+    :freshcom_fee_cents,
+    :stripe_refund_id,
+    :stripe_transfer_reversal_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Refund.__schema__(:fields) -- system_fields()
+    Refund.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
@@ -75,13 +75,14 @@ defmodule BlueJet.Balance.Refund do
   def castable_fields(%Refund{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
+
   def castable_fields(%Refund{ __meta__: %{ state: :loaded }}) do
     writable_fields() -- [:amount_cents]
   end
 
   def required_fields(changeset) do
     gateway = get_field(changeset, :gateway)
-    common = [:amount_cents, :payment_id, :account_id, :gateway]
+    common = [:amount_cents, :payment_id, :gateway]
 
     case gateway do
       "online" -> common ++ [:processor]
@@ -90,40 +91,51 @@ defmodule BlueJet.Balance.Refund do
     end
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_number(:amount_cents, greater_than: 0)
-    |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope(:payment)
-    |> validate_amount_cents()
-  end
-
-  defp validate_amount_cents(changeset) do
+  defp validate_amount_cents(changeset = %{ valid?: true }) do
     amount_cents = get_field(changeset, :amount_cents)
     account_id = get_field(changeset, :account_id)
     payment_id = get_field(changeset, :payment_id)
     payment = Repo.get_by!(Payment, account_id: account_id, id: payment_id)
 
     case amount_cents > payment.gross_amount_cents do
-      true -> Changeset.add_error(changeset, :amount_cents, "Amount Cents cannot be greater than the Payment's Gross Amount Cents", [validation: "amount_cents_must_be_smaller_or_equal_to_payment_gross_amount_cents", full_error_message: true])
+      true -> add_error(changeset, :amount_cents, "Amount cannot be greater than the payment's gross amount", [validation: "lte_payment_gross_amount", full_error_message: true])
       _ -> changeset
     end
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
+  defp validate_amount_cents(changeset), do: changeset
+
+  # TODO:
+  defp validate_payment_id(changeset) do
+    changeset
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_number(:amount_cents, greater_than: 0)
+    |> validate_amount_cents()
+    |> validate_payment_id()
+  end
+
+  def changeset(refund, params, locale \\ nil, default_locale \\ nil) do
+    refund = %{ refund | account: get_account(refund) }
+    default_locale = default_locale || refund.account.default_locale
+    locale = locale || default_locale
+
+    refund
+    |> cast(params, castable_fields(refund))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  ######
-  # External Resources
-  #####
+  #
+  # MARK: External Resources
+  #
+  def get_account(refund) do
+    refund.account || IdentityData.get_account(refund)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -151,7 +163,7 @@ defmodule BlueJet.Balance.Refund do
 
     refund =
       refund
-      |> Changeset.change(
+      |> change(
           stripe_refund_id: stripe_refund["id"],
           stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
           processor_fee_cents: processor_fee_cents,
