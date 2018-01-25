@@ -1,4 +1,4 @@
-defmodule BlueJet.BalanceTest do
+defmodule BlueJet.CatalogueTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
