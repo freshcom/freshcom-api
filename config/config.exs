@@ -99,6 +99,12 @@ config :blue_jet, :catalogue, %{
   file_storage_service: BlueJet.FileStorage.Service
 }
 
+config :blue_jet, :data_trading, %{
+  goods_service: BlueJet.Goods.Service,
+  crm_service: BlueJet.Crm.Service,
+  catalogue_service: BlueJet.Catalogue.Service
+}
+
 config :blue_jet, :storefront, %{
   balance_service: BlueJet.Balance.Service,
   distribution_service: BlueJet.Distribution.Service,

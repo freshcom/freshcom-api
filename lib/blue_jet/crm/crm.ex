@@ -25,6 +25,113 @@ defmodule BlueJet.Crm do
     def get_customer(id) do
       Repo.get(Customer, id)
     end
+
+    def get_customer(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Customer, id: id, account_id: account_id)
+    end
+
+    def get_customer_by_code(code, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Customer, code: code, account_id: account_id)
+    end
+
+    def create_customer(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      statements =
+        Multi.new()
+        |> Multi.run(:user, fn(_) ->
+            if fields["status"] == "registered" do
+              IdentityService.create_user(fields)
+            else
+              {:ok, nil}
+            end
+           end)
+        |> Multi.run(:changeset, fn(%{ user: user }) ->
+            customer = %Customer{ account_id: account_id, account: opts[:account] }
+            customer = if user do
+              %{ customer | user_id: user.id }
+            else
+              customer
+            end
+
+            changeset = Customer.changeset(customer, fields)
+            {:ok, changeset}
+           end)
+        |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
+            Repo.insert(changeset)
+           end)
+        |> Multi.run(:point_account, fn(%{ customer: customer }) ->
+            Repo.insert(%PointAccount{ account_id: customer.account.id, customer_id: customer.id })
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ customer: customer }} ->
+          {:ok, customer}
+
+        {:error, _, changeset, _} ->
+          {:error, changeset}
+
+        other -> other
+      end
+    end
+
+    def update_customer(customer = %{}, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      statements =
+        Multi.new()
+        |> Multi.run(:user, fn(_) ->
+            cond do
+              customer.status == "guest" && fields["status"] == "registered" ->
+                fields = Map.merge(fields, %{ "account_id" => account_id })
+                IdentityService.create_user(fields)
+
+              true ->
+                {:ok, nil}
+            end
+           end)
+        |> Multi.run(:changeset, fn(%{ user: user }) ->
+            fields = if user do
+              Map.merge(fields, %{ "user_id" => user.id, "account_id" => account_id })
+            else
+              fields
+            end
+
+            changeset =
+              customer
+              |> Map.put(:account, opts[:account])
+              |> Customer.changeset(fields, opts[:locale])
+
+            {:ok, changeset}
+           end)
+        |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
+            Repo.update(changeset)
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ customer: customer }} ->
+          {:ok, customer}
+
+        {:error, user, changeset, _} ->
+          {:error, changeset}
+
+        {:error, customer, changeset, _} ->
+          {:error, changeset}
+
+        other -> other
+      end
+    end
+
+    def update_customer(id, fields, opts) do
+      customer = Repo.get(Customer, id)
+
+      if customer do
+        update_customer(customer, fields, opts)
+      else
+        {:error, :not_found}
+      end
+    end
   end
 
   defmodule EventHandler do
@@ -118,48 +225,15 @@ defmodule BlueJet.Crm do
 
   def do_create_customer(request = %{ account: account }) do
     fields = Map.merge(request.fields, %{
-      "role" => "customer",
-      "account_id" => account.id
+      "role" => "customer"
     })
 
-    statements =
-      Multi.new()
-      |> Multi.run(:user, fn(_) ->
-          if fields["status"] == "registered" do
-            IdentityService.create_user(fields)
-          else
-            {:ok, nil}
-          end
-         end)
-      |> Multi.run(:changeset, fn(%{ user: user }) ->
-          customer = if user do
-            %Customer{ account_id: account.id, account: account, user_id: user.id }
-          else
-            %Customer{ account_id: account.id, account: account }
-          end
-
-          changeset = Customer.changeset(customer, fields, request.locale, account.default_locale)
-          {:ok, changeset}
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:point_account, fn(%{ customer: customer }) ->
-          changeset = PointAccount.changeset(%PointAccount{}, %{ customer_id: customer.id, account_id: customer.account_id })
-          Repo.insert(changeset)
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
+    case Service.create_customer(fields, %{ account: account }) do
+      {:ok, customer} ->
         customer_response(customer, request)
 
-      {:error, :user, response, _} ->
-        {:error, response}
-
-      {:error, :customer, changeset, _} ->
+      {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
-
-      other -> other
     end
   end
 
@@ -239,48 +313,15 @@ defmodule BlueJet.Crm do
       true -> Repo.get(customer_query, id)
     end
 
-    statements =
-      Multi.new()
-      |> Multi.run(:user, fn(_) ->
-          cond do
-            customer.status == "guest" && request.fields["status"] == "registered" ->
-              fields = Map.merge(request.fields, %{ "account_id" => account.id })
-              IdentityService.create_user(fields)
-
-            true ->
-              {:ok, nil}
-          end
-         end)
-      |> Multi.run(:changeset, fn(%{ user: user }) ->
-          fields = if user do
-            Map.merge(request.fields, %{ "user_id" => user.id, "account_id" => account.id })
-          else
-            request.fields
-          end
-
-          changeset =
-            customer
-            |> Map.put(:account, account)
-            |> Customer.changeset(fields, request.locale, account.default_locale)
-
-          {:ok, changeset}
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
-          Repo.update(changeset)
-         end)
-
     with %Customer{} <- customer,
-         {:ok, %{ customer: customer }} <- Repo.transaction(statements)
+         {:ok, customer} <- Service.update_customer(customer, request.fields, %{ account: account, locale: request.locale })
     do
       customer_response(customer, request)
     else
       nil ->
         {:error, :not_found}
 
-      {:error, :user, response, _} ->
-        {:error, response}
-
-      {:error, :customer, changeset, _} ->
+      {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
 
       other -> other

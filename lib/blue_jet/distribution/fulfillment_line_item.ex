@@ -1,7 +1,6 @@
 defmodule BlueJet.Distribution.FulfillmentLineItem do
   @moduledoc """
   """
-
   use BlueJet, :data
 
   use Trans, translates: [
@@ -12,7 +11,8 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Distribution.FulfillmentLineItem
+  alias BlueJet.Distribution.Fulfillment
+  alias BlueJet.Distribution.IdentityService
 
   schema "fulfillment_line_items" do
     field :account_id, Ecto.UUID
@@ -46,24 +46,19 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     belongs_to :fulfillment, Fulfillment
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    FulfillmentLineItem.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    FulfillmentLineItem.__trans__(:fields)
-  end
-
-  def castable_fields() do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
@@ -74,9 +69,13 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields())
+  def changeset(fli, params, locale \\ nil, default_locale \\ nil) do
+    fli = %{ fli | account: get_account(fli) }
+    default_locale = default_locale || fli.account.default_locale
+    locale = locale || default_locale
+
+    fli
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -84,6 +83,9 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   ####
   # External Resources
   ###
+  def get_account(fli) do
+    fli.account || IdentityService.get_account(fli)
+  end
 
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
@@ -94,6 +96,8 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Distribution.FulfillmentLineItem
 
     def default() do
       from fli in FulfillmentLineItem

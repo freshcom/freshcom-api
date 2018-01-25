@@ -25,6 +25,41 @@ defmodule BlueJet.Goods do
     def get_unlockable(id) do
       Repo.get(Unlockable, id)
     end
+
+    def get_unlockable(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Unlockable, id: id, account_id: account_id)
+    end
+
+    def get_unlockable_by_code(code, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Unlockable, code: code, account_id: account_id)
+    end
+
+    def create_unlockable(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %Unlockable{ account_id: account_id, account: opts[:account] }
+      |> Unlockable.changeset(fields)
+      |> Repo.insert()
+    end
+
+    def update_unlockable(id, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      unlockable =
+        Unlockable.Query.default()
+        |> Unlockable.Query.for_account(account_id)
+        |> Repo.get(id)
+
+      if unlockable do
+        unlockable
+        |> Map.put(:account, opts[:account])
+        |> Unlockable.changeset(fields, opts[:locale])
+        |> Repo.update()
+      else
+        {:error, :not_found}
+      end
+    end
   end
 
   ####
@@ -255,12 +290,10 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_unlockable(request = %{ account: account }) do
-    unlockable = %Unlockable{ account_id: account.id, account: account }
-    changeset = Unlockable.changeset(unlockable, request.fields, request.locale, account.default_locale)
+    case Service.create_unlockable(request.fields, %{ account_id: account.id, account: account, locale: request.locale }) do
+      {:ok, unlockable} ->
+        unlockable_response(unlockable, request)
 
-    with {:ok, unlockable} <- Repo.insert(changeset) do
-      unlockable_response(unlockable, request)
-    else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
@@ -305,22 +338,14 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_unlockable(request = %{ account: account, params: %{ "id" => id }}) do
-    unlockable =
-      Unlockable.Query.default()
-      |> Unlockable.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
+    case Service.update_unlockable(id, request.fields, %{ account: account, locale: request.locale }) do
+      {:ok, unlockable} ->
+        unlockable_response(unlockable, request)
 
-    with %Unlockable{} <- unlockable,
-         changeset <- Unlockable.changeset(unlockable, request.fields, request.locale, account.default_locale),
-        {:ok, unlockable} <- Repo.update(changeset)
-    do
-      unlockable_response(unlockable, request)
-    else
-      {:error, %{ errors: errors }} ->
+      {:error, %{ errors: errors}} ->
         {:error, %AccessResponse{ errors: errors }}
 
-      nil -> {:error, :not_found}
+      other -> other
     end
   end
 

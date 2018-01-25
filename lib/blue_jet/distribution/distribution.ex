@@ -1,28 +1,41 @@
 defmodule BlueJet.Distribution do
   use BlueJet, :context
+  use BlueJet.EventEmitter, namespace: :distribution
 
   alias Ecto.Multi
 
-  alias BlueJet.Distribution.Fulfillment
-  alias BlueJet.Distribution.FulfillmentLineItem
+  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
 
   defmodule Service do
-    def create_fulfillment(fields) do
-      fulfillment = %Fulfillment{
-        account_id: fields[:account_id]
-      }
+    use BlueJet.EventEmitter, namespace: :distribution
 
-      Fulfillment.changeset(fulfillment, fields)
-      |> Repo.insert!()
+    def create_fulfillment(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %Fulfillment{ account_id: account_id, account: opts[:account] }
+      |> Fulfillment.changeset(fields)
+      |> Repo.insert()
     end
 
-    def create_fulfillment_line_item(fields) do
-      fli = %FulfillmentLineItem{
-        account_id: fields[:account_id]
-      }
+    def create_fulfillment_line_item(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
 
-      FulfillmentLineItem.changeset(fli, fields)
-      |> Repo.insert!()
+      changeset =
+        %FulfillmentLineItem{ account_id: account_id, account: opts[:account] }
+        |> FulfillmentLineItem.changeset(fields)
+
+      statements =
+        Multi.new()
+        |> Multi.insert(:fulfillment_line_item, changeset)
+        |> Multi.run(:after_create, fn(%{ fulfillment_line_item: fli }) ->
+            emit_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli })
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ fulfillment_line_item: fli }} -> {:ok, fli}
+
+        {:error, _, changeset, _} -> {:error, changeset}
+      end
     end
 
     def list_fulfillment_line_item(%{ source_type: source_type, source_id: source_id }) do
@@ -30,20 +43,6 @@ defmodule BlueJet.Distribution do
       |> FulfillmentLineItem.Query.for_source(source_type, source_id)
       |> Repo.all()
     end
-  end
-
-  def run_event_handler(name, data) do
-    listeners = Map.get(Application.get_env(:blue_jet, :distribution, %{}), :listeners, [])
-
-    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
-      with {:ok, result} <- listener.handle_event(name, data) do
-        {:ok, acc_result} = acc
-        {:cont, {:ok, acc_result ++ [{listener, result}]}}
-      else
-        {:error, errors} -> {:halt, {:error, errors}}
-        other -> {:halt, other}
-      end
-    end)
   end
 
   def list_fulfillment(request) do
@@ -169,7 +168,7 @@ defmodule BlueJet.Distribution do
         Multi.new()
         |> Multi.delete(:fulfillment, fulfillment)
         |> Multi.run(:after_delete, fn(%{ fulfillment: fulfillment }) ->
-            run_event_handler("distribution.fulfillment.deleted", %{ fulfillment: fulfillment })
+            emit_event("distribution.fulfillment.after_delete", %{ fulfillment: fulfillment })
            end)
 
       {:ok, _, _, _} = Repo.transaction(statements)
@@ -244,18 +243,7 @@ defmodule BlueJet.Distribution do
   end
 
   def do_create_fulfillment_line_item(request = %{ account: account }) do
-    changeset =
-      %FulfillmentLineItem{ account_id: account.id, account: account }
-      |> FulfillmentLineItem.changeset(request.fields)
-
-    statements =
-      Multi.new()
-      |> Multi.insert(:fulfillment_line_item, changeset)
-      |> Multi.run(:after_create, fn(%{ fulfillment_line_item: fli }) ->
-          run_event_handler("distribution.fulfillment_line_item.created", %{ fulfillment_line_item: fli })
-         end)
-
-    with {:ok, %{ fulfillment_line_item: fli }} <- Repo.transaction(statements) do
+    with {:ok, fli} <- Service.create_fulfillment_line_item(request.fields, %{ account: account }) do
       fulfillment_line_item_response(fli, request)
     else
       {:error, changeset} ->
@@ -285,7 +273,7 @@ defmodule BlueJet.Distribution do
         Multi.new()
         |> Multi.update(:fulfillment_line_item, changeset)
         |> Multi.run(:after_update, fn(%{ fulfillment_line_item: fli }) ->
-            run_event_handler("distribution.fulfillment_line_item.updated", %{ fulfillment_line_item: fli, changeset: changeset })
+            emit_event("distribution.fulfillment_line_item.after_update", %{ fulfillment_line_item: fli, changeset: changeset })
            end)
 
       {:ok, %{ fulfillment_line_item: fli }} = Repo.transaction(statements)

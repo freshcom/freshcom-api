@@ -1,10 +1,6 @@
 defmodule BlueJet.DataTrading.DataImport do
   use BlueJet, :data
 
-  alias BlueJet.DataTrading.DataImport
-
-  @type t :: Ecto.Schema.t
-
   schema "data_imports" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
@@ -18,30 +14,24 @@ defmodule BlueJet.DataTrading.DataImport do
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :status,
-      :data_count,
-      :time_spent_sceonds,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :status,
+    :data_count,
+    :time_spent_sceonds,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    DataImport.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
     []
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
   end
 
   def required_fields() do
@@ -51,12 +41,11 @@ defmodule BlueJet.DataTrading.DataImport do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> foreign_key_constraint(:account_id)
   end
 
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, castable_fields(struct))
+    |> cast(params, writable_fields())
     |> validate()
   end
 

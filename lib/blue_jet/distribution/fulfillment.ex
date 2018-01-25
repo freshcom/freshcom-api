@@ -10,12 +10,8 @@ defmodule BlueJet.Distribution.Fulfillment do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
-  alias BlueJet.Distribution.Fulfillment
+  alias BlueJet.Distribution.IdentityService
   alias BlueJet.Distribution.FulfillmentLineItem
-
-  @type t :: Ecto.Schema.t
 
   schema "fulfillments" do
     field :account_id, Ecto.UUID
@@ -41,45 +37,38 @@ defmodule BlueJet.Distribution.Fulfillment do
     has_many :line_items, FulfillmentLineItem
   end
 
-  def translatable_fields do
-    Fulfillment.__trans__(:fields)
-  end
+  @type t :: Ecto.Schema.t
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Fulfillment.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+  def translatable_fields do
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:source_id, :source_type, :account_id])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:source_id, :source_type])
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_account(struct).default_locale
+  def changeset(fulfillment, params, locale \\ nil, default_locale \\ nil) do
+    fulfillment = %{ fulfillment | account: get_account(fulfillment) }
+    default_locale = default_locale || get_account(fulfillment).default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields(struct))
+    fulfillment
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -87,6 +76,10 @@ defmodule BlueJet.Distribution.Fulfillment do
   ######
   # External Resources
   #####
+  def get_account(fulfillment) do
+    fulfillment.account || IdentityService.get_account(fulfillment)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -96,6 +89,8 @@ defmodule BlueJet.Distribution.Fulfillment do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Distribution.Fulfillment
 
     def default() do
       from(f in Fulfillment, order_by: [desc: f.inserted_at])

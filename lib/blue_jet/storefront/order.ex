@@ -412,10 +412,9 @@ defmodule BlueJet.Storefront.Order do
 
       _ ->
         fulfillment = DistributionService.create_fulfillment(%{
-          account_id: order.account_id,
           source_id: order.id,
           source_tye: "Order"
-        })
+        }, %{ account_id: order.account_id })
 
         Enum.each(af_line_items, fn(line_item) ->
           translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
@@ -430,7 +429,7 @@ defmodule BlueJet.Storefront.Order do
             goods_id: line_item.source_id,
             goods_type: line_item.source_type,
             translations: translations
-          })
+          }, %{ account_id: order.account_id })
         end)
     end
 

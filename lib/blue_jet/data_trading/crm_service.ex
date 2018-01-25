@@ -1,0 +1,15 @@
+defmodule BlueJet.DataTrading.CrmService do
+  alias BlueJet.Crm.Customer
+
+  @crm_service Application.get_env(:blue_jet, :data_trading)[:crm_service]
+
+  @callback get_customer(String.t, map) :: Customer.t | nil
+  @callback get_customer_by_code(String.t, map) :: Customer.t | nil
+  @callback create_customer(map, map) :: {:ok, Customer.t} | {:error, any}
+  @callback update_customer(String.t, map, map) :: {:ok, Customer.t} | {:error, any}
+
+  defdelegate get_customer(id, opts), to: @crm_service
+  defdelegate get_customer_by_code(code, opts), to: @crm_service
+  defdelegate create_customer(fields, opts), to: @crm_service
+  defdelegate update_customer(id, fields, opts), to: @crm_service
+end

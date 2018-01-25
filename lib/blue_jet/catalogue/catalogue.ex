@@ -7,8 +7,94 @@ defmodule BlueJet.Catalogue do
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
   defmodule Service do
+    alias Ecto.Multi
+
     def get_product(id) do
       Repo.get(Product, id)
+    end
+
+    def get_product(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Product, id: id, account_id: account_id)
+    end
+
+    def get_product_by_code(code, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Product, code: code, account_id: account_id)
+    end
+
+    def create_product(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %Product{ account_id: account_id, account: opts[:account] }
+      |> Product.changeset(fields)
+      |> Repo.insert()
+    end
+
+    def update_product(id, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      product =
+        Product.Query.default()
+        |> Product.Query.for_account(account_id)
+        |> Repo.get(id)
+        |> Map.put(:account, opts[:account])
+
+      with %Product{} <- product,
+         changeset = %{ valid?: true } <- Product.changeset(product, fields, opts[:locale])
+      do
+        {:ok, product} = Repo.transaction(fn ->
+          if Changeset.get_change(changeset, :primary) do
+            parent_id = product.parent_id
+            from(pi in Product, where: pi.parent_id == ^parent_id)
+            |> Repo.update_all(set: [primary: false])
+          end
+
+          Repo.update!(changeset)
+        end)
+
+        {:ok, product}
+      else
+        nil -> {:error, :not_found}
+
+        other -> other
+      end
+    end
+
+    def get_product_collection(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(ProductCollection, id: id, account_id: account_id)
+    end
+
+    def get_product_collection_by_code(code, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(ProductCollection, code: code, account_id: account_id)
+    end
+
+    def create_product_collection(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %ProductCollection{ account_id: account_id, account: opts[:account] }
+      |> ProductCollection.changeset(fields)
+      |> Repo.insert()
+    end
+
+    def update_product_collection(id, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      product_collection =
+        ProductCollection.Query.default()
+        |> ProductCollection.Query.for_account(account_id)
+        |> Repo.get(id)
+
+      if product_collection do
+        product_collection
+        |> Map.put(:account, opts[:account])
+        |> ProductCollection.changeset(fields, opts[:locale])
+        |> Repo.update()
+      else
+        {:error, :not_found}
+      end
     end
 
     def get_price(%{ product_id: product_id, status: status, order_quantity: order_quantity }) do
@@ -21,6 +107,75 @@ defmodule BlueJet.Catalogue do
 
     def get_price(id) do
       Repo.get(Price, id)
+    end
+
+    def get_price(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Price, id: id, account_id: account_id)
+    end
+
+    def get_price_by_code(code, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Price, code: code, account_id: account_id)
+    end
+
+    def create_price(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %Price{ account_id: account_id, account: opts[:account] }
+      |> Price.changeset(fields)
+      |> Repo.insert()
+    end
+
+    def update_price(price = %{}, fields, opts) do
+      changeset =
+        price
+        |> Repo.preload(:parent)
+        |> Map.put(:account, opts[:account])
+        |> Price.changeset(fields, opts[:locale])
+
+      statements =
+        Multi.new()
+        |> Multi.update(:price, changeset)
+        |> Multi.run(:balanced_price, fn(%{ price: price }) ->
+            if price.parent do
+              {:ok, Price.balance(price.parent)}
+            else
+              {:ok, price}
+            end
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ balanced_price: price }} -> {:ok, price}
+
+        {:error, _, changeset, _} -> {:error, changeset}
+      end
+    end
+
+    def update_price(id, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      price =
+        Price.Query.default()
+        |> Price.Query.for_account(account_id)
+        |> Repo.get(id)
+
+      if price do
+        update_price(price, fields, opts)
+      else
+        {:error, :not_found}
+      end
+    end
+
+    def get_product_collection_membership(%{ collection_id: collection_id, product_id: product_id }) do
+      ProductCollectionMembership
+      |> Repo.get_by(collection_id: collection_id, product_id: product_id)
+    end
+
+    def create_product_collection_membership(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      %ProductCollectionMembership{ account_id: account_id, account: opts[:account] }
+      |> ProductCollectionMembership.changeset(fields)
+      |> Repo.insert()
     end
   end
 
@@ -107,11 +262,7 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_create_product(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-    product = %Product{ account_id: account.id, account: account }
-    changeset = Product.changeset(product, request.fields, request.locale, account.default_locale)
-
-    with {:ok, product} <- Repo.insert(changeset) do
+    with {:ok, product} <- Service.create_product(request.fields, %{ account: account }) do
       product_response(product, request)
     else
       {:error, %{ errors: errors }} ->
@@ -176,29 +327,9 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_update_product(request = %{ account: account, params: %{ "id" => id }}) do
-    product =
-      Product.Query.default()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %Product{} <- product,
-         changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale, account.default_locale)
-    do
-      {:ok, product} = Repo.transaction(fn ->
-        if Changeset.get_change(changeset, :primary) do
-          parent_id = product.parent_id
-          from(pi in Product, where: pi.parent_id == ^parent_id)
-          |> Repo.update_all(set: [primary: false])
-        end
-
-        Repo.update!(changeset)
-      end)
-
+    with {:ok, product} <- Service.update_product(id, request.fields, %{ account: account }) do
       product_response(product, request)
     else
-      nil -> {:error, :not_found}
-
       %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
 
@@ -311,12 +442,7 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_create_product_collection(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    product_collection = %ProductCollection{ account_id: account.id, account: account }
-    changeset = ProductCollection.changeset(product_collection, request.fields, request.locale, account.default_locale)
-
-    with {:ok, product_collection} <- Repo.insert(changeset) do
+    with {:ok, product_collection} <- Service.create_product_collection(request.fields, %{ account: account }) do
       product_collection_response(product_collection, request)
     else
       {:error, %{ errors: errors }} ->
@@ -360,20 +486,9 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_update_product_collection(request = %{ account: account, params: %{ "id" => id }}) do
-    product_collection =
-      ProductCollection.Query.default()
-      |> ProductCollection.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %ProductCollection{} <- product_collection,
-         changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale, account.default_locale),
-        {:ok, product_collection} <- Repo.update(changeset)
-    do
+    with {:ok, product_collection} <- Service.update_product_collection(id, request.fields, %{ account: account }) do
       product_collection_response(product_collection, request)
     else
-      nil -> {:error, :not_found}
-
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
@@ -484,10 +599,8 @@ defmodule BlueJet.Catalogue do
 
   def do_create_product_collection_membership(request = %{ account: account, params: %{ "collection_id" => collection_id } }) do
     fields = Map.merge(request.fields, %{ "collection_id" => collection_id })
-    pcm = %ProductCollectionMembership{ account_id: account.id, account: account }
-    changeset = ProductCollectionMembership.changeset(pcm, fields)
 
-    with {:ok, pcm} <- Repo.insert(changeset) do
+    with {:ok, pcm} <- Service.create_product_collection_membership(fields, %{ account: account }) do
       product_collection_membership_response(pcm, request)
     else
       {:error, %{ errors: errors }} ->
@@ -610,10 +723,8 @@ defmodule BlueJet.Catalogue do
 
   def do_create_price(request = %{ account: account, params: %{ "product_id" => product_id } }) do
     fields = Map.merge(request.fields, %{ "product_id" => product_id })
-    price = %Price{ account_id: account.id, account: account }
-    changeset = Price.changeset(price, fields, request.locale, account.default_locale)
 
-    with {:ok, price} <- Repo.insert(changeset) do
+    with {:ok, price} <- Service.create_price(fields, %{ account: account }) do
       price_response(price, request)
     else
       {:error, %{ errors: errors }} ->
@@ -668,30 +779,13 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_update_price(request = %{ account: account, params: %{ "id" => id }}) do
-    price =
-      Price.Query.default()
-      |> Price.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Repo.preload(:parent)
-      |> Map.put(:account, account)
-
-    with %Price{} <- price,
-         changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale, account.default_locale)
-    do
-      {:ok, price} = Repo.transaction(fn ->
-        price = Repo.update!(changeset)
-        if price.parent do
-          Price.balance(price.parent)
-        end
-
-        price
-      end)
-
+    with {:ok, price} <- Service.update_price(id, request.fields, %{ account: account, locale: request.locale }) do
       price_response(price, request)
     else
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
 
-      %{ errors: errors } ->
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other

@@ -1,10 +1,7 @@
 defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
-  alias BlueJet.Crm
-  alias BlueJet.Goods
-  alias BlueJet.Catalogue
-
+  alias BlueJet.DataTrading.{GoodsService, CrmService, CatalogueService}
   alias BlueJet.DataTrading.DataImport
 
   def create_data_import(request) do
@@ -72,16 +69,10 @@ defmodule BlueJet.DataTrading do
     customer = get_customer(row, account)
     case customer do
       nil ->
-        {:ok, _} = Crm.do_create_customer(%AccessRequest{
-          account: account,
-          fields: fields
-        })
+        {:ok, _} = CrmService.create_customer(fields, %{ account: account })
+
       customer ->
-        {:ok, _} = Crm.do_update_customer(%AccessRequest{
-          account: account,
-          params: %{ "id" => customer.id },
-          fields: fields
-        })
+        {:ok, _} = CrmService.update_customer(customer.id, fields, %{ account: account })
     end
   end
   def import_resource(row, account, "Unlockable") do
@@ -90,17 +81,10 @@ defmodule BlueJet.DataTrading do
     unlockable = get_unlockable(row, account)
     case unlockable do
       nil ->
-        {:ok, _} = Goods.do_create_unlockable(%AccessRequest{
-          account: account,
-          fields: fields
-        })
+        {:ok, _} = GoodsService.create_unlockable(fields, %{ account: account })
+
       unlockable ->
-        {:ok, _} = Goods.do_update_unlockable(%AccessRequest{
-          account: account,
-          params: %{ "id" => unlockable.id },
-          fields: fields,
-          locale: account.default_locale
-        })
+        {:ok, _} = GoodsService.update_unlockable(unlockable.id, fields, %{ account: account })
     end
   end
   def import_resource(row, account, "Product") do
@@ -115,18 +99,15 @@ defmodule BlueJet.DataTrading do
       get_product(row, account)
       |> update_or_create_product(account, fields)
 
-    result = Catalogue.do_get_product_collection_membership(%AccessRequest{
-      account: account,
-      params: %{ "collection_id" => collection_id, "product_id" => product.id }
-    })
+    pcm = CatalogueService.get_product_collection_membership(%{ collection_id: collection_id, product_id: product.id })
 
-    case result do
-      {:ok, response} -> {:ok, response}
-      {:error, :not_found} ->
-        Catalogue.do_create_product_collection_membership(%AccessRequest{
-          account: account,
-          fields: %{ "product_id" => product.id, "collection_id" => collection_id, "sort_index" => row["collection_sort_index"] }
-        })
+    if pcm do
+      {:ok, pcm}
+    else
+      CatalogueService.create_product_collection_membership(%{
+        "product_id" => product.id,
+        "collection_id" => collection_id
+      }, %{ account: account })
     end
   end
   def import_resource(row, account, "Price") do
@@ -144,15 +125,12 @@ defmodule BlueJet.DataTrading do
     source_id
   end
   defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account) when byte_size(code) > 0 do
-    result = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "code" => code }
-    })
+    unlockable = GoodsService.get_unlockable_by_code(code, %{ account: account })
 
-    case result do
-      {:ok, %{ data: unlockable }} ->
-        unlockable.id
-      {:error, :not_found} -> nil
+    case unlockable do
+      nil -> nil
+
+      unlockable -> unlockable.id
     end
   end
 
@@ -168,14 +146,12 @@ defmodule BlueJet.DataTrading do
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
-        result = Crm.do_get_customer(%AccessRequest{
-          account: account,
-          params: %{ "code" => row[code_key] }
-        })
+        customer = CrmService.get_customer_by_code(row[code_key], %{ account: account })
 
-        case result do
-          {:ok, %{ data: customer}} -> customer.id
-          _ -> nil
+        if customer do
+          customer.id
+        else
+          nil
         end
       true -> nil
     end
@@ -187,16 +163,16 @@ defmodule BlueJet.DataTrading do
 
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
-      row[code_key] && row[code_key] != "" ->
-        result = Catalogue.do_get_product(%AccessRequest{
-          account: account,
-          params: %{ "code" => row[code_key] }
-        })
 
-        case result do
-          {:ok, %{ data: product}} -> product.id
-          _ -> nil
+      row[code_key] && row[code_key] != "" ->
+        product = CatalogueService.get_product_by_code(row[code_key], %{ account: account })
+
+        if product do
+          product.id
+        else
+          nil
         end
+
       true -> nil
     end
   end
@@ -208,32 +184,24 @@ defmodule BlueJet.DataTrading do
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
-        result = Catalogue.do_get_product_collection(%AccessRequest{
-          account: account,
-          params: %{ "code" => row[code_key] }
-        })
+        product_collection = CatalogueService.get_product_collection_by_code(row[code_key], %{ account: account })
 
-        case result do
-          {:ok, %{ data: product_collection}} -> product_collection.id
-          _ -> nil
+        if product_collection do
+          product_collection.id
+        else
+          nil
         end
       true -> nil
     end
   end
 
   defp get_customer(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: customer}} = Crm.do_get_customer(%AccessRequest{
-      account: account,
-      params: %{ "id" => id }
-    })
+    {:ok, %{ data: customer}} = CrmService.get_customer(id, %{ account: account })
 
     customer
   end
   defp get_customer(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = Crm.do_get_customer(%AccessRequest{
-      account: account,
-      params: %{ "code" => code }
-    })
+    result = CrmService.get_customer_by_code(code, %{ account: account })
 
     case result do
       {:ok, %{ data: customer }} ->
@@ -243,98 +211,38 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_unlockable(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: unlockable}} = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "id" => id }
-    })
-
-    unlockable
+    GoodsService.get_unlockable(id, %{ account: account })
   end
   defp get_unlockable(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = Goods.do_get_unlockable(%AccessRequest{
-      account: account,
-      params: %{ "code" => code }
-    })
-
-    case result do
-      {:ok, %{ data: unlockable }} ->
-        unlockable
-      {:error, :not_found} -> nil
-    end
+    GoodsService.get_unlockable(code, %{ account: account })
   end
 
   defp get_product(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: product}} = Catalogue.do_get_product(%AccessRequest{
-      account: account,
-      params: %{ "id" => id }
-    })
-
-    product
+    CatalogueService.get_product(id, %{ account: account })
   end
   defp get_product(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = Catalogue.do_get_product(%AccessRequest{
-      account: account,
-      params: %{ "code" => code }
-    })
-
-    case result do
-      {:ok, %{ data: product }} ->
-        product
-      {:error, :not_found} -> nil
-    end
+    result = CatalogueService.get_product_by_code(code, %{ account: account })
   end
 
   defp get_price(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: price}} = Catalogue.do_get_price(%AccessRequest{
-      account: account,
-      params: %{ "id" => id }
-    })
-
-    price
+    CatalogueService.get_price(id, %{ account: account })
   end
   defp get_price(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = Catalogue.do_get_price(%AccessRequest{
-      account: account,
-      params: %{ "code" => code }
-    })
-
-    case result do
-      {:ok, %{ data: price }} ->
-        price
-      {:error, :not_found} -> nil
-    end
+    CatalogueService.get_price_by_code(code, %{ account: account })
   end
 
   defp update_or_create_product(nil, account, fields) do
-    {:ok, %{ data: product }} = Catalogue.do_create_product(%AccessRequest{
-      account: account,
-      fields: fields
-    })
-    product
+    CatalogueService.create_product(fields, %{ account: account })
   end
   defp update_or_create_product(product, account, fields) do
-    {:ok, %{ data: product }} = Catalogue.do_update_product(%AccessRequest{
-      account: account,
-      params: %{ "id" => product.id },
-      fields: fields
-    })
-    product
+    CatalogueService.update_product(product.id, fields, %{ account: account })
   end
 
   defp update_or_create_price(nil, account, fields) do
-    {:ok, %{ data: price }} = Catalogue.do_create_price(%AccessRequest{
-      account: account,
-      fields: fields
-    })
-    price
+    CatalogueService.create_price(fields, %{ account: account })
   end
   defp update_or_create_price(price, account, fields) do
-    {:ok, %{ data: price }} = Catalogue.do_update_price(%AccessRequest{
-      account: account,
-      params: %{ "id" => price.id },
-      fields: fields
-    })
-    price
+    CatalogueService.update_price(price.id, fields, %{ account: account })
   end
 
   defp merge_custom_data(row, nil), do: row

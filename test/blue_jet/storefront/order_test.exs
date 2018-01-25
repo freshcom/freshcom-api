@@ -586,8 +586,8 @@ defmodule BlueJet.OrderTest do
       fulfillment = %Fulfillment{ id: Ecto.UUID.generate() }
       fli = %FulfillmentLineItem{ id: Ecto.UUID.generate(), fulfillment_id: fulfillment.id }
       DistributionServiceMock
-      |> expect(:create_fulfillment, fn(_) -> fulfillment end)
-      |> expect(:create_fulfillment_line_item, fn(_) -> fli end)
+      |> expect(:create_fulfillment, fn(_, _) -> fulfillment end)
+      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
 
       Order.process(order, changeset)
 

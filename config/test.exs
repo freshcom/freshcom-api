@@ -51,6 +51,12 @@ config :blue_jet, :catalogue, %{
   file_storage_service: BlueJet.Catalogue.FileStorageServiceMock
 }
 
+config :blue_jet, :data_trading, %{
+  goods_service: BlueJet.DataTrading.GoodsServiceMock,
+  crm_service: BlueJet.DataTrading.CrmServiceMock,
+  catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
+}
+
 config :blue_jet, :storefront, %{
   balance_service: BlueJet.Storefront.BalanceServiceMock,
   distribution_service: BlueJet.Storefront.DistributionServiceMock,

@@ -4,7 +4,7 @@ defmodule BlueJet.GoodsTest do
   alias BlueJet.AuthorizationMock
   alias BlueJet.Identity.Account
   alias BlueJet.Goods
-  alias BlueJet.Goods.Stockable
+  alias BlueJet.Goods.{Stockable, Unlockable}
 
   describe "list_stockable/1" do
     test "when role is not authorized" do
@@ -163,6 +163,68 @@ defmodule BlueJet.GoodsTest do
       {:ok, _} = Goods.delete_stockable(request)
 
       refute Repo.get(Stockable, stockable.id)
+    end
+  end
+
+  describe "create_unlockable/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+
+      {:error, error} = Goods.create_unlockable(%AccessRequest{})
+      assert error == :access_denied
+    end
+
+    test "when using developer identity" do
+      account = Repo.insert!(%Account{})
+
+      request = %AccessRequest{
+        account: account,
+        role: "developer",
+        fields: %{
+          "name" => Faker.String.base64(5)
+        }
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Goods.create_unlockable(request)
+
+      assert response.data.id
+    end
+  end
+
+  describe "update_unlockable/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+
+      {:error, error} = Goods.update_unlockable(%AccessRequest{})
+      assert error == :access_denied
+    end
+
+    test "when using developer identity" do
+      account = Repo.insert!(%Account{})
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.String.base64(5)
+      })
+
+      new_name = Faker.String.base64(5)
+      request = %AccessRequest{
+        account: account,
+        role: "developer",
+        params: %{ "id" => unlockable.id },
+        fields: %{ "name" => new_name }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Goods.update_unlockable(request)
+
+      assert response.data.id == unlockable.id
+      assert response.data.name == new_name
     end
   end
 end

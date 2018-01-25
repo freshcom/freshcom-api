@@ -45,14 +45,14 @@ defmodule BlueJet.Storefront do
     {:ok, order}
   end
 
-  def handle_event("distribution.fulfillment_line_item.created", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
+  def handle_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
     oli = Repo.get!(OrderLineItem, fli.source_id)
     OrderLineItem.refresh_fulfillment_status(oli)
 
     {:ok, fli}
   end
 
-  def handle_event("distribution.fulfillment_line_item.updated", %{
+  def handle_event("distribution.fulfillment_line_item.after_update", %{
     fulfillment_line_item: fli = %{ source_type: "OrderLineItem" },
     changeset: %{ changes: %{ status: status } }
   }) do
