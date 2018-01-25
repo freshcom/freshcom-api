@@ -5,7 +5,7 @@ defmodule BlueJet.Balance do
   alias Ecto.{Changeset, Multi}
   alias BlueJet.Balance.{Payment, Refund, Card, BalanceSettings}
 
-  defmodule Data do
+  defmodule Service do
     def list_payment_for_target(target_type, target_id) do
       Payment.Query.default()
       |> Payment.Query.for_target(target_type, target_id)
@@ -74,6 +74,9 @@ defmodule BlueJet.Balance do
     {:ok, %AccessResponse{ data: balance_settings }}
   end
 
+  #
+  # MARK: Card
+  #
   def list_card(request) do
     with {:ok, request} <- preprocess_request(request, "balance.list_card") do
       request
@@ -143,6 +146,7 @@ defmodule BlueJet.Balance do
       Card.Query.default()
       |> Card.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Card{} <- card,
          changeset = %{valid?: true} <- Card.changeset(card, request.fields, request.locale, account.default_locale)
@@ -178,6 +182,7 @@ defmodule BlueJet.Balance do
       Card.Query.default()
       |> Card.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     if card do
       Repo.transaction(fn ->
@@ -191,9 +196,9 @@ defmodule BlueJet.Balance do
     end
   end
 
-  ####
-  # Payment
-  ####
+  #
+  # MARK: Payment
+  #
   def list_payment(request) do
     with {:ok, request} <- preprocess_request(request, "balance.list_payment") do
       request
@@ -204,6 +209,7 @@ defmodule BlueJet.Balance do
     end
   end
 
+  # TODO: Customer can only view its own payment
   def do_list_payment(request = %AccessRequest{ account: account, filter: filter, pagination: pagination }) do
     data_query =
       Payment.Query.default()
@@ -265,11 +271,7 @@ defmodule BlueJet.Balance do
     end
   end
 
-  def do_create_payment(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-
+  def do_create_payment(request = %{ account: account, fields: fields }) do
     owner = %{ id: fields["owner_id"], type: fields["owner_type"] }
     target = %{ id: fields["target_id"], type: fields["target_type"]}
 
@@ -279,7 +281,9 @@ defmodule BlueJet.Balance do
           run_payment_before_create(fields, owner, target)
          end)
       |> Multi.run(:changeset, fn(%{ fields: fields }) ->
-          {:ok, Payment.changeset(%Payment{}, fields, request.locale, account.default_locale)}
+          payment = %Payment{ account_id: account.id, account: account }
+          changeset = Payment.changeset(payment, fields)
+          {:ok, changeset}
          end)
       |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)
@@ -288,7 +292,7 @@ defmodule BlueJet.Balance do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.created", %{ payment: payment })
+          emit_event("balance.payment.after_create", %{ payment: payment })
          end)
 
     case Repo.transaction(statements) do
@@ -308,7 +312,7 @@ defmodule BlueJet.Balance do
   # Allow other services to change the fields of payment
   defp run_payment_before_create(fields, owner, target) do
     with {:ok, results} <- emit_event("balance.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
-      values = Keyword.values(results)
+      values = [fields] ++ Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
         if fields do
           Map.merge(acc, fields)
@@ -355,6 +359,7 @@ defmodule BlueJet.Balance do
       Payment.Query.default()
       |> Payment.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Payment{} <- payment,
          changeset = %{valid?: true} <- Payment.changeset(payment, request.fields, request.locale, account.default_locale)
@@ -366,7 +371,7 @@ defmodule BlueJet.Balance do
             Payment.process(payment, changeset)
            end)
         |> Multi.run(:after_update, fn(%{ processed_payment: payment}) ->
-            emit_event("balance.payment.updated", %{ payment: payment })
+            emit_event("balance.payment.after_update", %{ payment: payment })
            end)
 
       {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
@@ -390,6 +395,7 @@ defmodule BlueJet.Balance do
     end
   end
 
+  # TODO: do not allow delete payment using online gateway
   def do_delete_payment(%{ account: account, params: %{ "id" => id } }) do
     payment =
       Payment.Query.default()
@@ -404,9 +410,9 @@ defmodule BlueJet.Balance do
     end
   end
 
-  ######
-  # Refund
-  ######
+  #
+  # MARK: Refund
+  #
   defp refund_response(nil, _), do: {:error, :not_found}
 
   defp refund_response(refund, request = %{ account: account }) do
@@ -433,11 +439,9 @@ defmodule BlueJet.Balance do
   def do_create_refund(request = %{ account: account, params: %{ "payment_id" => payment_id } }) do
     request = %{ request | locale: account.default_locale }
 
-    fields = Map.merge(request.fields, %{
-      "account_id" => account.id,
-      "payment_id" => payment_id
-    })
-    changeset = Refund.changeset(%Refund{}, fields, request.locale, account.default_locale)
+    fields = Map.merge(request.fields, %{ "payment_id" => payment_id })
+    refund = %Refund{ account_id: account.id, account: account }
+    changeset = Refund.changeset(refund, fields, request.locale, account.default_locale)
 
     statements =
       Multi.new()
@@ -473,7 +477,7 @@ defmodule BlueJet.Balance do
           {:ok, payment}
          end)
       |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-          emit_event("balance.refund.created", %{ refund: refund })
+          emit_event("balance.refund.after_create", %{ refund: refund })
           {:ok, refund}
          end)
 

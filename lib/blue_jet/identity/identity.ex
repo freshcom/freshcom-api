@@ -8,7 +8,9 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.AccountMembership
   alias BlueJet.Identity.Account
 
-  defmodule Data do
+  defmodule Service do
+    alias Ecto.Multi
+
     def get_account(%{ account_id: nil }), do: nil
     def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
     def get_account(%{ account: account }), do: account
@@ -18,6 +20,58 @@ defmodule BlueJet.Identity do
     def get_default_locale(%{ account_id: account_id, account: nil }), do: get_account(account_id).default_locale
     def get_default_locale(%{ account: account }), do: account.default_locale
     def get_default_locale(%{ account_id: account_id }), do: get_account(account_id).default_locale
+
+    def create_user(fields = %{ account_id: account_id }) do
+      test_account = Repo.get_by(Account, mode: "test", live_account_id: account_id)
+
+      live_account_id = if test_account do
+        account_id
+      else
+        nil
+      end
+      test_account_id = if test_account do
+        test_account.id
+      else
+        account_id
+      end
+
+      user = %User{ default_account_id: account_id, account_id: account_id }
+      changeset = User.changeset(user, fields)
+
+      statements =
+        Multi.new()
+        |> Multi.insert(:user, changeset)
+        |> Multi.run(:account_membership, fn(%{ user: user }) ->
+            Repo.insert(
+              AccountMembership.changeset(%AccountMembership{}, %{
+                account_id: account_id,
+                user_id: user.id,
+                role: Map.get(fields, "role")
+              })
+            )
+           end)
+        |> Multi.run(:urt_live, fn(%{ user: user }) ->
+            if live_account_id do
+              refresh_token = Repo.insert!(%RefreshToken{ account_id: live_account_id, user_id: user.id })
+              {:ok, refresh_token}
+            else
+              {:ok, nil}
+            end
+           end)
+        |> Multi.run(:urt_test, fn(%{ user: user }) ->
+            if test_account_id do
+              refresh_token = Repo.insert!(%RefreshToken{ account_id: test_account_id, user_id: user.id })
+              {:ok, refresh_token}
+            else
+              {:ok, nil}
+            end
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ user: user }} -> {:ok, user}
+        {:error, _, failed_value, _} -> {:error, failed_value.errors}
+      end
+    end
   end
 
   defmodule Shortcut do

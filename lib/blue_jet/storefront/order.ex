@@ -33,7 +33,7 @@ defmodule BlueJet.Storefront.Order do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Storefront.{BalanceData, DistributionData, IdentityData, CrmData}
+  alias BlueJet.Storefront.{BalanceService, DistributionService, IdentityService, CrmService}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
   schema "orders" do
@@ -199,7 +199,7 @@ defmodule BlueJet.Storefront.Order do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(order, params, locale \\ nil, default_locale \\ nil) do
-    order = %{ order | account: IdentityData.get_account(order) }
+    order = %{ order | account: IdentityService.get_account(order) }
     default_locale = default_locale || order.account.default_locale
     locale = locale || default_locale
 
@@ -294,7 +294,7 @@ defmodule BlueJet.Storefront.Order do
   field of the order may not be up to date yet.
   """
   def get_payment_status(order) do
-    payments = BalanceData.list_payment_for_target("Order", order.id)
+    payments = BalanceService.list_payment_for_target("Order", order.id)
 
     total_paid_amount_cents =
       payments
@@ -346,7 +346,7 @@ defmodule BlueJet.Storefront.Order do
   # MARK: External Resources
   #
   def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmData.get_customer(customer_id)
+  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmService.get_customer(customer_id)
   def get_customer(%{ customer: customer }), do: customer
 
   use BlueJet.FileStorage.Macro,
@@ -372,7 +372,7 @@ defmodule BlueJet.Storefront.Order do
   def process(order), do: {:ok, order}
 
   def process(order, changeset = %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = %{ order | account: IdentityData.get_account(order) }
+    order = %{ order | account: IdentityService.get_account(order) }
     order =
       order
       |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
@@ -411,7 +411,7 @@ defmodule BlueJet.Storefront.Order do
       0 -> {:ok, nil}
 
       _ ->
-        fulfillment = DistributionData.create_fulfillment(%{
+        fulfillment = DistributionService.create_fulfillment(%{
           account_id: order.account_id,
           source_id: order.id,
           source_tye: "Order"
@@ -420,7 +420,7 @@ defmodule BlueJet.Storefront.Order do
         Enum.each(af_line_items, fn(line_item) ->
           translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
 
-          DistributionData.create_fulfillment_line_item(%{
+          DistributionService.create_fulfillment_line_item(%{
             fulfillment_id: fulfillment.id,
             name: line_item.name,
             status: "fulfilled",

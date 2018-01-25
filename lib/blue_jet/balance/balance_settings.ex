@@ -1,16 +1,12 @@
 defmodule BlueJet.Balance.BalanceSettings do
   use BlueJet, :data
 
-  import BlueJet.Identity.Shortcut
-
   alias Ecto.Changeset
-  alias BlueJet.Repo
-  alias BlueJet.Balance.BalanceSettings
-
-  @type t :: Ecto.Schema.t
+  alias BlueJet.Balance.IdentityService
 
   schema "balance_settings" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
 
     field :stripe_user_id, :string
     field :stripe_livemode, :boolean
@@ -28,37 +24,42 @@ defmodule BlueJet.Balance.BalanceSettings do
 
     field :stripe_auth_code, :string, virtual: true
 
-    field :account, :map, virtual: true
-
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :stripe_user_id,
+    :stripe_livemode,
+    :stripe_access_token,
+    :stripe_refresh_token,
+    :stripe_publishable_key,
+    :stripe_scope,
+    :stripe_variable_fee_percentage,
+    :stripe_fixed_fee_cents,
+    :freshcom_transaction_fee_percentage,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    (BalanceSettings.__schema__(:fields) -- system_fields()) ++ [:stripe_auth_code]
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:stripe_auth_code]
   end
 
   def changeset(struct, params \\ %{}) do
     struct
-    |> cast(params, castable_fields(struct))
+    |> cast(params, writable_fields())
   end
 
   def for_account(%{ id: account_id }) do
-    Repo.get_by!(BalanceSettings, account_id: account_id)
+    Repo.get_by!(__MODULE__, account_id: account_id)
+  end
+
+  def get_account(settings) do
+    settings.account || IdentityService.get_account(settings)
   end
 
   @doc """
@@ -70,12 +71,12 @@ defmodule BlueJet.Balance.BalanceSettings do
 
   The given `account` should be a account that is just created/updated using the `changeset`.
   """
-  @spec process(BalanceSettings.t, Changeset.t) :: {:ok, BalanceSettings.t} | {:error. map}
+  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
   def process(balance_settings, %{ data: %{ stripe_auth_code: nil }, changes: %{ stripe_auth_code: stripe_auth_code }}) do
-    account = get_account(%{ account_id: balance_settings.account_id, account: nil })
+    account = get_account(balance_settings)
 
     with {:ok, data} <- create_stripe_access_token(stripe_auth_code, mode: account.mode) do
-      changeset = Changeset.change(balance_settings, %{
+      changeset = change(balance_settings, %{
         stripe_user_id: data["stripe_user_id"],
         stripe_livemode: data["stripe_livemode"],
         stripe_access_token: data["access_token"],

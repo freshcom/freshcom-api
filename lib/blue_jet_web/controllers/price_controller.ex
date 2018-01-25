@@ -11,6 +11,7 @@ defmodule BlueJetWeb.PriceController do
   def index(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],
+      params: %{ "product_id" => params["product_id"] },
       search: params["search"],
       filter: assigns[:filter],
       pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },

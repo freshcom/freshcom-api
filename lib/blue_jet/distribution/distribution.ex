@@ -6,7 +6,7 @@ defmodule BlueJet.Distribution do
   alias BlueJet.Distribution.Fulfillment
   alias BlueJet.Distribution.FulfillmentLineItem
 
-  defmodule Data do
+  defmodule Service do
     def create_fulfillment(fields) do
       fulfillment = %Fulfillment{
         account_id: fields[:account_id]

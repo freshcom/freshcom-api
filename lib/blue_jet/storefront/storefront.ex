@@ -6,12 +6,12 @@ defmodule BlueJet.Storefront do
 
   alias BlueJet.Crm
 
-  alias BlueJet.Storefront.BalanceData
+  alias BlueJet.Storefront.BalanceService
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Unlock
 
-  def handle_event("balance.payment.created", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
 
     case order.status do
@@ -29,7 +29,7 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def handle_event("balance.payment.updated", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.after_update", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Order.refresh_payment_status()
@@ -37,7 +37,7 @@ defmodule BlueJet.Storefront do
     {:ok, order}
   end
 
-  def handle_event("balance.refund.created", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.refund.after_create", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Order.refresh_payment_status()
@@ -282,7 +282,7 @@ defmodule BlueJet.Storefront do
       |> Repo.get(id)
 
     if order do
-      payments = BalanceData.list_payment_for_target("Order", id)
+      payments = BalanceService.list_payment_for_target("Order", id)
       case length(payments) do
         0 ->
           Repo.delete!(order)

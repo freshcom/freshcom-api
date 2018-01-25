@@ -5,7 +5,7 @@ defmodule BlueJet.Goods.StockableTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
-  alias BlueJet.Goods.IdentityDataMock
+  alias BlueJet.Goods.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted stockable should be automatically deleted" do
@@ -59,7 +59,7 @@ defmodule BlueJet.Goods.StockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
@@ -75,7 +75,7 @@ defmodule BlueJet.Goods.StockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
@@ -91,7 +91,7 @@ defmodule BlueJet.Goods.StockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{})

@@ -9,7 +9,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :code, :string
       add :label, :string
 
-      add :gateway, :string
+      add :gateway, :string, null: false
       add :processor, :string
       add :method, :string
 

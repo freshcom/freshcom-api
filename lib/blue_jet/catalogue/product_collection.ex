@@ -8,12 +8,14 @@ defmodule BlueJet.Catalogue.ProductCollection do
     :custom_data
   ], container: :translations
 
+  alias BlueJet.Catalogue.IdentityService
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.ProductCollection
   alias BlueJet.Catalogue.ProductCollectionMembership
 
   schema "product_collections" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "draft"
     field :code, :string
     field :name, :string
@@ -34,48 +36,49 @@ defmodule BlueJet.Catalogue.ProductCollection do
     has_many :products, through: [:memberships, :product]
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    ProductCollection.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    ProductCollection.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :name])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:status, :name])
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def changeset(product_collection, params, locale \\ nil, default_locale \\ nil) do
+    product_collection = %{ product_collection | account: get_account(product_collection) }
+    default_locale = default_locale || product_collection.account.default_locale
+    locale = locale || default_locale
+
+    product_collection
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   #
-  # External Resources
+  # MARK: External Resources
   #
+  def get_account(product) do
+    product.account || IdentityService.get_account(product)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file,
     field: :avatar
@@ -89,6 +92,8 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Catalogue.ProductCollection
 
     def default() do
       from(pc in ProductCollection, order_by: [desc: pc.sort_index])

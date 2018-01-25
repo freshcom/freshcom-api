@@ -10,9 +10,8 @@ defmodule BlueJet.Balance.Refund do
   alias Decimal, as: D
   alias Ecto.Changeset
 
-  alias BlueJet.Balance.Refund
   alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.{StripeClient, IdentityData}
+  alias BlueJet.Balance.{StripeClient, IdentityService}
 
   schema "refunds" do
     field :account_id, Ecto.UUID
@@ -65,18 +64,18 @@ defmodule BlueJet.Balance.Refund do
   ]
 
   def writable_fields do
-    Refund.__schema__(:fields) -- @system_fields
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Refund.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields(%Refund{ __meta__: %{ state: :built }}) do
+  def castable_fields(%__MODULE__{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
 
-  def castable_fields(%Refund{ __meta__: %{ state: :loaded }}) do
+  def castable_fields(%__MODULE__{ __meta__: %{ state: :loaded }}) do
     writable_fields() -- [:amount_cents]
   end
 
@@ -133,7 +132,7 @@ defmodule BlueJet.Balance.Refund do
   # MARK: External Resources
   #
   def get_account(refund) do
-    refund.account || IdentityData.get_account(refund)
+    refund.account || IdentityService.get_account(refund)
   end
 
   use BlueJet.FileStorage.Macro,
@@ -143,7 +142,7 @@ defmodule BlueJet.Balance.Refund do
 
   def put_external_resources(refund, _, _), do: refund
 
-  @spec process(Refund.t, Changeset.t) :: {:ok, Refund.t} | {:error. map}
+  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
   def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do
     refund = %{ refund | account: get_account(refund) }
     with {:ok, stripe_refund} <- create_stripe_refund(refund),
@@ -156,7 +155,7 @@ defmodule BlueJet.Balance.Refund do
   end
   def process(refund, _), do: {:ok, refund}
 
-  @spec sync_with_stripe_refund_and_transfer_reversal(Refund.t, map, map) :: {:ok, Refund.t}
+  @spec sync_with_stripe_refund_and_transfer_reversal(__MODULE__.t, map, map) :: {:ok, __MODULE__.t}
   defp sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal) do
     processor_fee_cents = -stripe_refund["balance_transaction"]["fee"]
     freshcom_fee_cents = refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
@@ -211,6 +210,8 @@ defmodule BlueJet.Balance.Refund do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Balance.Refund
 
     def for_account(query, account_id) do
       from(r in query, where: r.account_id == ^account_id)

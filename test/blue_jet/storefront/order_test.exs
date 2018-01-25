@@ -7,7 +7,7 @@ defmodule BlueJet.OrderTest do
   alias BlueJet.Crm.Customer
 
   alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Storefront.{BalanceDataMock, DistributionDataMock, IdentityDataMock}
+  alias BlueJet.Storefront.{BalanceServiceMock, DistributionServiceMock, IdentityServiceMock}
   alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
 
   describe "schema" do
@@ -132,7 +132,7 @@ defmodule BlueJet.OrderTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       order =
@@ -155,7 +155,7 @@ defmodule BlueJet.OrderTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       order =
@@ -244,7 +244,7 @@ defmodule BlueJet.OrderTest do
 
   describe "get_payment_status/1" do
     test "when given order has no payment and grand total greater than 0" do
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> [] end)
 
       result = Order.get_payment_status(%Order{
@@ -257,7 +257,7 @@ defmodule BlueJet.OrderTest do
     end
 
     test "when given order has no payment and grand total equal to 0" do
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> [] end)
 
       result = Order.get_payment_status(%Order{ })
@@ -271,7 +271,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "paid", amount_cents: 300, gross_amount_cents: 300 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 700 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -285,7 +285,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "paid", amount_cents: 400, gross_amount_cents: 400 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 700 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -299,7 +299,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "refunded", amount_cents: 200, gross_amount_cents: 0 },
         %{ status: "refunded", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -313,7 +313,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "paid", amount_cents: 200, gross_amount_cents: 200 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 700 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -327,7 +327,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "partially_refunded", amount_cents: 200, gross_amount_cents: 100 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -341,7 +341,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "partially_refunded", amount_cents: 300, gross_amount_cents: 100 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -355,7 +355,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "refunded", amount_cents: 300, gross_amount_cents: 300 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{ grand_total_cents: 1000 })
@@ -369,7 +369,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "authorized", amount_cents: 200, gross_amount_cents: 0 },
         %{ status: "authorized", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{
@@ -386,7 +386,7 @@ defmodule BlueJet.OrderTest do
         %{ status: "authorized", amount_cents: 300, gross_amount_cents: 0 },
         %{ status: "authorized", amount_cents: 700, gross_amount_cents: 0 }
       ]
-      BalanceDataMock
+      BalanceServiceMock
       |> expect(:list_payment_for_target, fn(_, _) -> payments end)
 
       result = Order.get_payment_status(%Order{
@@ -555,7 +555,7 @@ defmodule BlueJet.OrderTest do
   describe "process/2" do
     test "when given order has auto fulfillabe line item" do
       account = Repo.insert!(%Account{})
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       order = Repo.insert!(%Order{
@@ -585,7 +585,7 @@ defmodule BlueJet.OrderTest do
 
       fulfillment = %Fulfillment{ id: Ecto.UUID.generate() }
       fli = %FulfillmentLineItem{ id: Ecto.UUID.generate(), fulfillment_id: fulfillment.id }
-      DistributionDataMock
+      DistributionServiceMock
       |> expect(:create_fulfillment, fn(_) -> fulfillment end)
       |> expect(:create_fulfillment_line_item, fn(_) -> fli end)
 

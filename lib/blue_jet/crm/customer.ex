@@ -7,17 +7,8 @@ defmodule BlueJet.Crm.Customer do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
-  alias BlueJet.Repo
-  alias Ecto.Changeset
-
-  alias BlueJet.Translation
-
-  alias BlueJet.Crm.Customer
   alias BlueJet.Crm.PointAccount
-
-  @type t :: Ecto.Schema.t
+  alias BlueJet.Crm.IdentityService
 
   schema "customers" do
     field :account_id, Ecto.UUID
@@ -44,58 +35,36 @@ defmodule BlueJet.Crm.Customer do
     timestamps()
 
     has_one :point_account, PointAccount
-    belongs_to :enroller, Customer
-    belongs_to :sponsor, Customer
+    belongs_to :enroller, __MODULE__
+    belongs_to :sponsor, __MODULE__
   end
 
-  def system_fields do
-    [
-      :id,
-      :stripe_customer_id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :stripe_customer_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Customer.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Customer.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
-  end
-
-  def required_name_fields(_, _, name) do
-    if name do
-      []
-    else
-      [:first_name, :last_name]
-    end
+    __MODULE__.__trans__(:fields)
   end
 
   def required_fields(changeset) do
     status = get_field(changeset, :status)
-    first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :last_name)
-    name = get_field(changeset, :name)
-
-    required_name_fields = required_name_fields(first_name, last_name, name)
-
-    common = [:account_id, :status, :user_id]
-    common = common ++ required_name_fields
 
     case status do
-      "guest" -> [:account_id, :status]
-      "internal" -> [:account_id, :status]
-      "registered" -> common
-      "suspended" -> common -- [:user_id]
+      "guest" -> [:status]
+      "internal" -> [:status]
+      "registered" -> [:status, :user_id, :name]
+      "suspended" -> [:status]
     end
   end
 
@@ -107,17 +76,21 @@ defmodule BlueJet.Crm.Customer do
     |> unique_constraint(:email)
   end
 
-  def changeset(struct, params, locale, default_locale) do
-    struct
-    |> cast(params, castable_fields(struct))
-    |> validate()
+  def changeset(customer, params, locale \\ nil, default_locale \\ nil) do
+    customer = %{ customer | account: get_account(customer) }
+    default_locale = default_locale || customer.account.default_locale
+    locale = locale || default_locale
+
+    customer
+    |> cast(params, writable_fields())
     |> put_name()
+    |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
-  def put_name(changeset = %{ valid?: true }) do
+  def put_name(changeset) do
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :first_name)
 
@@ -127,8 +100,6 @@ defmodule BlueJet.Crm.Customer do
       changeset
     end
   end
-
-  def put_name(changeset), do: changeset
 
   def match?(nil, _) do
     false
@@ -179,6 +150,10 @@ defmodule BlueJet.Crm.Customer do
   ######
   # External Resources
   #####
+  def get_account(customer) do
+    customer.account || IdentityService.get_account(customer)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -190,13 +165,13 @@ defmodule BlueJet.Crm.Customer do
   @doc """
   Preprocess the customer to be ready for its first payment
   """
-  @spec preprocess(Customer.t, Keyword.t) :: Customer.t
-  def preprocess(customer = %Customer{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
+  @spec preprocess(__MODULE__.t, Keyword.t) :: __MODULE__.t
+  def preprocess(customer = %__MODULE__{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
     customer = %{ customer | account: get_account(customer) }
     {:ok, stripe_customer} = create_stripe_customer(customer)
 
     customer
-    |> Changeset.change(stripe_customer_id: stripe_customer["id"])
+    |> change(stripe_customer_id: stripe_customer["id"])
     |> Repo.update!()
   end
   def preprocess(customer, _), do: customer
@@ -211,7 +186,7 @@ defmodule BlueJet.Crm.Customer do
   #   end
   # end
 
-  @spec create_stripe_customer(Customer.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_customer(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp create_stripe_customer(customer) do
     account = get_account(customer)
     StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
@@ -225,6 +200,8 @@ defmodule BlueJet.Crm.Customer do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Crm.Customer
 
     def default() do
       from(c in Customer, order_by: [desc: :updated_at])

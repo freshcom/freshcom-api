@@ -1,12 +1,12 @@
 defmodule BlueJet.Catalogue.ProductCollectionMembership do
   use BlueJet, :data
 
-  alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.ProductCollection
   alias BlueJet.Catalogue.Product
 
   schema "product_collection_memberships" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
     field :sort_index, :integer, default: 100
 
     timestamps()
@@ -15,31 +15,56 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     belongs_to :product, Product
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    ProductCollectionMembership.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :collection_id, :product_id]
+    writable_fields() -- [:collection_id, :product_id]
+  end
+
+  defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
+    account_id = get_field(changeset, :account_id)
+    collection_id = get_field(changeset, :collection_id)
+    collection = Repo.get(ProductCollection, collection_id)
+
+    if collection && collection.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :collection, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  defp validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+    account_id = get_field(changeset, :account_id)
+    product_id = get_field(changeset, :product_id)
+    product = Repo.get(Product, product_id)
+
+    if product && product.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :collection_id, :product_id])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:collection_id, :product_id])
     |> unique_constraint(:product_id, name: :product_collection_memberships_product_id_collection_id_index)
-    |> validate_assoc_account_scope([:collection, :product])
+    |> validate_collection_id()
+    |> validate_product_id()
   end
 
   @doc """
@@ -53,6 +78,8 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Catalogue.ProductCollectionMembership
 
     def default() do
       from pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index]

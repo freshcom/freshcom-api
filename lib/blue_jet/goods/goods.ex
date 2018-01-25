@@ -5,7 +5,7 @@ defmodule BlueJet.Goods do
   alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable
 
-  defmodule Data do
+  defmodule Service do
     def get_goods("Stockable", id) do
       Repo.get(Stockable, id)
     end

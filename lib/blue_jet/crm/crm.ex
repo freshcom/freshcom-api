@@ -5,11 +5,10 @@ defmodule BlueJet.Crm do
 
   alias BlueJet.Identity
 
-  alias BlueJet.Crm.Customer
-  alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.PointTransaction
+  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
+  alias BlueJet.Crm.IdentityService
 
-  defmodule Data do
+  defmodule Service do
     def get_point_account(customer_id) do
       Repo.get_by(PointAccount, customer_id: customer_id)
     end
@@ -28,16 +27,22 @@ defmodule BlueJet.Crm do
     end
   end
 
-  def handle_event("balance.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
-    customer = Repo.get!(Customer, customer_id)
-    customer = Customer.preprocess(customer, payment_processor: "stripe")
-    fields = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
+  defmodule EventHandler do
+    @behaviour BlueJet.EventHandler
 
-    {:ok, fields}
-  end
-  def handle_event("balance.payment.before_create", %{ fields: fields }), do: {:ok, fields}
-  def handle_event(_, _) do
-    {:ok, nil}
+    def handle_event("balance.payment.before_create", %{ fields: fields, owner: %{ type: "Customer", id: customer_id } }) do
+      customer = Repo.get!(Customer, customer_id)
+      customer = Customer.preprocess(customer, payment_processor: "stripe")
+      fields = Map.put(fields, "stripe_customer_id", customer.stripe_customer_id)
+
+      {:ok, fields}
+    end
+
+    def handle_event("balance.payment.before_create", %{ fields: fields }), do: {:ok, fields}
+
+    def handle_event(_, _) do
+      {:ok, nil}
+    end
   end
 
   ####
@@ -112,30 +117,25 @@ defmodule BlueJet.Crm do
   end
 
   def do_create_customer(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
     fields = Map.merge(request.fields, %{
-      "account_id" => account.id,
-      "role" => "customer"
+      "role" => "customer",
+      "account_id" => account.id
     })
 
     statements =
       Multi.new()
       |> Multi.run(:user, fn(_) ->
           if fields["status"] == "registered" do
-            case Identity.do_create_user(%AccessRequest{ account: account, fields: fields}) do
-              {:ok, %{ data: user }} -> {:ok, user}
-              other -> other
-            end
+            IdentityService.create_user(fields)
           else
             {:ok, nil}
           end
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
           customer = if user do
-            %Customer{ user_id: user.id }
+            %Customer{ account_id: account.id, account: account, user_id: user.id }
           else
-            %Customer{}
+            %Customer{ account_id: account.id, account: account }
           end
 
           changeset = Customer.changeset(customer, fields, request.locale, account.default_locale)
@@ -244,11 +244,11 @@ defmodule BlueJet.Crm do
       |> Multi.run(:user, fn(_) ->
           cond do
             customer.status == "guest" && request.fields["status"] == "registered" ->
-              case Identity.create_user(%AccessRequest{ vas: vas, fields: request.fields}) do
-                {:ok, %{ data: user }} -> {:ok, user}
-                other -> other
-              end
-            true -> {:ok, nil}
+              fields = Map.merge(request.fields, %{ "account_id" => account.id })
+              IdentityService.create_user(fields)
+
+            true ->
+              {:ok, nil}
           end
          end)
       |> Multi.run(:changeset, fn(%{ user: user }) ->
@@ -258,7 +258,11 @@ defmodule BlueJet.Crm do
             request.fields
           end
 
-          changeset = Customer.changeset(customer, fields, request.locale, account.default_locale)
+          changeset =
+            customer
+            |> Map.put(:account, account)
+            |> Customer.changeset(fields, request.locale, account.default_locale)
+
           {:ok, changeset}
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
@@ -424,7 +428,8 @@ defmodule BlueJet.Crm do
       "point_account_id" => point_account_id,
       "status" => "pending"
     })
-    changeset = PointTransaction.changeset(%PointTransaction{ account_id: account.id }, fields)
+    point_transaction = %PointTransaction{ account_id: account.id, account: account }
+    changeset = PointTransaction.changeset(point_transaction, fields)
 
     with {:ok, point_transaction} <- Repo.insert(changeset) do
       point_transaction_response(point_transaction, request)
@@ -440,7 +445,8 @@ defmodule BlueJet.Crm do
     request = %{ request | locale: account.default_locale }
 
     fields = Map.merge(request.fields, %{ "point_account_id" => point_account_id })
-    changeset = PointTransaction.changeset(%PointTransaction{ account_id: account.id }, fields)
+    point_transaction = %PointTransaction{ account_id: account.id, account: account }
+    changeset = PointTransaction.changeset(point_transaction, fields)
 
     statements =
       Multi.new()
@@ -492,6 +498,7 @@ defmodule BlueJet.Crm do
       PointTransaction.Query.default()
       |> PointTransaction.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %PointTransaction{} <- point_transaction,
          changeset = %{ valid?: true } <- PointTransaction.changeset(point_transaction, request.fields, request.locale, account.default_locale)

@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.CardTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.Card
-  alias BlueJet.Balance.{StripeClientMock, IdentityDataMock}
+  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock}
 
   test "writable_fields/0" do
     assert Card.writable_fields() == [
@@ -39,7 +39,7 @@ defmodule BlueJet.Balance.CardTest do
 
   describe "changeset/4" do
     test "when there is no primary card saved by owner" do
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
       changeset = Card.changeset(%Card{}, %{
@@ -84,7 +84,7 @@ defmodule BlueJet.Balance.CardTest do
       |> expect(:post, fn(_, _, _) -> {:ok, stripe_card} end)
 
       account = Repo.insert!(%Account{})
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       owner_id = Ecto.UUID.generate()
@@ -117,7 +117,7 @@ defmodule BlueJet.Balance.CardTest do
       |> expect(:post, fn(_, _, _) -> {:ok, stripe_card} end)
 
       account = Repo.insert!(%Account{})
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       owner_id = Ecto.UUID.generate()

@@ -9,7 +9,7 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.IdentityData
+  alias BlueJet.Goods.IdentityService
 
   schema "unlockables" do
     field :account_id, Ecto.UUID
@@ -66,7 +66,7 @@ defmodule BlueJet.Goods.Unlockable do
   def put_print_name(changeset), do: changeset
 
   def changeset(unlockable, params, locale \\ nil, default_locale \\ nil) do
-    unlockable = %{ unlockable | account: IdentityData.get_account(unlockable) }
+    unlockable = %{ unlockable | account: IdentityService.get_account(unlockable) }
     default_locale = default_locale || unlockable.account.default_locale
     locale = locale || default_locale
 

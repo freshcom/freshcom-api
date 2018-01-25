@@ -7,7 +7,7 @@ defmodule BlueJet.OrderLineItemTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
-  alias BlueJet.Storefront.{IdentityDataMock, CatalogueDataMock, GoodsDataMock, CrmDataMock, DistributionDataMock}
+  alias BlueJet.Storefront.{IdentityServiceMock, CatalogueServiceMock, GoodsServiceMock, CrmServiceMock, DistributionServiceMock}
   alias BlueJet.Catalogue.{Product, Price}
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
@@ -158,7 +158,7 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id
       })
 
-      CatalogueDataMock
+      CatalogueServiceMock
       |> expect(:get_product, fn(_) -> nil end)
 
       changeset =
@@ -190,7 +190,7 @@ defmodule BlueJet.OrderLineItemTest do
         id: product_id,
         account_id: account.id
       }
-      CatalogueDataMock
+      CatalogueServiceMock
       |> expect(:get_product, fn(_) -> product end)
       |> expect(:get_price, fn(_) -> nil end)
 
@@ -219,7 +219,7 @@ defmodule BlueJet.OrderLineItemTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       product = %Product{
@@ -227,7 +227,7 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id,
         name: Faker.String.base64(5)
       }
-      CatalogueDataMock
+      CatalogueServiceMock
       |> expect(:get_product, fn(_) -> product end)
       |> expect(:get_price, fn(_) -> nil end)
 
@@ -255,7 +255,7 @@ defmodule BlueJet.OrderLineItemTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       product = %Product{
@@ -280,7 +280,7 @@ defmodule BlueJet.OrderLineItemTest do
         tax_two_percentage: D.new(10),
         tax_three_percentage: D.new(15)
       }
-      CatalogueDataMock
+      CatalogueServiceMock
       |> expect(:get_product, fn(_) -> product end)
       |> expect(:get_price, fn(_) -> price end)
 
@@ -325,7 +325,7 @@ defmodule BlueJet.OrderLineItemTest do
         id: Ecto.UUID.generate(),
         name: Faker.String.base64(5)
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       product = Repo.insert!(%Product{
@@ -336,7 +336,7 @@ defmodule BlueJet.OrderLineItemTest do
         source_type: "Stockable"
       })
 
-      CatalogueDataMock
+      CatalogueServiceMock
       |> expect(:get_product, fn(_) -> product end)
 
       order = Repo.insert!(%Order{
@@ -416,12 +416,12 @@ defmodule BlueJet.OrderLineItemTest do
         amount: 5000,
         target_type: "PointAccount"
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_depositable, fn(_) -> depositable end)
 
       point_account = %PointAccount{}
       point_transaction = %PointTransaction{}
-      CrmDataMock
+      CrmServiceMock
       |> expect(:get_point_account, fn(_) -> point_account end)
       |> expect(:create_point_transaction, fn(_) -> point_transaction end)
 
@@ -437,7 +437,7 @@ defmodule BlueJet.OrderLineItemTest do
     end
 
     test "when source is a point transaction" do
-      CrmDataMock
+      CrmServiceMock
       |> expect(:update_point_transaction, fn(_, _) -> %PointTransaction{} end)
 
       order = %Order{}
@@ -460,7 +460,7 @@ defmodule BlueJet.OrderLineItemTest do
 
     test "when there is no fulfillment line item" do
       flis = []
-      DistributionDataMock
+      DistributionServiceMock
       |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
@@ -474,7 +474,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "returned", quantity: 2 },
         %FulfillmentLineItem{ status: "returned", quantity: 3 }
       ]
-      DistributionDataMock
+      DistributionServiceMock
       |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
@@ -488,7 +488,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
         %FulfillmentLineItem{ status: "pending", quantity: 1 }
       ]
-      DistributionDataMock
+      DistributionServiceMock
       |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
@@ -502,7 +502,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
         %FulfillmentLineItem{ status: "fulfilled", quantity: 3 }
       ]
-      DistributionDataMock
+      DistributionServiceMock
       |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })

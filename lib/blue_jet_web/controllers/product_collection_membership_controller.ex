@@ -24,7 +24,8 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   def create(conn = %{ assigns: assigns }, %{ "product_collection_id" => pc_id, "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      fields: Map.merge(Params.to_attributes(data), %{ "collection_id" => pc_id }),
+      params: %{ "collection_id" => pc_id },
+      fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 

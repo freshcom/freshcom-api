@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.RefundTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Refund, Payment}
-  alias BlueJet.Balance.{StripeClientMock, IdentityDataMock}
+  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock}
 
   test "writable_fields/0" do
     assert Refund.writable_fields() == [
@@ -46,7 +46,8 @@ defmodule BlueJet.Balance.RefundTest do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: account.id,
-        amount_cents: 5000
+        amount_cents: 5000,
+        gateway: "online"
       })
       changeset =
         change(%Refund{ account_id: account.id }, %{
@@ -67,7 +68,7 @@ defmodule BlueJet.Balance.RefundTest do
   describe "process/1" do
     test "when refund use online gateway" do
       account = Repo.insert!(%Account{})
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       stripe_refund_id = Faker.String.base64(12)
@@ -88,6 +89,7 @@ defmodule BlueJet.Balance.RefundTest do
 
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        gateway: "online",
         amount_cents: 5000,
         freshcom_fee_cents: 300
       })

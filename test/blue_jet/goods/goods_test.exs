@@ -7,7 +7,7 @@ defmodule BlueJet.GoodsTest do
   alias BlueJet.AccessRequest
   alias BlueJet.Goods
   alias BlueJet.Goods.Stockable
-  alias BlueJet.Goods.IdentityDataMock
+  alias BlueJet.Goods.IdentityServiceMock
 
   describe "list_stockable/1" do
     test "when using customer identity" do
@@ -55,7 +55,7 @@ defmodule BlueJet.GoodsTest do
     test "when using developer identity" do
       %{ vas: vas, account: account } = create_global_identity("developer")
 
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       request = %AccessRequest{
@@ -115,7 +115,7 @@ defmodule BlueJet.GoodsTest do
     test "when using developer identity" do
       %{ vas: vas, account: account } = create_global_identity("developer")
 
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       stockable = Repo.insert!(%Stockable{

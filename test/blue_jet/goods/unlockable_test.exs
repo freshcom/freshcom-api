@@ -5,7 +5,7 @@ defmodule BlueJet.Goods.UnlockableTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Unlockable
-  alias BlueJet.Goods.IdentityDataMock
+  alias BlueJet.Goods.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted unlockable should be automatically deleted" do
@@ -51,7 +51,7 @@ defmodule BlueJet.Goods.UnlockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{
@@ -66,7 +66,7 @@ defmodule BlueJet.Goods.UnlockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{
@@ -81,7 +81,7 @@ defmodule BlueJet.Goods.UnlockableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, %{})

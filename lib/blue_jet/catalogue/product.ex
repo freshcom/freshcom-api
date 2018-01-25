@@ -19,7 +19,7 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
-  alias BlueJet.Catalogue.{IdentityData, GoodsData}
+  alias BlueJet.Catalogue.{IdentityService, GoodsService}
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -118,7 +118,7 @@ defmodule BlueJet.Catalogue.Product do
     source_type = get_field(changeset, :source_type)
     account_id = get_field(changeset, :account_id)
 
-    source = get_field(changeset, :source) || GoodsData.get_goods(source_type, source_id)
+    source = get_field(changeset, :source) || GoodsService.get_goods(source_type, source_id)
 
     if source && source.account_id == account_id do
       changeset
@@ -249,7 +249,7 @@ defmodule BlueJet.Catalogue.Product do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(product, params, locale \\ nil, default_locale \\ nil) do
-    product = %{ product | account: IdentityData.get_account(product) }
+    product = %{ product | account: get_account(product) }
     default_locale = default_locale || product.account.default_locale
     locale = locale || default_locale
 
@@ -263,7 +263,7 @@ defmodule BlueJet.Catalogue.Product do
   def put_name(changeset = %{ changes: %{ name_sync: "sync_with_source" } }, _) do
     source_id = get_field(changeset, :source_id)
     source_type = get_field(changeset, :source_type)
-    source = get_field(changeset, :source) || GoodsData.get_goods(source_type, source_id)
+    source = get_field(changeset, :source) || GoodsService.get_goods(source_type, source_id)
 
     if source do
       new_translations =
@@ -282,9 +282,13 @@ defmodule BlueJet.Catalogue.Product do
 
   def put_name(changeset, _), do: changeset
 
-  ####
-  # External Resources
-  ###
+  #
+  # MARK: External Resources
+  #
+  def get_account(product) do
+    product.account || IdentityService.get_account(product)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file,
     field: :avatar
@@ -294,7 +298,7 @@ defmodule BlueJet.Catalogue.Product do
     field: :external_file_collections,
     owner_type: "Product"
 
-  def put_external_resources(stockable, _, _), do: stockable
+  def put_external_resources(product, _, _), do: product
 
   defmodule Query do
     use BlueJet, :query

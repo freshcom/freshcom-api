@@ -7,7 +7,7 @@ defmodule BlueJet.Catalogue.ProductTest do
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.{IdentityDataMock, GoodsDataMock}
+  alias BlueJet.Catalogue.{IdentityServiceMock, GoodsServiceMock}
 
   describe "schema" do
     test "when account is deleted product is automatically deleted" do
@@ -111,7 +111,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given invalid source" do
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> nil end)
 
       changeset =
@@ -133,7 +133,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         id: Ecto.UUID.generate(),
         account_id: account_id
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       changeset =
@@ -458,7 +458,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         name: Faker.String.base64(5),
         account_id: account.id
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       product_with_variants = Repo.insert!(%Product{
@@ -530,7 +530,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         name: Faker.String.base64(5),
         account_id: account.id
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       product_with_variants = Repo.insert!(%Product{
@@ -583,7 +583,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         account_id: account.id,
         name: Faker.String.base64(5)
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       product_combo = Repo.insert!(%Product{
@@ -615,7 +615,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         name: Faker.String.base64(5),
         account_id: account.id
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       product_combo = Repo.insert!(%Product{
@@ -643,7 +643,7 @@ defmodule BlueJet.Catalogue.ProductTest do
   describe "changeset/4" do
     test "when given name sync is sync with source" do
       account = %Account{ id: Ecto.UUID.generate() }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       stockable = %Stockable{
@@ -651,7 +651,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         name: Faker.String.base64(5),
         account_id: account.id
       }
-      GoodsDataMock
+      GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       changeset = Product.changeset(%Product{ account_id: account.id, }, %{

@@ -2,11 +2,11 @@ defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
   alias Ecto.Changeset
-  alias BlueJet.FileStorage
+  alias BlueJet.Catalogue.{FileStorageService}
 
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
-  defmodule Data do
+  defmodule Service do
     def get_product(id) do
       Repo.get(Product, id)
     end
@@ -24,9 +24,9 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  ######
-  # Product
-  ######
+  #
+  # MARK: Product
+  #
   def list_product(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.list_product") do
       request
@@ -108,9 +108,8 @@ defmodule BlueJet.Catalogue do
 
   def do_create_product(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Product.changeset(%Product{}, fields, request.locale, account.default_locale)
+    product = %Product{ account_id: account.id, account: account }
+    changeset = Product.changeset(product, request.fields, request.locale, account.default_locale)
 
     with {:ok, product} <- Repo.insert(changeset) do
       product_response(product, request)
@@ -181,6 +180,7 @@ defmodule BlueJet.Catalogue do
       Product.Query.default()
       |> Product.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Product{} <- product,
          changeset = %Changeset{ valid?: true } <- Product.changeset(product, request.fields, request.locale, account.default_locale)
@@ -224,10 +224,7 @@ defmodule BlueJet.Catalogue do
     cond do
       product && product.avatar_id ->
         {:ok, _} = Repo.transaction(fn ->
-          FileStorage.do_delete_external_file(%AccessRequest{
-            account: account,
-            params: %{ "id" => product.avatar_id }
-          })
+          FileStorageService.delete_external_file(product.avatar_id)
           Repo.delete!(product)
         end)
         {:ok, %AccessResponse{}}
@@ -316,8 +313,8 @@ defmodule BlueJet.Catalogue do
   def do_create_product_collection(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
 
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = ProductCollection.changeset(%ProductCollection{}, fields, request.locale, account.default_locale)
+    product_collection = %ProductCollection{ account_id: account.id, account: account }
+    changeset = ProductCollection.changeset(product_collection, request.fields, request.locale, account.default_locale)
 
     with {:ok, product_collection} <- Repo.insert(changeset) do
       product_collection_response(product_collection, request)
@@ -367,6 +364,7 @@ defmodule BlueJet.Catalogue do
       ProductCollection.Query.default()
       |> ProductCollection.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %ProductCollection{} <- product_collection,
          changeset <- ProductCollection.changeset(product_collection, request.fields, request.locale, account.default_locale),
@@ -484,11 +482,10 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  def do_create_product_collection_membership(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = ProductCollectionMembership.changeset(%ProductCollectionMembership{}, fields)
+  def do_create_product_collection_membership(request = %{ account: account, params: %{ "collection_id" => collection_id } }) do
+    fields = Map.merge(request.fields, %{ "collection_id" => collection_id })
+    pcm = %ProductCollectionMembership{ account_id: account.id, account: account }
+    changeset = ProductCollectionMembership.changeset(pcm, fields)
 
     with {:ok, pcm} <- Repo.insert(changeset) do
       product_collection_membership_response(pcm, request)
@@ -556,11 +553,11 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  def do_list_price(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+  def do_list_price(request = %{ account: account, params: %{ "product_id" => product_id }, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       Price.Query.default()
       |> search([:name, :id], request.search, request.locale, account.default_locale)
-      |> filter_by(product_id: filter[:product_id], status: filter[:status], label: filter[:label])
+      |> filter_by(product_id: product_id, status: filter[:status], label: filter[:label])
       |> Price.Query.for_account(account.id)
 
     total_count = Repo.aggregate(data_query, :count, :id)
@@ -611,11 +608,10 @@ defmodule BlueJet.Catalogue do
     end
   end
 
-  def do_create_price(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Price.changeset(%Price{}, fields, request.locale, account.default_locale)
+  def do_create_price(request = %{ account: account, params: %{ "product_id" => product_id } }) do
+    fields = Map.merge(request.fields, %{ "product_id" => product_id })
+    price = %Price{ account_id: account.id, account: account }
+    changeset = Price.changeset(price, fields, request.locale, account.default_locale)
 
     with {:ok, price} <- Repo.insert(changeset) do
       price_response(price, request)
@@ -677,6 +673,7 @@ defmodule BlueJet.Catalogue do
       |> Price.Query.for_account(account.id)
       |> Repo.get(id)
       |> Repo.preload(:parent)
+      |> Map.put(:account, account)
 
     with %Price{} <- price,
          changeset = %{ valid?: true } <- Price.changeset(price, request.fields, request.locale, account.default_locale)

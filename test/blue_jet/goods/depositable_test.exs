@@ -5,7 +5,7 @@ defmodule BlueJet.Goods.DepositableTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Depositable
-  alias BlueJet.Goods.IdentityDataMock
+  alias BlueJet.Goods.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted depositable should be automatically deleted" do
@@ -55,7 +55,7 @@ defmodule BlueJet.Goods.DepositableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
@@ -72,7 +72,7 @@ defmodule BlueJet.Goods.DepositableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
@@ -89,7 +89,7 @@ defmodule BlueJet.Goods.DepositableTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{})

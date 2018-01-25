@@ -4,8 +4,7 @@ defmodule BlueJet.Balance.Card do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
-  alias BlueJet.Balance.Card
-  alias BlueJet.Balance.{StripeClient, IdentityData}
+  alias BlueJet.Balance.{StripeClient, IdentityService}
 
   schema "cards" do
     field :account_id, Ecto.UUID
@@ -50,11 +49,11 @@ defmodule BlueJet.Balance.Card do
   ]
 
   def writable_fields do
-    Card.__schema__(:fields) -- @system_fields
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Card.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
   def required_fields() do
@@ -67,8 +66,7 @@ defmodule BlueJet.Balance.Card do
   end
 
   def changeset(card, params, locale \\ nil, default_locale \\ nil) do
-    account = card.account || IdentityData.get_account(card)
-    card = %{ card | account: account }
+    card = %{ card | account: get_account(card) }
     default_locale = default_locale || card.account.default_locale
     locale = locale || default_locale
 
@@ -91,7 +89,7 @@ defmodule BlueJet.Balance.Card do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 
-    existing_primary_card = Repo.get_by(Card, owner_id: owner_id, owner_type: owner_type, status: "saved_by_owner", primary: true)
+    existing_primary_card = Repo.get_by(__MODULE__, owner_id: owner_id, owner_type: owner_type, status: "saved_by_owner", primary: true)
 
     if !existing_primary_card do
       put_change(changeset, :primary, true)
@@ -103,6 +101,10 @@ defmodule BlueJet.Balance.Card do
   ######
   # External Resources
   #####
+  def get_account(payment) do
+    payment.account || IdentityService.get_account(payment)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -137,22 +139,22 @@ defmodule BlueJet.Balance.Card do
   """
   @spec keep_stripe_token_as_card(Map.t, Map.t) :: {:ok, String.t} | {:error, map}
   def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status, account_id: account_id }) when not is_nil(stripe_customer_id) do
-    account = IdentityData.get_account(%{ account_id: account_id, account: nil })
+    account = get_account(%{ account_id: account_id, account: nil })
 
     Repo.transaction(fn ->
       with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
-           nil <- Repo.get_by(Card, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
+           nil <- Repo.get_by(__MODULE__, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
            # Create the new card
-           card <- Repo.insert!(%Card{ account_id: fields[:account_id], account: account, status: status, source: token, stripe_customer_id: stripe_customer_id, owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
+           card <- Repo.insert!(%__MODULE__{ account_id: fields[:account_id], account: account, status: status, source: token, stripe_customer_id: stripe_customer_id, owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
            {:ok, card} <- process(card)
       do
         card.stripe_card_id
       else
         # If there is existing card with the same status just return
-        %Card{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
+        %__MODULE__{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
 
         # If there is existing card with different status then we update the card
-        card = %Card{ stripe_card_id: stripe_card_id } ->
+        card = %__MODULE__{ stripe_card_id: stripe_card_id } ->
           card
           |> change(%{ status: status, account: account })
           |> Repo.update!()
@@ -167,9 +169,9 @@ defmodule BlueJet.Balance.Card do
   end
   def keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
-  @spec process(Card.t, Map.t) :: {:ok, Card.t} | {:error, map}
-  def process(card = %Card{ source: source }) when not is_nil(source) do
-    account = card.account || IdentityData.get_account(card)
+  @spec process(__MODULE__.t, Map.t) :: {:ok, __MODULE__.t} | {:error, map}
+  def process(card = %__MODULE__{ source: source }) when not is_nil(source) do
+    account = get_account(card)
     card = %{ card | account: account }
     with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
@@ -194,18 +196,18 @@ defmodule BlueJet.Balance.Card do
     end
   end
 
-  @spec process(Card.t, Changeset.t) :: {:ok, Card.t} | {:error, map}
+  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(card, changeset = %Changeset{}) do
-    card = %{ card | account: IdentityData.get_account(card) }
+    card = %{ card | account: get_account(card) }
     if get_change(changeset, :exp_month) || get_change(changeset, :exp_year) do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
 
     if get_change(changeset, :primary) do
-      Card
-      |> Card.Query.for_account(card.account_id)
-      |> Card.Query.with_owner(card.owner_type, card.owner_id)
-      |> Card.Query.not_id(card.id)
+      __MODULE__
+      |> __MODULE__.Query.for_account(card.account_id)
+      |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
+      |> __MODULE__.Query.not_id(card.id)
       |> Repo.update_all(set: [primary: false])
     end
 
@@ -213,10 +215,10 @@ defmodule BlueJet.Balance.Card do
   end
   def process(card = %{ primary: true }, :delete) do
     last_inserted_card =
-      Card.Query.default()
-      |> Card.Query.for_account(card.account_id)
-      |> Card.Query.with_owner(card.owner_type, card.owner_id)
-      |> Card.Query.not_primary()
+      __MODULE__.Query.default()
+      |> __MODULE__.Query.for_account(card.account_id)
+      |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
+      |> __MODULE__.Query.not_primary()
       |> first()
       |> Repo.one()
 
@@ -230,7 +232,7 @@ defmodule BlueJet.Balance.Card do
     {:ok, card}
   end
   def process(card = %{ primary: false }, :delete) do
-    card = %{ card | account: IdentityData.get_account(card) }
+    card = %{ card | account: get_account(card) }
     delete_stripe_card(card)
 
     {:ok, card}
@@ -238,19 +240,19 @@ defmodule BlueJet.Balance.Card do
   def process(card, _), do: {:ok, card}
 
   defp update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
-    account = card.account || IdentityData.get_account(card)
+    account = get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
   end
 
-  @spec create_stripe_card(Cart.t, Map.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_card(__MODULE__.t, Map.t) :: {:ok, map} | {:error, map}
   defp create_stripe_card(card = %{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
-    account = card.account || IdentityData.get_account(card)
+    account = get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata }, mode: account.mode)
   end
 
-  @spec delete_stripe_card(Cart.t) :: {:ok, map} | {:error, map}
+  @spec delete_stripe_card(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp delete_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
-    account = card.account || IdentityData.get_account(card)
+    account = get_account(card)
     StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", mode: account.mode)
   end
 
@@ -265,6 +267,8 @@ defmodule BlueJet.Balance.Card do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Balance.Card
 
     def for_account(query, account_id) do
       from(c in query, where: c.account_id == ^account_id)

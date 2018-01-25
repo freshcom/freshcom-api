@@ -12,9 +12,12 @@ defmodule BlueJet.Catalogue.Price do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.IdentityService
 
   schema "prices" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :status, :string, default: "draft"
     field :code, :string
     field :name, :string
@@ -140,9 +143,13 @@ defmodule BlueJet.Catalogue.Price do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def changeset(price, params, locale \\ nil, default_locale \\ nil) do
+    price = %{ price | account: get_account(price) }
+    default_locale = default_locale || price.account.default_locale
+    locale = locale || default_locale
+
+    price
+    |> cast(params, castable_fields(price))
     |> put_status()
     |> put_label()
     |> put_charge_unit()
@@ -211,6 +218,10 @@ defmodule BlueJet.Catalogue.Price do
     D.new(p) |> D.div(D.new(100))
   end
 
+  def get_account(price) do
+    price.account || IdentityService.get_account(price)
+  end
+
   # TODO: Refactor this
   def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
     query = from p in __MODULE__,
@@ -251,7 +262,7 @@ defmodule BlueJet.Catalogue.Price do
       acc + child.charge_amount_cents
     end)
 
-    changeset = __MODULE__.changeset(price, %{ "charge_amount_cents" => charge_amount_cents })
+    changeset = change(price, %{ charge_amount_cents: charge_amount_cents })
     Repo.update!(changeset)
   end
 

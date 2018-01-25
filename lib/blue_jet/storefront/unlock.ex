@@ -5,7 +5,7 @@ defmodule BlueJet.Storefront.Unlock do
 
   alias BlueJet.Translation
   alias BlueJet.Storefront.Unlock
-  alias BlueJet.Storefront.{GoodsData, CrmData, IdentityData}
+  alias BlueJet.Storefront.{GoodsService, CrmService, IdentityService}
 
   schema "unlocks" do
     field :account_id, Ecto.UUID
@@ -70,7 +70,7 @@ defmodule BlueJet.Storefront.Unlock do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(unlock, params, locale \\ nil, default_locale \\ nil) do
-    unlock = %{ unlock | account: IdentityData.get_account(unlock) }
+    unlock = %{ unlock | account: IdentityService.get_account(unlock) }
     default_locale = default_locale || unlock.account.default_locale
     locale = locale || default_locale
 
@@ -84,11 +84,11 @@ defmodule BlueJet.Storefront.Unlock do
   # MARK: External Resources
   #
   def get_unlockable(%{ unlockable_id: nil }), do: nil
-  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }), do: GoodsData.get_unlockable(unlockable_id)
+  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }), do: GoodsService.get_unlockable(unlockable_id)
   def get_unlockable(%{ unlockable: unlockable }), do: unlockable
 
   def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmData.get_customer(customer_id)
+  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmService.get_customer(customer_id)
   def get_customer(%{ customer: customer }), do: customer
 
   def put_external_resources(unlock, {:unlock, nil}, _) do

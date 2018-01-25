@@ -6,6 +6,14 @@ defmodule BlueJet.FileStorage do
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
 
+  defmodule Service do
+    def delete_external_file(id) do
+      Repo.get(ExternalFile, id)
+      |> ExternalFile.delete_object()
+      |> Repo.delete!()
+    end
+  end
+
   ####
   # Macro
   ####

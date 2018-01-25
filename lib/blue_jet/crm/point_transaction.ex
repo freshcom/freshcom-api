@@ -8,14 +8,8 @@ defmodule BlueJet.Crm.PointTransaction do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
-  alias Ecto.Changeset
-
-  alias BlueJet.Translation
-
-  alias BlueJet.Crm.PointTransaction
   alias BlueJet.Crm.PointAccount
+  alias BlueJet.Crm.IdentityService
 
   schema "point_transactions" do
     field :account_id, Ecto.UUID
@@ -46,33 +40,27 @@ defmodule BlueJet.Crm.PointTransaction do
     belongs_to :point_account, PointAccount
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :account_id,
+    :balance_after_commit,
+    :committed_at,
+    :inserted_at,
+    :updated_at
+  ]
+
 
   def writable_fields do
-    PointTransaction.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    PointTransaction.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :status, :amount])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:status, :amount])
   end
 
   # def put_point_account_id(changeset = %{ changes: %{ customer_id: customer_id } }) do
@@ -109,12 +97,14 @@ defmodule BlueJet.Crm.PointTransaction do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(point_transaction, params \\ %{}, locale \\ nil, default_locale \\ nil) do
+    point_transaction = %{ point_transaction | account: get_account(point_transaction) }
+    default_locale = default_locale || point_transaction.account.default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields(struct))
+
+    point_transaction
+    |> cast(params, writable_fields())
     |> validate()
     |> put_committed_at()
     |> put_balance_after_commit()
@@ -128,7 +118,7 @@ defmodule BlueJet.Crm.PointTransaction do
     point_transaction = Repo.preload(point_transaction, :point_account)
     point_account = point_transaction.point_account
 
-    changeset = Changeset.change(point_account, %{ balance: point_transaction.balance_after_commit })
+    changeset = change(point_account, %{ balance: point_transaction.balance_after_commit })
     Repo.update(changeset)
   end
 
@@ -137,6 +127,10 @@ defmodule BlueJet.Crm.PointTransaction do
   #
   # ExternalFile
   #
+  def get_account(point_transaction) do
+    point_transaction.account || IdentityService.get_account(point_transaction)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
@@ -146,6 +140,8 @@ defmodule BlueJet.Crm.PointTransaction do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Crm.PointTransaction
 
     def default() do
       from(pt in PointTransaction, order_by: [desc: pt.inserted_at])

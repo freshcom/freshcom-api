@@ -1,9 +1,11 @@
 defmodule BlueJet.Catalogue.PriceTest do
   use BlueJet.DataCase
 
+  import Mox
+
   alias BlueJet.Identity.Account
-  alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.{Product, Price}
+  alias BlueJet.Catalogue.IdentityServiceMock
 
   describe "schema" do
     test "defaults" do
@@ -215,6 +217,9 @@ defmodule BlueJet.Catalogue.PriceTest do
         minimum_order_quantity: 6
       })
 
+      IdentityServiceMock
+      |> expect(:get_account, fn(_) -> account end)
+
       changeset = Price.changeset(%Price{ account_id: account.id }, %{
         product_id: product.id,
         parent_id: price.id
@@ -227,6 +232,9 @@ defmodule BlueJet.Catalogue.PriceTest do
     end
 
     test "when given price is not estimate by default" do
+      IdentityServiceMock
+      |> expect(:get_account, fn(_) -> %Account{} end)
+
       changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
         product_id: Ecto.UUID.generate(),
         charge_unit: "CU"
@@ -236,6 +244,9 @@ defmodule BlueJet.Catalogue.PriceTest do
     end
 
     test "when given price is estimate by default" do
+      IdentityServiceMock
+      |> expect(:get_account, fn(_) -> %Account{} end)
+
       changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
         product_id: Ecto.UUID.generate(),
         estimate_by_default: true,
@@ -246,6 +257,9 @@ defmodule BlueJet.Catalogue.PriceTest do
     end
 
     test "when given locale is different than default_locale" do
+      IdentityServiceMock
+      |> expect(:get_account, fn(_) -> %Account{} end)
+
       changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
         name: Faker.String.base64(5),
         charge_unit: Faker.String.base64(2),

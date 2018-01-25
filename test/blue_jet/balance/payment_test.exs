@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Payment, BalanceSettings}
-  alias BlueJet.Balance.{StripeClientMock, IdentityDataMock}
+  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock}
 
   test "writable_fields/0" do
     assert Payment.writable_fields() == [
@@ -32,7 +32,8 @@ defmodule BlueJet.Balance.PaymentTest do
       :target_type,
       :source,
       :save_source,
-      :capture
+      :capture,
+      :capture_amount_cents
     ]
   end
 
@@ -75,7 +76,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
   describe "changeset/4" do
     test "when there is no primary card saved by owner" do
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
       changeset = Payment.changeset(%Payment{}, %{
@@ -93,7 +94,7 @@ defmodule BlueJet.Balance.PaymentTest do
   describe "process/1" do
     test "when when payment use online gateway and capture is false" do
       account = Repo.insert!(%Account{})
-      IdentityDataMock
+      IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
       stripe_customer_id = Faker.String.base64(12)

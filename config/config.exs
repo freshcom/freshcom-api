@@ -76,28 +76,36 @@ config :blue_jet, :identity, %{
 }
 
 config :blue_jet, :goods, %{
-  identity_data: BlueJet.Identity.Data,
+  identity_service: BlueJet.Identity.Service,
+}
+
+config :blue_jet, :file_storage, %{
+  identity_service: BlueJet.Identity.Service,
 }
 
 config :blue_jet, :balance, %{
   stripe_client: BlueJet.Stripe.Client,
-  request_authorizer: BlueJet.Identity,
-  identity_data: BlueJet.Identity.Data,
+  identity_service: BlueJet.Identity.Service,
   listeners: [BlueJet.Storefront, BlueJet.Crm]
 }
 
+config :blue_jet, :crm, %{
+  identity_service: BlueJet.Identity.Service,
+}
+
 config :blue_jet, :catalogue, %{
-  identity_data: BlueJet.Identity.Data,
-  goods_data: BlueJet.Goods.Data
+  identity_service: BlueJet.Identity.Service,
+  goods_service: BlueJet.Goods.Service,
+  file_storage_service: BlueJet.FileStorage.Service
 }
 
 config :blue_jet, :storefront, %{
-  balance_data: BlueJet.Balance.Data,
-  distribution_data: BlueJet.Distribution.Data,
-  catalogue_data: BlueJet.Catalogue.Data,
-  identity_data: BlueJet.Identity.Data,
-  goods_data: BlueJet.Goods.Data,
-  crm_data: BlueJet.Crm.Data
+  balance_service: BlueJet.Balance.Service,
+  distribution_service: BlueJet.Distribution.Service,
+  catalogue_service: BlueJet.Catalogue.Service,
+  identity_service: BlueJet.Identity.Service,
+  goods_service: BlueJet.Goods.Service,
+  crm_service: BlueJet.Crm.Service
 }
 
 config :blue_jet, :distribution, %{

@@ -10,11 +10,8 @@ defmodule BlueJet.Balance.Payment do
   alias Decimal, as: D
   alias Ecto.Changeset
 
-  alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.Refund
-  alias BlueJet.Balance.Card
-  alias BlueJet.Balance.BalanceSettings
-  alias BlueJet.Balance.{StripeClient, IdentityData}
+  alias BlueJet.Balance.{Card, Refund, BalanceSettings}
+  alias BlueJet.Balance.{StripeClient, IdentityService}
 
   schema "payments" do
     field :account_id, Ecto.UUID
@@ -93,12 +90,12 @@ defmodule BlueJet.Balance.Payment do
   ]
 
   def writable_fields do
-    (Payment.__schema__(:fields) -- @system_fields)
-    ++ [:source, :save_source, :capture]
+    (__MODULE__.__schema__(:fields) -- @system_fields)
+    ++ [:source, :save_source, :capture, :capture_amount_cents]
   end
 
   def translatable_fields do
-    Payment.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
   defp required_fields(changeset) do
@@ -167,7 +164,7 @@ defmodule BlueJet.Balance.Payment do
   #####
 
   def get_account(payment) do
-    payment.account || IdentityData.get_account(payment)
+    payment.account || IdentityService.get_account(payment)
   end
 
   use BlueJet.FileStorage.Macro,
@@ -202,7 +199,7 @@ defmodule BlueJet.Balance.Payment do
   Returns the payment
   """
   def send_paylink(payment) do
-    payment
+    {:ok, payment}
   end
 
   @doc """
@@ -214,7 +211,7 @@ defmodule BlueJet.Balance.Payment do
 
   The given `payment` should be a payment that is just created/updated using the `changeset`.
   """
-  @spec process(Payment.t, Changeset.t) :: {:ok, Payment.t} | {:error, map}
+  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(
     payment = %{ gateway: "online", source: nil },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
@@ -265,8 +262,8 @@ defmodule BlueJet.Balance.Payment do
 
   Returns the charged payment.
   """
-  @spec charge(Payment.t) :: {:ok, Payment.t} | {:error, map}
-  def charge(payment = %Payment{ processor: "stripe" }) do
+  @spec charge(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
+  def charge(payment = %__MODULE__{ processor: "stripe" }) do
     payment = %{ payment | account: get_account(payment) }
 
     balance_settings = BalanceSettings.for_account(payment.account)
@@ -294,8 +291,8 @@ defmodule BlueJet.Balance.Payment do
   whether the payment is actually authorized, it is up to the caller to make
   sure the payment is a valid authorized payment before passing it to this function.
   """
-  @spec capture(Payment.t) :: {:ok, Payment.t} | {:error, map}
-  def capture(payment = %Payment{ processor: "stripe" }) do
+  @spec capture(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
+  def capture(payment = %__MODULE__{ processor: "stripe" }) do
     with {:ok, _} <- capture_stripe_charge(payment) do
       {:ok, payment}
     else
@@ -303,7 +300,7 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
-  @spec sync_with_stripe_charge(Payment.t, map) :: {:ok, Payment.t}
+  @spec sync_with_stripe_charge(__MODULE__.t, map) :: {:ok, Payment.t}
   defp sync_with_stripe_charge(payment, stripe_charge = %{ "captured" => true, "amount" => amount_cents }) do
     processor_fee_cents = stripe_charge["balance_transaction"]["fee"]
     freshcom_fee_cents = stripe_charge["amount"] - stripe_charge["transfer"]["amount"] - processor_fee_cents
@@ -336,7 +333,7 @@ defmodule BlueJet.Balance.Payment do
     {:ok, payment}
   end
 
-  @spec create_stripe_charge(Payment.t, String.t, BalanceSettings.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_charge(__MODULE__.t, String.t, BalanceSettings.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
     payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
     source,
@@ -364,7 +361,7 @@ defmodule BlueJet.Balance.Payment do
     StripeClient.post("/charges", stripe_request, mode: account.mode)
   end
 
-  @spec capture_stripe_charge(Payment.t) :: {:ok, map} | {:error, map}
+  @spec capture_stripe_charge(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
     account = get_account(payment)
     StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount_cents }, mode: account.mode)
@@ -378,6 +375,8 @@ defmodule BlueJet.Balance.Payment do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Balance.Payment
 
     def default() do
       from(p in Payment, order_by: [desc: :updated_at])
