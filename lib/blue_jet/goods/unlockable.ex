@@ -66,7 +66,7 @@ defmodule BlueJet.Goods.Unlockable do
   def put_print_name(changeset), do: changeset
 
   def changeset(unlockable, params, locale \\ nil, default_locale \\ nil) do
-    unlockable = %{ unlockable | account: IdentityService.get_account(unlockable) }
+    unlockable = %{ unlockable | account: get_account(unlockable) }
     default_locale = default_locale || unlockable.account.default_locale
     locale = locale || default_locale
 
@@ -80,6 +80,10 @@ defmodule BlueJet.Goods.Unlockable do
   ######
   # External Resources
   #####
+  def get_account(unlockable) do
+    unlockable.account || IdentityService.get_account(unlockable)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file,
     field: :avatar

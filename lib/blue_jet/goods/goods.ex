@@ -99,11 +99,8 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_stockable(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    changeset = Stockable.changeset(%Stockable{
-      account_id: account.id
-    }, request.fields, request.locale, account.default_locale)
+    stockable = %Stockable{ account: account, account_id: account.id }
+    changeset = Stockable.changeset(stockable, request.fields, request.locale, account.default_locale)
 
     with {:ok, stockable} <- Repo.insert(changeset) do
       stockable_response(stockable, request)
@@ -147,6 +144,7 @@ defmodule BlueJet.Goods do
       Stockable.Query.default()
       |> Stockable.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Stockable{} <- stockable,
          changeset <- Stockable.changeset(stockable, request.fields, request.locale, account.default_locale),
@@ -257,10 +255,8 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_unlockable(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Unlockable.changeset(%Unlockable{}, fields, request.locale, account.default_locale)
+    unlockable = %Unlockable{ account_id: account.id, account: account }
+    changeset = Unlockable.changeset(unlockable, request.fields, request.locale, account.default_locale)
 
     with {:ok, unlockable} <- Repo.insert(changeset) do
       unlockable_response(unlockable, request)
@@ -313,6 +309,7 @@ defmodule BlueJet.Goods do
       Unlockable.Query.default()
       |> Unlockable.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Unlockable{} <- unlockable,
          changeset <- Unlockable.changeset(unlockable, request.fields, request.locale, account.default_locale),
@@ -422,10 +419,8 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_depositable(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = Depositable.changeset(%Depositable{}, fields, request.locale, account.default_locale)
+    depositable = %Depositable{ account_id: account.id, account: account}
+    changeset = Depositable.changeset(depositable, request.fields, request.locale, account.default_locale)
 
     with {:ok, depositable} <- Repo.insert(changeset) do
       depositable_response(depositable, request)
@@ -469,6 +464,7 @@ defmodule BlueJet.Goods do
       Depositable.Query.default()
       |> Depositable.Query.for_account(account.id)
       |> Repo.get(id)
+      |> Map.put(:account, account)
 
     with %Depositable{} <- depositable,
          changeset <- Depositable.changeset(depositable, request.fields, request.locale, account.default_locale),

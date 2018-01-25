@@ -1,37 +1,36 @@
 defmodule BlueJet.GoodsTest do
-  use BlueJet.DataCase
+  use BlueJet.ContextCase
 
-  import Mox
-  import BlueJet.Identity.TestHelper
-
-  alias BlueJet.AccessRequest
+  alias BlueJet.AuthorizationMock
+  alias BlueJet.Identity.Account
   alias BlueJet.Goods
   alias BlueJet.Goods.Stockable
-  alias BlueJet.Goods.IdentityServiceMock
 
   describe "list_stockable/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Goods.list_stockable()
-
+      {:error, error} = Goods.list_stockable(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, account: account } = create_global_identity("developer")
-
+      account = Repo.insert!(%Account{})
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       })
 
-      {:ok, response} =
-        %AccessRequest{ vas: vas }
-        |> Goods.list_stockable()
+      request = %AccessRequest{
+        account: account,
+        role: "developer"
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Goods.list_stockable(request)
 
       assert length(response.data)
       assert Enum.at(response.data, 0).id == stockable.id
@@ -42,58 +41,59 @@ defmodule BlueJet.GoodsTest do
   end
 
   describe "create_stockable/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Goods.create_stockable()
-
+      {:error, error} = Goods.create_stockable(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, account: account } = create_global_identity("developer")
-
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
+      account = Repo.insert!(%Account{})
 
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "developer",
         fields: %{
           "name" => Faker.String.base64(5),
           "unit_of_measure" => Faker.String.base64(2)
         }
       }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
       {:ok, response} = Goods.create_stockable(request)
 
-      verify!()
       assert response.data.id
     end
   end
 
   describe "get_stockable/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Goods.get_stockable()
-
+      {:error, error} = Goods.get_stockable(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, account: account } = create_global_identity("developer")
+      account = Repo.insert!(%Account{})
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       })
+
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "developer",
         params: %{ "id" => stockable.id }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, response} = Goods.get_stockable(request)
 
@@ -102,35 +102,31 @@ defmodule BlueJet.GoodsTest do
   end
 
   describe "update_stockable/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Goods.update_stockable()
-
+      {:error, error} = Goods.update_stockable(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, account: account } = create_global_identity("developer")
-
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
-
+      account = Repo.insert!(%Account{})
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       })
+
       new_name = Faker.String.base64(5)
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "developer",
         params: %{ "id" => stockable.id },
-        fields: %{
-          "name" => new_name
-        }
+        fields: %{ "name" => new_name }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, response} = Goods.update_stockable(request)
 
@@ -140,27 +136,29 @@ defmodule BlueJet.GoodsTest do
   end
 
   describe "delete_stockable/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Goods.delete_stockable()
-
+      {:error, error} = Goods.delete_stockable(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, account: account } = create_global_identity("developer")
+      account = Repo.insert!(%Account{})
       stockable = Repo.insert!(%Stockable{
         account_id: account.id,
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       })
+
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "developer",
         params: %{ "id" => stockable.id }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, _} = Goods.delete_stockable(request)
 

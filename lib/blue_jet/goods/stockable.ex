@@ -78,7 +78,7 @@ defmodule BlueJet.Goods.Stockable do
   defp put_print_name(changeset), do: changeset
 
   def changeset(stockable, params, locale \\ nil, default_locale \\ nil) do
-    stockable = %{ stockable | account: IdentityService.get_account(stockable) }
+    stockable = %{ stockable | account: get_account(stockable) }
     default_locale = default_locale || stockable.account.default_locale
     locale = locale || default_locale
 
@@ -92,6 +92,11 @@ defmodule BlueJet.Goods.Stockable do
   ######
   # External Resources
   #####
+
+  def get_account(payment) do
+    payment.account || IdentityService.get_account(payment)
+  end
+
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file,
     field: :avatar
