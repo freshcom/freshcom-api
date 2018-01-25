@@ -86,7 +86,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
         account_id: account.id,
         system_label: "default",
         name: "Send password reset email",
-        event: "identity.password_reset_token.created",
+        event: "identity.password_reset_token.after_create",
         action_type: "send_email",
         action_target: email_template.id
       }

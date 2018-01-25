@@ -7,6 +7,8 @@ defmodule BlueJet.BalanceTest do
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
   alias BlueJet.Catalogue.{GoodsServiceMock, FileStorageServiceMock}
 
+  setup :verify_on_exit!
+
   describe "list_product/1" do
     test "when role is not authorized" do
       AuthorizationMock

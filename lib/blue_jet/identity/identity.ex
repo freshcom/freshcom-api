@@ -1,5 +1,6 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
+  use BlueJet.EventEmitter, namespace: :identity
 
   alias BlueJet.Identity.Authorization
   alias BlueJet.Identity.Authentication
@@ -130,7 +131,7 @@ defmodule BlueJet.Identity do
           {:ok, prt_test}
          end)
       |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
-          Identity.run_event_handler("identity.account.created", %{ account: account, test_account: test_account })
+          Identity.emit_event("identity.account.after_create", %{ account: account, test_account: test_account })
          end)
     end
 
@@ -210,20 +211,6 @@ defmodule BlueJet.Identity do
           end
         end)
     end
-  end
-
-  def run_event_handler(name, data) do
-    listeners = Map.get(Application.get_env(:blue_jet, :identity, %{}), :listeners, [])
-
-    Enum.reduce_while(listeners, {:ok, []}, fn(listener, acc) ->
-      with {:ok, result} <- listener.handle_event(name, data) do
-        {:ok, acc_result} = acc
-        {:cont, {:ok, acc_result ++ [{listener, result}]}}
-      else
-        {:error, errors} -> {:halt, {:error, errors}}
-        other -> {:halt, other}
-      end
-    end)
   end
 
   #### TODO: TOBE REMOVED
@@ -349,7 +336,7 @@ defmodule BlueJet.Identity do
          user = %User{} <- User.Query.default() |> User.Query.global() |> Repo.get_by(email: email)
     do
       User.refresh_password_reset_token(user)
-      run_event_handler("identity.password_reset_token.created", %{ account: nil, user: user, email: email })
+      emit_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email })
 
       {:ok, %AccessResponse{}}
     else
@@ -357,7 +344,7 @@ defmodule BlueJet.Identity do
         {:error, %AccessResponse{ errors: changeset.errors }}
 
       nil ->
-        run_event_handler("identity.password_reset_token.created", %{ account: nil, user: nil, email: email })
+        emit_event("identity.password_reset_token.after_create", %{ account: nil, user: nil, email: email })
         {:ok, %AccessResponse{}}
     end
   end
@@ -372,12 +359,12 @@ defmodule BlueJet.Identity do
 
     case user do
       nil ->
-        run_event_handler("identity.password_reset_token.created", %{ account: nil, user: nil, email: email })
+        emit_event("identity.password_reset_token.after_create", %{ account: nil, user: nil, email: email })
         {:ok, %AccessResponse{}}
 
       _ ->
         User.refresh_password_reset_token(user)
-        run_event_handler("identity.password_reset_token.created", %{ account: account, user: user })
+        emit_event("identity.password_reset_token.after_create", %{ account: account, user: user })
         {:ok, %AccessResponse{}}
     end
   end

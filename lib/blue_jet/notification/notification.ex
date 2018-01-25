@@ -9,7 +9,7 @@ defmodule BlueJet.Notification do
 
   # Creates the default email template and notification trigger for account when
   # an account is first created.
-  def handle_event("identity.account.created", %{ account: account, test_account: test_account }) do
+  def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
     # Live account
     template =
       account
@@ -46,7 +46,7 @@ defmodule BlueJet.Notification do
     {:ok, nil}
   end
 
-  def handle_event("identity.password_reset_token.created", %{ account: nil, user: user, email: email }) do
+  def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email }) do
     case user do
       nil ->
         Email.Factory.password_reset_not_registered_email(email)

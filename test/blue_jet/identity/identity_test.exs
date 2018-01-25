@@ -1,85 +1,97 @@
 defmodule BlueJet.Identity.IdentityTest do
-  use BlueJet.DataCase
-  use Bamboo.Test
-
-  import BlueJet.Identity.TestHelper
-
-  alias BlueJet.AccessRequest
+  use BlueJet.ContextCase
 
   alias BlueJet.Identity
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.AccountMembership
-  alias BlueJet.Identity.RefreshToken
+  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
 
   describe "list_account/1" do
-    test "when using guest identity" do
-      %{ vas: vas } = create_global_identity("guest")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Identity.list_account()
-
+      {:error, error} = Identity.list_account(%AccessRequest{})
       assert error == :access_denied
     end
 
-    test "when using customer identity" do
-      %{ vas: vas, account: account } = create_global_identity("customer")
-      {:ok, response} =
-        %AccessRequest{ vas: vas }
-        |> Identity.list_account()
+    test "when request is valid" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        name: Faker.String.base64(5),
+        username: Faker.Internet.email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "developer"
+      })
+
+      request = %AccessRequest{
+        vas: %{ user_id: user.id },
+        role: "developer",
+        account: account
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Identity.list_account(request)
 
       assert length(response.data) == 1
-      assert response.meta.locale == account.default_locale
     end
   end
 
   describe "get_account/1" do
-    test "when using anonymous identity" do
-      {:error, error} =
-        %AccessRequest{ vas: %{} }
-        |> Identity.get_account()
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
+      {:error, error} = Identity.get_account(%AccessRequest{})
       assert error == :access_denied
     end
 
-    test "when using guest identity" do
-      %{ vas: vas, account: account } = create_global_identity("guest")
+    test "when request is valid" do
+      account = Repo.insert!(%Account{})
+      request = %AccessRequest{
+        role: "developer",
+        account: account
+      }
 
-      {:ok, response} =
-        %AccessRequest{ vas: vas }
-        |> Identity.get_account()
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      assert response.data.id == vas[:account_id]
-      assert response.meta.locale == account.default_locale
+      {:ok, response} = Identity.get_account(request)
+
+      assert response.data.id == account.id
     end
   end
 
   describe "update_account/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} =
-        %AccessRequest{ vas: vas }
-        |> Identity.update_account()
-
+      {:error, error} = Identity.update_account(%AccessRequest{})
       assert error == :access_denied
     end
 
-    test "when using administrator identity" do
-      %{ vas: vas, account: account } = create_global_identity("administrator")
+    test "when request is valid" do
+      account = Repo.insert!(%Account{})
       test_account = Repo.insert!(%Account{
         mode: "test",
-        name: account.name,
         live_account_id: account.id
       })
       new_name = Faker.Company.name()
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "administrator",
         fields: %{
-          name: new_name
+          "name" => new_name
         }
       }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, response} = Identity.update_account(request)
       updated_account = Repo.get(Account, account.id)
@@ -94,11 +106,28 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "create_password_reset_token/1" do
     test "when using anonymous identity for account identity" do
-      %{ user: user } = create_account_identity("customer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        username: Faker.Internet.email(),
+        email: Faker.Internet.email(),
+        account_id: account.id,
+        default_account_id: account.id
+      })
 
-      {:ok, response} =
-        %AccessRequest{ vas: %{}, fields: %{ "email" => user.email } }
-        |> Identity.create_password_reset_token()
+      request = %AccessRequest{
+        role: "anonymous",
+        fields: %{ "email" => user.email }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.password_reset_token.after_create"
+          {:ok, nil}
+         end)
+
+      {:ok, response} = Identity.create_password_reset_token(request)
 
       updated_user = Repo.get!(User, user.id)
 
@@ -107,11 +136,29 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using guest identity for account identity" do
-      %{ user: user, account: account } = create_account_identity("customer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        username: Faker.Internet.email(),
+        email: Faker.Internet.email(),
+        account_id: account.id,
+        default_account_id: account.id
+      })
 
-      {:ok, response} =
-        %AccessRequest{ vas: %{ account_id: account.id }, fields: %{ "email" => user.email } }
-        |> Identity.create_password_reset_token()
+      request = %AccessRequest{
+        role: "guest",
+        account: account,
+        fields: %{ "email" => user.email }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.password_reset_token.after_create"
+          {:ok, nil}
+         end)
+
+      {:ok, response} = Identity.create_password_reset_token(request)
 
       updated_user = Repo.get!(User, user.id)
 
@@ -120,11 +167,27 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using anonymous identity for global identity" do
-      %{ user: user } = create_global_identity("developer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        username: Faker.Internet.email(),
+        email: Faker.Internet.email(),
+        default_account_id: account.id
+      })
 
-      {:ok, response} =
-        %AccessRequest{ vas: %{ }, fields: %{ "email" => user.email } }
-        |> Identity.create_password_reset_token()
+      request = %AccessRequest{
+        role: "anonymous",
+        fields: %{ "email" => user.email }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.password_reset_token.after_create"
+          {:ok, nil}
+         end)
+
+      {:ok, response} = Identity.create_password_reset_token(request)
 
       updated_user = Repo.get!(User, user.id)
 
@@ -133,11 +196,28 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using guest identity for global identity" do
-      %{ user: user, account: account } = create_global_identity("developer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        username: Faker.Internet.email(),
+        email: Faker.Internet.email(),
+        default_account_id: account.id
+      })
 
-      {:ok, response} =
-        %AccessRequest{ vas: %{ account_id: account.id }, fields: %{ "email" => user.email } }
-        |> Identity.create_password_reset_token()
+      request = %AccessRequest{
+        role: "anonymous",
+        account: account,
+        fields: %{ "email" => user.email }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.password_reset_token.after_create"
+          {:ok, nil}
+         end)
+
+      {:ok, response} = Identity.create_password_reset_token(request)
 
       updated_user = Repo.get!(User, user.id)
 
@@ -149,13 +229,22 @@ defmodule BlueJet.Identity.IdentityTest do
   describe "create_user/1" do
     test "when using anonymous identity" do
       request = %AccessRequest{
-        vas: %{},
+        role: "anonymous",
         fields: %{
           "username" => Faker.String.base64(5),
           "password" => "test1234",
           "account_name" => Faker.Company.name()
         }
       }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.account.after_create"
+          {:ok, nil}
+         end)
 
       {:ok, %{ data: user }} = Identity.create_user(request)
       user =
@@ -171,15 +260,18 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using guest identity" do
-      %{ account: account, vas: vas } = create_global_identity("guest")
-
+      account = Repo.insert!(%Account{})
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "guest",
         fields: %{
           "username" => Faker.String.base64(5),
           "password" => "test1234"
         }
       }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, %{ data: user }} = Identity.create_user(request)
       user =
@@ -192,51 +284,67 @@ defmodule BlueJet.Identity.IdentityTest do
       assert length(user.refresh_tokens) == 1
       assert length(user.account_memberships) == 1
     end
-
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
-
-      request = %AccessRequest{
-        vas: vas
-      }
-
-      {:error, :access_denied} = Identity.create_user(request)
-    end
   end
 
   describe "get_user/1" do
-    test "when using guest identity" do
-      %{ vas: vas } = create_global_identity("guest")
-      {:error, error} = Identity.get_user(%AccessRequest{ vas: vas })
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
+      {:error, error} = Identity.get_user(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using customer identity" do
-      %{ vas: vas, user: user } = create_account_identity("customer")
-      {:ok, response} = Identity.get_user(%AccessRequest{ vas: vas })
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
+      request = %AccessRequest{
+        account: account,
+        role: "customer",
+        vas: %{ user_id: user.id }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Identity.get_user(request)
 
       assert response.data.id == user.id
     end
   end
 
   describe "update_user/1" do
-    test "when using guest identity" do
-      %{ vas: vas } = create_global_identity("guest")
-      {:error, error} = Identity.update_user(%AccessRequest{ vas: vas })
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
+      {:error, error} = Identity.update_user(%AccessRequest{})
       assert error == :access_denied
     end
 
     test "when using customer identity" do
-      %{ vas: vas, user: user } = create_account_identity("customer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
       new_username = Faker.String.base64(5)
       request = %AccessRequest{
-        vas: vas,
+        role: "customer",
+        account: account,
+        vas: %{ user_id: user.id },
         fields: %{
           "username" => new_username
         }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, response} = Identity.update_user(request)
       updated_user = Repo.get!(User, user.id)
@@ -248,36 +356,30 @@ defmodule BlueJet.Identity.IdentityTest do
   end
 
   describe "delete_user/1" do
-    test "when using guest identity" do
-      %{ vas: vas } = create_global_identity("guest")
-      request = %AccessRequest{
-        vas: vas,
-        params: %{ "id" => Ecto.UUID.generate() }
-      }
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} = Identity.delete_user(request)
-
-      assert error == :access_denied
-    end
-
-    test "when using customer identity trying to delete other user" do
-      %{ vas: vas } = create_account_identity("customer")
-      request = %AccessRequest{
-        vas: vas,
-        params: %{ "id" => Ecto.UUID.generate() }
-      }
-
-      {:error, error} = Identity.delete_user(request)
-
+      {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
       assert error == :access_denied
     end
 
     test "when using customer identity deleting self" do
-      %{ vas: vas, user: user } = create_account_identity("customer")
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "customer",
+        vas: %{ user_id: user.id },
         params: %{ "id" => user.id }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:ok, response} = Identity.delete_user(request)
       deleted_user = Repo.get(User, user.id)
@@ -287,14 +389,19 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using administrator identity deleting global user" do
-      %{ vas: vas } = create_global_identity("administrator")
-      %{ user: user } = create_global_identity("administrator")
-      Repo.insert!(%AccountMembership{ account_id: vas[:account_id], user_id: user.id })
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
 
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "administrator",
         params: %{ "id" => user.id }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       {:error, error} = Identity.delete_user(request)
 
@@ -302,34 +409,48 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when using administrator identity deleting account user" do
-      %{ vas: vas, account: account } = create_global_identity("administrator")
-      %{ user: user } = create_account_identity("customer", account)
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
       request = %AccessRequest{
-        vas: vas,
+        account: account,
+        role: "administrator",
         params: %{ "id" => user.id }
       }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      {:ok, response} = Identity.delete_user(request)
-      deleted_user = Repo.get(User, user.id)
-
-      refute deleted_user
-      assert response.data == %{}
+      {:ok, _} = Identity.delete_user(request)
     end
   end
 
   describe "get_refresh_token/1" do
-    test "when using customer identity" do
-      %{ vas: vas } = create_global_identity("customer")
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-      {:error, error} = Identity.get_refresh_token(%AccessRequest{ vas: vas })
-
+      {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
       assert error == :access_denied
     end
 
     test "when using developer identity" do
-      %{ vas: vas, prt: prt } = create_global_identity("developer")
+      account = Repo.insert!(%Account{})
+      prt = Repo.insert!(%RefreshToken{
+        account_id: account.id
+      })
 
-      {:ok, response} = Identity.get_refresh_token(%AccessRequest{ vas: vas })
+      request = %AccessRequest{
+        role: "developer",
+        account: account
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, response} = Identity.get_refresh_token(request)
 
       assert response.data.id == prt.id
       assert response.data.prefixed_id == RefreshToken.get_prefixed_id(prt)

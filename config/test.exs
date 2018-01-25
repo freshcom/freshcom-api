@@ -27,6 +27,10 @@ config :blue_jet, BlueJet.AccountMailer,
 
 config :blue_jet, :authorization, BlueJet.AuthorizationMock
 
+config :blue_jet, :identity, %{
+  listeners: [BlueJet.EventHandlerMock]
+}
+
 config :blue_jet, :goods, %{
   identity_service: BlueJet.Goods.IdentityServiceMock
 }

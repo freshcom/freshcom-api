@@ -73,7 +73,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def extract_variables("identity.password_reset_token.created", %{ account: account, user: user }) do
+  def extract_variables("identity.password_reset_token.after_create", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),

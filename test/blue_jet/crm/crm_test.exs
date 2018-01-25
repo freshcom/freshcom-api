@@ -6,6 +6,8 @@ defmodule BlueJet.CrmTest do
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Crm.IdentityServiceMock
 
+  setup :verify_on_exit!
+
   describe "list_customer/1" do
     test "when role is not authorized" do
       AuthorizationMock
