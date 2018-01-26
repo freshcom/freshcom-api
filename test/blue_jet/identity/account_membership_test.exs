@@ -63,8 +63,9 @@ defmodule BlueJet.Identity.AccountMembershipTest do
     end
 
     test "when user_id does not exist insert should fail" do
+      account = Repo.insert!(%Account{})
       {:error, changeset} =
-        change(%AccountMembership{}, %{ user_id: Ecto.UUID.generate(), role: "developer" })
+        change(%AccountMembership{ account_id: account.id }, %{ user_id: Ecto.UUID.generate(), role: "developer" })
         |> AccountMembership.validate()
         |> Repo.insert()
 
