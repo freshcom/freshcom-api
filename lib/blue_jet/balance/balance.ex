@@ -17,13 +17,13 @@ defmodule BlueJet.Balance do
     @behaviour BlueJet.EventHandler
 
     def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
-      changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: account.id })
-      balance_settings = Repo.insert!(changeset)
+      %BalanceSettings{ account_id: account.id }
+      |> Repo.insert!()
 
-      changeset = BalanceSettings.changeset(%BalanceSettings{}, %{ account_id: test_account.id })
-      Repo.insert!(changeset)
+      %BalanceSettings{ account_id: test_account.id }
+      |> Repo.insert!()
 
-      {:ok, balance_settings}
+      {:ok, nil}
     end
 
     def handle_event(_, _), do: {:ok, nil}

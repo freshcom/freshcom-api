@@ -17,7 +17,7 @@ defmodule BlueJet.Identity do
     def get_account(%{ account: account }), do: account
     def get_account(id), do: Repo.get!(Account, id)
 
-    def create_user(fields = %{ account_id: account_id }) do
+    def create_user(fields = %{ "account_id" => account_id }) do
       test_account = Repo.get_by(Account, mode: "test", live_account_id: account_id)
 
       live_account_id = if test_account do
@@ -38,13 +38,11 @@ defmodule BlueJet.Identity do
         Multi.new()
         |> Multi.insert(:user, changeset)
         |> Multi.run(:account_membership, fn(%{ user: user }) ->
-            Repo.insert(
-              AccountMembership.changeset(%AccountMembership{}, %{
-                account_id: account_id,
-                user_id: user.id,
-                role: Map.get(fields, "role")
-              })
-            )
+            Repo.insert(%AccountMembership{
+              account_id: account_id,
+              user_id: user.id,
+              role: Map.get(fields, "role")
+            })
            end)
         |> Multi.run(:urt_live, fn(%{ user: user }) ->
             if live_account_id do
@@ -65,45 +63,9 @@ defmodule BlueJet.Identity do
 
       case Repo.transaction(statements) do
         {:ok, %{ user: user }} -> {:ok, user}
-        {:error, _, failed_value, _} -> {:error, failed_value.errors}
+        {:error, _, changeset, _} -> {:error, changeset}
       end
     end
-  end
-
-  defmodule Shortcut do
-    alias BlueJet.Identity
-
-    def get_account(%{ account_id: nil }), do: nil
-    def get_account(%{ account_id: account_id, account: nil }) do
-      {:ok, %{ data: account }} = Identity.get_account(%AccessRequest{
-        vas: %{ account_id: account_id }
-      })
-
-      account
-    end
-    def get_account(%{ account: account }), do: account
-
-    def get_default_locale(struct) do
-      case get_account(struct) do
-        nil -> nil
-
-        %{ default_locale: default_locale } -> default_locale
-      end
-    end
-
-    def put_account(structs, account) when is_list(structs) do
-      Enum.map(structs, fn(struct) ->
-        put_account(struct, account)
-      end)
-    end
-    def put_account(struct, account), do: %{ struct | account: account }
-
-    def put_account(structs) when is_list(structs) do
-      Enum.map(structs, fn(struct) ->
-        put_account(struct)
-      end)
-    end
-    def put_account(struct), do: %{ struct | account: get_account(struct) }
   end
 
   defmodule Query do
@@ -143,13 +105,11 @@ defmodule BlueJet.Identity do
           Repo.insert(changeset)
          end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
-          account_membership = Repo.insert!(
-            AccountMembership.changeset(%AccountMembership{}, %{
-              account_id: account.id,
-              user_id: user.id,
-              role: "administrator"
-            })
-          )
+          account_membership = Repo.insert!(%AccountMembership{
+            account_id: account.id,
+            user_id: user.id,
+            role: "administrator"
+          })
 
           {:ok, account_membership}
          end)
@@ -181,13 +141,11 @@ defmodule BlueJet.Identity do
       Multi.new()
       |> Multi.insert(:user, changeset)
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
-          Repo.insert(
-            AccountMembership.changeset(%AccountMembership{}, %{
-              account_id: account_id,
-              user_id: user.id,
-              role: Map.get(fields, "role")
-            })
-          )
+          Repo.insert(%AccountMembership{
+            account_id: account_id,
+            user_id: user.id,
+            role: Map.get(fields, "role")
+          })
         end)
       |> Multi.run(:urt_live, fn(%{ user: user }) ->
           if live_account_id do

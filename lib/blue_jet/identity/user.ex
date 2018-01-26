@@ -145,9 +145,23 @@ defmodule BlueJet.Identity.User do
 
   defp put_encrypted_password(changeset), do: changeset
 
+  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  def put_name(changeset) do
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
+
+    if first_name && last_name do
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
+    end
+  end
+
   def changeset(struct, params) do
     struct
     |> cast(params, writable_fields())
+    |> put_name()
     |> validate()
     |> put_encrypted_password()
   end

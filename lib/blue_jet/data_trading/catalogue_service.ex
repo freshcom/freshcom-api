@@ -15,7 +15,7 @@ defmodule BlueJet.DataTrading.CatalogueService do
   @callback create_price(map, map) :: {:ok, Price.t} | {:error, any}
   @callback update_price(String.t, map, map) :: {:ok, Price.t} | {:error, any}
 
-  @callback get_product_collection_membership(map) :: ProductCollectionMembership.t | nil
+  @callback get_product_collection_membership(map, map) :: ProductCollectionMembership.t | nil
   @callback create_product_collection_membership(map, map) :: {:ok, ProductCollectionMembership.t} | {:error, any}
 
   defdelegate get_product(id, opts), to: @catalogue_service
@@ -30,6 +30,6 @@ defmodule BlueJet.DataTrading.CatalogueService do
   defdelegate create_price(fields, opts), to: @catalogue_service
   defdelegate update_price(id, fields, opts), to: @catalogue_service
 
-  defdelegate get_product_collection_membership(filter), to: @catalogue_service
+  defdelegate get_product_collection_membership(filter, opts), to: @catalogue_service
   defdelegate create_product_collection_membership(fields, opts), to: @catalogue_service
 end

@@ -159,7 +159,7 @@ defmodule BlueJet.OrderLineItemTest do
       })
 
       CatalogueServiceMock
-      |> expect(:get_product, fn(_) -> nil end)
+      |> expect(:get_product, fn(_, _) -> nil end)
 
       changeset =
         change(%OrderLineItem{ account_id: account.id }, %{
@@ -191,8 +191,8 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id
       }
       CatalogueServiceMock
-      |> expect(:get_product, fn(_) -> product end)
-      |> expect(:get_price, fn(_) -> nil end)
+      |> expect(:get_product, fn(_, _) -> product end)
+      |> expect(:get_price, fn(_, _) -> nil end)
 
       changeset =
         change(%OrderLineItem{ account_id: account.id }, %{
@@ -228,8 +228,8 @@ defmodule BlueJet.OrderLineItemTest do
         name: Faker.String.base64(5)
       }
       CatalogueServiceMock
-      |> expect(:get_product, fn(_) -> product end)
-      |> expect(:get_price, fn(_) -> nil end)
+      |> expect(:get_product, fn(_, _) -> product end)
+      |> expect(:get_price, fn(_, _) -> nil end)
 
       oli = %OrderLineItem{ account_id: account.id }
       changeset = OrderLineItem.changeset(oli, %{
@@ -281,8 +281,8 @@ defmodule BlueJet.OrderLineItemTest do
         tax_three_percentage: D.new(15)
       }
       CatalogueServiceMock
-      |> expect(:get_product, fn(_) -> product end)
-      |> expect(:get_price, fn(_) -> price end)
+      |> expect(:get_product, fn(_, _) -> product end)
+      |> expect(:get_price, fn(_, _) -> price end)
 
       oli = %OrderLineItem{ account_id: account.id }
       changeset = OrderLineItem.changeset(oli, %{ product_id: Ecto.UUID.generate() })
@@ -337,7 +337,7 @@ defmodule BlueJet.OrderLineItemTest do
       })
 
       CatalogueServiceMock
-      |> expect(:get_product, fn(_) -> product end)
+      |> expect(:get_product, fn(_, _) -> product end)
 
       order = Repo.insert!(%Order{
         account_id: account.id
@@ -422,8 +422,8 @@ defmodule BlueJet.OrderLineItemTest do
       point_account = %PointAccount{}
       point_transaction = %PointTransaction{}
       CrmServiceMock
-      |> expect(:get_point_account, fn(_) -> point_account end)
-      |> expect(:create_point_transaction, fn(_) -> point_transaction end)
+      |> expect(:get_point_account, fn(_, _) -> point_account end)
+      |> expect(:create_point_transaction, fn(_, _) -> point_transaction end)
 
       order = %Order{}
       order_changeset = change(order, %{ status: "opened" })
@@ -438,7 +438,7 @@ defmodule BlueJet.OrderLineItemTest do
 
     test "when source is a point transaction" do
       CrmServiceMock
-      |> expect(:update_point_transaction, fn(_, _) -> %PointTransaction{} end)
+      |> expect(:update_point_transaction, fn(_, _, _) -> %PointTransaction{} end)
 
       order = %Order{}
       order_changeset = change(order, %{ status: "opened" })
@@ -461,7 +461,7 @@ defmodule BlueJet.OrderLineItemTest do
     test "when there is no fulfillment line item" do
       flis = []
       DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -475,7 +475,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "returned", quantity: 3 }
       ]
       DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -489,7 +489,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "pending", quantity: 1 }
       ]
       DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -503,7 +503,7 @@ defmodule BlueJet.OrderLineItemTest do
         %FulfillmentLineItem{ status: "fulfilled", quantity: 3 }
       ]
       DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_) -> flis end)
+      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 

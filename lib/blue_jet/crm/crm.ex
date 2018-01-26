@@ -9,17 +9,57 @@ defmodule BlueJet.Crm do
   alias BlueJet.Crm.IdentityService
 
   defmodule Service do
-    def get_point_account(customer_id) do
-      Repo.get_by(PointAccount, customer_id: customer_id)
+    def get_point_account(customer_id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      Repo.get_by(PointAccount, customer_id: customer_id, account_id: account_id)
     end
 
-    def create_point_transaction(fields) do
-      Ecto.Changeset.change(%PointTransaction{}, fields)
+    def create_point_transaction(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %PointTransaction{ account_id: account_id, account: opts[:account] }
+      |> Ecto.Changeset.change(fields)
       |> Repo.insert!()
     end
 
     def get_point_transaction(id) do
       Repo.get(PointTransaction, id)
+    end
+
+    def update_point_transaction(point_transaction = %{}, fields, opts) do
+      changeset =
+        point_transaction
+        |> Map.put(:account, opts[:account])
+        |> PointTransaction.changeset(fields, opts[:locale])
+
+      statements =
+        Multi.new()
+        |> Multi.update(:point_transaction, changeset)
+        |> Multi.run(:processed_point_transaction, fn(%{ point_transaction: point_transaction }) ->
+            PointTransaction.process(point_transaction, changeset)
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ processed_point_transaction: point_transaction }} -> {:ok, point_transaction}
+
+        {:error, _, changeset, _} -> {:error, changeset}
+      end
+    end
+
+    def update_point_transaction(id, fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      point_transaction =
+        PointTransaction.Query.default()
+        |> PointTransaction.Query.for_account(account_id)
+        |> Repo.get(id)
+
+      if point_transaction do
+        update_point_transaction(point_transaction, fields, opts)
+      else
+        {:error, :not_found}
+      end
     end
 
     def get_customer(id) do
@@ -31,8 +71,9 @@ defmodule BlueJet.Crm do
       Repo.get_by(Customer, id: id, account_id: account_id)
     end
 
-    def get_customer_by_user_id(user_id) do
-      Repo.get_by(Customer, user_id: user_id)
+    def get_customer_by_user_id(user_id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+      Repo.get_by(Customer, user_id: user_id, account_id: account_id)
     end
 
     def get_customer_by_code(code, opts) do
@@ -88,7 +129,7 @@ defmodule BlueJet.Crm do
         |> Multi.run(:user, fn(_) ->
             cond do
               customer.status == "guest" && fields["status"] == "registered" ->
-                fields = Map.merge(fields, %{ "account_id" => account_id })
+                fields = Map.merge(fields, %{ "account_id" => account_id, "role" => "customer" })
                 IdentityService.create_user(fields)
 
               true ->
@@ -169,7 +210,7 @@ defmodule BlueJet.Crm do
   def do_list_customer(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       Customer.Query.default()
-      |> search([:first_name, :last_name, :other_name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale)
+      |> search([:name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale, Customer.translatable_fields)
       |> filter_by(status: filter[:status], label: filter[:label], delivery_address_country_code: filter[:delivery_address_country_code])
       |> Customer.Query.for_account(account.id)
 
@@ -536,29 +577,11 @@ defmodule BlueJet.Crm do
   end
 
   def do_update_point_transaction(request = %{ account: account, params: %{ "id" => id } }) do
-    point_transaction =
-      PointTransaction.Query.default()
-      |> PointTransaction.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %PointTransaction{} <- point_transaction,
-         changeset = %{ valid?: true } <- PointTransaction.changeset(point_transaction, request.fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:point_transaction, changeset)
-        |> Multi.run(:processed_point_transaction, fn(%{ point_transaction: point_transaction }) ->
-            PointTransaction.process(point_transaction, changeset)
-           end)
-
-      {:ok, %{ processed_point_transaction: point_transaction }} = Repo.transaction(statements)
-      point_transaction_response(point_transaction, request)
+    with {:ok, pt} <- Service.update_point_transaction(id, request.fields, %{ account: account }) do
+      point_transaction_response(pt, request)
     else
-      nil -> {:error, :not_found}
-
-      changeset = %{ valid?: false } ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
       other -> other
     end

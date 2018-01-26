@@ -100,7 +100,6 @@ defmodule BlueJet.Identity.Account do
 
     alias BlueJet.Identity.Account
 
-
     def default() do
       from(a in Account, order_by: [desc: :inserted_at])
     end

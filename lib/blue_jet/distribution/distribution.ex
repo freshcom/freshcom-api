@@ -38,8 +38,11 @@ defmodule BlueJet.Distribution do
       end
     end
 
-    def list_fulfillment_line_item(%{ source_type: source_type, source_id: source_id }) do
+    def list_fulfillment_line_item(%{ source_type: source_type, source_id: source_id }, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
       FulfillmentLineItem.Query.default()
+      |> FulfillmentLineItem.Query.for_account(account_id)
       |> FulfillmentLineItem.Query.for_source(source_type, source_id)
       |> Repo.all()
     end

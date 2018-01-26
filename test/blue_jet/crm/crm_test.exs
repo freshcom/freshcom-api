@@ -63,7 +63,8 @@ defmodule BlueJet.CrmTest do
         account: account,
         fields: %{
           "status" => "registered",
-          "name" => Faker.String.base64(5)
+          "name" => Faker.String.base64(5),
+          "email" => Faker.Internet.email()
         }
       }
       AuthorizationMock
@@ -124,7 +125,8 @@ defmodule BlueJet.CrmTest do
       })
       customer = Repo.insert!(%Customer{
         account_id: account.id,
-        name: Faker.String.base64(5)
+        name: Faker.String.base64(5),
+        email: Faker.Internet.email()
       })
 
       IdentityServiceMock

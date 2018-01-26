@@ -80,7 +80,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.user.created", %{ account: account, user: user }) do
+  def extract_variables("identity.user.after_create", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),

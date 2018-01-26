@@ -4,6 +4,24 @@ defmodule BlueJet.DataTrading do
   alias BlueJet.DataTrading.{GoodsService, CrmService, CatalogueService}
   alias BlueJet.DataTrading.DataImport
 
+  defmodule Service do
+    def create_data_import(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      result =
+        %DataImport{ account_id: account_id, account: opts[:account] }
+        |> DataImport.changeset(fields)
+        |> Repo.insert()
+
+      case result do
+        {:ok, data_import} ->
+          Task.start(fn -> BlueJet.DataTrading.import_data(data_import) end)
+
+        other -> other
+      end
+    end
+  end
+
   def create_data_import(request) do
     with {:ok, request} <- preprocess_request(request, "data_trading.create_data_import") do
       request
@@ -14,19 +32,11 @@ defmodule BlueJet.DataTrading do
   end
 
   def do_create_data_import(request = %{ account: account }) do
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
-    changeset = DataImport.changeset(%DataImport{}, fields)
-
-    with {:ok, data_import} <- Repo.insert(changeset) do
-      data_import = %{ data_import | account: account }
-      Task.start(fn ->
-        import_data(data_import)
-      end)
-
+    with {:ok, data_import} <- Service.create_data_import(request.fields, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, changeset} ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -99,7 +109,7 @@ defmodule BlueJet.DataTrading do
       get_product(row, account)
       |> update_or_create_product(account, fields)
 
-    pcm = CatalogueService.get_product_collection_membership(%{ collection_id: collection_id, product_id: product.id })
+    pcm = CatalogueService.get_product_collection_membership(%{ collection_id: collection_id, product_id: product.id }, %{ account: account })
 
     if pcm do
       {:ok, pcm}
@@ -196,25 +206,17 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_customer(%{ "id" => id }, account) when byte_size(id) > 0 do
-    {:ok, %{ data: customer}} = CrmService.get_customer(id, %{ account: account })
-
-    customer
+    CrmService.get_customer(id, %{ account: account })
   end
   defp get_customer(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = CrmService.get_customer_by_code(code, %{ account: account })
-
-    case result do
-      {:ok, %{ data: customer }} ->
-        customer
-      {:error, :not_found} -> nil
-    end
+    CrmService.get_customer_by_code(code, %{ account: account })
   end
 
   defp get_unlockable(%{ "id" => id }, account) when byte_size(id) > 0 do
     GoodsService.get_unlockable(id, %{ account: account })
   end
   defp get_unlockable(%{ "code" => code }, account) when byte_size(code) > 0 do
-    GoodsService.get_unlockable(code, %{ account: account })
+    GoodsService.get_unlockable_by_code(code, %{ account: account })
   end
 
   defp get_product(%{ "id" => id }, account) when byte_size(id) > 0 do
@@ -232,17 +234,20 @@ defmodule BlueJet.DataTrading do
   end
 
   defp update_or_create_product(nil, account, fields) do
-    CatalogueService.create_product(fields, %{ account: account })
+    {:ok, product } =CatalogueService.create_product(fields, %{ account: account })
+    product
   end
   defp update_or_create_product(product, account, fields) do
-    CatalogueService.update_product(product.id, fields, %{ account: account })
+    {:ok, product} = CatalogueService.update_product(product.id, fields, %{ account: account })
+    product
   end
 
   defp update_or_create_price(nil, account, fields) do
     CatalogueService.create_price(fields, %{ account: account })
   end
   defp update_or_create_price(price, account, fields) do
-    CatalogueService.update_price(price.id, fields, %{ account: account })
+    {:ok, price} = CatalogueService.update_price(price.id, fields, %{ account: account })
+    price
   end
 
   defp merge_custom_data(row, nil), do: row

@@ -346,7 +346,7 @@ defmodule BlueJet.Storefront.Order do
   # MARK: External Resources
   #
   def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmService.get_customer(customer_id)
+  def get_customer(%{ customer_id: customer_id, customer: nil, account_id: account_id }), do: CrmService.get_customer(customer_id, %{ account_id: account_id })
   def get_customer(%{ customer: customer }), do: customer
 
   use BlueJet.FileStorage.Macro,
@@ -411,9 +411,9 @@ defmodule BlueJet.Storefront.Order do
       0 -> {:ok, nil}
 
       _ ->
-        fulfillment = DistributionService.create_fulfillment(%{
+        {:ok, fulfillment} = DistributionService.create_fulfillment(%{
           source_id: order.id,
-          source_tye: "Order"
+          source_type: "Order"
         }, %{ account_id: order.account_id })
 
         Enum.each(af_line_items, fn(line_item) ->

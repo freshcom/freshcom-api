@@ -27,6 +27,14 @@ defmodule BlueJet.FileStorage do
         {:error, :not_found}
       end
     end
+
+    def create_external_file(fields, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      %ExternalFile{ account_id: account_id, account: opts[:account] }
+      |> ExternalFile.changeset(fields)
+      |> Repo.insert()
+    end
   end
 
   ####
@@ -154,15 +162,9 @@ defmodule BlueJet.FileStorage do
   end
 
   def do_create_external_file(request = %{ vas: vas, account: account }) do
-    request = %{ request | locale: account.default_locale }
+    fields = Map.merge(request.fields, %{ "user_id" => vas[:user_id] })
 
-    fields = Map.merge(request.fields, %{
-      "account_id" => account.id,
-      "user_id" => vas[:user_id]
-    })
-    changeset = ExternalFile.changeset(%ExternalFile{}, fields, request.locale, account.default_locale)
-
-    with {:ok, external_file} <- Repo.insert(changeset) do
+    with {:ok, external_file} <- Service.create_external_file(fields, %{ account: account }) do
       external_file_response(external_file, request)
     else
       {:error, %{ errors: errors }} ->
@@ -319,12 +321,12 @@ defmodule BlueJet.FileStorage do
 
   def do_create_external_file_collection(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
-    fields = Map.merge(request.fields, %{ "account_id" => account.id })
+    efc = %ExternalFileCollection{ account_id: account.id, account: account }
 
-    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(%ExternalFileCollection{}, fields, request.locale, account.default_locale) do
+    with changeset = %{valid?: true} <- ExternalFileCollection.changeset(efc, request.fields, request.locale) do
       {:ok, efc} = Repo.transaction(fn ->
         efc = Repo.insert!(changeset)
-        create_efcms!(fields["file_ids"] || [], efc)
+        create_efcms!(request.fields["file_ids"] || [], efc)
       end)
 
       external_file_collection_response(efc, %{ request | locale: account.default_locale })

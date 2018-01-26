@@ -92,7 +92,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
         account_id: account.id,
         system_label: "default",
         name: "Send email confirmation email",
-        event: "identity.user.created",
+        event: "identity.user.after_create",
         action_type: "send_email",
         action_target: email_template.id
       }

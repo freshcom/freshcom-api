@@ -146,7 +146,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account_id = get_field(changeset, :account_id)
-    product = CatalogueService.get_product(product_id)
+    product = CatalogueService.get_product(product_id, %{ account_id: account_id })
 
     if product && product.account_id == account_id do
       changeset
@@ -160,7 +160,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def validate_price_id(changeset = %{ valid?: true, changes: %{ price_id: price_id } }) do
     account_id = get_field(changeset, :account_id)
     product_id = get_field(changeset, :product_id)
-    price = get_field(changeset, :price) || CatalogueService.get_price(price_id)
+    price = get_field(changeset, :price) || CatalogueService.get_price(price_id, %{ account_id: account_id })
 
     if price && price.account_id == account_id && price.product_id == product_id do
       changeset
@@ -196,7 +196,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
   defp put_name(changeset = %{ changes: %{ product_id: product_id }}) do
-    product = get_field(changeset, :product) || CatalogueService.get_product(product_id)
+    account_id = get_field(changeset, :account_id)
+    product = get_field(changeset, :product) || CatalogueService.get_product(product_id, %{ account_id: account_id })
     translations =
       get_field(changeset, :translations)
       |> Translation.merge_translations(product.translations, ["name"])
@@ -221,7 +222,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp put_price_id(changeset = %{ changes: %{ product_id: product_id }}) do
     order_quantity = get_field(changeset, :order_quantity)
-    price = get_field(changeset, :price) || CatalogueService.get_price(%{ product_id: product_id, status: "active", order_quantity: order_quantity })
+    account_id = get_field(changeset, :account_id)
+    price = get_field(changeset, :price) || CatalogueService.get_price(%{
+      product_id: product_id,
+      status: "active",
+      order_quantity: order_quantity
+    }, %{
+      account_id: account_id
+    })
 
     if price do
       changeset
@@ -235,7 +243,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_price_id(changeset), do: changeset
 
   defp put_price_fields(changeset = %{ changes: %{ price_id: price_id } }) do
-    price = get_field(changeset, :price) || CatalogueService.get_price(price_id)
+    account_id = get_field(changeset, :account_id)
+    price = get_field(changeset, :price) || CatalogueService.get_price(price_id, %{ account_id: account_id })
     changeset =
       changeset
       |> put_change(:price, price)
@@ -408,7 +417,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
 
   defp put_auto_fulfill(changeset = %{ changes: %{ product_id: product_id } }) do
-    product = get_field(changeset, :product) || CatalogueService.get_product(product_id)
+    account_id = get_field(changeset, :account_id)
+    product = get_field(changeset, :product) || CatalogueService.get_product(product_id, %{ account_id: account_id })
 
     changeset
     |> put_change(:product, product)
@@ -470,7 +480,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def balance(oli = %__MODULE__{ product_id: product_id }) when not is_nil(product_id) do
-    product = oli.product || CatalogueService.get_product(product_id)
+    product = oli.product || CatalogueService.get_product(product_id, %{ account_id: oli.account_id })
     balance_by_product(oli, product)
   end
 
@@ -582,19 +592,20 @@ defmodule BlueJet.Storefront.OrderLineItem do
     {:ok, line_item}
   end
 
-  def process(line_item = %{ source_id: source_id, source_type: "Depositable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+  def process(line_item = %{ account_id: account_id, source_id: source_id, source_type: "Depositable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     depositable = GoodsService.get_depositable(source_id)
 
     if depositable.target_type == "PointAccount" do
-      point_account = CrmService.get_point_account(order.customer_id)
+      point_account = CrmService.get_point_account(order.customer_id, %{ account_id: account_id })
       CrmService.create_point_transaction(%{
-        account_id: point_account.account_id,
         point_account_id: point_account.id,
         status: "committed",
         amount: line_item.order_quantity * depositable.amount,
         reason_label: "deposit_by_depositable",
         source_id: line_item.id,
         source_type: "OrderLineItem"
+      }, %{
+        account_id: account_id
       })
     end
 
@@ -602,7 +613,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def process(line_item = %{ source_id: source_id, source_type: "PointTransaction" }, _, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    CrmService.update_point_transaction(source_id, %{ status: "committed" })
+    CrmService.update_point_transaction(source_id, %{ status: "committed" }, %{ account_id: line_item.account_id })
     {:ok, line_item}
   end
 
@@ -647,7 +658,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
-    flis = DistributionService.list_fulfillment_line_item(%{ source_type: "OrderLineItem", source_id: oli.id })
+    flis = DistributionService.list_fulfillment_line_item(%{ source_type: "OrderLineItem", source_id: oli.id }, %{ account_id: oli.account_id })
 
     fulfillable_quantity = oli.order_quantity
     fulfilled_quantity =

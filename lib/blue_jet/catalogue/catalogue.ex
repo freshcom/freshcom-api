@@ -9,10 +9,6 @@ defmodule BlueJet.Catalogue do
   defmodule Service do
     alias Ecto.Multi
 
-    def get_product(id) do
-      Repo.get(Product, id)
-    end
-
     def get_product(id, opts) do
       account_id = opts[:account_id] || opts[:account].id
       Repo.get_by(Product, id: id, account_id: account_id)
@@ -97,16 +93,13 @@ defmodule BlueJet.Catalogue do
       end
     end
 
-    def get_price(%{ product_id: product_id, status: status, order_quantity: order_quantity }) do
+    def get_price(%{ product_id: product_id, status: status, order_quantity: order_quantity }, %{ account_id: account_id }) do
       Price.Query.for_product(product_id)
+      |> Price.Query.for_account(account_id)
       |> Price.Query.with_status(status)
       |> Price.Query.with_order_quantity(order_quantity)
       |> first()
       |> Repo.one()
-    end
-
-    def get_price(id) do
-      Repo.get(Price, id)
     end
 
     def get_price(id, opts) do
@@ -154,6 +147,7 @@ defmodule BlueJet.Catalogue do
 
     def update_price(id, fields, opts) do
       account_id = opts[:account_id] || opts[:account].id
+
       price =
         Price.Query.default()
         |> Price.Query.for_account(account_id)
@@ -166,13 +160,16 @@ defmodule BlueJet.Catalogue do
       end
     end
 
-    def get_product_collection_membership(%{ collection_id: collection_id, product_id: product_id }) do
+    def get_product_collection_membership(%{ collection_id: collection_id, product_id: product_id }, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
       ProductCollectionMembership
-      |> Repo.get_by(collection_id: collection_id, product_id: product_id)
+      |> Repo.get_by(collection_id: collection_id, product_id: product_id, account_id: account_id)
     end
 
     def create_product_collection_membership(fields, opts) do
       account_id = opts[:account_id] || opts[:account].id
+
       %ProductCollectionMembership{ account_id: account_id, account: opts[:account] }
       |> ProductCollectionMembership.changeset(fields)
       |> Repo.insert()

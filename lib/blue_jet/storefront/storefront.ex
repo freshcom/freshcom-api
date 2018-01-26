@@ -4,7 +4,7 @@ defmodule BlueJet.Storefront do
   alias Ecto.Changeset
   alias Ecto.Multi
 
-  alias BlueJet.Storefront.BalanceService
+  alias BlueJet.Storefront.{BalanceService, CrmService}
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   defmodule EventHandler do
@@ -76,8 +76,8 @@ defmodule BlueJet.Storefront do
   ####
   # Order
   ####
-  defp transform_order_request_by_role(request = %{ vas: vas, role: "customer" }) do
-    customer = CrmService.get_customer_by_user_id(vas[:user_id])
+  defp transform_order_request_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
+    customer = CrmService.get_customer_by_user_id(vas[:user_id], %{ account: account })
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 
@@ -166,13 +166,8 @@ defmodule BlueJet.Storefront do
   end
 
   def do_create_order(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-    changeset = Order.changeset(
-      %Order{ account_id: account.id },
-      request.fields,
-      request.locale,
-      account.default_locale
-    )
+    order = %Order{ account_id: account.id, account: account }
+    changeset = Order.changeset(order, request.fields)
 
     with {:ok, order} <- Repo.insert(changeset) do
       order_response(order, request)
@@ -369,7 +364,6 @@ defmodule BlueJet.Storefront do
   end
 
   def do_create_order_line_item(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
     changeset =
       %OrderLineItem{ account_id: account.id, account: account }
       |> OrderLineItem.changeset(request.fields)
@@ -480,8 +474,8 @@ defmodule BlueJet.Storefront do
   #
   # Unlock
   #
-  defp transform_unlock_request_by_role(request = %{ vas: vas, role: "customer" }) do
-    customer = CrmService.get_customer_by_user_id(vas[:user_id])
+  defp transform_unlock_request_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
+    customer = CrmService.get_customer_by_user_id(vas[:user_id], %{ account: account })
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 

@@ -42,6 +42,7 @@ config :blue_jet, :balance, %{
 }
 
 config :blue_jet, :crm, %{
+  stripe_client: BlueJet.Crm.StripeClientMock,
   identity_service: BlueJet.Crm.IdentityServiceMock
 }
 

@@ -84,10 +84,10 @@ defmodule BlueJet.Storefront.Unlock do
   def get_unlockable(%{ unlockable: unlockable }), do: unlockable
 
   def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil }), do: CrmService.get_customer(customer_id)
+  def get_customer(%{ customer_id: customer_id, customer: nil, account_id: account_id }), do: CrmService.get_customer(customer_id, %{ account_id: account_id })
   def get_customer(%{ customer: customer }), do: customer
 
-  def put_external_resources(unlock, {:unlock, nil}, _) do
+  def put_external_resources(unlock, {:unlockable, nil}, _) do
     %{ unlock | unlockable: get_unlockable(unlock) }
   end
 

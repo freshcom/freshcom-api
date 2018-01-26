@@ -8,7 +8,7 @@ defmodule BlueJet.Crm.Customer do
   ], container: :translations
 
   alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.IdentityService
+  alias BlueJet.Crm.{IdentityService, StripeClient}
 
   schema "customers" do
     field :account_id, Ecto.UUID
@@ -63,7 +63,7 @@ defmodule BlueJet.Crm.Customer do
     case status do
       "guest" -> [:status]
       "internal" -> [:status]
-      "registered" -> [:status, :user_id, :name]
+      "registered" -> [:status, :user_id, :name, :email]
       "suspended" -> [:status]
     end
   end
@@ -92,7 +92,7 @@ defmodule BlueJet.Crm.Customer do
 
   def put_name(changeset) do
     first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
 
     if first_name && last_name do
       put_change(changeset, :name, "#{first_name} #{last_name}")
