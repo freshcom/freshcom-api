@@ -4,80 +4,80 @@ defmodule BlueJet.Storefront do
   alias Ecto.Changeset
   alias Ecto.Multi
 
-  alias BlueJet.Crm
-
   alias BlueJet.Storefront.BalanceService
-  alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Unlock
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
-  def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id)
+  defmodule EventHandler do
+    @behaviour BlueJet.EventHandler
 
-    case order.status do
-      "cart" ->
-        changeset =
-          order
-          |> Order.refresh_payment_status()
-          |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
+    def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+      order = Repo.get!(Order, order_id)
 
-        changeset
-        |> Repo.update!()
-        |> Order.process(changeset)
-      _ ->
-        {:ok, Order.refresh_payment_status(order)}
-    end
-  end
+      case order.status do
+        "cart" ->
+          changeset =
+            order
+            |> Order.refresh_payment_status()
+            |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
 
-  def handle_event("balance.payment.after_update", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-    order =
-      Repo.get!(Order, order_id)
-      |> Order.refresh_payment_status()
-
-    {:ok, order}
-  end
-
-  def handle_event("balance.refund.after_create", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
-    order =
-      Repo.get!(Order, order_id)
-      |> Order.refresh_payment_status()
-
-    {:ok, order}
-  end
-
-  def handle_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
-    oli = Repo.get!(OrderLineItem, fli.source_id)
-    OrderLineItem.refresh_fulfillment_status(oli)
-
-    {:ok, fli}
-  end
-
-  def handle_event("distribution.fulfillment_line_item.after_update", %{
-    fulfillment_line_item: fli = %{ source_type: "OrderLineItem" },
-    changeset: %{ changes: %{ status: status } }
-  }) do
-    oli = Repo.get!(OrderLineItem, fli.source_id)
-    OrderLineItem.refresh_fulfillment_status(oli)
-
-    if oli.source_type == "Unlockable" && (status == "returned" || status == "discarded") do
-      unlock = Repo.get_by(Unlock, source_id: oli.id, source_type: "OrderLineItem")
-      if unlock do
-        Repo.delete!(unlock)
+          changeset
+          |> Repo.update!()
+          |> Order.process(changeset)
+        _ ->
+          {:ok, Order.refresh_payment_status(order)}
       end
     end
 
-    {:ok, fli}
-  end
+    def handle_event("balance.payment.after_update", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+      order =
+        Repo.get!(Order, order_id)
+        |> Order.refresh_payment_status()
 
-  def handle_event(_, _) do
-    {:ok, nil}
+      {:ok, order}
+    end
+
+    def handle_event("balance.refund.after_create", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+      order =
+        Repo.get!(Order, order_id)
+        |> Order.refresh_payment_status()
+
+      {:ok, order}
+    end
+
+    def handle_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
+      oli = Repo.get!(OrderLineItem, fli.source_id)
+      OrderLineItem.refresh_fulfillment_status(oli)
+
+      {:ok, fli}
+    end
+
+    def handle_event("distribution.fulfillment_line_item.after_update", %{
+      fulfillment_line_item: fli = %{ source_type: "OrderLineItem" },
+      changeset: %{ changes: %{ status: status } }
+    }) do
+      oli = Repo.get!(OrderLineItem, fli.source_id)
+      OrderLineItem.refresh_fulfillment_status(oli)
+
+      if oli.source_type == "Unlockable" && (status == "returned" || status == "discarded") do
+        unlock = Repo.get_by(Unlock, source_id: oli.id, source_type: "OrderLineItem")
+        if unlock do
+          Repo.delete!(unlock)
+        end
+      end
+
+      {:ok, fli}
+    end
+
+    def handle_event(_, _) do
+      {:ok, nil}
+    end
   end
 
   ####
   # Order
   ####
-  defp transform_order_request_by_role(request = %{ role: "customer" }) do
-    {:ok, %{ data: customer }} = Crm.do_get_customer(request)
+  defp transform_order_request_by_role(request = %{ vas: vas, role: "customer" }) do
+    customer = CrmService.get_customer_by_user_id(vas[:user_id])
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 
@@ -480,8 +480,8 @@ defmodule BlueJet.Storefront do
   #
   # Unlock
   #
-  defp transform_unlock_request_by_role(request = %{ role: "customer" }) do
-    {:ok, %{ data: customer }} = Crm.do_get_customer(request)
+  defp transform_unlock_request_by_role(request = %{ vas: vas, role: "customer" }) do
+    customer = CrmService.get_customer_by_user_id(vas[:user_id])
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
   end
 

@@ -3,8 +3,6 @@ defmodule BlueJet.Storefront.Unlock do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  alias BlueJet.Translation
-  alias BlueJet.Storefront.Unlock
   alias BlueJet.Storefront.{GoodsService, CrmService, IdentityService}
 
   schema "unlocks" do
@@ -32,21 +30,19 @@ defmodule BlueJet.Storefront.Unlock do
     struct.stockable || struct.unlockable
   end
 
-  def system_fields do
-    [
-      :id,
-      :account_id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    Unlock.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    Unlock.__trans__(:fields)
+    __MODULE__.__trans__(:fields)
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
@@ -103,6 +99,8 @@ defmodule BlueJet.Storefront.Unlock do
 
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.Storefront.Unlock
 
     def default() do
       from(u in Unlock, order_by: [desc: u.inserted_at])

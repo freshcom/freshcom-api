@@ -221,7 +221,7 @@ defmodule BlueJet.DataTrading do
     CatalogueService.get_product(id, %{ account: account })
   end
   defp get_product(%{ "code" => code }, account) when byte_size(code) > 0 do
-    result = CatalogueService.get_product_by_code(code, %{ account: account })
+    CatalogueService.get_product_by_code(code, %{ account: account })
   end
 
   defp get_price(%{ "id" => id }, account) when byte_size(id) > 0 do

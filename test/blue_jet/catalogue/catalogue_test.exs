@@ -180,7 +180,7 @@ defmodule BlueJet.CatalogueTest do
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       FileStorageServiceMock
-      |> expect(:delete_external_file, fn(_) -> nil end)
+      |> expect(:delete_external_file, fn(_, _) -> nil end)
 
       {:ok, _} = Catalogue.delete_product(request)
     end

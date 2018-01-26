@@ -72,7 +72,7 @@ config :blue_jet, :s3, prefix: "uploads"
 config :blue_jet, :authorization, BlueJet.Identity.Authorization
 
 config :blue_jet, :identity, %{
-  listeners: [BlueJet.Balance.EventHandler, BlueJet.Notification]
+  listeners: [BlueJet.Balance.EventHandler, BlueJet.Notification.EventHandler]
 }
 
 config :blue_jet, :goods, %{
@@ -86,11 +86,15 @@ config :blue_jet, :file_storage, %{
 config :blue_jet, :balance, %{
   stripe_client: BlueJet.Stripe.Client,
   identity_service: BlueJet.Identity.Service,
-  listeners: [BlueJet.Storefront, BlueJet.Crm]
+  listeners: [BlueJet.Storefront.EventHandler, BlueJet.Crm.EventHandler]
 }
 
 config :blue_jet, :crm, %{
-  identity_service: BlueJet.Identity.Service,
+  identity_service: BlueJet.Identity.Service
+}
+
+config :blue_jet, :notification, %{
+  identity_service: BlueJet.Identity.Service
 }
 
 config :blue_jet, :catalogue, %{
@@ -115,7 +119,8 @@ config :blue_jet, :storefront, %{
 }
 
 config :blue_jet, :distribution, %{
-  listeners: [BlueJet.Storefront]
+  identity_service: BlueJet.Identity.Service,
+  listeners: [BlueJet.Storefront.EventHandler]
 }
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")

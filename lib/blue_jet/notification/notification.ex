@@ -7,73 +7,77 @@ defmodule BlueJet.Notification do
   alias BlueJet.Notification.Email
   alias BlueJet.Notification.EmailTemplate
 
-  # Creates the default email template and notification trigger for account when
-  # an account is first created.
-  def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
-    # Live account
-    template =
+  defmodule EventHandler do
+    @behaviour BlueJet.EventHandler
+
+    # Creates the default email template and notification trigger for account when
+    # an account is first created.
+    def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
+      # Live account
+      template =
+        account
+        |> EmailTemplate.AccountDefault.password_reset()
+        |> Repo.insert!()
       account
-      |> EmailTemplate.AccountDefault.password_reset()
+      |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
       |> Repo.insert!()
-    account
-    |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
-    |> Repo.insert!()
 
-    template =
+      template =
+        account
+        |> EmailTemplate.AccountDefault.email_confirmation()
+        |> Repo.insert!()
       account
-      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
       |> Repo.insert!()
-    account
-    |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
-    |> Repo.insert!()
 
-    # Test account
-    template =
+      # Test account
+      template =
+        test_account
+        |> EmailTemplate.AccountDefault.password_reset()
+        |> Repo.insert!()
       test_account
-      |> EmailTemplate.AccountDefault.password_reset()
+      |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
       |> Repo.insert!()
-    test_account
-    |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
-    |> Repo.insert!()
-    template =
+      template =
+        test_account
+        |> EmailTemplate.AccountDefault.email_confirmation()
+        |> Repo.insert!()
       test_account
-      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
       |> Repo.insert!()
-    test_account
-    |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
-    |> Repo.insert!()
 
-    {:ok, nil}
-  end
-
-  def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email }) do
-    case user do
-      nil ->
-        Email.Factory.password_reset_not_registered_email(email)
-        |> GlobalMailer.deliver_later()
-
-      _ ->
-        Email.Factory.password_reset_email(user)
-        |> GlobalMailer.deliver_later()
+      {:ok, nil}
     end
-  end
 
-  def handle_event(event, data = %{ account: account }) when not is_nil(account) do
-    triggers =
-      NotificationTrigger.Query.default()
-      |> NotificationTrigger.Query.for_account(account.id)
-      |> NotificationTrigger.Query.for_event(event)
-      |> Repo.all()
+    def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email }) do
+      case user do
+        nil ->
+          Email.Factory.password_reset_not_registered_email(email)
+          |> GlobalMailer.deliver_later()
 
-    Enum.each(triggers, fn(trigger) ->
-      NotificationTrigger.process(trigger, data)
-    end)
+        _ ->
+          Email.Factory.password_reset_email(user)
+          |> GlobalMailer.deliver_later()
+      end
+    end
 
-    {:ok, nil}
-  end
+    def handle_event(event, data = %{ account: account }) when not is_nil(account) do
+      triggers =
+        NotificationTrigger.Query.default()
+        |> NotificationTrigger.Query.for_account(account.id)
+        |> NotificationTrigger.Query.for_event(event)
+        |> Repo.all()
 
-  def handle_event(_, _) do
-    {:ok, nil}
+      Enum.each(triggers, fn(trigger) ->
+        NotificationTrigger.process(trigger, data)
+      end)
+
+      {:ok, nil}
+    end
+
+    def handle_event(_, _) do
+      {:ok, nil}
+    end
   end
 
   def list_email(request) do

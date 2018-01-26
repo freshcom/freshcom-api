@@ -45,6 +45,10 @@ config :blue_jet, :crm, %{
   identity_service: BlueJet.Crm.IdentityServiceMock
 }
 
+config :blue_jet, :notification, %{
+  identity_service: BlueJet.Notification.IdentityServiceMock
+}
+
 config :blue_jet, :catalogue, %{
   identity_service: BlueJet.Catalogue.IdentityServiceMock,
   goods_service: BlueJet.Catalogue.GoodsServiceMock,
@@ -64,4 +68,14 @@ config :blue_jet, :storefront, %{
   identity_service: BlueJet.Storefront.IdentityServiceMock,
   goods_service: BlueJet.Storefront.GoodsServiceMock,
   crm_service: BlueJet.Storefront.CrmServiceMock
+}
+
+config :blue_jet, :data_trading, %{
+  goods_service: BlueJet.DataTrading.GoodsServiceMock,
+  crm_service: BlueJet.DataTrading.CrmServiceMock,
+  catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
+}
+
+config :blue_jet, :distribution, %{
+  identity_service: BlueJet.Distribution.IdentityServiceMock
 }

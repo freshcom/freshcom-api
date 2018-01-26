@@ -23,33 +23,28 @@ defmodule BlueJet.Notification.NotificationTrigger do
     timestamps()
   end
 
-  def system_fields do
-    [
-      :id,
-      :account_id,
-      :system_label,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :system_label,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- system_fields()
-  end
-
-  def castable_fields() do
-    [:event, :name, :description, :action_target, :action_type]
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name, :event, :action_target, :action_type])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:name, :event, :action_target, :action_type])
   end
 
   def changeset(struct, params) do
     struct
-    |> cast(params, castable_fields())
+    |> cast(params, writable_fields())
     |> validate()
   end
 

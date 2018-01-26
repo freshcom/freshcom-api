@@ -7,10 +7,25 @@ defmodule BlueJet.FileStorage do
   alias BlueJet.FileStorage.ExternalFileCollectionMembership
 
   defmodule Service do
-    def delete_external_file(id) do
-      Repo.get(ExternalFile, id)
+    def delete_external_file(ef = %{}) do
+      ef
       |> ExternalFile.delete_object()
       |> Repo.delete!()
+    end
+
+    def delete_external_file(id, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      ef =
+        ExternalFile.Query.default()
+        |> ExternalFile.Query.for_account(account_id)
+        |> Repo.get(ExternalFile, id)
+
+      if ef do
+        delete_external_file(ef)
+      else
+        {:error, :not_found}
+      end
     end
   end
 
@@ -213,17 +228,10 @@ defmodule BlueJet.FileStorage do
   end
 
   def do_delete_external_file(%{ account: account, params: %{ "id" => ef_id } }) do
-    external_file =
-      ExternalFile.Query.default()
-      |> ExternalFile.Query.for_account(account.id)
-      |> Repo.get(ef_id)
-
-    if external_file do
-      ExternalFile.delete_object(external_file)
-      Repo.delete!(external_file)
+    with {:ok, _} <- Service.delete_external_file(ef_id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      other -> other
     end
   end
 

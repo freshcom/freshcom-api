@@ -355,7 +355,7 @@ defmodule BlueJet.Catalogue do
     cond do
       product && product.avatar_id ->
         {:ok, _} = Repo.transaction(fn ->
-          FileStorageService.delete_external_file(product.avatar_id)
+          FileStorageService.delete_external_file(product.avatar_id, %{ account: account })
           Repo.delete!(product)
         end)
         {:ok, %AccessResponse{}}

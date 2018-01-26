@@ -1,7 +1,6 @@
 defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
   use BlueJet, :data
 
-  alias BlueJet.FileStorage.ExternalFileCollectionMembership
   alias BlueJet.FileStorage.ExternalFileCollection
   alias BlueJet.FileStorage.ExternalFile
 
@@ -15,30 +14,53 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
     belongs_to :file, ExternalFile
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    ExternalFileCollectionMembership.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
   def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id, :collection_id, :file_id]
+    writable_fields() -- [:collection_id, :file_id]
+  end
+
+  defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
+    account_id = get_field(changeset, :account_id)
+    collection = Repo.get(ExternalFileCollection, collection_id)
+
+    if collection && collection.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :collection, "is invalid", [validation: :must_exist])
+    end
+  end
+
+  defp validate_file_id(changeset = %{ valid?: true, changes: %{ file_id: file_id } }) do
+    account_id = get_field(changeset, :account_id)
+    file = Repo.get(ExternalFile, file_id)
+
+    if file && file.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :file, "is invalid", [validation: :must_exist])
+    end
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :collection_id, :file_id])
-    |> foreign_key_constraint(:account_id)
-    |> validate_assoc_account_scope([:collection, :file])
+    |> validate_required([:collection_id, :file_id])
+    |> validate_collection_id()
+    |> validate_file_id()
   end
 
   @doc """

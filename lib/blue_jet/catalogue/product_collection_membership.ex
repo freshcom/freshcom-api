@@ -37,7 +37,6 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
 
   defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
     account_id = get_field(changeset, :account_id)
-    collection_id = get_field(changeset, :collection_id)
     collection = Repo.get(ProductCollection, collection_id)
 
     if collection && collection.account_id == account_id do
@@ -49,7 +48,6 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
 
   defp validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account_id = get_field(changeset, :account_id)
-    product_id = get_field(changeset, :product_id)
     product = Repo.get(Product, product_id)
 
     if product && product.account_id == account_id do

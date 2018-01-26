@@ -11,9 +11,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     :description
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
   alias BlueJet.Notification.Email
+  alias BlueJet.Notification.IdentityService
 
   schema "email_templates" do
     field :account_id, Ecto.UUID
@@ -35,42 +34,42 @@ defmodule BlueJet.Notification.EmailTemplate do
     has_many :email, Email, foreign_key: :template_id
   end
 
-  def system_fields do
-    [
-      :id,
-      :account_id,
-      :system_label,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :system_label,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
     __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields() do
-    writable_fields()
-  end
-
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name, :to, :subject, :content_html])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:name, :to, :subject, :content_html])
   end
 
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(email_template, params, locale \\ nil, default_locale \\ nil) do
+    email_template = %{ email_template | account: get_account(email_template) }
+    default_locale = default_locale || email_template.account.default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields())
+    email_template
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def get_account(email_template) do
+    email_template.account || IdentityService.get_account(email_template)
   end
 
   def extract_variables("identity.password_reset_token.after_create", %{ account: account, user: user }) do

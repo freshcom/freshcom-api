@@ -8,12 +8,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     :custom_data
   ], container: :translations
 
-  import BlueJet.Identity.Shortcut
-
-  alias BlueJet.Translation
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.FileStorage.ExternalFileCollectionMembership
+  alias BlueJet.FileStorage.IdentityService
+  alias BlueJet.FileStorage.{ExternalFile, ExternalFileCollectionMembership}
 
   schema "external_file_collections" do
     field :account_id, Ecto.UUID
@@ -38,33 +34,26 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     has_many :files, through: [:file_memberships, :file]
   end
 
-  def system_fields do
-    [
-      :id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    ExternalFileCollection.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    ExternalFileCollection.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
+    __MODULE__.__trans__(:fields)
   end
 
   def validate(changeset) do
     changeset
-    |> validate_required([:account_id, :name])
-    |> foreign_key_constraint(:account_id)
+    |> validate_required([:name])
   end
 
   def put_file_urls(efc, opts \\ [])
@@ -75,31 +64,38 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     end)
   end
 
-  def put_file_urls(efc = %ExternalFileCollection{}, opts) do
+  def put_file_urls(efc = %__MODULE__{}, opts) do
     Map.put(efc, :files, ExternalFile.put_url(efc.files, opts))
   end
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params, locale \\ nil, default_locale \\ nil) do
-    default_locale = default_locale || get_default_locale(struct)
+  def changeset(efc, params, locale \\ nil, default_locale \\ nil) do
+    efc = %{ efc | account: get_account(efc) }
+    default_locale = default_locale || efc.account.default_locale
     locale = locale || default_locale
 
-    struct
-    |> cast(params, castable_fields(struct))
+    efc
+    |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def file_count(%ExternalFileCollection{ id: efc_id }) do
+  def file_count(%__MODULE__{ id: efc_id }) do
     from(efcm in ExternalFileCollectionMembership,
       select: count(efcm.id),
       where: efcm.collection_id == ^efc_id)
     |> Repo.one()
   end
 
+  def get_account(efc) do
+    efc.account || IdentityService.get_account(efc)
+  end
+
   defmodule Query do
     use BlueJet, :query
+
+    alias BlueJet.FileStorage.ExternalFileCollection
 
     def default() do
       from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])

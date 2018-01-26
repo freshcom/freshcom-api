@@ -24,21 +24,17 @@ defmodule BlueJet.Notification.Email do
     belongs_to :template, EmailTemplate
   end
 
-  def system_fields do
-    [
-      :id,
-      :account_id,
-      :inserted_at,
-      :updated_at
-    ]
-  end
+  @type t :: Ecto.Schema.t
+
+  @system_fields [
+    :id,
+    :account_id,
+    :inserted_at,
+    :updated_at
+  ]
 
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- system_fields()
-  end
-
-  def castable_fields(_) do
-    []
+    __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   defmodule Factory do

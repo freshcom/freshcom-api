@@ -31,6 +31,10 @@ defmodule BlueJet.Crm do
       Repo.get_by(Customer, id: id, account_id: account_id)
     end
 
+    def get_customer_by_user_id(user_id) do
+      Repo.get_by(Customer, user_id: user_id)
+    end
+
     def get_customer_by_code(code, opts) do
       account_id = opts[:account_id] || opts[:account].id
       Repo.get_by(Customer, code: code, account_id: account_id)
@@ -113,10 +117,7 @@ defmodule BlueJet.Crm do
         {:ok, %{ customer: customer }} ->
           {:ok, customer}
 
-        {:error, user, changeset, _} ->
-          {:error, changeset}
-
-        {:error, customer, changeset, _} ->
+        {:error, _, changeset, _} ->
           {:error, changeset}
 
         other -> other
