@@ -182,7 +182,7 @@ defmodule BlueJet.BalanceTest do
           "gateway" => "online",
           "processor" => "stripe",
           "amount_cents" => 500,
-          "source" => Ecto.UUID.generate()
+          "source" => "tok_" <> Faker.String.base64(12)
         }
       }
       AuthorizationMock

@@ -49,7 +49,6 @@ defmodule BlueJet.Crm.PointTransaction do
     :updated_at
   ]
 
-
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
@@ -101,7 +100,6 @@ defmodule BlueJet.Crm.PointTransaction do
     point_transaction = %{ point_transaction | account: get_account(point_transaction) }
     default_locale = default_locale || point_transaction.account.default_locale
     locale = locale || default_locale
-
 
     point_transaction
     |> cast(params, writable_fields())

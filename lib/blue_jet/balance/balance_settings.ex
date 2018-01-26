@@ -54,7 +54,7 @@ defmodule BlueJet.Balance.BalanceSettings do
     |> cast(params, writable_fields())
   end
 
-  def for_account(%{ id: account_id }) do
+  def for_account(account_id) do
     Repo.get_by!(__MODULE__, account_id: account_id)
   end
 

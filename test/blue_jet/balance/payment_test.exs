@@ -26,6 +26,7 @@ defmodule BlueJet.Balance.PaymentTest do
       :description,
       :custom_data,
       :translations,
+      :stripe_customer_id,
       :owner_id,
       :owner_type,
       :target_id,

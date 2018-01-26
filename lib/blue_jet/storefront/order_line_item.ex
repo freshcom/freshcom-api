@@ -597,7 +597,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     if depositable.target_type == "PointAccount" do
       point_account = CrmService.get_point_account(order.customer_id, %{ account_id: account_id })
-      CrmService.create_point_transaction(%{
+      {:ok, _} = CrmService.create_point_transaction(%{
         point_account_id: point_account.id,
         status: "committed",
         amount: line_item.order_quantity * depositable.amount,

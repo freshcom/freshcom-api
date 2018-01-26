@@ -52,12 +52,12 @@ defmodule BlueJet.Balance.CardTest do
     end
   end
 
-  describe "keep_stripe_source/2" do
+  describe "keep_stripe_source/3" do
     test "when given source is a card" do
       {:ok, source} = Card.keep_stripe_source(%{
         source: "card_" <> Faker.String.base64(12),
         customer_id: Faker.String.base64(12)
-      }, %{})
+      }, %{}, %{})
 
       assert source
     end
@@ -93,9 +93,10 @@ defmodule BlueJet.Balance.CardTest do
         customer_id: Faker.String.base64(12)
       }, %{
         status: "saved_by_owner",
-        account_id: account.id,
         owner_id: owner_id,
         owner_type: "Customer"
+      }, %{
+        account_id: account.id
       })
 
       verify!()
@@ -135,9 +136,10 @@ defmodule BlueJet.Balance.CardTest do
         customer_id: Faker.String.base64(12)
       }, %{
         status: "saved_by_owner",
-        account_id: account.id,
         owner_id: owner_id,
         owner_type: "Customer"
+      }, %{
+        account_id: account.id
       })
 
       card = Repo.get(Card, existing_card.id)

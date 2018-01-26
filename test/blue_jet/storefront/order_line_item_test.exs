@@ -423,7 +423,7 @@ defmodule BlueJet.OrderLineItemTest do
       point_transaction = %PointTransaction{}
       CrmServiceMock
       |> expect(:get_point_account, fn(_, _) -> point_account end)
-      |> expect(:create_point_transaction, fn(_, _) -> point_transaction end)
+      |> expect(:create_point_transaction, fn(_, _) -> {:ok, point_transaction} end)
 
       order = %Order{}
       order_changeset = change(order, %{ status: "opened" })

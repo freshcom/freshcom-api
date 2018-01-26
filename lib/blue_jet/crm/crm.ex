@@ -18,9 +18,22 @@ defmodule BlueJet.Crm do
     def create_point_transaction(fields, opts) do
       account_id = opts[:account_id] || opts[:account].id
 
-      %PointTransaction{ account_id: account_id, account: opts[:account] }
-      |> Ecto.Changeset.change(fields)
-      |> Repo.insert!()
+      changeset =
+        %PointTransaction{ account_id: account_id, account: opts[:account] }
+        |> PointTransaction.changeset(fields)
+
+      statements =
+        Multi.new()
+        |> Multi.insert(:point_transaction, changeset)
+        |> Multi.run(:processed_point_transaction, fn(%{ point_transaction: point_transaction }) ->
+            PointTransaction.process(point_transaction, changeset)
+           end)
+
+      case Repo.transaction(statements) do
+        {:ok, %{ processed_point_transaction: point_transaction }} -> {:ok, point_transaction}
+
+        {:error, _, changeset, _} -> {:error, changeset}
+      end
     end
 
     def get_point_transaction(id) do

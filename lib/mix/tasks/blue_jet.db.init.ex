@@ -15,6 +15,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     alias BlueJet.Identity.Account
 
     alias BlueJet.Catalogue
+    alias BlueJet.Goods
     alias BlueJet.AccessRequest
 
     ensure_started(Repo, [])
@@ -37,6 +38,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
+        "status" => "active",
         "name" => "本月推荐（TOM）",
         "code" => "TOM",
         "label" => "audio",
@@ -47,6 +49,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
+        "status" => "active",
         "name" => "经销商培训CD",
         "code" => "ASSOC-TR-AUD",
         "label" => "audio",
@@ -57,6 +60,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
+        "status" => "active",
         "name" => "领导力培训CD",
         "code" => "LDR-TR-AUD",
         "label" => "audio",
@@ -67,9 +71,93 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
+        "status" => "active",
         "name" => "充值",
         "code" => "DEPOSIT",
         "label" => "deposit"
+      }
+    })
+
+    #
+    # MARK: 充值相关
+    #
+    {:ok, %{ data: deposit_100 }} = Goods.create_depositable(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      fields: %{
+        "status" => "active",
+        "name" => "充值$100",
+        "code" => "DEP100",
+        "target_type" => "PointAccount",
+        "amount" => 10000
+      }
+    })
+
+    {:ok, %{ data: product_100 }} = Catalogue.create_product(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      fields: %{
+        "name_sync" => "sync_with_source",
+        "source_id" => deposit_100.id,
+        "source_type" => "Depositable"
+      }
+    })
+
+    {:ok, _} = Catalogue.create_price(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      params: %{ "product_id" => product_100.id },
+      fields: %{
+        "status" => "active",
+        "name" => "原价",
+        "charge_amount_cents" => 10000,
+        "charge_unit" => "个",
+        "order_unit" => "个"
+      }
+    })
+
+    {:ok, _} = Catalogue.update_product(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      params: %{ "id" => product_100.id },
+      fields: %{
+        "status" => "active"
+      }
+    })
+
+    {:ok, %{ data: deposit_50 }} = Goods.create_depositable(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      fields: %{
+        "status" => "active",
+        "name" => "充值$50",
+        "code" => "DEP50",
+        "target_type" => "PointAccount",
+        "amount" => 5000
+      }
+    })
+
+    {:ok, %{ data: product_50 }} = Catalogue.create_product(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      fields: %{
+        "name_sync" => "sync_with_source",
+        "source_id" => deposit_50.id,
+        "source_type" => "Depositable"
+      }
+    })
+
+    {:ok, _} = Catalogue.create_price(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      params: %{ "product_id" => product_50.id },
+      fields: %{
+        "status" => "active",
+        "name" => "原价",
+        "charge_amount_cents" => 5000,
+        "charge_unit" => "个",
+        "order_unit" => "个"
+      }
+    })
+
+    {:ok, _} = Catalogue.update_product(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      params: %{ "id" => product_50.id },
+      fields: %{
+        "status" => "active"
       }
     })
   end

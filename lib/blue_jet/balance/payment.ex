@@ -84,7 +84,6 @@ defmodule BlueJet.Balance.Payment do
     :refunded_freshcom_fee_cents,
     :stripe_charge_id,
     :stripe_transfer_id,
-    :stripe_customer_id,
     :inserted_at,
     :updated_at
   ]
@@ -264,20 +263,17 @@ defmodule BlueJet.Balance.Payment do
   """
   @spec charge(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
   def charge(payment = %__MODULE__{ processor: "stripe" }) do
-    payment = %{ payment | account: get_account(payment) }
-
-    balance_settings = BalanceSettings.for_account(payment.account)
+    balance_settings = BalanceSettings.for_account(payment.account_id)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
     card_fields = %{
-      account_id: payment.account_id,
       status: card_status,
       owner_id: payment.owner_id,
       owner_type: payment.owner_type
     }
 
-    with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields),
+    with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields, %{ account_id: payment.account_id, account: payment.account }),
          {:ok, stripe_charge} <- create_stripe_charge(payment, source, balance_settings)
     do
       sync_with_stripe_charge(payment, stripe_charge)

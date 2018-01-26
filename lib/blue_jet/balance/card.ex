@@ -121,14 +121,14 @@ defmodule BlueJet.Balance.Card do
 
   Returns `{:ok, source}` if successful where the `source` is a stripe card ID.
   """
-  @spec keep_stripe_source(Map.t, Map.t) :: {:ok, String.t} | {:error, map}
-  def keep_stripe_source(stripe_data = %{ source: source, customer_id: stripe_customer_id }, fields) when not is_nil(stripe_customer_id) do
+  @spec keep_stripe_source(map, map, map) :: {:ok, String.t} | {:error, map}
+  def keep_stripe_source(stripe_data = %{ source: source, customer_id: stripe_customer_id }, fields, opts) when not is_nil(stripe_customer_id) do
     case List.first(String.split(source, "_")) do
       "card" -> {:ok, source}
-      "tok" -> keep_stripe_token_as_card(stripe_data, fields)
+      "tok" -> keep_stripe_token_as_card(stripe_data, fields, opts)
     end
   end
-  def keep_stripe_source(%{ source: source }, _), do: {:ok, source}
+  def keep_stripe_source(%{ source: source }, _, _), do: {:ok, source}
 
   @doc """
   Save the Stripe token as a card associated with the Stripe customer object,
@@ -137,15 +137,23 @@ defmodule BlueJet.Balance.Card do
 
   Returns `{:ok, stripe_card_id}` if successful.
   """
-  @spec keep_stripe_token_as_card(Map.t, Map.t) :: {:ok, String.t} | {:error, map}
-  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status, account_id: account_id }) when not is_nil(stripe_customer_id) do
-    account = get_account(%{ account_id: account_id, account: nil })
+  @spec keep_stripe_token_as_card(map, map, map) :: {:ok, String.t} | {:error, map}
+  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status }, opts) when not is_nil(stripe_customer_id) do
+    account = get_account(%{ account_id: opts[:account_id], account: opts[:account] })
 
     Repo.transaction(fn ->
       with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
            nil <- Repo.get_by(__MODULE__, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
            # Create the new card
-           card <- Repo.insert!(%__MODULE__{ account_id: fields[:account_id], account: account, status: status, source: token, stripe_customer_id: stripe_customer_id, owner_id: fields[:owner_id], owner_type: fields[:owner_type] }),
+           card <- Repo.insert!(%__MODULE__{
+              account_id: account.id,
+              account: account,
+              status: status,
+              source: token,
+              stripe_customer_id: stripe_customer_id,
+              owner_id: fields[:owner_id],
+              owner_type: fields[:owner_type]
+           }),
            {:ok, card} <- process(card)
       do
         card.stripe_card_id
