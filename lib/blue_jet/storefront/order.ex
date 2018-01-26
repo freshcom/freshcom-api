@@ -294,7 +294,7 @@ defmodule BlueJet.Storefront.Order do
   field of the order may not be up to date yet.
   """
   def get_payment_status(order) do
-    payments = BalanceService.list_payment_for_target("Order", order.id)
+    payments = BalanceService.list_payment(%{ target_type: "Order", target_id: order.id }, %{ account_id: order.account_id })
 
     total_paid_amount_cents =
       payments

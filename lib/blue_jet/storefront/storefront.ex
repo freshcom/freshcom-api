@@ -277,7 +277,7 @@ defmodule BlueJet.Storefront do
       |> Repo.get(id)
 
     if order do
-      payments = BalanceService.list_payment_for_target("Order", id)
+      payments = BalanceService.list_payment(%{ target_type: "Order", target_id: id }, %{ account: account })
       case length(payments) do
         0 ->
           Repo.delete!(order)

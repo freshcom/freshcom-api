@@ -6,8 +6,11 @@ defmodule BlueJet.Balance do
   alias BlueJet.Balance.{Payment, Refund, Card, BalanceSettings}
 
   defmodule Service do
-    def list_payment_for_target(target_type, target_id) do
+    def list_payment(%{ target_type: target_type, target_id: target_id }, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
       Payment.Query.default()
+      |> Payment.Query.for_account(account_id)
       |> Payment.Query.for_target(target_type, target_id)
       |> Repo.all()
     end
