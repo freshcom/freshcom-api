@@ -123,7 +123,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.after_create"
+          assert name == "identity.password_reset_token.not_created"
           {:ok, nil}
          end)
 
@@ -213,7 +213,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.after_create"
+          assert name == "identity.password_reset_token.not_created"
           {:ok, nil}
          end)
 

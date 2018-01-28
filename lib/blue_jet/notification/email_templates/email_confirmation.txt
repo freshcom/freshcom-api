@@ -4,14 +4,14 @@ Please confirm your email so that we can safely send any order receipt or critic
 
 Please confirm your email so that we can safely send any order receipt or critical account information to you.
 
-Confirm email address ( {{freshcom_confirm_email_url}}?token={{user.email_confirmation_token}} )
+Confirm email address ( http://example.com/email-confirmation/new?token={{user.email_confirmation_token}} )
 
 Thanks,
 {{account.name}} Team
 
 If you’re having trouble with the button above, copy and paste the URL below into your web browser.
 
-{{freshcom_confirm_email_url}}?token={{user.email_confirmation_token}}
+http://example.com/email-confirmation/new?token={{user.email_confirmation_token}}
 
 © 2018 {{account.name}}. All rights reserved.
 

@@ -5,6 +5,15 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
     create table(:order_line_items, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :parent_id, references(:order_line_items, type: :binary_id, on_delete: :delete_all)
+      add :price_id, references(:prices, type: :binary_id)
+      add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
+      add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
+
+      add :source_id, :binary_id
+      add :source_type, :string
+
       add :code, :string
       add :name, :string, null: false
       add :label, :string
@@ -44,14 +53,6 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :parent_id, references(:order_line_items, type: :binary_id, on_delete: :delete_all)
-      add :price_id, references(:prices, type: :binary_id)
-      add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
-      add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
-
-      add :source_id, :binary_id
-      add :source_type, :string
 
       timestamps()
     end

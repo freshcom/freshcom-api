@@ -5,6 +5,9 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
     create table(:external_files, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
+      add :user_id, references(:users, type: :binary_id)
+      add :original_id, references(:external_files, type: :binary_id, on_delete: :delete_all)
+
       add :status, :string, null: false, default: "pending"
       add :code, :string
       add :name, :string, null: false
@@ -17,14 +20,11 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
       add :version_name, :string
       add :version_label, :string
       add :system_tag, :string
-      add :original_id, references(:external_files, type: :binary_id, on_delete: :delete_all)
 
       add :caption, :string
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :user_id, references(:users, type: :binary_id)
 
       timestamps()
     end

@@ -5,6 +5,10 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
     create table(:orders, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
+      add :user_id, references(:users, type: :binary_id)
+
       add :status, :string, null: false
       add :code, :string
       add :name, :string
@@ -43,9 +47,6 @@ defmodule BlueJet.Repo.Migrations.CreateOrder do
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :customer_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
-      add :user_id, references(:users, type: :binary_id)
 
       timestamps()
     end

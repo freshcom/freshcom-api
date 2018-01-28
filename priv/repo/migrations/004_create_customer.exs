@@ -5,6 +5,12 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
     create table(:customers, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id)
+
+      add :stripe_customer_id, :string
+      add :user_id, references(:users, type: :binary_id, on_delete: :nilify_all)
+      add :sponsor_id, references(:customers, type: :binary_id)
+      add :enroller_id, references(:customers, type: :binary_id)
+
       add :status, :string, null: false
       add :code, :string
       add :name, :string, null: false
@@ -26,11 +32,6 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :stripe_customer_id, :string
-      add :user_id, references(:users, type: :binary_id, on_delete: :nilify_all)
-      add :sponsor_id, references(:customers, type: :binary_id)
-      add :enroller_id, references(:customers, type: :binary_id)
 
       timestamps()
     end

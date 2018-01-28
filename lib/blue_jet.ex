@@ -37,27 +37,6 @@ defmodule BlueJet do
       alias BlueJet.Repo
       alias BlueJet.Translation
 
-      # def put_external_resources(struct_or_structs, targets) when is_list(targets) and length(targets) == 0 do
-      #   struct_or_structs
-      # end
-
-      # def put_external_resources(structs, targets) when is_list(structs) do
-      #   Enum.map(structs, fn(struct) ->
-      #     put_external_resources(struct, targets)
-      #   end)
-      # end
-
-      # def put_external_resources(struct, targets) when is_list(targets) do
-      #   [target | rest] = targets
-
-      #   struct
-      #   |> put_external_resources(target)
-      #   |> put_external_resources(rest)
-      # end
-
-
-
-
       def put_external_resources(struct_or_structs, targets, options) when is_list(targets) and length(targets) == 0 do
         struct_or_structs
       end
@@ -79,10 +58,34 @@ defmodule BlueJet do
       def put_external_resources(struct, target, options) when is_atom(target) do
         put_external_resources(struct, {target, nil}, options)
       end
+    end
+  end
 
-      # def put_external_resources(struct, {nil, nil}, _) do
-      #   struct
-      # end
+  def proxy do
+    quote do
+      alias BlueJet.AccessRequest
+
+      def put(struct_or_structs, targets, options) when is_list(targets) and length(targets) == 0 do
+        struct_or_structs
+      end
+
+      def put(structs, targets, options) when is_list(structs) do
+        Enum.map(structs, fn(struct) ->
+          put(struct, targets, options)
+        end)
+      end
+
+      def put(struct, targets, options) when is_list(targets) do
+        [target | rest] = targets
+
+        struct
+        |> put(target, options)
+        |> put(rest, options)
+      end
+
+      def put(struct, target, options) when is_atom(target) do
+        put(struct, {target, nil}, options)
+      end
     end
   end
 

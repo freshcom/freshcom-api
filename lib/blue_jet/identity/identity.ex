@@ -11,6 +11,7 @@ defmodule BlueJet.Identity do
 
   defmodule Service do
     alias Ecto.Multi
+    alias BlueJet.Identity
 
     def get_account(%{ account_id: nil }), do: nil
     def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
@@ -65,6 +66,50 @@ defmodule BlueJet.Identity do
         {:ok, %{ user: user }} -> {:ok, user}
         {:error, _, changeset, _} -> {:error, changeset}
       end
+    end
+
+    def create_password_reset_token(email, opts) do
+      email_regex = ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
+      changeset =
+        Ecto.Changeset.change(%User{}, %{ email: email })
+        |> Ecto.Changeset.validate_required(:email)
+        |> Ecto.Changeset.validate_format(:email, email_regex)
+
+      with true <- changeset.valid?,
+           user = %User{} <- get_user_by_email(email, opts)
+      do
+        user = User.refresh_password_reset_token(user)
+        event_data = Map.merge(opts, %{ user: user, email: email })
+        Identity.emit_event("identity.password_reset_token.after_create", event_data)
+
+        {:ok, user}
+      else
+        false ->
+          {:error, changeset}
+
+        nil ->
+          event_data = Map.merge(opts, %{ user: nil, email: email })
+          Identity.emit_event("identity.password_reset_token.not_created", event_data)
+          {:ok, nil}
+      end
+    end
+
+    defp get_user_by_email(email, opts = %{ account: nil }) when map_size(opts) == 1 do
+      get_user_by_email(email, %{})
+    end
+
+    defp get_user_by_email(email, opts) when map_size(opts) == 0 do
+      User.Query.default()
+      |> User.Query.global()
+      |> Repo.get_by(email: email)
+    end
+
+    defp get_user_by_email(email, opts) do
+      account_id = opts[:account_id] || opts[:account].id
+
+      User.Query.default()
+      |> User.Query.for_account(account_id)
+      |> Repo.get_by(email: email)
     end
   end
 
@@ -277,48 +322,12 @@ defmodule BlueJet.Identity do
   user and if found will create the token. An corresponding email may or may not be send
   depending on if a trigger is set to the account.
   """
-  def do_create_password_reset_token(request = %{ account: nil }) do
-    email = request.fields["email"]
-    email_regex = ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
-    changeset =
-      Ecto.Changeset.change(%User{}, %{ email: email })
-      |> Ecto.Changeset.validate_required(:email)
-      |> Ecto.Changeset.validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
-
-    with true <- changeset.valid?,
-         user = %User{} <- User.Query.default() |> User.Query.global() |> Repo.get_by(email: email)
-    do
-      User.refresh_password_reset_token(user)
-      emit_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email })
-
+  def do_create_password_reset_token(request) do
+    with {:ok, _ } <- Service.create_password_reset_token(request.fields["email"], %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
-      false ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
-
-      nil ->
-        emit_event("identity.password_reset_token.after_create", %{ account: nil, user: nil, email: email })
-        {:ok, %AccessResponse{}}
-    end
-  end
-
-  def do_create_password_reset_token(request = %{ account: account }) do
-    email = request.fields["email"]
-
-    user =
-      User.Query.default()
-      |> User.Query.for_account(account.id)
-      |> Repo.get_by(email: request.fields["email"])
-
-    case user do
-      nil ->
-        emit_event("identity.password_reset_token.after_create", %{ account: nil, user: nil, email: email })
-        {:ok, %AccessResponse{}}
-
-      _ ->
-        User.refresh_password_reset_token(user)
-        emit_event("identity.password_reset_token.after_create", %{ account: account, user: user })
-        {:ok, %AccessResponse{}}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 

@@ -6,9 +6,6 @@ defmodule BlueJet.Repo.Migrations.CreateBalanceSettings do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
-      add :country, :string
-      add :default_currency, :string
-
       add :stripe_user_id, :string
       add :stripe_livemode, :boolean
       add :stripe_access_token, :string
@@ -19,6 +16,9 @@ defmodule BlueJet.Repo.Migrations.CreateBalanceSettings do
       add :stripe_fixed_fee_cents, :integer, null: false
 
       add :freshcom_transaction_fee_percentage, :decimal, null: false
+
+      add :country, :string
+      add :default_currency, :string
 
       timestamps()
     end

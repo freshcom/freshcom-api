@@ -5,6 +5,13 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
     create table(:cards, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :stripe_card_id, :string
+      add :stripe_customer_id, :string
+
+      add :owner_id, :binary_id
+      add :owner_type, :string
+
       add :status, :string, null: false
       add :code, :string
       add :name, :string
@@ -23,12 +30,6 @@ defmodule BlueJet.Repo.Migrations.CreateCard do
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :stripe_card_id, :string
-      add :stripe_customer_id, :string
-
-      add :owner_id, :binary_id
-      add :owner_type, :string
 
       timestamps()
     end

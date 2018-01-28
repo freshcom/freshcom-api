@@ -513,7 +513,7 @@ defmodule BlueJet.Storefront do
       |> paginate(size: pagination[:size], number: pagination[:number])
       |> Repo.all()
       |> Repo.preload(preloads)
-      |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Unlock.Proxy.put(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -536,7 +536,7 @@ defmodule BlueJet.Storefront do
     unlock =
       unlock
       |> Repo.preload(preloads)
-      |> Unlock.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> Unlock.Proxy.put(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
     {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}

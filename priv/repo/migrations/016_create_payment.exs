@@ -5,6 +5,17 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
     create table(:payments, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+
+      add :stripe_charge_id, :string
+      add :stripe_transfer_id, :string
+      add :stripe_customer_id, :string
+
+      add :owner_id, :binary_id
+      add :owner_type, :string
+
+      add :target_id, :binary_id
+      add :target_type, :string
+
       add :status, :string, default: "pending"
       add :code, :string
       add :label, :string
@@ -40,16 +51,6 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :authorized_at, :utc_datetime
       add :captured_at, :utc_datetime
       add :refunded_at, :utc_datetime
-
-      add :stripe_charge_id, :string
-      add :stripe_transfer_id, :string
-      add :stripe_customer_id, :string
-
-      add :owner_id, :binary_id
-      add :owner_type, :string
-
-      add :target_id, :binary_id
-      add :target_type, :string
 
       timestamps()
     end

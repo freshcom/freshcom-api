@@ -340,17 +340,15 @@ defmodule BlueJet.FileStorage do
 
   defp create_efcms!(file_ids, efc, initial_sort_index \\ 10000, sort_index_step \\ 10000) do
     Enum.reduce(file_ids, initial_sort_index, fn(file_id, acc) ->
-      changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{}, %{
-        account_id: efc.account_id,
+      changeset = ExternalFileCollectionMembership.changeset(%ExternalFileCollectionMembership{
+        account_id: efc.account_id
+      }, %{
         collection_id: efc.id,
         file_id: file_id,
         sort_index: acc
       })
 
-      if changeset.valid? do
-        Repo.insert!(changeset)
-      end
-
+      Repo.insert!(changeset)
       acc + sort_index_step
     end)
 

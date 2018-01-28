@@ -5,6 +5,9 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
     create table(:prices, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
+      add :product_id, references(:products, type: :binary_id, on_delete: :delete_all), null: false
+      add :parent_id, references(:prices, type: :binary_id, on_delete: :delete_all)
+
       add :status, :string, null: false
       add :code, :string
       add :name, :string, null: false
@@ -31,9 +34,6 @@ defmodule BlueJet.Repo.Migrations.CreatePrice do
       add :description, :text
       add :custom_data, :map, null: false, default: "{}"
       add :translations, :map, null: false, default: "{}"
-
-      add :product_id, references(:products, type: :binary_id, on_delete: :delete_all), null: false
-      add :parent_id, references(:prices, type: :binary_id, on_delete: :delete_all)
 
       timestamps()
     end

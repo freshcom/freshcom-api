@@ -214,15 +214,15 @@ defmodule BlueJet.Storefront.Order do
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
   defp put_name(changeset) do
-    first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :last_name)
+    first_name = get_change(changeset, :first_name)
+    last_name = get_change(changeset, :last_name)
 
-    cond do
-      first_name && last_name ->
-        put_change(changeset, :name, "#{first_name} #{last_name}")
-
-      true ->
-        put_change(changeset, :name, nil)
+    if first_name || last_name do
+      first_name = get_field(changeset, :first_name)
+      last_name = get_field(changeset, :last_name)
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
     end
   end
 

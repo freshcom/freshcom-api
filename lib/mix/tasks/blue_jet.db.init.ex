@@ -97,7 +97,8 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       fields: %{
         "name_sync" => "sync_with_source",
         "source_id" => deposit_100.id,
-        "source_type" => "Depositable"
+        "source_type" => "Depositable",
+        "auto_fulfill" => true
       }
     })
 
@@ -137,7 +138,8 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       fields: %{
         "name_sync" => "sync_with_source",
         "source_id" => deposit_50.id,
-        "source_type" => "Depositable"
+        "source_type" => "Depositable",
+        "auto_fulfill" => true
       }
     })
 

@@ -87,6 +87,17 @@ defmodule BlueJet.Notification.NotificationTrigger do
       }
     end
 
+    def send_password_reset_not_registered_email(account, email_template) do
+      %NotificationTrigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send password reset not registered email",
+        event: "identity.password_reset_token.not_created",
+        action_type: "send_email",
+        action_target: email_template.id
+      }
+    end
+
     def send_email_confirmation_email(account, email_template) do
       %NotificationTrigger{
         account_id: account.id,

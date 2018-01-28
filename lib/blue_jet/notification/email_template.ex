@@ -72,9 +72,17 @@ defmodule BlueJet.Notification.EmailTemplate do
     email_template.account || IdentityService.get_account(email_template)
   end
 
+  def extract_variables("identity.password_reset_token.not_created", %{ account: account, user: nil, email: email }) do
+    %{
+      email: email,
+      account: Map.take(account, [:name]),
+      freshcom_reset_password_url: System.get_env("RESET_PASSWORD_URL")
+    }
+  end
+
   def extract_variables("identity.password_reset_token.after_create", %{ account: account, user: user }) do
     %{
-      user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :email]),
+      user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :name, :email]),
       account: Map.take(account, [:name]),
       freshcom_reset_password_url: System.get_env("RESET_PASSWORD_URL")
     }
@@ -123,6 +131,21 @@ defmodule BlueJet.Notification.EmailTemplate do
         to: "{{user.email}}",
         content_html: password_reset_html,
         content_text: password_reset_text
+      }
+    end
+
+    def password_reset_not_registered(account) do
+      password_reset_not_registered_html = File.read!("lib/blue_jet/notification/email_templates/password_reset_not_registered.html")
+      password_reset_not_registered_text = File.read!("lib/blue_jet/notification/email_templates/password_reset_not_registered.txt")
+
+      %EmailTemplate{
+        account_id: account.id,
+        system_label: "default",
+        name: "Password Reset Not Registered",
+        subject: "Reset password attempt for {{account.name}}",
+        to: "{{email}}",
+        content_html: password_reset_not_registered_html,
+        content_text: password_reset_not_registered_text
       }
     end
 

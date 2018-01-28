@@ -3,7 +3,7 @@ defmodule BlueJet.Storefront.Unlock do
 
   use Trans, translates: [:custom_data], container: :translations
 
-  alias BlueJet.Storefront.{GoodsService, CrmService, IdentityService}
+  alias BlueJet.Storefront.IdentityService
 
   schema "unlocks" do
     field :account_id, Ecto.UUID
@@ -76,26 +76,35 @@ defmodule BlueJet.Storefront.Unlock do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  #
-  # MARK: External Resources
-  #
-  def get_unlockable(%{ unlockable_id: nil }), do: nil
-  def get_unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }), do: GoodsService.get_unlockable(unlockable_id)
-  def get_unlockable(%{ unlockable: unlockable }), do: unlockable
+  defmodule Proxy do
+    use BlueJet, :proxy
 
-  def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil, account_id: account_id }), do: CrmService.get_customer(customer_id, %{ account_id: account_id })
-  def get_customer(%{ customer: customer }), do: customer
+    alias BlueJet.{Goods, Crm}
 
-  def put_external_resources(unlock, {:unlockable, nil}, _) do
-    %{ unlock | unlockable: get_unlockable(unlock) }
+    def put(unlock = %{ unlockable_id: unlockable_id }, {:unlockable, unlockable_preloads}, opts = %{ account: account, locale: locale }) do
+      {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
+        account: account,
+        params: %{ "id" => unlockable_id },
+        locale: locale,
+        preloads: unlockable_preloads || []
+      })
+
+      %{ unlock | unlockable: unlockable }
+    end
+
+    def put(unlock = %{ customer_id: customer_id }, {:customer, customer_preloads}, opts = %{ account: account, locale: locale }) do
+      {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
+        account: account,
+        params: %{ "id" => customer_id },
+        locale: locale,
+        preloads: customer_preloads || []
+      })
+
+      %{ unlock | customer: customer }
+    end
+
+    def put(unlock, _, _), do: unlock
   end
-
-  def put_external_resources(unlock, {:customer, nil}, _) do
-    %{ unlock | customer: get_customer(unlock) }
-  end
-
-  def put_external_resources(unlock, _, _), do: unlock
 
   defmodule Query do
     use BlueJet, :query

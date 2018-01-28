@@ -24,6 +24,14 @@ defmodule BlueJet.Notification do
 
       template =
         account
+        |> EmailTemplate.AccountDefault.password_reset_not_registered()
+        |> Repo.insert!()
+      account
+      |> NotificationTrigger.AccountDefault.send_password_reset_not_registered_email(template)
+      |> Repo.insert!()
+
+      template =
+        account
         |> EmailTemplate.AccountDefault.email_confirmation()
         |> Repo.insert!()
       account
@@ -38,6 +46,15 @@ defmodule BlueJet.Notification do
       test_account
       |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
       |> Repo.insert!()
+
+      template =
+        test_account
+        |> EmailTemplate.AccountDefault.password_reset_not_registered()
+        |> Repo.insert!()
+      test_account
+      |> NotificationTrigger.AccountDefault.send_password_reset_not_registered_email(template)
+      |> Repo.insert!()
+
       template =
         test_account
         |> EmailTemplate.AccountDefault.email_confirmation()

@@ -27,9 +27,10 @@ defmodule BlueJetWeb.PriceController do
     end
   end
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Price" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "product_id" => product_id, "data" => data = %{ "type" => "Price" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
+      params: %{ "product_id" => product_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }

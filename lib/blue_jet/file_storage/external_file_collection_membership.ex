@@ -45,6 +45,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
     end
   end
 
+  defp validate_collection_id(changeset), do: changeset
+
   defp validate_file_id(changeset = %{ valid?: true, changes: %{ file_id: file_id } }) do
     account_id = get_field(changeset, :account_id)
     file = Repo.get(ExternalFile, file_id)
@@ -55,6 +57,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
       add_error(changeset, :file, "is invalid", [validation: :must_exist])
     end
   end
+
+  defp validate_file_id(changeset), do: changeset
 
   def validate(changeset) do
     changeset
