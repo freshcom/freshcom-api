@@ -19,7 +19,14 @@ defmodule BlueJet.Identity do
     def get_account(%{ account: account }), do: account
     def get_account(id), do: Repo.get!(Account, id)
 
-    def create_user(fields = %{ "account_id" => account_id }) do
+    def create_user(fields, %{ account: nil }), do: create_user(fields, %{ account_id: nil })
+    def create_user(fields, %{ account: account }), do: create_user(fields, %{ account_id: account.id })
+
+    def create_user(fields, opts = %{ account_id: nil }) when map_size(opts) == 1 do
+
+    end
+
+    def create_user(fields, opts = %{ account_id: account_id }) when map_size(opts) == 1 do
       test_account = Repo.get_by(Account, mode: "test", live_account_id: account_id)
 
       live_account_id = if test_account do
@@ -61,6 +68,9 @@ defmodule BlueJet.Identity do
             else
               {:ok, nil}
             end
+           end)
+        |> Multi.run(:after_create, fn(%{ user: user }) ->
+            Identity.emit_event("identity.user.after_create", %{ user: user })
            end)
 
       case Repo.transaction(statements) do
@@ -435,9 +445,11 @@ defmodule BlueJet.Identity do
   def do_create_user(request = %{ role: "guest", account: account, fields: fields }) do
     fields = Map.merge(fields, %{ "role" => "customer" })
 
-    Query.create_account_user(account.id, fields)
-    |> Repo.transaction()
-    |> do_create_user_response(request)
+    with {:ok, user} <- Service.create_user(fields, %{ account: account }) do
+      user_response(user, request)
+    else
+      {:error, %{ errors: errors }} -> {:error, %AccessResponse{ errors: errors }}
+    end
   end
 
   def do_create_user(request = %{ account: account, fields: fields }) do

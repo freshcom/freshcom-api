@@ -353,6 +353,12 @@ defmodule BlueJet.Identity.IdentityTest do
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.user.after_create"
+          {:ok, nil}
+         end)
+
       {:ok, %{ data: user }} = Identity.create_user(request)
       user =
         User

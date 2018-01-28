@@ -1,0 +1,48 @@
+This is a receipt for your recent purchase on {{order.opened_date}}.
+
+{{account.name}} (http://example.com)
+
+************
+Hi {{order.name}},
+************
+
+Thanks for using {{account.name}}. This email is the receipt for your order.
+
+This purchase will appear as “[Credit Card Statement Name]” on your credit card statement for your {{credit_card_brand}} ending in {{credit_card_last_four}}. Need to update your payment information ( {{ billing_url }} )?
+
+{{order_number}}
+--------------
+
+{{order.opened_date}}
+--------
+
+Description
+
+Amount
+
+{{#line_items}}
+
+{{name}}
+${{sub_total}}
+
+{{/line_items}}
+
+Tax
+${{order.tax_total}}
+
+Total
+
+${{order.grand_total}}
+
+If you have any questions about this receipt, simply reply to this email or reach out to our support team (http://support.example.com) for help.
+
+Cheers,
+The {{account.name}} Team
+
+© 2018 {{account.name}}. All rights reserved.
+
+{{account.company_name}}
+
+1234 Street Rd.
+
+Suite 1234
