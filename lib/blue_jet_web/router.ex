@@ -39,6 +39,7 @@ defmodule BlueJetWeb.Router do
     get "/refresh_token", RefreshTokenController, :show
 
     post "/password_reset_tokens", PasswordResetTokenController, :create
+    post "/passwords", PasswordController, :create
 
     ####
     # File Storage

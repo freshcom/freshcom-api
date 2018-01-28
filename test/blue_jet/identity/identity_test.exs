@@ -226,6 +226,86 @@ defmodule BlueJet.Identity.IdentityTest do
     end
   end
 
+  describe "create_password" do
+    test "when role is anonymous and using non-existing password reset token" do
+      request = %AccessRequest{
+        role: "anonymous",
+        fields: %{
+          "token" => Faker.String.base64(12),
+          "value" => "test1234"
+        }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:error, :not_found} = Identity.create_password(request)
+    end
+
+    test "when role is anonymous and using valid password reset token" do
+      account = Repo.insert!(%Account{})
+      password_reset_token = Ecto.UUID.generate()
+      user = Repo.insert!(%User{
+        username: Faker.String.base64(5),
+        default_account_id: account.id,
+        password_reset_token: password_reset_token
+      })
+      request = %AccessRequest{
+        role: "anonymous",
+        fields: %{
+          "token" => password_reset_token,
+          "value" => "test1234"
+        }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, _} = Identity.create_password(request)
+      user = Repo.get(User, user.id)
+      assert user.encrypted_password
+    end
+
+    test "when role is guest and using non-existing password reset token" do
+      account = Repo.insert!(%Account{})
+      request = %AccessRequest{
+        role: "guest",
+        account: account,
+        fields: %{
+          "token" => Faker.String.base64(12),
+          "value" => "test1234"
+        }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:error, :not_found} = Identity.create_password(request)
+    end
+
+    test "when role is guest and using valid password reset token" do
+      account = Repo.insert!(%Account{})
+      password_reset_token = Ecto.UUID.generate()
+      user = Repo.insert!(%User{
+        username: Faker.String.base64(5),
+        default_account_id: account.id,
+        account_id: account.id,
+        password_reset_token: password_reset_token
+      })
+      request = %AccessRequest{
+        role: "guest",
+        account: account,
+        fields: %{
+          "token" => password_reset_token,
+          "value" => "test1234"
+        }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      {:ok, _} = Identity.create_password(request)
+      user = Repo.get(User, user.id)
+      assert user.encrypted_password
+    end
+  end
+
   describe "create_user/1" do
     test "when using anonymous identity" do
       request = %AccessRequest{

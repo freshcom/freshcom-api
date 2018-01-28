@@ -58,8 +58,6 @@ defmodule BlueJet.Identity.User do
     :updated_at
   ]
 
-  @email_regex ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
-
   def writable_fields do
     (__MODULE__.__schema__(:fields) -- @system_fields()) ++ [:password, :current_password]
   end
@@ -129,7 +127,7 @@ defmodule BlueJet.Identity.User do
     |> unique_constraint(:username)
     |> unique_constraint(:username, name: :users_account_id_username_index)
 
-    |> validate_format(:email, @email_regex)
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
     |> unique_constraint(:email)
 
     |> validate_current_password()
@@ -183,6 +181,12 @@ defmodule BlueJet.Identity.User do
   def refresh_password_reset_token(user) do
     user
     |> change(password_reset_token: Ecto.UUID.generate())
+    |> Repo.update!()
+  end
+
+  def update_password(user, new_password) do
+    user
+    |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))
     |> Repo.update!()
   end
 

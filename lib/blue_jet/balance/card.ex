@@ -112,6 +112,51 @@ defmodule BlueJet.Balance.Card do
 
   def put_external_resources(card, _, _), do: card
 
+  defp create_or_update_card(%{ token_object: token_object, customer_id: stripe_customer_id }, fields = %{ status: status }, %{ account: account }) do
+    existing_card = Repo.get_by(__MODULE__,
+      account_id: account.id,
+      owner_id: fields[:owner_id],
+      owner_type: fields[:owner_type],
+      fingerprint: token_object["card"]["fingerprint"]
+    )
+
+    case existing_card do
+      nil ->
+        existing_card_count_for_owner =
+          __MODULE__
+          |> __MODULE__.Query.for_account(account.id)
+          |> __MODULE__.Query.with_owner(fields[:owner_type], fields[:owner_id])
+          |> __MODULE__.Query.with_status("saved_by_owner")
+          |> Repo.aggregate(:count, :id)
+
+        primary = if existing_card_count_for_owner == 0 && status == "saved_by_owner", do: true, else: false
+        card = Repo.insert!(%__MODULE__{
+          account_id: account.id,
+          account: account,
+          status: status,
+          source: token_object["id"],
+          stripe_customer_id: stripe_customer_id,
+          owner_id: fields[:owner_id],
+          owner_type: fields[:owner_type],
+          primary: primary
+        })
+        {:ok, card} = process(card)
+        card
+
+      %{ status: ^status } ->
+        existing_card
+
+      existing_card ->
+        card =
+          existing_card
+          |> change(%{ status: status, account: account })
+          |> Repo.update!()
+
+        update_stripe_card(card, %{ metadata: %{ fc_status: status, fc_account_id: account.id } })
+        card
+    end
+  end
+
   @doc """
   Save the Stripe source as a card associated with the Stripe customer object,
   duplicate card will not be saved.
@@ -141,43 +186,51 @@ defmodule BlueJet.Balance.Card do
   def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status }, opts) when not is_nil(stripe_customer_id) do
     account = get_account(%{ account_id: opts[:account_id], account: opts[:account] })
 
-    Repo.transaction(fn ->
-      with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
-           nil <- Repo.get_by(__MODULE__, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
-           # Create the new card
-           card <- Repo.insert!(%__MODULE__{
-              account_id: account.id,
-              account: account,
-              status: status,
-              source: token,
-              stripe_customer_id: stripe_customer_id,
-              owner_id: fields[:owner_id],
-              owner_type: fields[:owner_type]
-           }),
-           {:ok, card} <- process(card)
-      do
-        card.stripe_card_id
-      else
-        # If there is existing card with the same status just return
-        %__MODULE__{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
+    case retrieve_stripe_token(token, mode: account.mode) do
+      {:ok, token_object} ->
+        card = create_or_update_card(%{ token_object: token_object, customer_id: stripe_customer_id }, fields, %{ account: account })
+        {:ok, card.stripe_card_id}
 
-        # If there is existing card with different status then we update the card
-        card = %__MODULE__{ stripe_card_id: stripe_card_id } ->
-          card
-          |> change(%{ status: status, account: account })
-          |> Repo.update!()
-          |> update_stripe_card(%{ metadata: %{ fc_status: status, fc_account_id: card.account_id } })
+      other -> other
+    end
 
-          stripe_card_id
+    # Repo.transaction(fn ->
+    #   with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
+    #        nil <- Repo.get_by(__MODULE__, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
+    #        # Create the new card, TODO: set primary
+    #        card <- Repo.insert!(%__MODULE__{
+    #           account_id: account.id,
+    #           account: account,
+    #           status: status,
+    #           source: token,
+    #           stripe_customer_id: stripe_customer_id,
+    #           owner_id: fields[:owner_id],
+    #           owner_type: fields[:owner_type]
+    #        }),
+    #        {:ok, card} <- process(card)
+    #   do
+    #     card.stripe_card_id
+    #   else
+    #     # If there is existing card with the same status just return
+    #     %__MODULE__{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
 
-        {:error, errors} -> Repo.rollback(errors)
-        other -> Repo.rollback(other)
-      end
-    end)
+    #     # If there is existing card with different status then we update the card
+    #     card = %__MODULE__{ stripe_card_id: stripe_card_id } ->
+    #       card
+    #       |> change(%{ status: status, account: account })
+    #       |> Repo.update!()
+    #       |> update_stripe_card(%{ metadata: %{ fc_status: status, fc_account_id: card.account_id } })
+
+    #       stripe_card_id
+
+    #     {:error, errors} -> Repo.rollback(errors)
+    #     other -> Repo.rollback(other)
+    #   end
+    # end)
   end
   def keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
-  @spec process(__MODULE__.t, Map.t) :: {:ok, __MODULE__.t} | {:error, map}
+  @spec process(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(card = %__MODULE__{ source: source }) when not is_nil(source) do
     account = get_account(card)
     card = %{ card | account: account }
@@ -211,6 +264,7 @@ defmodule BlueJet.Balance.Card do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
 
+    # TODO: set as primary if this is the only card
     if get_change(changeset, :primary) do
       __MODULE__
       |> __MODULE__.Query.for_account(card.account_id)
@@ -292,6 +346,10 @@ defmodule BlueJet.Balance.Card do
 
     def with_owner(query, owner_type, owner_id) do
       from(c in query, where: c.owner_type == ^owner_type, where: c.owner_id == ^owner_id)
+    end
+
+    def with_status(query, status) do
+      from(c in query, where: c.status == ^status)
     end
 
     def default() do

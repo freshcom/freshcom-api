@@ -66,6 +66,7 @@ config :ja_serializer,
 
 config :ex_aws, region: System.get_env("AWS_REGION")
 
+config :blue_jet, :email_regex, ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
 
 config :blue_jet, :s3, prefix: "uploads"
 

@@ -10,6 +10,7 @@ defmodule BlueJet.Identity.Authorization do
     "identity.update_user",
     "identity.get_refresh_token",
     "identity.create_password_reset_token",
+    "identity.create_password",
 
     "file_storage.list_external_file",
     "file_storage.create_external_file",
@@ -118,13 +119,15 @@ defmodule BlueJet.Identity.Authorization do
   @role_endpoints %{
     "anonymous" => [
       "identity.create_user",
-      "identity.create_password_reset_token"
+      "identity.create_password_reset_token",
+      "identity.create_password"
     ],
 
     "guest" => [
       "identity.create_user",
       "identity.get_account",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
@@ -161,6 +164,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.delete_user",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.get_external_file",
       "file_storage.get_external_file_collection",
@@ -208,6 +212,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -277,7 +282,8 @@ defmodule BlueJet.Identity.Authorization do
     ],
 
     "marketing_specialist" => [
-      "identity.create_password_reset_token"
+      "identity.create_password_reset_token",
+      "identity.create_password"
     ],
 
     "goods_specialist" => [
@@ -286,6 +292,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -343,6 +350,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",
@@ -456,6 +464,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.delete_user",
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
+      "identity.create_password",
 
       "file_storage.list_external_file",
       "file_storage.create_external_file",

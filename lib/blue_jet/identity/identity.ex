@@ -11,6 +11,7 @@ defmodule BlueJet.Identity do
 
   defmodule Service do
     alias Ecto.Multi
+    alias Ecto.Changeset
     alias BlueJet.Identity
 
     def get_account(%{ account_id: nil }), do: nil
@@ -69,11 +70,10 @@ defmodule BlueJet.Identity do
     end
 
     def create_password_reset_token(email, opts) do
-      email_regex = ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
       changeset =
-        Ecto.Changeset.change(%User{}, %{ email: email })
-        |> Ecto.Changeset.validate_required(:email)
-        |> Ecto.Changeset.validate_format(:email, email_regex)
+        Changeset.change(%User{}, %{ email: email })
+        |> Changeset.validate_required(:email)
+        |> Changeset.validate_format(:email, Application.get_env(:blue_jet, :email_regex))
 
       with true <- changeset.valid?,
            user = %User{} <- get_user_by_email(email, opts)
@@ -91,6 +91,52 @@ defmodule BlueJet.Identity do
           event_data = Map.merge(opts, %{ user: nil, email: email })
           Identity.emit_event("identity.password_reset_token.not_created", event_data)
           {:ok, nil}
+      end
+    end
+
+    def create_password(user = %{}, new_password) do
+      changeset =
+        Changeset.change(%User{}, %{ password: new_password })
+        |> Changeset.validate_required(:password)
+        |> Changeset.validate_length(:password, min: 8)
+
+      if changeset.valid? do
+        user =
+          user
+          |> User.refresh_password_reset_token()
+          |> User.update_password(new_password)
+
+        {:ok, user}
+      else
+        {:error, changeset}
+      end
+    end
+
+    def create_password(nil, _, _), do: {:error, :not_found}
+
+    def create_password(password_reset_token, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
+      user =
+        User.Query.default()
+        |> User.Query.global()
+        |> Repo.get_by(password_reset_token: password_reset_token)
+
+      if user do
+        create_password(user, new_password)
+      else
+        {:error, :not_found}
+      end
+    end
+
+    def create_password(password_reset_token, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
+      user =
+        User.Query.default()
+        |> User.Query.for_account(account.id)
+        |> Repo.get_by(password_reset_token: password_reset_token)
+
+      if user do
+        create_password(user, new_password)
+      else
+        {:error, :not_found}
       end
     end
 
@@ -323,11 +369,34 @@ defmodule BlueJet.Identity do
   depending on if a trigger is set to the account.
   """
   def do_create_password_reset_token(request) do
-    with {:ok, _ } <- Service.create_password_reset_token(request.fields["email"], %{ account: request.account }) do
+    with {:ok, _} <- Service.create_password_reset_token(request.fields["email"], %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
+  #
+  # MARK: Password
+  #
+  def create_password(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.create_password") do
+      request
+      |> do_create_password()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_password(request) do
+    with {:ok, _} <- Service.create_password(request.fields["token"], request.fields["value"], %{ account: request.account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, changeset = %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: [value: errors[:password]] }}
+
+      other -> other
     end
   end
 

@@ -109,8 +109,6 @@ defmodule BlueJet.Storefront.Order do
     :created_by_id
   ]
 
-  @email_regex ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
-
   def delivery_address_fields do
     [
       :delivery_address_line_one,
@@ -187,7 +185,7 @@ defmodule BlueJet.Storefront.Order do
 
     changeset
     |> validate_required(required_fields)
-    |> validate_format(:email, @email_regex)
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
     |> validate_inventory()
     |> validate_customer_id()
   end

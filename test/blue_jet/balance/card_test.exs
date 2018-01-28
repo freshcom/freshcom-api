@@ -64,6 +64,7 @@ defmodule BlueJet.Balance.CardTest do
 
     test "when given source is a token and no card exist yet" do
       token_object = %{
+        "id" => Faker.String.base64(12),
         "card" => %{
           "fingerprint" => Faker.String.base64(12)
         }
@@ -100,8 +101,10 @@ defmodule BlueJet.Balance.CardTest do
       })
 
       verify!()
+      card = Repo.get_by(Card, owner_id: owner_id, owner_type: "Customer")
       assert source == stripe_card_id
-      assert Repo.get_by(Card, owner_id: owner_id, owner_type: "Customer")
+      assert card
+      assert card.primary == true
     end
 
     test "when given source is a token and card already exist" do

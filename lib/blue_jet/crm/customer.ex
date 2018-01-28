@@ -71,7 +71,7 @@ defmodule BlueJet.Crm.Customer do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
-    |> validate_format(:email, ~r/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/)
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
     |> foreign_key_constraint(:account_id)
     |> unique_constraint(:email)
   end
