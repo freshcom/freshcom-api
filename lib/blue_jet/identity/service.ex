@@ -63,8 +63,10 @@ defmodule BlueJet.Identity.Service do
           create_account(account_fields)
          end)
       |> Multi.run(:user, fn(%{ account: account }) ->
-          changeset = User.changeset(%User{ default_account_id: account.id }, fields)
-          Repo.insert(changeset)
+          %User{ default_account_id: account.id }
+          |> User.put_email_confirmation_token()
+          |> User.changeset(fields)
+          |> Repo.insert()
          end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
           account_membership = Repo.insert!(%AccountMembership{
@@ -107,8 +109,10 @@ defmodule BlueJet.Identity.Service do
       account_id
     end
 
-    user = %User{ default_account_id: account_id, account_id: account_id }
-    changeset = User.changeset(user, fields)
+    changeset =
+      %User{ default_account_id: account_id, account_id: account_id }
+      |> User.put_email_confirmation_token()
+      |> User.changeset(fields)
 
     statements =
       Multi.new()
@@ -137,7 +141,7 @@ defmodule BlueJet.Identity.Service do
           end
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.user.after_create", %{ user: user })
+          emit_event("identity.user.after_create", %{ user: user, account_id: account_id })
          end)
 
     case Repo.transaction(statements) do
@@ -156,7 +160,7 @@ defmodule BlueJet.Identity.Service do
          user = %User{} <- get_user_by_email(email, opts)
     do
       user = User.refresh_password_reset_token(user)
-      event_data = Map.merge(opts, %{ user: user, email: email })
+      event_data = Map.merge(opts, %{ user: user })
       emit_event("identity.password_reset_token.after_create", event_data)
 
       {:ok, user}
@@ -165,7 +169,7 @@ defmodule BlueJet.Identity.Service do
         {:error, changeset}
 
       nil ->
-        event_data = Map.merge(opts, %{ user: nil, email: email })
+        event_data = Map.merge(opts, %{ email: email })
         emit_event("identity.password_reset_token.not_created", event_data)
         {:ok, nil}
     end

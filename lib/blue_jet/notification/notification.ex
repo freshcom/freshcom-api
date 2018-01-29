@@ -66,22 +66,20 @@ defmodule BlueJet.Notification do
       {:ok, nil}
     end
 
-    def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user, email: email }) do
-      case user do
-        nil ->
-          Email.Factory.password_reset_not_registered_email(email)
-          |> GlobalMailer.deliver_later()
-
-        _ ->
-          Email.Factory.password_reset_email(user)
-          |> GlobalMailer.deliver_later()
-      end
+    def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user }) do
+      Email.Factory.password_reset_email(user)
+      |> GlobalMailer.deliver_later()
     end
 
-    def handle_event(event, data = %{ account: account }) when not is_nil(account) do
+    def handle_event("identity.password_reset_token.not_created", %{ email: email }) do
+      Email.Factory.password_reset_not_registered_email(email)
+      |> GlobalMailer.deliver_later()
+    end
+
+    def handle_event(event, data = %{ account_id: account_id }) when not is_nil(account_id) do
       triggers =
         NotificationTrigger.Query.default()
-        |> NotificationTrigger.Query.for_account(account.id)
+        |> NotificationTrigger.Query.for_account(account_id)
         |> NotificationTrigger.Query.for_event(event)
         |> Repo.all()
 
@@ -90,6 +88,11 @@ defmodule BlueJet.Notification do
       end)
 
       {:ok, nil}
+    end
+
+    def handle_event(event, data = %{ account: account }) when not is_nil(account) do
+      data = Map.put(data, :account_id, account.id)
+      handle_event(event, data)
     end
 
     def handle_event(_, _) do

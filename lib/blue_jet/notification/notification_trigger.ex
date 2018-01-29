@@ -4,6 +4,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
+  alias BlueJet.Notification.IdentityService
   alias BlueJet.Notification.EmailTemplate
 
   schema "notification_triggers" do
@@ -48,10 +49,17 @@ defmodule BlueJet.Notification.NotificationTrigger do
     |> validate()
   end
 
+  def get_account(trigger) do
+    trigger.account || IdentityService.get_account(trigger)
+  end
+
   def process(
-    %{ event: event, action_type: "send_email", action_target: template_id },
-    data = %{ account: account })
-  do
+    trigger = %{ event: event, action_type: "send_email", action_target: template_id },
+    data
+  ) do
+    account = data[:account] || get_account(trigger)
+    data = Map.put(data, :account, account)
+
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
     template_variables = EmailTemplate.extract_variables(event, data)
 

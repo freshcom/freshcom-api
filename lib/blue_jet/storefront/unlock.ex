@@ -81,7 +81,7 @@ defmodule BlueJet.Storefront.Unlock do
 
     alias BlueJet.{Goods, Crm}
 
-    def put(unlock = %{ unlockable_id: unlockable_id }, {:unlockable, unlockable_preloads}, opts = %{ account: account, locale: locale }) do
+    def put(unlock = %{ unlockable_id: unlockable_id }, {:unlockable, unlockable_preloads}, %{ account: account, locale: locale }) do
       {:ok, %{ data: unlockable }} = Goods.do_get_unlockable(%AccessRequest{
         account: account,
         params: %{ "id" => unlockable_id },
@@ -92,7 +92,7 @@ defmodule BlueJet.Storefront.Unlock do
       %{ unlock | unlockable: unlockable }
     end
 
-    def put(unlock = %{ customer_id: customer_id }, {:customer, customer_preloads}, opts = %{ account: account, locale: locale }) do
+    def put(unlock = %{ customer_id: customer_id }, {:customer, customer_preloads}, %{ account: account, locale: locale }) do
       {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{
         account: account,
         params: %{ "id" => customer_id },

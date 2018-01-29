@@ -7,6 +7,8 @@ defmodule BlueJet.Crm.Customer do
     :custom_data
   ], container: :translations
 
+  alias BlueJet.Utils
+
   alias BlueJet.Crm.PointAccount
   alias BlueJet.Crm.{IdentityService, StripeClient}
 
@@ -84,6 +86,7 @@ defmodule BlueJet.Crm.Customer do
     customer
     |> cast(params, writable_fields())
     |> put_name()
+    |> Utils.put_clean_email()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end

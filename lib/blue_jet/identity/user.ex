@@ -1,7 +1,7 @@
 defmodule BlueJet.Identity.User do
   use BlueJet, :data
 
-  alias BlueJet.Repo
+  alias BlueJet.Utils
 
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
@@ -160,6 +160,7 @@ defmodule BlueJet.Identity.User do
     struct
     |> cast(params, writable_fields())
     |> put_name()
+    |> Utils.put_clean_email()
     |> validate()
     |> put_encrypted_password()
   end
@@ -172,6 +173,10 @@ defmodule BlueJet.Identity.User do
     else
       nil
     end
+  end
+
+  def put_email_confirmation_token(user) do
+    %{ user | email_confirmation_token: Ecto.UUID.generate() }
   end
 
   def put_role(user, account) do

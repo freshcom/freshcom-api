@@ -72,7 +72,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     email_template.account || IdentityService.get_account(email_template)
   end
 
-  def extract_variables("identity.password_reset_token.not_created", %{ account: account, user: nil, email: email }) do
+  def extract_variables("identity.password_reset_token.not_created", %{ account: account, email: email }) do
     %{
       email: email,
       account: Map.take(account, [:name]),

@@ -9,6 +9,7 @@ defmodule BlueJetWeb.UserView do
     :last_name,
     :name,
     :role,
+    :email_confirmed,
     :inserted_at,
     :updated_at
   ]

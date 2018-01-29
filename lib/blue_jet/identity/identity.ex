@@ -88,7 +88,7 @@ defmodule BlueJet.Identity do
     test_changeset = Account.changeset(test_account, fields, request.locale)
 
     with {:ok, account} <- Repo.update(live_changeset),
-         {:ok, test_account} <- Repo.update(test_changeset)
+         {:ok, _} <- Repo.update(test_changeset)
     do
       account = Translation.translate(account, request.locale, account.default_locale)
       {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}

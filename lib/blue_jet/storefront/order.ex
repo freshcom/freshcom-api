@@ -33,6 +33,8 @@ defmodule BlueJet.Storefront.Order do
     :custom_data
   ], container: :translations
 
+  alias BlueJet.Utils
+
   alias BlueJet.Storefront.{BalanceService, DistributionService, IdentityService, CrmService}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
@@ -204,6 +206,7 @@ defmodule BlueJet.Storefront.Order do
     order
     |> cast(params, castable_fields(order))
     |> put_name()
+    |> Utils.put_clean_email()
     |> validate()
     |> put_opened_at()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

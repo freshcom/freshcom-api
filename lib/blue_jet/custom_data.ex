@@ -15,6 +15,6 @@ defmodule BlueJet.CustomData do
     custom_fields = Map.new(custom_data, fn({k, v}) -> { String.to_atom(k), v } end)
     Map.merge(struct, custom_fields)
   end
-  def deserialize(struct), do: struct
 
+  def deserialize(struct), do: struct
 end
