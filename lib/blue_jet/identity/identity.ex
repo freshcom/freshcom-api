@@ -110,7 +110,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_create_email_confirmation(request) do
-    with {:ok, _} <- Service.create_email_confirmation(request.fields["token"], %{ account: request.account }) do
+    with {:ok, _} <- Service.create_email_confirmation(request.fields, %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

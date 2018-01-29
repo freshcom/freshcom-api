@@ -14,8 +14,8 @@ defmodule BlueJet.Identity.Service do
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
 
-  @callback create_email_confirmation(String.t, map) :: {:ok, User.t} | {:error, any}
-  @callback create_email_confirmation(String.t | User.t) :: {:ok, User.t} | {:error, any}
+  @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_confirmation(User.t) :: {:ok, User.t} | {:error, any}
 
   @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
 
@@ -164,38 +164,30 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
+  def create_email_confirmation(nil), do: {:error, :not_found}
+
   def create_email_confirmation(user = %{}) do
     user = User.confirm_email(user)
     {:ok, user}
   end
 
-  def create_email_confirmation(nil, _), do: {:error, :not_found}
+  def create_email_confirmation(%{ "token" => nil }, _), do: {:error, :not_found}
 
-  def create_email_confirmation(token, opts = %{ account: nil }) when map_size(opts) == 1 do
-    user =
-      User.Query.default()
-      |> User.Query.global()
-      |> Repo.get_by(email_confirmation_token: token)
-
-    if user do
-      create_email_confirmation(user)
-    else
-      {:error, :not_found}
-    end
+  def create_email_confirmation(%{ "token" => token }, opts = %{ account: nil }) when map_size(opts) == 1 do
+    User.Query.default()
+    |> User.Query.global()
+    |> Repo.get_by(email_confirmation_token: token)
+    |> create_email_confirmation()
   end
 
-  def create_email_confirmation(token, opts = %{ account: account }) when map_size(opts) == 1 do
-    user =
-      User.Query.default()
-      |> User.Query.for_account(account.id)
-      |> Repo.get_by(email_confirmation_token: token)
-
-    if user do
-      create_email_confirmation(user)
-    else
-      {:error, :not_found}
-    end
+  def create_email_confirmation(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
+    User.Query.default()
+    |> User.Query.for_account(account.id)
+    |> Repo.get_by(email_confirmation_token: token)
+    |> create_email_confirmation()
   end
+
+  def create_email_confirmation(_, _), do: {:error, :not_found}
 
   def create_password_reset_token(email, opts) do
     changeset =
