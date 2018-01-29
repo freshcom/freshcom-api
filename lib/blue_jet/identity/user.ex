@@ -165,6 +165,12 @@ defmodule BlueJet.Identity.User do
     |> put_encrypted_password()
   end
 
+  def confirm_email(user) do
+    user
+    |> change(email_confirmation_token: nil, email_confirmed: true)
+    |> Repo.update!()
+  end
+
   def get_role(user, account) do
     membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)
 

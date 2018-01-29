@@ -10,6 +10,20 @@ defmodule BlueJet.Identity.Service do
   alias Ecto.Multi
   alias Ecto.Changeset
 
+  @callback get_account(map | String.t) :: Account.t | nil
+  @callback create_account(map) :: {:ok, Account.t} | {:error, any}
+  @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
+
+  @callback create_email_confirmation(String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_confirmation(String.t | User.t) :: {:ok, User.t} | {:error, any}
+
+  @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
+
+  @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback create_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
+
+  @callback get_user_by_email(String.t, map) :: User.t | nil
+
   def get_account(%{ account_id: nil }), do: nil
   def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
   def get_account(%{ account: account }), do: account
@@ -150,6 +164,39 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
+  def create_email_confirmation(user = %{}) do
+    user = User.confirm_email(user)
+    {:ok, user}
+  end
+
+  def create_email_confirmation(nil, _), do: {:error, :not_found}
+
+  def create_email_confirmation(token, opts = %{ account: nil }) when map_size(opts) == 1 do
+    user =
+      User.Query.default()
+      |> User.Query.global()
+      |> Repo.get_by(email_confirmation_token: token)
+
+    if user do
+      create_email_confirmation(user)
+    else
+      {:error, :not_found}
+    end
+  end
+
+  def create_email_confirmation(token, opts = %{ account: account }) when map_size(opts) == 1 do
+    user =
+      User.Query.default()
+      |> User.Query.for_account(account.id)
+      |> Repo.get_by(email_confirmation_token: token)
+
+    if user do
+      create_email_confirmation(user)
+    else
+      {:error, :not_found}
+    end
+  end
+
   def create_password_reset_token(email, opts) do
     changeset =
       Changeset.change(%User{}, %{ email: email })
@@ -171,7 +218,7 @@ defmodule BlueJet.Identity.Service do
       nil ->
         event_data = Map.merge(opts, %{ email: email })
         emit_event("identity.password_reset_token.not_created", event_data)
-        {:ok, nil}
+        {:error, :not_found}
     end
   end
 
