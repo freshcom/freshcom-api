@@ -100,7 +100,7 @@ defmodule BlueJet.Crm do
         Multi.new()
         |> Multi.run(:user, fn(_) ->
             if fields["status"] == "registered" do
-              IdentityService.create_user(fields)
+              IdentityService.create_user(fields, %{ account_id: account_id })
             else
               {:ok, nil}
             end
@@ -142,8 +142,8 @@ defmodule BlueJet.Crm do
         |> Multi.run(:user, fn(_) ->
             cond do
               customer.status == "guest" && fields["status"] == "registered" ->
-                fields = Map.merge(fields, %{ "account_id" => account_id, "role" => "customer" })
-                IdentityService.create_user(fields)
+                fields = Map.merge(fields, %{ "role" => "customer" })
+                IdentityService.create_user(fields, %{ account_id: account_id })
 
               true ->
                 {:ok, nil}

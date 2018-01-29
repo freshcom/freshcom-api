@@ -325,6 +325,10 @@ defmodule BlueJet.Identity.IdentityTest do
           assert name == "identity.account.after_create"
           {:ok, nil}
          end)
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.user.after_create"
+          {:ok, nil}
+         end)
 
       {:ok, %{ data: user }} = Identity.create_user(request)
       user =

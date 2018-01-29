@@ -56,7 +56,7 @@ defmodule BlueJet.CrmTest do
       })
 
       IdentityServiceMock
-      |> expect(:create_user, fn(_) -> {:ok, user} end)
+      |> expect(:create_user, fn(_, _) -> {:ok, user} end)
 
       request = %AccessRequest{
         role: "developer",
@@ -130,7 +130,7 @@ defmodule BlueJet.CrmTest do
       })
 
       IdentityServiceMock
-      |> expect(:create_user, fn(_) -> {:ok, user} end)
+      |> expect(:create_user, fn(_, _) -> {:ok, user} end)
 
       request = %AccessRequest{
         role: "developer",

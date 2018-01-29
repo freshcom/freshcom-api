@@ -73,7 +73,7 @@ defmodule BlueJet.Crm.Customer do
     |> validate_required(required_fields(changeset))
     |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
     |> foreign_key_constraint(:account_id)
-    |> unique_constraint(:email)
+    |> unique_constraint(:email, name: :customers_account_id_status_email_index)
   end
 
   def changeset(customer, params, locale \\ nil, default_locale \\ nil) do

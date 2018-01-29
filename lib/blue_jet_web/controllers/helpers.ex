@@ -54,10 +54,16 @@ defmodule BlueJetWeb.Controller.Helpers do
         "#{humanize(field)} #{msg}"
       end
 
+      mc = cond do
+        String.contains?(msg, "taken") -> "taken"
+
+        true -> nil
+      end
+
       {vc, meta} = Keyword.pop(opts, :validation)
       {ec, meta} = Keyword.pop(meta, :code)
 
-      code = ec || vc || "invalid"
+      code = ec || vc || mc || "invalid"
       error = %{ source: %{ pointer: pointer_for(field) }, code: Inflex.camelize(code, :lower), title: title }
 
       error =
