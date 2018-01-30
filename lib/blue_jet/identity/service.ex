@@ -11,19 +11,24 @@ defmodule BlueJet.Identity.Service do
   alias Ecto.Changeset
 
   @callback get_account(map | String.t) :: Account.t | nil
+
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
+
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
 
-  @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
   @callback create_email_confirmation_token(User.t) :: {:ok, User.t} | {:error, any}
 
-  @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
+
   @callback create_email_confirmation(User.t) :: {:ok, User.t} | {:error, any}
+
+  @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
 
-  @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
   @callback create_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
+
+  @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
 
   @callback get_user_by_email(String.t, map) :: User.t | nil
 

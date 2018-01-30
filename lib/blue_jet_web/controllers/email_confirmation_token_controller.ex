@@ -17,7 +17,7 @@ defmodule BlueJetWeb.EmailConfirmationTokenController do
 
     case Identity.create_email_confirmation_token(request) do
       {:ok, _} ->
-        send_resp(conn, :accepted, "")
+        send_resp(conn, :no_content, "")
 
       {:error, %{ errors: errors }} ->
         conn

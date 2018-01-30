@@ -17,7 +17,7 @@ defmodule BlueJetWeb.PasswordResetTokenController do
 
     case Identity.create_password_reset_token(request) do
       {:ok, _} ->
-        send_resp(conn, :accepted, "")
+        send_resp(conn, :no_content, "")
 
       {:error, %{ errors: errors }} ->
         conn
