@@ -100,34 +100,18 @@ defmodule BlueJet.Storefront do
       filter
     end
 
-    data_query =
-      Order.Query.default()
-      |> search([:first_name, :last_name, :name, :code, :email, :phone_number, :id], request.search, request.locale, account.default_locale, Order.translatable_fields())
-      |> Order.Query.not_cart()
-      |> filter_by(
-        customer_id: filter[:customer_id],
-        status: filter[:status],
-        label: filter[:label],
-        delivery_address_province: filter[:delivery_address_province],
-        delivery_address_city: filter[:delivery_address_city],
-        fulfillment_method: filter[:fulfillment_method]
-      )
-      |> Order.Query.for_account(account.id)
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_order(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      Order.Query.default()
-      |> filter_by(customer_id: filter[:customer_id])
-      |> Order.Query.not_cart()
-      |> Order.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: Map.take(filter, [:customer_id]) }
+      |> Service.count_order(%{ account: account })
 
-    preloads = Order.Query.preloads(request.preloads, role: request.role)
     orders =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
+      %{ filter: filter, search: request.search, pagination: pagination }
+      |> Map.put(:preloads, %{ path: request.preloads, filters: %{} })
+      |> Service.list_order(%{ account: account })
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{

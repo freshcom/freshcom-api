@@ -149,7 +149,7 @@ defmodule BlueJet.Crm.PointTransaction do
       from pt in query, where: pt.status == "committed"
     end
 
-    def limit(query, limit) do
+    def only(query, limit) do
       from pt in query, limit: ^limit
     end
 

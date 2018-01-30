@@ -78,7 +78,7 @@ defmodule BlueJet.Crm.PointAccount do
       query =
         PointTransaction.Query.default()
         |> PointTransaction.Query.committed()
-        |> PointTransaction.Query.limit(10)
+        |> PointTransaction.Query.only(10)
 
       [transactions: {query, PointTransaction.Query.preloads(transaction_preloads, options)}]
     end
