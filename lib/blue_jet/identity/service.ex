@@ -207,7 +207,7 @@ defmodule BlueJet.Identity.Service do
           user = User.refresh_email_confirmation_token(user)
           {:ok, user}
          end)
-      |> Multi.run(:after_create, fn(_) ->
+      |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: account })
          end)
 
