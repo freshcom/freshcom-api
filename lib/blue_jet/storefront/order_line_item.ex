@@ -712,6 +712,12 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
+  defmodule Proxy do
+    use BlueJet, :proxy
+
+    def put(oli, _, _), do: oli
+  end
+
   defmodule Query do
     use BlueJet, :query
 

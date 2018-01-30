@@ -9,6 +9,12 @@ defmodule BlueJet.Crm do
   alias BlueJet.Crm.IdentityService
 
   defmodule Service do
+    use BlueJet, :service
+
+    defp get_account(opts) do
+      opts[:account] || IdentityService.get_account(opts)
+    end
+
     def get_point_account(customer_id, opts) do
       account_id = opts[:account_id] || opts[:account].id
 
@@ -73,6 +79,15 @@ defmodule BlueJet.Crm do
       else
         {:error, :not_found}
       end
+    end
+
+    def get_customer(fields = %{ id: id }, opts) do
+      account = get_account(opts)
+      preloads = get_preloads(fields, account)
+
+      preload_query = Order.Query.preloads(preloads[:path], preloads[:filter])
+      Repo.get_by(Customer, user_id: id, account_id: account.id)
+      |> Repo.preload(preload_query)
     end
 
     def get_customer(id) do

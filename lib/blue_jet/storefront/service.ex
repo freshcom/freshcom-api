@@ -1,4 +1,5 @@
 defmodule BlueJet.Storefront.Service do
+  use BlueJet, :service
 
   alias BlueJet.Repo
   alias BlueJet.Storefront.IdentityService
@@ -13,12 +14,11 @@ defmodule BlueJet.Storefront.Service do
 
   def list_order(fields \\ %{}, opts) do
     account = get_account(opts)
+    pagination = get_pagination(fields)
+    preloads = get_preloads(fields, account)
+    filter = get_filter(fields)
 
-    pagination = fields[:pagination] || %{ size: 20, number: 1 }
-    preloads = fields[:preloads] || %{ path: [], filters: %{} }
-    filter = fields[:filter] || %{}
-
-    preload_query = Order.Query.preloads(preloads[:path], preloads[:filters])
+    preload_query = Order.Query.preloads(preloads[:path], preloads[:filter])
     Order.Query.default()
     |> Order.Query.not_cart()
     |> Order.Query.search(fields[:search], opts[:locale], opts[:default_locale])
@@ -27,7 +27,7 @@ defmodule BlueJet.Storefront.Service do
     |> Order.Query.paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> Repo.preload(preload_query)
-    # |> Order.Proxy.put(preloads[:path], preloads[:filters])
+    |> Order.Proxy.put(preloads[:path], preloads[:opts])
   end
 
   def count_order(fields, opts) do

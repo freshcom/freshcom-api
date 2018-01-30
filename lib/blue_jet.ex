@@ -61,6 +61,29 @@ defmodule BlueJet do
     end
   end
 
+  def service do
+    quote do
+      defp get_pagination(fields) do
+        Map.merge(%{ size: 20, number: 1 }, fields[:pagination] || %{})
+      end
+
+      defp get_preloads(fields, account) do
+        preloads = fields[:preloads] || %{}
+        path = preloads[:path] || []
+
+        opts =
+          preloads[:opts] || %{}
+          |> Map.put(:account, account)
+
+        %{ path: path, opts: opts }
+      end
+
+      defp get_filter(fields) do
+        fields[:filter] || %{}
+      end
+    end
+  end
+
   def proxy do
     quote do
       alias BlueJet.AccessRequest
@@ -132,7 +155,7 @@ defmodule BlueJet do
             is_list(v) ->
               from q in acc_query, where: field(q, ^k) in ^v
 
-            nil ->
+            is_nil(v) ->
               from q in acc_query, where: is_nil(field(q, ^k))
 
             true ->
