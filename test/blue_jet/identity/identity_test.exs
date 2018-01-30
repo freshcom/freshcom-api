@@ -329,6 +329,10 @@ defmodule BlueJet.Identity.IdentityTest do
           assert name == "identity.user.after_create"
           {:ok, nil}
          end)
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.email_confirmation_token.after_create"
+          {:ok, nil}
+         end)
 
       {:ok, %{ data: user }} = Identity.create_user(request)
       user =
@@ -360,6 +364,10 @@ defmodule BlueJet.Identity.IdentityTest do
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
           assert name == "identity.user.after_create"
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.email_confirmation_token.after_create"
           {:ok, nil}
          end)
 

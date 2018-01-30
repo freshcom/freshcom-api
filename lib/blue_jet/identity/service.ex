@@ -14,6 +14,9 @@ defmodule BlueJet.Identity.Service do
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
 
+  @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_confirmation_token(User.t) :: {:ok, User.t} | {:error, any}
+
   @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
   @callback create_email_confirmation(User.t) :: {:ok, User.t} | {:error, any}
 
@@ -36,22 +39,22 @@ defmodule BlueJet.Identity.Service do
 
     statements =
       Multi.new()
-        |> Multi.insert(:account, changeset)
-        |> Multi.run(:test_account, fn(%{ account: account }) ->
-            changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
-            Repo.insert(changeset)
-           end)
-        |> Multi.run(:prt_live, fn(%{ account: account }) ->
-            prt_live = Repo.insert!(%RefreshToken{ account_id: account.id })
-            {:ok, prt_live}
-           end)
-        |> Multi.run(:prt_test, fn(%{ test_account: test_account }) ->
-            prt_test = Repo.insert!(%RefreshToken{ account_id: test_account.id })
-            {:ok, prt_test}
-           end)
-        |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
-            emit_event("identity.account.after_create", %{ account: account, test_account: test_account })
-           end)
+      |> Multi.insert(:account, changeset)
+      |> Multi.run(:test_account, fn(%{ account: account }) ->
+          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
+          Repo.insert(changeset)
+         end)
+      |> Multi.run(:prt_live, fn(%{ account: account }) ->
+          prt_live = Repo.insert!(%RefreshToken{ account_id: account.id })
+          {:ok, prt_live}
+         end)
+      |> Multi.run(:prt_test, fn(%{ test_account: test_account }) ->
+          prt_test = Repo.insert!(%RefreshToken{ account_id: test_account.id })
+          {:ok, prt_test}
+         end)
+      |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
+          emit_event("identity.account.after_create", %{ account: account, test_account: test_account })
+         end)
 
     case Repo.transaction(statements) do
       {:ok, %{ account: account, test_account: test_account }} ->
@@ -77,8 +80,7 @@ defmodule BlueJet.Identity.Service do
           create_account(account_fields)
          end)
       |> Multi.run(:user, fn(%{ account: account }) ->
-          %User{ default_account_id: account.id }
-          |> User.put_email_confirmation_token()
+          %User{ default_account_id: account.id, email_confirmation_token: User.generate_email_confirmation_token() }
           |> User.changeset(fields)
           |> Repo.insert()
          end)
@@ -98,6 +100,10 @@ defmodule BlueJet.Identity.Service do
       |> Multi.run(:urt_test, fn(%{ account: account, user: user}) ->
           refresh_token = Repo.insert!(%RefreshToken{ account_id: account.test_account_id, user_id: user.id })
           {:ok, refresh_token}
+         end)
+      |> Multi.run(:after_create, fn(%{ user: user, account: account }) ->
+          emit_event("identity.user.after_create", %{ user: user, account: nil })
+          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: nil })
          end)
 
     case Repo.transaction(statements) do
@@ -124,8 +130,7 @@ defmodule BlueJet.Identity.Service do
     end
 
     changeset =
-      %User{ default_account_id: account_id, account_id: account_id }
-      |> User.put_email_confirmation_token()
+      %User{ default_account_id: account_id, account_id: account_id, email_confirmation_token: User.generate_email_confirmation_token() }
       |> User.changeset(fields)
 
     statements =
@@ -156,6 +161,8 @@ defmodule BlueJet.Identity.Service do
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.user.after_create", %{ user: user, account_id: account_id })
+          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account_id: account_id })
+          # {:ok, nil}
          end)
 
     case Repo.transaction(statements) do
@@ -167,7 +174,7 @@ defmodule BlueJet.Identity.Service do
   def create_email_confirmation(nil), do: {:error, :not_found}
 
   def create_email_confirmation(user = %{}) do
-    user = User.confirm_email(user)
+    User.confirm_email(user)
     {:ok, user}
   end
 
@@ -188,6 +195,41 @@ defmodule BlueJet.Identity.Service do
   end
 
   def create_email_confirmation(_, _), do: {:error, :not_found}
+
+  def create_email_confirmation_token(nil), do: {:error, :not_found}
+
+  def create_email_confirmation_token(user = %User{}) do
+    account = user.account || get_account(user)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) ->
+          user = User.refresh_email_confirmation_token(user)
+          {:ok, user}
+         end)
+      |> Multi.run(:after_create, fn(_) ->
+          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: account })
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ user: user }} -> {:ok, user}
+
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def create_email_confirmation_token(%{ "email" => nil }, opts), do: {:error, :not_found}
+
+  def create_email_confirmation_token(%{ "email" => email }, opts) do
+    user = get_user_by_email(email, opts)
+
+    if user do
+      %{ user | account: opts[:account] }
+      |> create_email_confirmation_token()
+    else
+      {:error, :not_found}
+    end
+  end
 
   def create_password_reset_token(email, opts) do
     changeset =

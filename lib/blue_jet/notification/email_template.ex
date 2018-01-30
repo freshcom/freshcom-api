@@ -88,7 +88,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.user.after_create", %{ account: account, user: user }) do
+  def extract_variables("identity.email_confirmation_token.after_create", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),
@@ -157,7 +157,7 @@ defmodule BlueJet.Notification.EmailTemplate do
         account_id: account.id,
         system_label: "default",
         name: "Email Confirmation",
-        subject: "Reset your password for {{account.name}}",
+        subject: "Confirm your email for {{account.name}}",
         to: "{{user.email}}",
         content_html: email_confirmation_html,
         content_text: email_confirmation_text

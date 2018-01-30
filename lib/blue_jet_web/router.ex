@@ -40,6 +40,8 @@ defmodule BlueJetWeb.Router do
 
     post "/password_reset_tokens", PasswordResetTokenController, :create
     post "/passwords", PasswordController, :create
+    post "/email_confirmation_tokens", EmailConfirmationTokenController, :create
+    post "/email_confirmations", EmailConfirmationController, :create
 
     ####
     # File Storage

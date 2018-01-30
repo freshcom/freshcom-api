@@ -66,14 +66,22 @@ defmodule BlueJet.Notification do
       {:ok, nil}
     end
 
-    def handle_event("identity.password_reset_token.after_create", %{ account: nil, user: user }) do
+    def handle_event("identity.email_confirmation_token.after_create", %{ user: %{ account_id: nil } }) do
+      {:ok, nil}
+    end
+
+    def handle_event("identity.password_reset_token.after_create", %{ user: user = %{ account_id: nil } }) do
       Email.Factory.password_reset_email(user)
       |> GlobalMailer.deliver_later()
+
+      {:ok, nil}
     end
 
     def handle_event("identity.password_reset_token.not_created", %{ email: email }) do
       Email.Factory.password_reset_not_registered_email(email)
       |> GlobalMailer.deliver_later()
+
+      {:ok, nil}
     end
 
     def handle_event(event, data = %{ account_id: account_id }) when not is_nil(account_id) do

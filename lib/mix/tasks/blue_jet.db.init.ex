@@ -18,7 +18,8 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     alias BlueJet.Goods
     alias BlueJet.AccessRequest
 
-    ensure_started(Repo, [])
+    Application.ensure_all_started(:blue_jet)
+    # Application.ensure_all_started(:bamboo)
 
     {:ok, %{ data: user }} = Identity.create_user(%AccessRequest{
       fields: %{

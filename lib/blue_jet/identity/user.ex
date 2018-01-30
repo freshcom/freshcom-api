@@ -167,7 +167,7 @@ defmodule BlueJet.Identity.User do
 
   def confirm_email(user) do
     user
-    |> change(email_confirmation_token: nil, email_confirmed: true)
+    |> change(email_confirmation_token: nil, email_confirmed: true, email_confirmed_at: Ecto.DateTime.utc())
     |> Repo.update!()
   end
 
@@ -181,8 +181,14 @@ defmodule BlueJet.Identity.User do
     end
   end
 
-  def put_email_confirmation_token(user) do
-    %{ user | email_confirmation_token: Ecto.UUID.generate() }
+  def generate_email_confirmation_token() do
+    Ecto.UUID.generate()
+  end
+
+  def refresh_email_confirmation_token(user) do
+    user
+    |> change(email_confirmation_token: generate_email_confirmation_token(), email_confirmed: false)
+    |> Repo.update!()
   end
 
   def put_role(user, account) do
