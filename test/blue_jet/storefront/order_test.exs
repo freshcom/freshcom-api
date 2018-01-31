@@ -139,7 +139,7 @@ defmodule BlueJet.OrderTest do
         %Order{ id: Ecto.UUID.generate() }
         |> put_meta(state: :loaded)
 
-      changeset = Order.changeset(order, %{
+      changeset = Order.changeset(order, :update, %{
         email: Faker.Internet.safe_email(),
         name: Faker.String.base64(5),
         fulfillment_method: "pickup",
@@ -162,7 +162,7 @@ defmodule BlueJet.OrderTest do
         %Order{ id: Ecto.UUID.generate() }
         |> put_meta(state: :loaded)
 
-      changeset = Order.changeset(order, %{
+      changeset = Order.changeset(order, :update, %{
         email: Faker.Internet.safe_email(),
         first_name: Faker.String.base64(5),
         last_name: Faker.String.base64(5),

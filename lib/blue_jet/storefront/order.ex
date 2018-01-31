@@ -84,6 +84,8 @@ defmodule BlueJet.Storefront.Order do
     field :customer_id, Ecto.UUID
     field :customer, :map, virtual: true
 
+    field :payments, :map, virtual: true
+
     field :user_id, Ecto.UUID
 
     timestamps()
@@ -175,9 +177,25 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
+  def validate_no_payment(changeset = %{ data: order }) do
+    account = Proxy.get_account(order)
+    payment_count = BalanceService.count_payment(%{ target_type: "Order", target_id: order.id }, %{ account: account })
+    if payment_count == 0 do
+      changeset
+    else
+      changeset
+      |> add_error(:payments, "must be empty", [validation: :be_empty])
+    end
+  end
+
   @doc """
   Returns the validated changeset.
   """
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_no_payment()
+  end
+
   def validate(changeset = %{ data: %{ __meta__: %{ state: :built } } }) do
     changeset
   end
@@ -192,19 +210,36 @@ defmodule BlueJet.Storefront.Order do
     |> validate_customer_id()
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields() -- [:status]
-  defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields()
+  defp castable_fields(order, :insert), do: writable_fields() -- [:status]
+  defp castable_fields(order, :update), do: writable_fields()
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(order, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(order, :delete) do
+    change(order)
+    |> Map.put(:action, :delete)
+    |> validate()
+  end
+
+  def changeset(order, :insert, params) do
+    castable_fields = castable_fields(order, :insert)
+
+    order
+    |> cast(params, castable_fields)
+    |> put_name()
+    |> Utils.put_clean_email()
+    |> validate()
+    |> put_opened_at()
+  end
+
+  def changeset(order, :update, params, locale \\ nil, default_locale \\ nil) do
     order = %{ order | account: IdentityService.get_account(order) }
     default_locale = default_locale || order.account.default_locale
     locale = locale || default_locale
 
     order
-    |> cast(params, castable_fields(order))
+    |> cast(params, castable_fields(order, :update))
     |> put_name()
     |> Utils.put_clean_email()
     |> validate()
@@ -475,6 +510,12 @@ defmodule BlueJet.Storefront.Order do
 
   defmodule Proxy do
     use BlueJet, :proxy
+
+    alias BlueJet.Storefront.IdentityService
+
+    def get_account(payment) do
+      payment.account || IdentityService.get_account(payment)
+    end
 
     def put(order = %{ customer_id: nil }, {:customer, _}, _), do: order
 

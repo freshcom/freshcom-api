@@ -715,6 +715,24 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defmodule Proxy do
     use BlueJet, :proxy
 
+    def put(oli = %{ price_id: nil }, {:price, _}, _), do: oli
+
+    def put(oli, {:price, price_path}, opts) do
+      preloads = %{ path: price_path, opts: opts }
+      opts = Map.take(opts, [:account, :account_id])
+      price = CatalogueService.get_price(%{ id: oli.price_id, preloads: preloads }, opts)
+      %{ oli | price: price }
+    end
+
+    def put(oli = %{ product_id: nil }, {:product, _}, _), do: oli
+
+    def put(oli, {:product, product_path}, opts) do
+      preloads = %{ path: product_path, opts: opts }
+      opts = Map.take(opts, [:account, :account_id])
+      product = CatalogueService.get_product(%{ id: oli.product_id, preloads: preloads }, opts)
+      %{ oli | product: product }
+    end
+
     def put(oli, _, _), do: oli
   end
 
@@ -749,14 +767,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> with_positive_amount()
     end
 
-    def preloads({:order, order_preloads}, options) do
-      [order: {Order.Query.default(), Order.Query.preloads(order_preloads, options)}]
-    end
-
-    def preloads({:children, children_preloads}, options) do
-      [children: {OrderLineItem.Query.default(), OrderLineItem.Query.preloads(children_preloads, options)}]
-    end
-
     def for_account(query, account_id) do
       from(oli in query, where: oli.account_id == ^account_id)
     end
@@ -781,5 +791,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
         where: o.customer_id == ^filter[:customer_id]
       )
     end
+
+    def preloads({:order, order_preloads}, options) do
+      [order: {Order.Query.default(), Order.Query.preloads(order_preloads, options)}]
+    end
+
+    def preloads({:children, children_preloads}, options) do
+      [children: {OrderLineItem.Query.default(), OrderLineItem.Query.preloads(children_preloads, options)}]
+    end
+
+    def preloads(_, _), do: []
   end
 end

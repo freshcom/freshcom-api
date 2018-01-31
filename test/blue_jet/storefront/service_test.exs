@@ -3,27 +3,17 @@ defmodule BlueJet.Storefront.ServiceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
+  alias BlueJet.Catalogue.Product
 
-  alias BlueJet.Storefront.CrmServiceMock
+  alias BlueJet.Storefront.{CrmServiceMock, CatalogueServiceMock}
   alias BlueJet.Storefront.Service
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
-  @tag :focus
   test "play" do
-    IO.inspect BlueJet.Plugs.Include.to_preloads("root_line_items.children.children,customer.point_account")
+    # IO.inspect BlueJet.Plugs.Include.to_preloads("root_line_items.children,root_line_items.product,customer.point_account")
   end
 
   describe "list_order/2" do
-    test "order with cart status is not returned" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Order{ account_id: account.id, status: "opened" })
-      Repo.insert!(%Order{ account_id: account.id, status: "opened" })
-      Repo.insert!(%Order{ account_id: account.id, status: "cart" })
-
-      orders = Service.list_order(%{ account: account })
-      assert length(orders) == 2
-    end
-
     test "order for different account is not returned" do
       account = Repo.insert!(%Account{})
       other_account = Repo.insert!(%Account{})
@@ -43,19 +33,22 @@ defmodule BlueJet.Storefront.ServiceTest do
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
 
-      orders = Service.list_order(%{ pagination: %{ size: 3, number: 1 } }, %{ account: account })
+      orders = Service.list_order(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(orders) == 3
 
-      orders = Service.list_order(%{ pagination: %{ size: 3, number: 2 } }, %{ account: account })
+      orders = Service.list_order(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(orders) == 2
     end
 
-    @tag :focus
     test "preload should load related resource" do
       account = Repo.insert!(%Account{})
       customer = Repo.insert!(%Customer{
         account_id: account.id,
         name: Faker.String.base64(5)
+      })
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
       })
       target_order = Repo.insert!(%Order{
         account_id: account.id,
@@ -65,6 +58,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       target_oli1 = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: target_order.id,
+        product_id: product.id,
         name: Faker.String.base64(5),
         charge_quantity: 1,
         sub_total_cents: 500,
@@ -89,10 +83,15 @@ defmodule BlueJet.Storefront.ServiceTest do
           customer
          end)
 
-      preloads_path = [root_line_items: [children: :children], customer: :point_account]
+      CatalogueServiceMock
+      |> expect(:get_product, fn(_, _) ->
+          product
+         end)
+
+      preloads_path = [root_line_items: [:children, :product], customer: :point_account]
       preloads = %{ path: preloads_path }
 
-      orders = Service.list_order(%{ preloads: preloads }, %{ account: account })
+      orders = Service.list_order(%{ account: account, preloads: preloads })
       assert length(orders) == 1
 
       order = Enum.at(orders, 0)
@@ -102,11 +101,34 @@ defmodule BlueJet.Storefront.ServiceTest do
 
       oli1 = Enum.at(order.root_line_items, 0)
       assert oli1.id == target_oli1.id
+      assert oli1.product.id == product.id
 
       oli2 = Enum.at(oli1.children, 0)
       assert oli2.id == target_oli2.id
 
       assert order.customer.id == customer.id
+    end
+  end
+
+  describe "count_order/2" do
+    test "order for different account is not returned" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      Repo.insert!(%Order{ account_id: account.id, status: "opened" })
+      Repo.insert!(%Order{ account_id: account.id, status: "opened" })
+      Repo.insert!(%Order{ account_id: other_account.id, status: "opened" })
+
+      assert Service.count_order(%{ account: account }) == 2
+    end
+
+    test "only order matching filter is counted" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      Repo.insert!(%Order{ account_id: account.id, status: "cart" })
+      Repo.insert!(%Order{ account_id: account.id, status: "cart" })
+      Repo.insert!(%Order{ account_id: account.id, status: "opened" })
+
+      assert Service.count_order(%{ filter: %{ status: "opened" } }, %{ account: account }) == 1
     end
   end
 end

@@ -63,12 +63,14 @@ defmodule BlueJet do
 
   def service do
     quote do
+      alias BlueJet.Repo
+
       defp get_pagination(fields) do
         Map.merge(%{ size: 20, number: 1 }, fields[:pagination] || %{})
       end
 
-      defp get_preloads(fields, account) do
-        preloads = fields[:preloads] || %{}
+      defp get_preloads(opts, account) do
+        preloads = opts[:preloads] || %{}
         path = preloads[:path] || []
 
         opts =
@@ -81,12 +83,32 @@ defmodule BlueJet do
       defp get_filter(fields) do
         fields[:filter] || %{}
       end
+
+      defp preload([], _, _), do: []
+      defp preload(nil, _, _), do: nil
+
+      defp preload(struct_or_structs, path, opts) do
+        struct_module = if is_list(struct_or_structs) do
+          Enum.at(struct_or_structs, 0).__struct__
+        else
+          struct_or_structs.__struct__
+        end
+        query_module = Module.concat(struct_module, Query)
+        proxy_module = Module.concat(struct_module, Proxy)
+        preload_query = query_module.preloads(path, opts)
+
+        struct_or_structs
+        |> Repo.preload(preload_query)
+        |> proxy_module.put(path, opts)
+      end
     end
   end
 
   def proxy do
     quote do
       alias BlueJet.AccessRequest
+
+      def put(nil, _, _), do: nil
 
       def put(struct_or_structs, targets, options) when is_list(targets) and length(targets) == 0 do
         struct_or_structs

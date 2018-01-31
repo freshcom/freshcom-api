@@ -5,6 +5,7 @@ defmodule BlueJet.Storefront do
   alias Ecto.Multi
 
   alias BlueJet.Storefront.{BalanceService, CrmService}
+  alias BlueJet.Storefront.Service
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   defmodule EventHandler do
@@ -73,6 +74,15 @@ defmodule BlueJet.Storefront do
     end
   end
 
+  defp get_sopts(request) do
+    %{
+      account: request.account,
+      pagination: request.pagination,
+      preloads: %{ path: request.preloads },
+      locale: request.locale
+    }
+  end
+
   ####
   # Order
   ####
@@ -109,9 +119,8 @@ defmodule BlueJet.Storefront do
       |> Service.count_order(%{ account: account })
 
     orders =
-      %{ filter: filter, search: request.search, pagination: pagination }
-      |> Map.put(:preloads, %{ path: request.preloads, filters: %{} })
-      |> Service.list_order(%{ account: account })
+      %{ filter: filter, search: request.search }
+      |> Service.list_order(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -150,14 +159,14 @@ defmodule BlueJet.Storefront do
   end
 
   def do_create_order(request = %{ account: account }) do
-    order = %Order{ account_id: account.id, account: account }
-    changeset = Order.changeset(order, request.fields)
-
-    with {:ok, order} <- Repo.insert(changeset) do
-      order_response(order, request)
+    with {:ok, order} <- Service.create_order(request.fields, get_sopts(request)) do
+      order = Translation.translate(order, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
     else
-      {:error, changeset} ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -172,11 +181,15 @@ defmodule BlueJet.Storefront do
 
   def do_get_order(request = %{ account: account, params: %{ "id" => id } }) do
     order =
-      Order.Query.default()
-      |> Order.Query.for_account(account.id)
-      |> Repo.get(id)
+      %{ id: id }
+      |> Service.get_order(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    order_response(order, request)
+    if order do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
+    else
+      {:error, :not_found}
+    end
   end
 
   # TODO: Check if customer already have unlock
@@ -190,10 +203,7 @@ defmodule BlueJet.Storefront do
   end
 
   def do_update_order(request = %{ role: role, account: account, params: %{ "id" => id }}) when role in ["guest", "customer"] do
-    order =
-      Order.Query.default()
-      |> Order.Query.for_account(account.id)
-      |> Repo.get(id)
+    order = Service.get_order(%{ id: id }, %{ account: account })
 
     fields = cond do
       order.status == "cart" && order.grand_total_cents == 0 && request.fields["status"] == "opened" ->
@@ -203,43 +213,24 @@ defmodule BlueJet.Storefront do
         Map.merge(request.fields, %{ "status" => order.status })
     end
 
-    with %Order{} <- order,
-         changeset = %{valid?: true} <- Order.changeset(order, fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:order, changeset)
-        |> Multi.run(:processed_order, fn(%{ order: order }) ->
-            Order.process(order, changeset)
-           end)
-
-      {:ok, %{ processed_order: order }} = Repo.transaction(statements)
-      order_response(order, request)
+    with {:ok, order} <- Service.update_order(id, fields, get_sopts(request)) do
+      order = Translation.translate(order, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
     else
-      nil ->
-        {:error, :not_found}
-
-      changeset ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
       other -> other
     end
   end
 
   def do_update_order(request = %{ account: account, params: %{ "id" => id }}) do
-    order =
-      Order.Query.default()
-      |> Order.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    with %Order{} <- order,
-         changeset <- Order.changeset(order, request.fields, request.locale, account.default_locale),
-          {:ok, order} <- Repo.update(changeset)
-    do
-      order_response(order, request)
+    with {:ok, order} <- Service.update_order(id, request.fields, get_sopts(request)) do
+      order = Translation.translate(order, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
     else
-      {:error, changeset} ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
       other -> other
     end
@@ -255,6 +246,10 @@ defmodule BlueJet.Storefront do
   end
 
   def do_delete_order(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_order(id, %{ account: account }) do
+
+    end
+
     order =
       Order.Query.default()
       |> Order.Query.for_account(account.id)

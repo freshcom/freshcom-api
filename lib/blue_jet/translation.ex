@@ -32,6 +32,8 @@ defmodule BlueJet.Translation do
 
   @spec translate(map | list, String.t, String.t) :: map | list
   def translate(struct_or_structs, locale, default_locale \\ nil)
+  def translate(nil, _, _), do: nil
+  def translate([], _, _), do: []
   def translate(struct_or_structs, _, nil), do: struct_or_structs
   def translate(struct_or_structs, locale, default_locale) when locale == default_locale, do: struct_or_structs
   def translate(struct_or_structs, locale, default_locale) do
