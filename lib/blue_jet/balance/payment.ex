@@ -374,8 +374,21 @@ defmodule BlueJet.Balance.Payment do
 
     alias BlueJet.Balance.Payment
 
+    @filterable_fields [
+      :target_type,
+      :target_id
+    ]
+
     def default() do
       from(p in Payment, order_by: [desc: :updated_at])
+    end
+
+    def search(query, keyword, locale, default_locale) do
+      search(query, @searchable_fields, keyword, locale, default_locale, Order.translatable_fields())
+    end
+
+    def filter_by(query, filter) do
+      filter_by(query, filter, @filterable_fields)
     end
 
     def for_account(query, account_id) do

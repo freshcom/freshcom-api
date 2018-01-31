@@ -185,6 +185,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
+  defp castable_fields(_, :insert), do: writable_fields()
   defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
 
   defp put_is_leaf(changeset = %{ changes: %{ product_id: _ } }) do
@@ -440,6 +441,23 @@ defmodule BlueJet.Storefront.OrderLineItem do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(oli, :insert, params) do
+    castable_fields = castable_fields(oli, :insert)
+
+    oli
+    |> cast(params, castable_fields)
+    |> put_is_leaf()
+    |> put_name()
+    |> put_print_name()
+    |> put_price_id()
+    |> put_price_fields()
+    |> put_is_estimate()
+    |> put_charge_quantity()
+    |> put_amount_fields()
+    |> put_auto_fulfill()
+    |> validate()
+  end
+
   def changeset(oli, params, locale \\ nil, default_locale \\ nil) do
     oli = %{ oli | account: IdentityService.get_account(oli) }
     default_locale = default_locale || oli.account.default_locale

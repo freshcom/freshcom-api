@@ -2,18 +2,25 @@ defmodule BlueJet.Storefront.Service do
   use BlueJet, :service
 
   alias BlueJet.Storefront.{IdentityService, BalanceService}
-  alias BlueJet.Storefront.Order
+  alias BlueJet.Storefront.{Order, OrderLineItem}
 
   alias Ecto.Multi
   alias Ecto.Changeset
 
   @callback list_order(map, map) :: list
   @callback count_order(map, map) :: integer
+  @callback get_order(map, map) :: Order.t | nil
+  @callback create_order(map, map) :: {:ok, Order.t} | {:error, any}
+  @callback update_order(map, map) :: {:ok, Order.t} | {:error, any}
+  @callback delete_order(map, map) :: {:ok, Order.t} | {:error, any}
 
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
   end
 
+  #
+  # MARK: Order
+  #
   def list_order(fields \\ %{}, opts) do
     account = get_account(opts)
     pagination = get_pagination(opts)
@@ -50,7 +57,6 @@ defmodule BlueJet.Storefront.Service do
 
     with {:ok, order} <- Repo.insert(changeset) do
       order = preload(order, preloads[:path], preloads[:opts])
-
       {:ok, order}
     else
       other -> other
@@ -112,5 +118,43 @@ defmodule BlueJet.Storefront.Service do
 
     order = Repo.get_by(Order, id: id, account_id: account.id)
     delete_order(order, opts)
+  end
+
+  #
+  # MARK: Order Line Item
+  #
+  def create_order_line_item(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %OrderLineItem{ account_id: account.id, account: account }
+      |> OrderLineItem.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:oli, changeset)
+      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+          {:ok, OrderLineItem.balance(oli)}
+         end)
+      |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
+          order = Repo.get!(Order, balanced_oli.order_id)
+          {:ok, Order.balance(order)}
+         end)
+      |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
+          Order.process(balanced_order)
+         end)
+      |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
+          {:ok, Order.refresh_payment_status(order)}
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ balanced_oli: oli }} ->
+        oli = preload(oli, preloads[:path], preloads[:opts])
+        {:ok, oli}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
   end
 end

@@ -6,6 +6,14 @@ defmodule BlueJet.Balance do
   alias BlueJet.Balance.{Payment, Refund, Card, BalanceSettings}
 
   defmodule Service do
+    use BlueJet, :service
+
+    alias BlueJet.Balance.IdentityService
+
+    defp get_account(opts) do
+      opts[:account] || IdentityService.get_account(opts)
+    end
+
     def list_payment(%{ target_type: target_type, target_id: target_id }, opts) do
       account_id = opts[:account_id] || opts[:account].id
 
@@ -13,6 +21,16 @@ defmodule BlueJet.Balance do
       |> Payment.Query.for_account(account_id)
       |> Payment.Query.for_target(target_type, target_id)
       |> Repo.all()
+    end
+
+    def count_payment(fields \\ %{}, opts) do
+      account = get_account(opts)
+      filter = get_filter(fields)
+
+      Payment.Query.default()
+      |> Payment.Query.filter_by(filter)
+      |> Payment.Query.for_account(account.id)
+      |> Repo.aggregate(:count, :id)
     end
   end
 

@@ -58,13 +58,10 @@ defmodule BlueJet.OrderTest do
 
   describe "validate/1" do
     test "when given order missing required fields" do
-      order =
-        %Order{ id: Ecto.UUID.generate() }
-        |> put_meta(state: :loaded)
-
       changeset =
-        order
+        %Order{ id: Ecto.UUID.generate() }
         |> change(%{})
+        |> Map.put(:action, :update)
         |> Order.validate()
 
       refute changeset.valid?
@@ -76,17 +73,14 @@ defmodule BlueJet.OrderTest do
     end
 
     test "when given order have invalid email" do
-      order =
-        %Order{ id: Ecto.UUID.generate() }
-        |> put_meta(state: :loaded)
-
       changeset =
-        order
+        %Order{ id: Ecto.UUID.generate() }
         |> change(%{
             name: Faker.String.base64(5),
             email: "test",
             fulfillment_method: "pickup"
            })
+        |> Map.put(:action, :update)
         |> Order.validate()
 
       refute changeset.valid?
@@ -118,6 +112,7 @@ defmodule BlueJet.OrderTest do
             email: Faker.Internet.safe_email(),
             fulfillment_method: "pickup"
            })
+        |> Map.put(:action, :update)
         |> Order.validate()
 
       assert Keyword.keys(changeset.errors) == [:customer]
@@ -135,10 +130,7 @@ defmodule BlueJet.OrderTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      order =
-        %Order{ id: Ecto.UUID.generate() }
-        |> put_meta(state: :loaded)
-
+      order = %Order{ id: Ecto.UUID.generate() }
       changeset = Order.changeset(order, :update, %{
         email: Faker.Internet.safe_email(),
         name: Faker.String.base64(5),
@@ -158,10 +150,7 @@ defmodule BlueJet.OrderTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      order =
-        %Order{ id: Ecto.UUID.generate() }
-        |> put_meta(state: :loaded)
-
+      order = %Order{ id: Ecto.UUID.generate() }
       changeset = Order.changeset(order, :update, %{
         email: Faker.Internet.safe_email(),
         first_name: Faker.String.base64(5),

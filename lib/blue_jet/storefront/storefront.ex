@@ -247,27 +247,12 @@ defmodule BlueJet.Storefront do
 
   def do_delete_order(%{ account: account, params: %{ "id" => id } }) do
     with {:ok, _} <- Service.delete_order(id, %{ account: account }) do
-
-    end
-
-    order =
-      Order.Query.default()
-      |> Order.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if order do
-      payments = BalanceService.list_payment(%{ target_type: "Order", target_id: id }, %{ account: account })
-      case length(payments) do
-        0 ->
-          Repo.delete!(order)
-          {:ok, %AccessResponse{}}
-
-        _ ->
-          errors = %{ id: {"Order with existing payment can not be deleted", [code: :order_with_payment_cannot_be_deleted, full_error_message: true]} }
-          {:error, %AccessResponse{ errors: errors }}
-      end
+      {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -343,33 +328,43 @@ defmodule BlueJet.Storefront do
   end
 
   def do_create_order_line_item(request = %{ account: account }) do
-    changeset =
-      %OrderLineItem{ account_id: account.id, account: account }
-      |> OrderLineItem.changeset(request.fields)
-
-    statements =
-      Multi.new()
-      |> Multi.insert(:oli, changeset)
-      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-          {:ok, OrderLineItem.balance(oli)}
-         end)
-      |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
-          order = Repo.get!(Order, balanced_oli.order_id)
-          {:ok, Order.balance(order)}
-         end)
-      |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
-          Order.process(balanced_order)
-         end)
-      |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
-          {:ok, Order.refresh_payment_status(order)}
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ oli: oli }} ->
-        order_line_item_response(oli, request)
-      {:error, _, errors, _} ->
+    with {:ok, oli} <- Service.create_order_line_item(request.fields, get_sopts(request)) do
+      oli = Translation.translate(oli, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: oli }}
+    else
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
+
+    # changeset =
+    #   %OrderLineItem{ account_id: account.id, account: account }
+    #   |> OrderLineItem.changeset(request.fields)
+
+    # statements =
+    #   Multi.new()
+    #   |> Multi.insert(:oli, changeset)
+    #   |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+    #       {:ok, OrderLineItem.balance(oli)}
+    #      end)
+    #   |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
+    #       order = Repo.get!(Order, balanced_oli.order_id)
+    #       {:ok, Order.balance(order)}
+    #      end)
+    #   |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
+    #       Order.process(balanced_order)
+    #      end)
+    #   |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
+    #       {:ok, Order.refresh_payment_status(order)}
+    #      end)
+
+    # case Repo.transaction(statements) do
+    #   {:ok, %{ oli: oli }} ->
+    #     order_line_item_response(oli, request)
+    #   {:error, _, errors, _} ->
+    #     {:error, %AccessResponse{ errors: errors }}
+    # end
   end
 
   def update_order_line_item(request) do
