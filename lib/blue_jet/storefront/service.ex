@@ -17,6 +17,10 @@ defmodule BlueJet.Storefront.Service do
     opts[:account] || IdentityService.get_account(opts)
   end
 
+  defp put_account(opts) do
+    %{ opts | account: get_account(opts) }
+  end
+
   #
   # MARK: Order
   #
@@ -99,10 +103,12 @@ defmodule BlueJet.Storefront.Service do
   end
 
   def update_order(id, fields, opts) do
-    account = get_account(opts)
+    opts = put_account(opts)
+    account = opts[:account]
 
-    order = Repo.get_by(Order, id: id, account_id: account.id)
-    update_order(order, fields, opts)
+    Order
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_order(fields, opts)
   end
 
   def delete_order(nil, _), do: nil
@@ -122,14 +128,12 @@ defmodule BlueJet.Storefront.Service do
   end
 
   def delete_order(id, opts) do
-    account = get_account(opts)
-    opts =
-      opts
-      |> Map.put(:account, :account)
-      |> Map.delete(:account_id)
+    opts = put_account(opts)
+    account = opts[:account]
 
-    order = Repo.get_by(Order, id: id, account_id: account.id)
-    delete_order(order, opts)
+    Order
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_order(opts)
   end
 
   #
@@ -202,9 +206,11 @@ defmodule BlueJet.Storefront.Service do
   end
 
   def update_order_line_item(id, fields, opts) do
-    account = get_account(opts)
+    opts = put_account(opts)
+    account = opts[:account]
 
-    oli = Repo.get_by(OrderLineItem, id: id, account_id: account.id)
-    update_order_line_item(oli, fields, opts)
+    OrderLineItem
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_order_line_item(fields, opts)
   end
 end
