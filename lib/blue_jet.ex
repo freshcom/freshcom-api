@@ -136,6 +136,8 @@ defmodule BlueJet do
 
   def query do
     quote do
+      import Ecto.Query
+
       def search_default_locale(query, columns, keyword) do
         keyword = "%#{keyword}%"
 

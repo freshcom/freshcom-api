@@ -1,91 +1,15 @@
 defmodule BlueJet.Storefront do
   use BlueJet, :context
 
-  alias Ecto.Changeset
   alias Ecto.Multi
 
-  alias BlueJet.Storefront.{BalanceService, CrmService}
+  alias BlueJet.Storefront.CrmService
   alias BlueJet.Storefront.Service
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
-  defmodule EventHandler do
-    @behaviour BlueJet.EventHandler
-
-    def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-      order = Repo.get!(Order, order_id)
-
-      case order.status do
-        "cart" ->
-          changeset =
-            order
-            |> Order.refresh_payment_status()
-            |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
-
-          changeset
-          |> Repo.update!()
-          |> Order.process(changeset)
-        _ ->
-          {:ok, Order.refresh_payment_status(order)}
-      end
-    end
-
-    def handle_event("balance.payment.after_update", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-      order =
-        Repo.get!(Order, order_id)
-        |> Order.refresh_payment_status()
-
-      {:ok, order}
-    end
-
-    def handle_event("balance.refund.after_create", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
-      order =
-        Repo.get!(Order, order_id)
-        |> Order.refresh_payment_status()
-
-      {:ok, order}
-    end
-
-    def handle_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
-      oli = Repo.get!(OrderLineItem, fli.source_id)
-      OrderLineItem.refresh_fulfillment_status(oli)
-
-      {:ok, fli}
-    end
-
-    def handle_event("distribution.fulfillment_line_item.after_update", %{
-      fulfillment_line_item: fli = %{ source_type: "OrderLineItem" },
-      changeset: %{ changes: %{ status: status } }
-    }) do
-      oli = Repo.get!(OrderLineItem, fli.source_id)
-      OrderLineItem.refresh_fulfillment_status(oli)
-
-      if oli.source_type == "Unlockable" && (status == "returned" || status == "discarded") do
-        unlock = Repo.get_by(Unlock, source_id: oli.id, source_type: "OrderLineItem")
-        if unlock do
-          Repo.delete!(unlock)
-        end
-      end
-
-      {:ok, fli}
-    end
-
-    def handle_event(_, _) do
-      {:ok, nil}
-    end
-  end
-
-  defp get_sopts(request) do
-    %{
-      account: request.account,
-      pagination: request.pagination,
-      preloads: %{ path: request.preloads },
-      locale: request.locale
-    }
-  end
-
-  ####
+  #
   # Order
-  ####
+  #
   defp transform_order_request_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
     customer = CrmService.get_customer_by_user_id(vas[:user_id], %{ account: account })
     %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
@@ -103,7 +27,7 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  def do_list_order(request = %{ account: account, filter: filter, pagination: pagination }) do
+  def do_list_order(request = %{ account: account, filter: filter }) do
     filter = if !filter[:status] do
       Map.put(filter, :status, "opened")
     else
@@ -133,20 +57,6 @@ defmodule BlueJet.Storefront do
     }
 
     {:ok, response}
-  end
-
-  defp order_response(nil, _), do: {:error, :not_found}
-
-  defp order_response(order, request = %{ account: account }) do
-    preloads = Order.Query.preloads(request.preloads, role: request.role)
-
-    order =
-      order
-      |> Repo.preload(preloads)
-      |> Order.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order }}
   end
 
   def create_order(request) do
@@ -337,34 +247,6 @@ defmodule BlueJet.Storefront do
 
       other -> other
     end
-
-    # changeset =
-    #   %OrderLineItem{ account_id: account.id, account: account }
-    #   |> OrderLineItem.changeset(request.fields)
-
-    # statements =
-    #   Multi.new()
-    #   |> Multi.insert(:oli, changeset)
-    #   |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-    #       {:ok, OrderLineItem.balance(oli)}
-    #      end)
-    #   |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
-    #       order = Repo.get!(Order, balanced_oli.order_id)
-    #       {:ok, Order.balance(order)}
-    #      end)
-    #   |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
-    #       Order.process(balanced_order)
-    #      end)
-    #   |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
-    #       {:ok, Order.refresh_payment_status(order)}
-    #      end)
-
-    # case Repo.transaction(statements) do
-    #   {:ok, %{ oli: oli }} ->
-    #     order_line_item_response(oli, request)
-    #   {:error, _, errors, _} ->
-    #     {:error, %AccessResponse{ errors: errors }}
-    # end
   end
 
   def update_order_line_item(request) do

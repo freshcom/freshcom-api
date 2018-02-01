@@ -255,8 +255,6 @@ defmodule BlueJet.OrderLineItemTest do
       account = %Account{
         id: Ecto.UUID.generate()
       }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
 
       product = %Product{
         id: Ecto.UUID.generate(),
@@ -284,8 +282,9 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_product, fn(_, _) -> product end)
       |> expect(:get_price, fn(_, _) -> price end)
 
-      oli = %OrderLineItem{ account_id: account.id }
-      changeset = OrderLineItem.changeset(oli, %{ product_id: Ecto.UUID.generate() })
+      changeset =
+        %OrderLineItem{ account_id: account.id, account: account }
+        |> OrderLineItem.changeset(:insert, %{ product_id: Ecto.UUID.generate() })
 
       verify!()
       assert changeset.changes[:price_name] == price.name

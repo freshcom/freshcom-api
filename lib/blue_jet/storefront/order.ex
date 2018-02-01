@@ -35,8 +35,9 @@ defmodule BlueJet.Storefront.Order do
 
   alias BlueJet.Utils
 
-  alias BlueJet.Storefront.{BalanceService, DistributionService, IdentityService, CrmService}
-  alias BlueJet.Storefront.{Order, OrderLineItem}
+  alias BlueJet.Storefront.{BalanceService, DistributionService, CrmService}
+  alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.Order.{Proxy, Query}
 
   schema "orders" do
     field :account_id, Ecto.UUID
@@ -112,79 +113,6 @@ defmodule BlueJet.Storefront.Order do
     :receipt_email_sent_at,
     :created_by_id
   ]
-
-  defmodule Proxy do
-    use BlueJet, :proxy
-
-    alias BlueJet.Storefront.IdentityService
-
-    def get_account(payment) do
-      payment.account || IdentityService.get_account(payment)
-    end
-
-    def put(order = %{ customer_id: nil }, {:customer, _}, _), do: order
-
-    def put(order, {:customer, customer_path}, opts) do
-      preloads = %{ path: customer_path, opts: opts }
-      opts = Map.take(opts, [:account, :account_id])
-      customer = CrmService.get_customer(%{ id: order.customer_id, preloads: preloads }, opts)
-      %{ order | customer: customer }
-    end
-
-    def put(order, {:root_line_items, rli_path}, filters) do
-      root_line_items = OrderLineItem.Proxy.put(order.root_line_items, rli_path, filters)
-      %{ order | root_line_items: root_line_items }
-    end
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    @searchable_fields [
-      :name,
-      :email,
-      :phone_number,
-      :code,
-      :id
-    ]
-
-    @filterable_fields [
-      :status,
-      :customer_id
-    ]
-
-    def default() do
-      from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
-    end
-
-    def search(query, keyword, locale, default_locale) do
-      search(query, @searchable_fields, keyword, locale, default_locale, Order.translatable_fields())
-    end
-
-    def filter_by(query, filter) do
-      filter_by(query, filter, @filterable_fields)
-    end
-
-    def for_account(query, account_id) do
-      from(o in query, where: o.account_id == ^account_id)
-    end
-
-    def opened(query) do
-      from o in query, where: o.status == "opened"
-    end
-
-    def not_cart(query) do
-      from(o in query, where: o.status != "cart")
-    end
-
-    def preloads({:root_line_items, root_line_item_preloads}, options) do
-      [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 
   def delivery_address_fields do
     [
@@ -484,7 +412,7 @@ defmodule BlueJet.Storefront.Order do
   def process(order), do: {:ok, order}
 
   def process(order, changeset = %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = %{ order | account: IdentityService.get_account(order) }
+    order = %{ order | account: Proxy.get_account(order) }
     order =
       order
       |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })

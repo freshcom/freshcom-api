@@ -85,7 +85,7 @@ defmodule BlueJet.Crm do
       account = get_account(opts)
       preloads = get_preloads(fields, account)
 
-      preload_query = Order.Query.preloads(preloads[:path], preloads[:filter])
+      preload_query = Customer.Query.preloads(preloads[:path], preloads[:filter])
       Repo.get_by(Customer, user_id: id, account_id: account.id)
       |> Repo.preload(preload_query)
     end

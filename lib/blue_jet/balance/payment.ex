@@ -384,7 +384,7 @@ defmodule BlueJet.Balance.Payment do
     end
 
     def search(query, keyword, locale, default_locale) do
-      search(query, @searchable_fields, keyword, locale, default_locale, Order.translatable_fields())
+      search(query, @searchable_fields, keyword, locale, default_locale, Payment.translatable_fields())
     end
 
     def filter_by(query, filter) do

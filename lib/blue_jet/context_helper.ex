@@ -3,6 +3,15 @@ defmodule BlueJet.ContextHelpers do
 
   alias BlueJet.Authorization
 
+  def get_sopts(request) do
+    %{
+      account: request.account,
+      pagination: request.pagination,
+      preloads: %{ path: request.preloads },
+      locale: request.locale
+    }
+  end
+
   def preprocess_request(request = %{ locale: locale }, endpoint) do
     case Authorization.authorize_request(request, endpoint) do
       {:ok, request = %{ account: nil }} ->

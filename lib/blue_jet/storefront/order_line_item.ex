@@ -11,9 +11,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
   ], container: :translations
 
   alias Decimal, as: D
-  alias BlueJet.Catalogue.{Price}
-  alias BlueJet.Storefront.{IdentityService, CatalogueService, GoodsService, CrmService, DistributionService}
+  alias BlueJet.Catalogue.Price
+  alias BlueJet.Storefront.{CatalogueService, GoodsService, CrmService, DistributionService}
   alias BlueJet.Storefront.{Order, Unlock}
+  alias BlueJet.Storefront.OrderLineItem.Proxy
 
   schema "order_line_items" do
     field :account_id, Ecto.UUID
@@ -184,8 +185,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> validate_price_id()
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
   defp castable_fields(_, :insert), do: writable_fields()
+  defp castable_fields(%{ __meta__: %{ state: :built }}), do: writable_fields()
   defp castable_fields(%{ __meta__: %{ state: :loaded }}), do: writable_fields() -- [:order_id, :product_id, :parent_id]
 
   defp put_is_leaf(changeset = %{ changes: %{ product_id: _ } }) do
@@ -329,15 +330,35 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  defp put_amount_fields(changeset) do
-    if get_field(changeset, :price_id) do
-      refresh_amount_fields(changeset, :with_price)
+  defp put_amount_fields(changeset = %{ action: :update, data: %{ price_id: price_id } }) when not is_nil(price_id) do
+    put_amount_fields(changeset, :with_price)
+  end
+
+  defp put_amount_fields(changeset = %{ action: :insert, changes: %{ price_id: price_id } }) do
+    put_amount_fields(changeset, :with_price)
+  end
+
+  defp put_amount_fields(changeset = %{ action: :insert }) do
+    if get_field(changeset, :sub_total_cents) do
+      put_amount_fields(changeset, :no_price)
     else
-      refresh_amount_fields(changeset)
+      changeset
     end
   end
 
-  defp refresh_amount_fields(changeset = %{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }) do
+  defp put_amount_fields(changeset) do
+    put_amount_fields(changeset, :no_price)
+  end
+
+  # defp put_amount_fields(changeset) do
+  #   if get_field(changeset, :price_id) do
+  #     refresh_amount_fields(changeset, :with_price)
+  #   else
+  #     refresh_amount_fields(changeset)
+  #   end
+  # end
+
+  defp put_amount_fields(changeset = %{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }, :no_price) do
     account_id = get_field(changeset, :account_id)
     point_transaction = get_source(%{
       source_id: source_id,
@@ -356,7 +377,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:authorization_total_cents, sub_total_cents)
   end
 
-  defp refresh_amount_fields(changeset) do
+  defp put_amount_fields(changeset, :no_price) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
     tax_one_cents = get_field(changeset, :tax_one_cents)
     tax_two_cents = get_field(changeset, :tax_two_cents)
@@ -368,7 +389,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_change(:authorization_total_cents, grand_total_cents)
   end
 
-  defp refresh_amount_fields(changeset, :with_price) do
+  defp put_amount_fields(changeset, :with_price) do
     charge_quantity = get_field(changeset, :charge_quantity)
     price_charge_amount_cents = get_field(changeset, :price_charge_amount_cents)
 
@@ -446,6 +467,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     oli
     |> cast(params, castable_fields)
+    |> Map.put(:action, :insert)
     |> put_is_leaf()
     |> put_name()
     |> put_print_name()
@@ -459,7 +481,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def changeset(oli, params, locale \\ nil, default_locale \\ nil) do
-    oli = %{ oli | account: IdentityService.get_account(oli) }
+    oli = %{ oli | account: Proxy.get_account(oli) }
     default_locale = default_locale || oli.account.default_locale
     locale = locale || default_locale
 
@@ -728,96 +750,5 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
       true -> "pending"
     end
-  end
-
-  defmodule Proxy do
-    use BlueJet, :proxy
-
-    def put(oli = %{ price_id: nil }, {:price, _}, _), do: oli
-
-    def put(oli, {:price, price_path}, opts) do
-      preloads = %{ path: price_path, opts: opts }
-      opts = Map.take(opts, [:account, :account_id])
-      price = CatalogueService.get_price(%{ id: oli.price_id, preloads: preloads }, opts)
-      %{ oli | price: price }
-    end
-
-    def put(oli = %{ product_id: nil }, {:product, _}, _), do: oli
-
-    def put(oli, {:product, product_path}, opts) do
-      preloads = %{ path: product_path, opts: opts }
-      opts = Map.take(opts, [:account, :account_id])
-      product = CatalogueService.get_product(%{ id: oli.product_id, preloads: preloads }, opts)
-      %{ oli | product: product }
-    end
-
-    def put(oli, _, _), do: oli
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Storefront.OrderLineItem
-
-    def default() do
-      from(oli in OrderLineItem, order_by: [asc: oli.inserted_at])
-    end
-
-    def for_order(query, order_id) do
-      from oli in query, where: oli.order_id == ^order_id
-    end
-
-    def with_auto_fulfill(query) do
-      from oli in query, where: oli.auto_fulfill == true
-    end
-
-    def with_positive_amount(query) do
-      from oli in query, where: oli.grand_total_cents >= 0
-    end
-
-    def id_only(query) do
-      from oli in query, select: oli.id
-    end
-
-    def fulfillable(query) do
-      query
-      |> leaf()
-      |> with_positive_amount()
-    end
-
-    def for_account(query, account_id) do
-      from(oli in query, where: oli.account_id == ^account_id)
-    end
-
-    def root() do
-      from(oli in OrderLineItem, where: is_nil(oli.parent_id), order_by: [asc: oli.inserted_at])
-    end
-
-    def root(query) do
-      from oli in query, where: is_nil(oli.parent_id)
-    end
-
-    def leaf(query) do
-      from oli in query, where: oli.is_leaf == true
-    end
-
-    def with_order(query, filter) do
-      from(
-        oli in query,
-        join: o in Order, where: oli.order_id == o.id,
-        where: o.fulfillment_status == ^filter[:fulfillment_status],
-        where: o.customer_id == ^filter[:customer_id]
-      )
-    end
-
-    def preloads({:order, order_preloads}, options) do
-      [order: {Order.Query.default(), Order.Query.preloads(order_preloads, options)}]
-    end
-
-    def preloads({:children, children_preloads}, options) do
-      [children: {OrderLineItem.Query.default(), OrderLineItem.Query.preloads(children_preloads, options)}]
-    end
-
-    def preloads(_, _), do: []
   end
 end

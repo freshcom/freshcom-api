@@ -1,11 +1,10 @@
 defmodule BlueJet.Storefront.Service do
   use BlueJet, :service
 
-  alias BlueJet.Storefront.{IdentityService, BalanceService}
+  alias BlueJet.Storefront.{IdentityService}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
   alias Ecto.Multi
-  alias Ecto.Changeset
 
   @callback list_order(map, map) :: list
   @callback count_order(map, map) :: integer
@@ -77,7 +76,11 @@ defmodule BlueJet.Storefront.Service do
 
   def update_order(order = %Order{}, fields, opts) do
     account = get_account(opts)
-    changeset = Order.changeset(order, :update, fields, opts[:locale], account.default_locale)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ order | account: account }
+      |> Order.changeset(:update, fields, opts[:locale], account.default_locale)
 
     statements =
       Multi.new()
@@ -88,6 +91,7 @@ defmodule BlueJet.Storefront.Service do
 
     case Repo.transaction(statements) do
       {:ok, %{ processed_order: order }} ->
+        order = preload(order, preloads[:path], preloads[:opts])
         {:ok, order}
 
       {:error, _, changeset, _} -> {:error, changeset}
@@ -104,10 +108,14 @@ defmodule BlueJet.Storefront.Service do
   def delete_order(nil, _), do: nil
 
   def delete_order(order = %Order{}, opts) do
-    changeset = Order.changeset(order, :delete)
+    account = get_account(opts)
 
-    with {:ok, _} <- Repo.delete(changeset) do
-      %{ filter: %{ target_type: "Order", target_id: order.id } }
+    changeset =
+      %{ order | account: account }
+      |> Order.changeset(:delete)
+
+    with {:ok, order} <- Repo.delete(changeset) do
+      {:ok, order}
     else
       other -> other
     end
@@ -115,6 +123,10 @@ defmodule BlueJet.Storefront.Service do
 
   def delete_order(id, opts) do
     account = get_account(opts)
+    opts =
+      opts
+      |> Map.put(:account, :account)
+      |> Map.delete(:account_id)
 
     order = Repo.get_by(Order, id: id, account_id: account.id)
     delete_order(order, opts)
@@ -156,5 +168,43 @@ defmodule BlueJet.Storefront.Service do
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
+  end
+
+  def update_order_line_item(nil, _, _), do: {:error, :not_found}
+
+  def update_order_line_item(oli = %OrderLineItem{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset = OrderLineItem.changeset(oli, :update, fields, opts[:locale], account.default_locale)
+    statements =
+      Multi.new()
+      |> Multi.update(:oli, changeset)
+      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+          {:ok, OrderLineItem.balance(oli)}
+         end)
+      |> Multi.run(:balanced_order, fn(%{ balanced_oli: oli }) ->
+          order = Repo.get!(Order, oli.order_id)
+          {:ok, Order.balance(order)}
+         end)
+      |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
+          {:ok, Order.refresh_payment_status(order)}
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ balanced_oli: oli }} ->
+        oli = preload(oli, preloads[:path], preloads[:opts])
+        {:ok, oli}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_order_line_item(id, fields, opts) do
+    account = get_account(opts)
+
+    oli = Repo.get_by(OrderLineItem, id: id, account_id: account.id)
+    update_order_line_item(oli, fields, opts)
   end
 end
