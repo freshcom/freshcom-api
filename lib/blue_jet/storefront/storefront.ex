@@ -257,7 +257,7 @@ defmodule BlueJet.Storefront do
   end
 
   def do_update_order_line_item(request = %{ account: account, params: %{ "id" => id } }) do
-    with {:ok, oli} <- Service.update_order_line_item(id) do
+    with {:ok, oli} <- Service.update_order_line_item(id, request.fields, %{ account: account }) do
       oli = Translation.translate(oli, request.locale, account.default_locale)
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: oli }}
     else
@@ -278,7 +278,7 @@ defmodule BlueJet.Storefront do
   end
 
   def do_delete_order_line_item(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, oli} <- Service.delete_order_line_item(id) do
+    with {:ok, oli} <- Service.delete_order_line_item(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
