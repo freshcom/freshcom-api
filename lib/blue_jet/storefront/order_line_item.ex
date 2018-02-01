@@ -667,6 +667,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
     {:ok, line_item}
   end
 
+  def process(line_item, %{ action: action }) when action in [:insert, :update] do
+    line_item =
+      line_item
+      |> Repo.preload(:order)
+      |> __MODULE__.balance()
+
+    line_item.order
+    |> Order.balance()
+    |> Order.refresh_payment_status()
+
+    {:ok, line_item}
+  end
+
   def process(line_item, %{ action: :delete }) do
     line_item = Repo.preload(line_item, :order)
 

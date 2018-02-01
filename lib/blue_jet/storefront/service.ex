@@ -150,22 +150,12 @@ defmodule BlueJet.Storefront.Service do
     statements =
       Multi.new()
       |> Multi.insert(:oli, changeset)
-      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-          {:ok, OrderLineItem.balance(oli)}
-         end)
-      |> Multi.run(:balanced_order, fn(%{ balanced_oli: balanced_oli }) ->
-          order = Repo.get!(Order, balanced_oli.order_id)
-          {:ok, Order.balance(order)}
-         end)
-      |> Multi.run(:processed_order, fn(%{ balanced_order: balanced_order }) ->
-          Order.process(balanced_order)
-         end)
-      |> Multi.run(:updated_order, fn(%{ processed_order: order }) ->
-          {:ok, Order.refresh_payment_status(order)}
+      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
+          OrderLineItem.process(oli, changeset)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ balanced_oli: oli }} ->
+      {:ok, %{ processed_oli: oli }} ->
         oli = preload(oli, preloads[:path], preloads[:opts])
         {:ok, oli}
 
@@ -187,19 +177,12 @@ defmodule BlueJet.Storefront.Service do
     statements =
       Multi.new()
       |> Multi.update(:oli, changeset)
-      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-          {:ok, OrderLineItem.balance(oli)}
-         end)
-      |> Multi.run(:balanced_order, fn(%{ balanced_oli: oli }) ->
-          order = Repo.get!(Order, oli.order_id)
-          {:ok, Order.balance(order)}
-         end)
-      |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
-          {:ok, Order.refresh_payment_status(order)}
+      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
+          OrderLineItem.process(oli, changeset)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ balanced_oli: oli }} ->
+      {:ok, %{ processed_oli: oli }} ->
         oli = preload(oli, preloads[:path], preloads[:opts])
         {:ok, oli}
 
@@ -229,7 +212,7 @@ defmodule BlueJet.Storefront.Service do
     statements =
       Multi.new()
       |> Multi.delete(:oli, changeset)
-      |> Multi.run(:processed_oli, fn(_) ->
+      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
           OrderLineItem.process(oli, changeset)
          end)
 

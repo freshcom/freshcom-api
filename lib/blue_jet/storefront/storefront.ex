@@ -1,8 +1,6 @@
 defmodule BlueJet.Storefront do
   use BlueJet, :context
 
-  alias Ecto.Multi
-
   alias BlueJet.Storefront.CrmService
   alias BlueJet.Storefront.Service
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
@@ -259,34 +257,14 @@ defmodule BlueJet.Storefront do
   end
 
   def do_update_order_line_item(request = %{ account: account, params: %{ "id" => id } }) do
-    oli =
-      OrderLineItem.Query.default()
-      |> OrderLineItem.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    with %OrderLineItem{} <- oli,
-         changeset = %{valid?: true} <- OrderLineItem.changeset(oli, request.fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:oli, changeset)
-        |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
-            {:ok, OrderLineItem.balance(oli)}
-           end)
-        |> Multi.run(:balanced_order, fn(%{ balanced_oli: oli }) ->
-            order = Repo.get!(Order, oli.order_id)
-            {:ok, Order.balance(order)}
-           end)
-        |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
-            {:ok, Order.refresh_payment_status(order)}
-           end)
-
-      {:ok, %{ balanced_oli: oli }} = Repo.transaction(statements)
-      order_line_item_response(oli, request)
+    with {:ok, oli} <- Service.update_order_line_item(id) do
+      oli = Translation.translate(oli, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: oli }}
     else
-      nil -> {:error, :not_found}
-      %{ errors: errors } ->
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -300,30 +278,13 @@ defmodule BlueJet.Storefront do
   end
 
   def do_delete_order_line_item(%{ account: account, params: %{ "id" => id } }) do
-    oli =
-      OrderLineItem.Query.default()
-      |> OrderLineItem.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    statements =
-      Multi.new()
-      |> Multi.run(:processed_oli, fn(_) ->
-          oli = oli |> Repo.preload(:order)
-          OrderLineItem.process(oli, :delete)
-         end)
-      |> Multi.delete(:oli, oli)
-      |> Multi.run(:balanced_order, fn(%{ processed_oli: oli }) ->
-          {:ok, Order.balance(oli.order)}
-         end)
-      |> Multi.run(:updated_order, fn(%{ balanced_order: order }) ->
-          {:ok, Order.refresh_payment_status(order)}
-         end)
-
-    if oli do
-      {:ok, _} = Repo.transaction(statements)
+    with {:ok, oli} <- Service.delete_order_line_item(id) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
