@@ -277,9 +277,6 @@ defmodule BlueJet.Storefront.ServiceTest do
   describe "create_order_line_item" do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
-      order = Repo.insert!(%Order{
-        account_id: account.id
-      })
 
       {:error, changeset} = Service.create_order_line_item(%{}, %{ account: account })
       assert length(changeset.errors) > 0
@@ -321,6 +318,89 @@ defmodule BlueJet.Storefront.ServiceTest do
 
       {:error, error} = Service.update_order(order.id, %{}, %{ account: account })
       assert error == :not_found
+    end
+
+    test "when given valid id and invalid fields" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      order_line_item = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        name: Faker.Commerce.product_name(),
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      fields = %{
+        "name" => nil
+      }
+
+      {:error, changeset} = Service.update_order_line_item(order_line_item.id, fields, %{ account: account })
+      assert changeset.valid? == false
+      assert length(changeset.errors) > 0
+    end
+
+    test "when given valid id and valid fields" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        name: Faker.Commerce.product_name(),
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      BalanceServiceMock
+      |> expect(:list_payment, fn(_, _) -> [] end)
+
+      new_name = Faker.Commerce.product_name()
+      fields = %{
+        "name" => new_name
+      }
+
+      {:ok, oli} = Service.update_order_line_item(oli.id, fields, %{ account: account })
+      assert oli.name == new_name
+    end
+  end
+
+  describe "delete_order_line_item" do
+    test "when given nil for oli" do
+      {:error, error} = Service.delete_order_line_item(nil, %{})
+      assert error == :not_found
+    end
+
+    test "when given valid id" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      oli = Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        name: Faker.Commerce.product_name(),
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        auto_fulfill: false
+      })
+
+      BalanceServiceMock
+      |> expect(:list_payment, fn(_, _) -> [] end)
+
+      {:ok, oli} = Service.delete_order_line_item(oli.id, %{ account: account })
+      refute Repo.get(OrderLineItem, oli.id)
     end
   end
 end

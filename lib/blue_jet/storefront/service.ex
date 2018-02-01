@@ -10,8 +10,8 @@ defmodule BlueJet.Storefront.Service do
   @callback count_order(map, map) :: integer
   @callback get_order(map, map) :: Order.t | nil
   @callback create_order(map, map) :: {:ok, Order.t} | {:error, any}
-  @callback update_order(map, map) :: {:ok, Order.t} | {:error, any}
-  @callback delete_order(map, map) :: {:ok, Order.t} | {:error, any}
+  @callback update_order(Order.t | String.t, map) :: {:ok, Order.t} | {:error, any}
+  @callback delete_order(Order.t | String.t, map) :: {:ok, Order.t} | {:error, any}
 
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
@@ -84,7 +84,7 @@ defmodule BlueJet.Storefront.Service do
 
     changeset =
       %{ order | account: account }
-      |> Order.changeset(:update, fields, opts[:locale], account.default_locale)
+      |> Order.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
@@ -180,7 +180,10 @@ defmodule BlueJet.Storefront.Service do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
-    changeset = OrderLineItem.changeset(oli, :update, fields, opts[:locale], account.default_locale)
+    changeset =
+      %{ oli | account: account }
+      |> OrderLineItem.changeset(:update, fields, opts[:locale])
+
     statements =
       Multi.new()
       |> Multi.update(:oli, changeset)
@@ -212,5 +215,39 @@ defmodule BlueJet.Storefront.Service do
     OrderLineItem
     |> Repo.get_by(id: id, account_id: account.id)
     |> update_order_line_item(fields, opts)
+  end
+
+  def delete_order_line_item(nil, _), do: {:error, :not_found}
+
+  def delete_order_line_item(oli = %OrderLineItem{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ oli | account: account }
+      |> OrderLineItem.changeset(:delete)
+
+    statements =
+      Multi.new()
+      |> Multi.delete(:oli, changeset)
+      |> Multi.run(:processed_oli, fn(_) ->
+          OrderLineItem.process(oli, changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_oli: oli }} ->
+        {:ok, oli}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def delete_order_line_item(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    OrderLineItem
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_order_line_item(opts)
   end
 end

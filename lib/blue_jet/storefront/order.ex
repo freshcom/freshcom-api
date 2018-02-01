@@ -218,12 +218,6 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(order, :delete) do
-    change(order)
-    |> Map.put(:action, :delete)
-    |> validate()
-  end
-
   def changeset(order, :insert, params) do
     castable_fields = castable_fields(order, :insert)
 
@@ -249,6 +243,12 @@ defmodule BlueJet.Storefront.Order do
     |> validate()
     |> put_opened_at()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(order, :delete) do
+    change(order)
+    |> Map.put(:action, :delete)
+    |> validate()
   end
 
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset

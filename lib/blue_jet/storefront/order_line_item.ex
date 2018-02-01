@@ -480,13 +480,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> validate()
   end
 
-  def changeset(oli, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(oli, :update, params, locale \\ nil, default_locale \\ nil) do
     oli = %{ oli | account: Proxy.get_account(oli) }
     default_locale = default_locale || oli.account.default_locale
     locale = locale || default_locale
 
     oli
     |> cast(params, castable_fields(oli))
+    |> Map.put(:action, :update)
     |> put_is_leaf()
     |> put_name()
     |> put_print_name()
@@ -498,6 +499,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> put_auto_fulfill()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(oli, :delete) do
+    change(oli)
+    |> Map.put(:action, :delete)
   end
 
   @doc """
@@ -661,7 +667,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
     {:ok, line_item}
   end
 
-  def process(line_item, :delete) do
+  def process(line_item, %{ action: :delete }) do
+    line_item = Repo.preload(line_item, :order)
+
+    line_item.order
+    |> Order.balance()
+    |> Order.refresh_payment_status()
+
     {:ok, line_item}
   end
 

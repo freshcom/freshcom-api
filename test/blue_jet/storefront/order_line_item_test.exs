@@ -216,23 +216,16 @@ defmodule BlueJet.OrderLineItemTest do
 
   describe "changeset/4" do
     test "when given line item with product id" do
-      account = %Account{
-        id: Ecto.UUID.generate()
-      }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
-
       product = %Product{
         id: Ecto.UUID.generate(),
-        account_id: account.id,
         name: Faker.String.base64(5)
       }
       CatalogueServiceMock
       |> expect(:get_product, fn(_, _) -> product end)
       |> expect(:get_price, fn(_, _) -> nil end)
 
-      oli = %OrderLineItem{ account_id: account.id }
-      changeset = OrderLineItem.changeset(oli, %{
+      oli = %OrderLineItem{ }
+      changeset = OrderLineItem.changeset(oli, :insert, %{
         product_id: Ecto.UUID.generate(),
         sub_total_cents: 1000,
         tax_one_cents: 500,
