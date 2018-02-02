@@ -3,10 +3,10 @@ defmodule BlueJet.Storefront do
 
   alias BlueJet.Storefront.CrmService
   alias BlueJet.Storefront.Service
-  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
+  alias BlueJet.Storefront.Unlock
 
   #
-  # Order
+  # MARK: Order
   #
   defp transform_order_request_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
     customer = CrmService.get_customer_by_user_id(vas[:user_id], %{ account: account })
@@ -164,68 +164,9 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  ####
-  # Order Line Item
-  ####
-  ######## NOT TESTED AND NOT USED ######
-  # def list_order_line_item(request = %AccessRequest{ vas: vas }) do
-  #   with {:ok, role} <- Identity.authorize(vas, "storefront.list_order_line_item") do
-  #     do_list_order_line_item(%{ request | role: role })
-  #   else
-  #     {:error, _} -> {:error, :access_denied}
-  #   end
-  # end
-  # def do_list_order_line_item(request = %AccessRequest{ role: "customer", vas: vas, filter: filter, pagination: pagination }) do
-  #   {:ok, %{ data: customer }} = Crm.do_get_customer(%AccessRequest{ role: "customer", vas: vas })
-
-  #   filter = Map.merge(filter, %{ customer_id: customer.id })
-  #   query =
-  #     OrderLineItem.Query.default()
-  #     |> filter_by(
-  #         label: filter[:label],
-  #         product_id: filter[:product_id],
-  #         source_id: filter[:source_id],
-  #         source_type: filter[:source_type],
-  #         is_leaf: filter[:is_leaf]
-  #        )
-  #     |> OrderLineItem.Query.for_account(vas[:account_id])
-  #     |> OrderLineItem.Query.with_order(
-  #         fulfillment_status: filter[:fulfillment_status],
-  #         customer_id: filter[:customer_id]
-  #        )
-
-  #   result_count = Repo.aggregate(query, :count, :id)
-  #   query = paginate(query, size: pagination[:size], number: pagination[:number])
-
-  #   order_line_items =
-  #     Repo.all(query)
-  #     |> Repo.preload(OrderLineItem.Query.preloads(request.preloads))
-  #     |> Translation.translate(request.locale)
-
-  #   response = %AccessResponse{
-  #     meta: %{
-  #       result_count: result_count,
-  #     },
-  #     data: order_line_items
-  #   }
-
-  #   {:ok, response}
-  # end
-
-  defp order_line_item_response(nil, _), do: {:error, :not_found}
-
-  defp order_line_item_response(order_line_item, request = %{ account: account }) do
-    preloads = OrderLineItem.Query.preloads(request.preloads, role: request.role)
-
-    order_line_item =
-      order_line_item
-      |> Repo.preload(preloads)
-      |> OrderLineItem.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: order_line_item }}
-  end
-
+  #
+  # MARK: Order Line Item
+  #
   def create_order_line_item(request) do
     with {:ok, request} <- preprocess_request(request, "storefront.create_order_line_item") do
       request
@@ -278,7 +219,7 @@ defmodule BlueJet.Storefront do
   end
 
   def do_delete_order_line_item(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, oli} <- Service.delete_order_line_item(id, %{ account: account }) do
+    with {:ok, _} <- Service.delete_order_line_item(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -289,7 +230,7 @@ defmodule BlueJet.Storefront do
   end
 
   #
-  # Unlock
+  # MARK: Unlock
   #
   defp transform_unlock_request_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
     customer = CrmService.get_customer_by_user_id(vas[:user_id], %{ account: account })

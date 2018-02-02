@@ -570,7 +570,9 @@ defmodule BlueJet.OrderTest do
         authorization_total_cents: 500,
         auto_fulfill: false
       })
-      changeset = change(%Order{}, %{ status: "opened" })
+      changeset =
+        change(%Order{}, %{ status: "opened" })
+        |> Map.put(:action, :update)
 
       fulfillment = %Fulfillment{ id: Ecto.UUID.generate() }
       fli = %FulfillmentLineItem{ id: Ecto.UUID.generate(), fulfillment_id: fulfillment.id }

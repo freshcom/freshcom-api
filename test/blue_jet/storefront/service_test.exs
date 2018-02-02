@@ -4,10 +4,11 @@ defmodule BlueJet.Storefront.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
   alias BlueJet.Catalogue.Product
+  alias BlueJet.Goods.Unlockable
 
   alias BlueJet.Storefront.{CrmServiceMock, CatalogueServiceMock, BalanceServiceMock}
   alias BlueJet.Storefront.Service
-  alias BlueJet.Storefront.{Order, OrderLineItem}
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   test "play" do
     # IO.inspect BlueJet.Plugs.Include.to_preloads("root_line_items.children,root_line_items.product,customer.point_account")
@@ -133,7 +134,7 @@ defmodule BlueJet.Storefront.ServiceTest do
   end
 
   describe "create_order/2" do
-    test "when given fields valid" do
+    test "when given valid fields" do
       account = Repo.insert!(%Account{})
       {:ok, order} = Service.create_order(%{}, %{ account: account })
 
@@ -274,7 +275,7 @@ defmodule BlueJet.Storefront.ServiceTest do
     end
   end
 
-  describe "create_order_line_item" do
+  describe "create_order_line_item/2" do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
 
@@ -302,7 +303,7 @@ defmodule BlueJet.Storefront.ServiceTest do
     end
   end
 
-  describe "update_order_line_item" do
+  describe "update_order_line_item/3" do
     test "when given nil for oli" do
       {:error, error} = Service.update_order(nil, %{}, %{})
 
@@ -374,7 +375,7 @@ defmodule BlueJet.Storefront.ServiceTest do
     end
   end
 
-  describe "delete_order_line_item" do
+  describe "delete_order_line_item/2" do
     test "when given nil for oli" do
       {:error, error} = Service.delete_order_line_item(nil, %{})
       assert error == :not_found
@@ -401,6 +402,180 @@ defmodule BlueJet.Storefront.ServiceTest do
 
       {:ok, oli} = Service.delete_order_line_item(oli.id, %{ account: account })
       refute Repo.get(OrderLineItem, oli.id)
+    end
+  end
+
+  describe "list_unlock/2" do
+    test "unlock for different account is not returned" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: other_account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%Unlock{
+        account_id: other_account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      unlocks = Service.list_unlock(%{ customer_id: customer.id }, %{ account: account })
+      assert length(unlocks) == 0
+    end
+
+    test "valid request" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      unlocks = Service.list_unlock(%{ customer_id: customer.id }, %{ account: account })
+      assert length(unlocks) == 1
+    end
+  end
+
+  describe "count_unlock/2" do
+    test "valid request" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      count = Service.count_unlock(%{ customer_id: customer.id }, %{ account: account })
+      assert count == 1
+    end
+  end
+
+  describe "create_unlock/2" do
+    test "when given invalid fields" do
+      account = Repo.insert!(%Account{})
+
+      {:error, changeset} = Service.create_unlock(%{}, %{ account: account })
+      assert changeset.valid? == false
+      assert length(changeset.errors) > 0
+    end
+
+    test "when given valid fields" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      fields = %{
+        "customer_id" => customer.id,
+        "unlockable_id" => unlockable.id
+      }
+
+      {:ok, order} = Service.create_order(fields, %{ account: account })
+
+      assert order
+    end
+  end
+
+  describe "get_unlock/2" do
+    test "when given invalid fields" do
+      account = Repo.insert!(%Account{})
+
+      refute Service.get_unlock(%{ customer_id: Ecto.UUID.generate() }, %{ account: account })
+    end
+
+    test "when given valid fields" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      fields = %{
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      }
+
+      unlock = Service.get_unlock(fields, %{ account: account })
+      assert unlock
+    end
+  end
+
+  describe "delete_unlock/2" do
+    test "when given unlock is nil" do
+      {:error, error} = Service.delete_unlock(nil, %{})
+      assert error == :not_found
+    end
+
+    test "when given unlock is valid" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      unlock = Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      {:ok, _} = Service.delete_unlock(unlock, %{ account: account })
+    end
+
+    test "when given id is valid" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id,
+        name: Faker.Name.name()
+      })
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      unlock = Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      {:ok, _} = Service.delete_unlock(unlock.id, %{ account: account })
     end
   end
 end

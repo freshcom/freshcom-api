@@ -1,66 +1,11 @@
 defmodule BlueJet.Goods do
   use BlueJet, :context
 
+  alias BlueJet.Goods.Service
+
   alias BlueJet.Goods.Stockable
   alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable
-
-  defmodule Service do
-    def get_goods("Stockable", id) do
-      Repo.get(Stockable, id)
-    end
-
-    def get_goods("Unlockable", id) do
-      Repo.get(Unlockable, id)
-    end
-
-    def get_goods("Depositable", id) do
-      Repo.get(Depositable, id)
-    end
-
-    def get_depositable(id) do
-      Repo.get(Depositable, id)
-    end
-
-    def get_unlockable(id) do
-      Repo.get(Unlockable, id)
-    end
-
-    def get_unlockable(id, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-      Repo.get_by(Unlockable, id: id, account_id: account_id)
-    end
-
-    def get_unlockable_by_code(code, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-      Repo.get_by(Unlockable, code: code, account_id: account_id)
-    end
-
-    def create_unlockable(fields, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-
-      %Unlockable{ account_id: account_id, account: opts[:account] }
-      |> Unlockable.changeset(fields)
-      |> Repo.insert()
-    end
-
-    def update_unlockable(id, fields, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-      unlockable =
-        Unlockable.Query.default()
-        |> Unlockable.Query.for_account(account_id)
-        |> Repo.get(id)
-
-      if unlockable do
-        unlockable
-        |> Map.put(:account, opts[:account])
-        |> Unlockable.changeset(fields, opts[:locale])
-        |> Repo.update()
-      else
-        {:error, :not_found}
-      end
-    end
-  end
 
   ####
   # Stockable

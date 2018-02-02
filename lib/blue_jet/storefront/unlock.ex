@@ -45,10 +45,10 @@ defmodule BlueJet.Storefront.Unlock do
     __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
+  def castable_fields(:insert) do
     writable_fields()
   end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+  def castable_fields(:update) do
     writable_fields() -- [:unlockable_id, :customer_id]
   end
 
@@ -65,15 +65,16 @@ defmodule BlueJet.Storefront.Unlock do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(unlock, params, locale \\ nil, default_locale \\ nil) do
-    unlock = %{ unlock | account: IdentityService.get_account(unlock) }
-    default_locale = default_locale || unlock.account.default_locale
-    locale = locale || default_locale
-
+  def changeset(unlock, :insert, params) do
     unlock
-    |> cast(params, castable_fields(unlock))
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
     |> validate()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(unlock, :delete) do
+    change(unlock)
+    |> Map.put(:action, :delete)
   end
 
   defmodule Proxy do
@@ -104,23 +105,5 @@ defmodule BlueJet.Storefront.Unlock do
     end
 
     def put(unlock, _, _), do: unlock
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Storefront.Unlock
-
-    def default() do
-      from(u in Unlock, order_by: [desc: u.inserted_at])
-    end
-
-    def for_account(query, account_id) do
-      from(u in query, where: u.account_id == ^account_id)
-    end
-
-    def preloads(_, _) do
-      []
-    end
   end
 end

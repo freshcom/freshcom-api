@@ -2,19 +2,33 @@ defmodule BlueJet.Storefront.Service do
   use BlueJet, :service
 
   alias BlueJet.Storefront.{IdentityService}
-  alias BlueJet.Storefront.{Order, OrderLineItem}
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   alias Ecto.Multi
 
   @callback list_order(map, map) :: list
   @callback count_order(map, map) :: integer
-  @callback get_order(map, map) :: Order.t | nil
   @callback create_order(map, map) :: {:ok, Order.t} | {:error, any}
+  @callback get_order(map, map) :: Order.t | nil
   @callback update_order(Order.t | String.t, map) :: {:ok, Order.t} | {:error, any}
   @callback delete_order(Order.t | String.t, map) :: {:ok, Order.t} | {:error, any}
 
+  @callback create_order_line_item(map, map) :: {:ok, OrderLineItem.t} | {:error, any}
+  @callback update_order_line_item(OrderLineItem.t | String.t, map) :: {:ok, OrderLineItem.t} | {:error, any}
+  @callback delete_order_line_item(OrderLineItem.t | String.t, map) :: {:ok, OrderLineItem.t} | {:error, any}
+
+  @callback list_unlock(map, map) :: list
+  @callback count_unlock(map, map) :: integer
+  @callback create_unlock(map, map) :: {:ok, Unlock.t} | {:error, any}
+  @callback get_unlock(map, map) :: Unlock.t | nil
+  @callback delete_unlock(Unlock.t | String.t, map) :: {:ok, Unlock.t} | {:error, any}
+
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
+  end
+
+  defp get_account_id(opts) do
+    opts[:account_id] || get_account(opts).id
   end
 
   defp put_account(opts) do
@@ -44,7 +58,7 @@ defmodule BlueJet.Storefront.Service do
     filter = get_filter(fields)
 
     Order.Query.default()
-    |> Order.Query.search(fields[:search], opts[:locale], opts[:default_locale])
+    |> Order.Query.search(fields[:search], opts[:locale], account.default_locale)
     |> Order.Query.filter_by(filter)
     |> Order.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
@@ -111,7 +125,7 @@ defmodule BlueJet.Storefront.Service do
     |> update_order(fields, opts)
   end
 
-  def delete_order(nil, _), do: nil
+  def delete_order(nil, _), do: {:error, :not_found}
 
   def delete_order(order = %Order{}, opts) do
     account = get_account(opts)
@@ -232,5 +246,83 @@ defmodule BlueJet.Storefront.Service do
     OrderLineItem
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_order_line_item(opts)
+  end
+
+  #
+  # MARK: Unlock
+  #
+  def list_unlock(fields, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Unlock.Query.default()
+    |> Unlock.Query.filter_by(filter)
+    |> Unlock.Query.for_account(account.id)
+    |> Unlock.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_unlock(fields, opts) do
+    account_id = get_account_id(opts)
+    filter = get_filter(fields)
+
+    Unlock.Query.default()
+    |> Unlock.Query.filter_by(filter)
+    |> Unlock.Query.for_account(account_id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_unlock(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %Unlock{ account_id: account.id, account: account }
+      |> Unlock.changeset(:insert, fields)
+
+    with {:ok, unlock} <- Repo.insert(changeset) do
+      unlock = preload(unlock, preloads[:path], preloads[:opts])
+      {:ok, unlock}
+    else
+      other -> other
+    end
+  end
+
+  def get_unlock(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    Unlock.Query.default()
+    |> Unlock.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def delete_unlock(nil, _), do: {:error, :not_found}
+
+  def delete_unlock(unlock = %Unlock{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ unlock | account: account }
+      |> Unlock.changeset(:delete)
+
+    with {:ok, unlock} <- Repo.delete(changeset) do
+      {:ok, unlock}
+    else
+      other -> other
+    end
+  end
+
+  def delete_unlock(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Unlock
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_unlock(opts)
   end
 end

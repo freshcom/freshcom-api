@@ -62,6 +62,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
     field :source_id, Ecto.UUID
     field :source_type, :string
+    field :source, :map, virtual: true
 
     field :product_id, Ecto.UUID
     field :product, :map, virtual: true
@@ -334,7 +335,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     put_amount_fields(changeset, :with_price)
   end
 
-  defp put_amount_fields(changeset = %{ action: :insert, changes: %{ price_id: price_id } }) do
+  defp put_amount_fields(changeset = %{ action: :insert, changes: %{ price_id: _ } }) do
     put_amount_fields(changeset, :with_price)
   end
 
@@ -349,14 +350,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_amount_fields(changeset) do
     put_amount_fields(changeset, :no_price)
   end
-
-  # defp put_amount_fields(changeset) do
-  #   if get_field(changeset, :price_id) do
-  #     refresh_amount_fields(changeset, :with_price)
-  #   else
-  #     refresh_amount_fields(changeset)
-  #   end
-  # end
 
   defp put_amount_fields(changeset = %{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }, :no_price) do
     account_id = get_field(changeset, :account_id)
@@ -612,6 +605,47 @@ defmodule BlueJet.Storefront.OrderLineItem do
     oli
   end
 
+  def auto_fulfill(%{ auto_fulfill: false }, _), do: nil
+
+  def auto_fulfill(line_item = %{ source_type: nil }, fulfillment) do
+    Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  end
+
+  def auto_fulfill(line_item = %{ source_type: "Unlockable", source_id: source_id }, fulfillment) do
+    line_item = Repo.preload(line_item, :order)
+
+    %Unlock{ account_id: line_item.account_id }
+    |> change(%{
+        unlockable_id: source_id,
+        customer_id: line_item.order.customer_id,
+        source_id: line_item.id,
+        source_type: "OrderLineItem"
+       })
+    |> Repo.insert!()
+
+    Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  end
+
+  def auto_fulfill(line_item = %{ source_type: "Depositable" }, fulfillment) do
+    line_item = Repo.preload(line_item, :order)
+    depositable = Proxy.get_depositable(line_item)
+
+    if depositable.target_type == "PointAccount" do
+      Proxy.create_point_transaction(%{
+        status: "committed",
+        amount: line_item.order_quantity * depositable.amount,
+        reason_label: "deposit_by_depositable"
+      }, line_item)
+    end
+
+    Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  end
+
+  def auto_fulfill(line_item = %{ source_type: "PointTransaction", source_id: source_id }, fulfillment) do
+    Proxy.commit_point_transaction(source_id, line_item)
+    Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  end
+
   @doc """
   Process the given order line item so that other related resource can be created/updated.
 
@@ -621,52 +655,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the processed order line item.
   """
-  def process(line_item = %{ source_id: nil }) do
-    {:ok, line_item}
-  end
-
-  def process(line_item = %{ source_id: source_id, source_type: "Unlockable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    %Unlock{ account_id: line_item.account_id }
-    |> change(%{
-        unlockable_id: source_id,
-        customer_id: order.customer_id,
-        source_id: line_item.id,
-        source_type: "OrderLineItem"
-       })
-    |> Repo.insert!()
-
-    {:ok, line_item}
-  end
-
-  def process(line_item = %{ account_id: account_id, source_id: source_id, source_type: "Depositable" }, order, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    depositable = GoodsService.get_depositable(source_id)
-
-    if depositable.target_type == "PointAccount" do
-      point_account = CrmService.get_point_account(order.customer_id, %{ account_id: account_id })
-      {:ok, _} = CrmService.create_point_transaction(%{
-        point_account_id: point_account.id,
-        status: "committed",
-        amount: line_item.order_quantity * depositable.amount,
-        reason_label: "deposit_by_depositable",
-        source_id: line_item.id,
-        source_type: "OrderLineItem"
-      }, %{
-        account_id: account_id
-      })
-    end
-
-    {:ok, line_item}
-  end
-
-  def process(line_item = %{ source_id: source_id, source_type: "PointTransaction" }, _, %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    CrmService.update_point_transaction(source_id, %{ status: "committed" }, %{ account_id: line_item.account_id })
-    {:ok, line_item}
-  end
-
-  def process(line_item, _, _) do
-    {:ok, line_item}
-  end
-
   def process(line_item, %{ action: action }) when action in [:insert, :update] do
     line_item =
       line_item

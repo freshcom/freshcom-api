@@ -22,8 +22,6 @@ defmodule BlueJet.Storefront.Order do
   - over_paid
   - partially_refunded
   - refunded
-
-
   """
   use BlueJet, :data
 
@@ -35,9 +33,8 @@ defmodule BlueJet.Storefront.Order do
 
   alias BlueJet.Utils
 
-  alias BlueJet.Storefront.{BalanceService, DistributionService, CrmService}
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Order.{Proxy, Query}
+  alias BlueJet.Storefront.Order.Proxy
 
   schema "orders" do
     field :account_id, Ecto.UUID
@@ -179,8 +176,7 @@ defmodule BlueJet.Storefront.Order do
   end
 
   def validate_no_payment(changeset = %{ data: order }) do
-    account = Proxy.get_account(order)
-    payment_count = BalanceService.count_payment(%{ target_type: "Order", target_id: order.id }, %{ account: account })
+    payment_count = Proxy.count_payment(order)
 
     if payment_count == 0 do
       changeset
@@ -212,8 +208,8 @@ defmodule BlueJet.Storefront.Order do
     |> validate_customer_id()
   end
 
-  defp castable_fields(order, :insert), do: writable_fields() -- [:status]
-  defp castable_fields(order, :update), do: writable_fields()
+  defp castable_fields(_, :insert), do: writable_fields() -- [:status]
+  defp castable_fields(_, :update), do: writable_fields()
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -334,7 +330,7 @@ defmodule BlueJet.Storefront.Order do
   field of the order may not be up to date yet.
   """
   def get_payment_status(order) do
-    payments = BalanceService.list_payment(%{ target_type: "Order", target_id: order.id }, %{ account_id: order.account_id })
+    payments = Proxy.list_payment(order)
 
     total_paid_amount_cents =
       payments
@@ -382,99 +378,12 @@ defmodule BlueJet.Storefront.Order do
     {:ok, nil}
   end
 
-  #
-  # MARK: External Resources
-  #
-  def get_customer(%{ customer_id: nil }), do: nil
-  def get_customer(%{ customer_id: customer_id, customer: nil, account_id: account_id }), do: CrmService.get_customer(customer_id, %{ account_id: account_id })
-  def get_customer(%{ customer: customer }), do: customer
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :external_file_collection,
     field: :external_file_collections,
     owner_type: "Order"
 
-  def put_external_resources(order, {:customer, nil}, _) do
-    %{ order | customer: get_customer(order) }
-  end
-
   def put_external_resources(order, _, _), do: order
-
-  #####
-  # Business Functions
-  #####
-
-  @doc """
-  Process the given `order` so that other related resource can be created/updated.
-
-  This function may change the order in database.
-  """
-  def process(order), do: {:ok, order}
-
-  def process(order, changeset = %{ data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order = %{ order | account: Proxy.get_account(order) }
-    order =
-      order
-      |> put_external_resources({:customer, nil}, %{ account: order.account, locale: order.account.default_locale })
-      |> process_leaf_line_items(changeset)
-      |> process_auto_fulfill()
-      |> refresh_fulfillment_status()
-
-    {:ok, order}
-  end
-
-  def process(order, _), do: {:ok, order}
-
-  defp process_leaf_line_items(order, changeset) do
-    leaf_line_items =
-      OrderLineItem.Query.default()
-      |> OrderLineItem.Query.for_order(order.id)
-      |> OrderLineItem.Query.leaf()
-      |> Repo.all()
-
-    Enum.each(leaf_line_items, fn(line_item) ->
-      OrderLineItem.process(line_item, order, changeset)
-    end)
-
-    order
-  end
-
-  defp process_auto_fulfill(order) do
-    af_line_items =
-      OrderLineItem
-      |> OrderLineItem.Query.for_order(order.id)
-      |> OrderLineItem.Query.with_auto_fulfill()
-      |> OrderLineItem.Query.leaf()
-      |> Repo.all()
-
-    case length(af_line_items) do
-      0 -> {:ok, nil}
-
-      _ ->
-        {:ok, fulfillment} = DistributionService.create_fulfillment(%{
-          source_id: order.id,
-          source_type: "Order"
-        }, %{ account_id: order.account_id })
-
-        Enum.each(af_line_items, fn(line_item) ->
-          translations = Translation.merge_translations(%{}, line_item.translations, ["name"])
-
-          DistributionService.create_fulfillment_line_item(%{
-            fulfillment_id: fulfillment.id,
-            name: line_item.name,
-            status: "fulfilled",
-            quantity: line_item.order_quantity,
-            source_id: line_item.id,
-            source_type: "OrderLineItem",
-            goods_id: line_item.source_id,
-            goods_type: line_item.source_type,
-            translations: translations
-          }, %{ account_id: order.account_id })
-        end)
-    end
-
-    order
-  end
 
   def refresh_fulfillment_status(order) do
     order
@@ -511,4 +420,44 @@ defmodule BlueJet.Storefront.Order do
       true -> "pending"
     end
   end
+
+  def auto_fulfill(order) do
+    af_line_items =
+      OrderLineItem
+      |> OrderLineItem.Query.for_order(order.id)
+      |> OrderLineItem.Query.with_auto_fulfill()
+      |> OrderLineItem.Query.leaf()
+      |> Repo.all()
+
+    if length(af_line_items) > 0 do
+      fulfillment = Proxy.create_fulfillment(order)
+      Enum.each(af_line_items, fn(af_line_item) ->
+        OrderLineItem.auto_fulfill(af_line_item, fulfillment)
+      end)
+    end
+
+    order
+  end
+
+  @doc """
+  Process the given `order` so that other related resource can be created/updated.
+
+  This function may change the order in database.
+  """
+  def process(order), do: {:ok, order}
+
+  def process(order, %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    order =
+      order
+      |> Proxy.put_account()
+      |> Proxy.put_customer()
+      |> auto_fulfill()
+      # |> process_leaf_line_items()
+      # |> process_auto_fulfill()
+      |> refresh_fulfillment_status()
+
+    {:ok, order}
+  end
+
+  def process(order, _), do: {:ok, order}
 end

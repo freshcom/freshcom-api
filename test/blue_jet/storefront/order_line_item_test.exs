@@ -6,12 +6,13 @@ defmodule BlueJet.OrderLineItemTest do
   alias Decimal, as: D
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
-  alias BlueJet.Storefront.{IdentityServiceMock, CatalogueServiceMock, GoodsServiceMock, CrmServiceMock, DistributionServiceMock}
   alias BlueJet.Catalogue.{Product, Price}
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
-  alias BlueJet.Distribution.{FulfillmentLineItem}
+  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
+
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
+  alias BlueJet.Storefront.{CatalogueServiceMock, GoodsServiceMock, CrmServiceMock, DistributionServiceMock}
 
   describe "schema" do
     test "when order is deleted line item should be deleted automatically" do
@@ -375,28 +376,35 @@ defmodule BlueJet.OrderLineItemTest do
     end
   end
 
-  describe "process/1" do
+  describe "auto_fulfill/1" do
     test "when source is an unlockable" do
       account = Repo.insert!(%Account{})
+
       unlockable = Repo.insert!(%Unlockable{
         account_id: account.id,
         name: Faker.String.base64(5)
       })
+
       customer = Repo.insert!(%Customer{
         account_id: account.id,
         name: Faker.String.base64(5)
       })
+
+      fulfillment = %Fulfillment{}
+      fli = %FulfillmentLineItem{}
+      DistributionServiceMock
+      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
+
       order = Repo.insert!(%Order{
         account_id: account.id,
         customer_id: customer.id
       })
-      order_changeset = change(order, %{ status: "opened" })
-
-      OrderLineItem.process(%OrderLineItem{
+      OrderLineItem.auto_fulfill(%OrderLineItem{
         account_id: account.id,
+        order_id: order.id,
         source_id: unlockable.id,
         source_type: "Unlockable"
-      }, order, order_changeset)
+      }, fulfillment)
 
       assert Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
     end
@@ -409,7 +417,7 @@ defmodule BlueJet.OrderLineItemTest do
         target_type: "PointAccount"
       }
       GoodsServiceMock
-      |> expect(:get_depositable, fn(_) -> depositable end)
+      |> expect(:get_depositable, fn(_, _) -> depositable end)
 
       point_account = %PointAccount{}
       point_transaction = %PointTransaction{}
@@ -417,28 +425,34 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_point_account, fn(_, _) -> point_account end)
       |> expect(:create_point_transaction, fn(_, _) -> {:ok, point_transaction} end)
 
-      order = %Order{}
-      order_changeset = change(order, %{ status: "opened" })
+      fulfillment = %Fulfillment{}
+      fli = %FulfillmentLineItem{}
+      DistributionServiceMock
+      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
 
-      OrderLineItem.process(%OrderLineItem{
+      order = %Order{ customer_id: Ecto.UUID.generate() }
+      OrderLineItem.auto_fulfill(%OrderLineItem{
+        order: order,
         source_id: depositable.id,
         source_type: "Depositable"
-      }, order, order_changeset)
+      }, fulfillment)
 
       verify!()
     end
 
     test "when source is a point transaction" do
       CrmServiceMock
-      |> expect(:update_point_transaction, fn(_, _, _) -> %PointTransaction{} end)
+      |> expect(:update_point_transaction, fn(_, _, _) -> {:ok, %PointTransaction{}} end)
 
-      order = %Order{}
-      order_changeset = change(order, %{ status: "opened" })
+      fulfillment = %Fulfillment{}
+      fli = %FulfillmentLineItem{}
+      DistributionServiceMock
+      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
 
-      OrderLineItem.process(%OrderLineItem{
+      OrderLineItem.auto_fulfill(%OrderLineItem{
         source_id: Ecto.UUID.generate(),
         source_type: "PointTransaction"
-      }, order, order_changeset)
+      }, fulfillment)
 
       verify!()
     end

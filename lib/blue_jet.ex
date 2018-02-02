@@ -108,6 +108,14 @@ defmodule BlueJet do
     quote do
       alias BlueJet.AccessRequest
 
+      defp get_sopts(%{ account_id: account_id, account: nil }) do
+        %{ account_id: account_id }
+      end
+
+      defp get_sopts(%{ account: account }) do
+        %{ account: account }
+      end
+
       def put(nil, _, _), do: nil
 
       def put(struct_or_structs, targets, options) when is_list(targets) and length(targets) == 0 do

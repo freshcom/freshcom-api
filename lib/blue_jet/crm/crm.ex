@@ -90,13 +90,13 @@ defmodule BlueJet.Crm do
       |> Repo.preload(preload_query)
     end
 
-    def get_customer(id) do
-      Repo.get(Customer, id)
-    end
-
     def get_customer(id, opts) do
       account_id = opts[:account_id] || opts[:account].id
       Repo.get_by(Customer, id: id, account_id: account_id)
+    end
+
+    def get_customer(id) do
+      Repo.get(Customer, id)
     end
 
     def get_customer_by_user_id(user_id, opts) do
