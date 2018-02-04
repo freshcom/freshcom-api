@@ -30,19 +30,29 @@ defmodule BlueJet.Goods.Service do
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  def get_unlockable(id) do
-    Repo.get(Unlockable, id)
+  def get_unlockable(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    Unlockable.Query.default()
+    |> Unlockable.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
   end
 
-  def get_unlockable(id, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    Repo.get_by(Unlockable, id: id, account_id: account_id)
-  end
+  # def get_unlockable(id) do
+  #   Repo.get(Unlockable, id)
+  # end
 
-  def get_unlockable_by_code(code, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    Repo.get_by(Unlockable, code: code, account_id: account_id)
-  end
+  # def get_unlockable(id, opts) do
+  #   account_id = opts[:account_id] || opts[:account].id
+  #   Repo.get_by(Unlockable, id: id, account_id: account_id)
+  # end
+
+  # def get_unlockable_by_code(code, opts) do
+  #   account_id = opts[:account_id] || opts[:account].id
+  #   Repo.get_by(Unlockable, code: code, account_id: account_id)
+  # end
 
   def create_unlockable(fields, opts) do
     account_id = opts[:account_id] || opts[:account].id

@@ -81,27 +81,15 @@ defmodule BlueJet.Crm do
       end
     end
 
-    def get_customer(fields = %{ id: id }, opts) do
+    def get_customer(fields, opts) do
       account = get_account(opts)
       preloads = get_preloads(fields, account)
 
       preload_query = Customer.Query.preloads(preloads[:path], preloads[:filter])
-      Repo.get_by(Customer, user_id: id, account_id: account.id)
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get_by(fields)
       |> Repo.preload(preload_query)
-    end
-
-    def get_customer(id, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-      Repo.get_by(Customer, id: id, account_id: account_id)
-    end
-
-    def get_customer(id) do
-      Repo.get(Customer, id)
-    end
-
-    def get_customer_by_user_id(user_id, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-      Repo.get_by(Customer, user_id: user_id, account_id: account_id)
     end
 
     def get_customer_by_code(code, opts) do

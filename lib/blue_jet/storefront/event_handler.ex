@@ -15,6 +15,7 @@ defmodule BlueJet.Storefront.EventHandler do
           order
           |> Order.refresh_payment_status()
           |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
+          |> Map.put(:action, :update)
 
         changeset
         |> Repo.update!()

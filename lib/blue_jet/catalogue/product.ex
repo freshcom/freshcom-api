@@ -333,6 +333,10 @@ defmodule BlueJet.Catalogue.Product do
       from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
     end
 
+    def with_parent(query, parent_id) do
+      from p in query, where: p.parent_id == ^parent_id
+    end
+
     def preloads({:items, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
       query = Product.Query.default() |> Product.Query.active()
       [items: {query, Product.Query.preloads(item_preloads, options)}]

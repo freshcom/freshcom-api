@@ -223,7 +223,6 @@ defmodule BlueJet.Storefront.Order do
     |> put_name()
     |> Utils.put_clean_email()
     |> validate()
-    |> put_opened_at()
   end
 
   def changeset(order, :update, params, locale \\ nil, default_locale \\ nil) do

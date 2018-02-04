@@ -48,8 +48,12 @@ defmodule BlueJet.Storefront.Order.Proxy do
 
   def put(order, {:customer, customer_path}, opts) do
     preloads = %{ path: customer_path, opts: opts }
-    opts = Map.take(opts, [:account, :account_id])
-    customer = CrmService.get_customer(%{ id: order.customer_id, preloads: preloads }, opts)
+    opts =
+      opts
+      |> Map.take([:account, :account_id])
+      |> Map.merge(%{ preloads: preloads })
+
+    customer = CrmService.get_customer(%{ id: order.customer_id }, opts)
     %{ order | customer: customer }
   end
 

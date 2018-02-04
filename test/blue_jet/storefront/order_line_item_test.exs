@@ -163,7 +163,7 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_product, fn(_, _) -> nil end)
 
       changeset =
-        change(%OrderLineItem{ account_id: account.id }, %{
+        change(%OrderLineItem{ account_id: account.id, account: account }, %{
           order_id: order.id,
           product_id: Ecto.UUID.generate(),
           name: Faker.String.base64(5),
@@ -196,7 +196,7 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_price, fn(_, _) -> nil end)
 
       changeset =
-        change(%OrderLineItem{ account_id: account.id }, %{
+        change(%OrderLineItem{ account_id: account.id, account: account }, %{
           order_id: order.id,
           product_id: product_id,
           price_id: Ecto.UUID.generate(),
@@ -217,6 +217,7 @@ defmodule BlueJet.OrderLineItemTest do
 
   describe "changeset/4" do
     test "when given line item with product id" do
+      account = %Account{ }
       product = %Product{
         id: Ecto.UUID.generate(),
         name: Faker.String.base64(5)
@@ -225,7 +226,7 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_product, fn(_, _) -> product end)
       |> expect(:get_price, fn(_, _) -> nil end)
 
-      oli = %OrderLineItem{ }
+      oli = %OrderLineItem{ account: account }
       changeset = OrderLineItem.changeset(oli, :insert, %{
         product_id: Ecto.UUID.generate(),
         sub_total_cents: 1000,
@@ -336,6 +337,7 @@ defmodule BlueJet.OrderLineItemTest do
         account_id: account.id
       })
       oli = Repo.insert!(%OrderLineItem{
+        account: account,
         account_id: account.id,
         product_id: product.id,
         order_id: order.id,

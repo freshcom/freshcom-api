@@ -147,10 +147,10 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def validate_order_id(changeset), do: changeset
 
   def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
-    account_id = get_field(changeset, :account_id)
-    product = CatalogueService.get_product(product_id, %{ account_id: account_id })
+    account = Proxy.get_account(changeset.data)
+    product = CatalogueService.get_product(%{ id: product_id }, %{ account: account })
 
-    if product && product.account_id == account_id do
+    if product && product.account_id == account.id do
       changeset
     else
       add_error(changeset, :product, "is invalid", [validation: :must_exist])
@@ -160,11 +160,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
   def validate_product_id(changeset), do: changeset
 
   def validate_price_id(changeset = %{ valid?: true, changes: %{ price_id: price_id } }) do
-    account_id = get_field(changeset, :account_id)
+    account = Proxy.get_account(changeset.data)
     product_id = get_field(changeset, :product_id)
-    price = get_field(changeset, :price) || CatalogueService.get_price(price_id, %{ account_id: account_id })
+    price = get_field(changeset, :price) || CatalogueService.get_price(%{ id: price_id }, %{ account: account })
 
-    if price && price.account_id == account_id && price.product_id == product_id do
+    if price && price.account_id == account.id && price.product_id == product_id do
       changeset
     else
       add_error(changeset, :price, "is invalid", [validation: :must_exist])
@@ -199,8 +199,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
   defp put_name(changeset = %{ changes: %{ product_id: product_id }}) do
-    account_id = get_field(changeset, :account_id)
-    product = get_field(changeset, :product) || CatalogueService.get_product(product_id, %{ account_id: account_id })
+    account = Proxy.get_account(changeset.data)
+    product = get_field(changeset, :product) || CatalogueService.get_product(%{ id: product_id }, %{ account: account })
     translations =
       get_field(changeset, :translations)
       |> Translation.merge_translations(product.translations, ["name"])
@@ -224,14 +224,15 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_price_id(changeset = %{ changes: %{ price_id: _ } }), do: changeset
 
   defp put_price_id(changeset = %{ changes: %{ product_id: product_id }}) do
+    account = Proxy.get_account(changeset.data)
+
     order_quantity = get_field(changeset, :order_quantity)
-    account_id = get_field(changeset, :account_id)
     price = get_field(changeset, :price) || CatalogueService.get_price(%{
       product_id: product_id,
       status: "active",
       order_quantity: order_quantity
     }, %{
-      account_id: account_id
+      account: account
     })
 
     if price do
@@ -246,8 +247,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_price_id(changeset), do: changeset
 
   defp put_price_fields(changeset = %{ changes: %{ price_id: price_id } }) do
-    account_id = get_field(changeset, :account_id)
-    price = get_field(changeset, :price) || CatalogueService.get_price(price_id, %{ account_id: account_id })
+    account = Proxy.get_account(changeset.data)
+    price = get_field(changeset, :price) || CatalogueService.get_price(%{ id: price_id }, %{ account: account })
     changeset =
       changeset
       |> put_change(:price, price)
@@ -432,8 +433,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_auto_fulfill(changeset = %{ changes: %{ auto_fulfill: _ } }), do: changeset
 
   defp put_auto_fulfill(changeset = %{ changes: %{ product_id: product_id } }) do
-    account_id = get_field(changeset, :account_id)
-    product = get_field(changeset, :product) || CatalogueService.get_product(product_id, %{ account_id: account_id })
+    account = Proxy.get_account(changeset.data)
+    product = get_field(changeset, :product) || CatalogueService.get_product(%{ id: product_id }, %{ account: account })
 
     changeset
     |> put_change(:product, product)
@@ -519,7 +520,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def balance(oli = %__MODULE__{ product_id: product_id }) when not is_nil(product_id) do
-    product = oli.product || CatalogueService.get_product(product_id, %{ account_id: oli.account_id })
+    account = Proxy.get_account(oli)
+    product = oli.product || CatalogueService.get_product(%{ id: product_id }, %{ account: account })
     balance_by_product(oli, product)
   end
 
