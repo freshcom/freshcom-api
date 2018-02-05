@@ -83,15 +83,26 @@ defmodule BlueJet.FileStorage.File do
     |> validate()
   end
 
-  def changeset(ef, :update, params, locale \\ nil, default_locale \\ nil) do
-    ef = %{ ef | account: Proxy.get_account(ef) }
-    default_locale = default_locale || ef.account.default_locale
+  def changeset(file, :update, params, locale \\ nil, default_locale \\ nil) do
+    file = %{ file | account: Proxy.get_account(file) }
+    default_locale = default_locale || file.account.default_locale
     locale = locale || default_locale
 
-    ef
+    file
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(file, :delete) do
+    change(file)
+    |> Map.put(:action, :delete)
+  end
+
+  def process(file, %{ action: :delete }) do
+    delete_object(file)
+
+    {:ok, file}
   end
 
   def key(struct) do
@@ -125,9 +136,9 @@ defmodule BlueJet.FileStorage.File do
     url
   end
 
-  def delete_object(struct) do
-    ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(struct))
+  def delete_object(file) do
+    ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(file))
 
-    struct
+    file
   end
 end

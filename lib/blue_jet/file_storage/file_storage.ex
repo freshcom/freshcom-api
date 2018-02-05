@@ -59,9 +59,9 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  ####
-  # File
-  ####
+  #
+  # MARK: External File
+  #
   def list_external_file(request) do
     with {:ok, request} <- preprocess_request(request, "file_storage.list_external_file") do
       request

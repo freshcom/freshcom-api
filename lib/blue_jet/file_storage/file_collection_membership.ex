@@ -6,6 +6,8 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
 
   schema "file_collection_memberships" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
+
     field :sort_index, :integer, default: 100
 
     timestamps()
@@ -70,6 +72,11 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(fcm, :delete) do
+    change(fcm)
+    |> Map.put(:action, :delete)
+  end
+
   def changeset(struct, params \\ %{}) do
     struct
     |> cast(params, castable_fields(struct))
