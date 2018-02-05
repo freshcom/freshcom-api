@@ -118,21 +118,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp required_fields, do: [:order_id, :name, :order_quantity, :charge_quantity, :sub_total_cents, :grand_total_cents, :authorization_total_cents, :auto_fulfill]
 
-  @doc """
-  Returns the source of the given product.
-  """
-  def get_source(product)
-
-  def get_source(%{ source_id: source_id, source_type: "PointTransaction" }) do
-    CrmService.get_point_transaction(source_id)
-  end
-
-  def get_source(%{ source_id: source_id, source_type: source_type }) do
-    GoodsService.get_goods(source_type, source_id)
-  end
-
-  def get_source(_, _), do: nil
-
   def validate_order_id(changeset = %{ valid?: true, changes: %{ order_id: order_id } }) do
     account_id = get_field(changeset, :account_id)
     order = Repo.get(Order, order_id)
@@ -353,13 +338,8 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   defp put_amount_fields(changeset = %{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }, :no_price) do
-    account_id = get_field(changeset, :account_id)
-    point_transaction = get_source(%{
-      source_id: source_id,
-      source_type: "PointTransaction",
-      account_id: account_id,
-      account: nil
-    })
+    account = Proxy.get_account(changeset.data)
+    point_transaction = CrmService.get_point_transaction(%{ id: source_id }, %{ account: account })
     sub_total_cents = point_transaction.amount
 
     changeset
@@ -529,25 +509,26 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   ######
   defp balance_by_product(oli, product = %{ kind: kind }) when kind in ["simple", "item", "variant"] do
-    source_order_quantity = product.source_quantity * oli.order_quantity
+    source_order_quantity = product.goods_quantity * oli.order_quantity
     source_charge_quantity = if oli.price_estimate_by_default do
       oli.charge_quantity
     else
       D.new(source_order_quantity)
     end
-    source = get_source(product)
+    oli = %{ oli | product: product }
+    goods = Proxy.get_goods(oli)
 
     # Product variant should ever only have one child
     child = assoc(oli, :children) |> Repo.one()
     child_fields = %{
       account_id: oli.account_id,
       order_id: oli.order_id,
-      source_id: product.source_id,
-      source_type: product.source_type,
+      source_id: product.goods_id,
+      source_type: product.goods_type,
       parent_id: oli.id,
       is_leaf: true,
       auto_fulfill: oli.auto_fulfill,
-      name: source.name,
+      name: goods.name,
       order_quantity: source_order_quantity,
       charge_quantity: source_charge_quantity,
       sub_total_cents: oli.sub_total_cents,
@@ -556,7 +537,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       tax_three_cents: oli.tax_three_cents,
       grand_total_cents: oli.grand_total_cents,
       authorization_total_cents: oli.authorization_total_cents,
-      translations: Translation.merge_translations(%{}, source.translations, ["name"])
+      translations: Translation.merge_translations(%{}, goods.translations, ["name"])
     }
 
     case child do

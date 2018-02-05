@@ -1,7 +1,7 @@
 defmodule BlueJet.Storefront.Service do
   use BlueJet, :service
 
-  alias BlueJet.Storefront.{IdentityService}
+  alias BlueJet.Storefront.IdentityService
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   alias Ecto.Multi

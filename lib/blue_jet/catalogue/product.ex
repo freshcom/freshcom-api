@@ -35,7 +35,7 @@ defmodule BlueJet.Catalogue.Product do
     field :print_name, :string
 
     field :sort_index, :integer, default: 0
-    field :source_quantity, :integer, default: 1
+    field :goods_quantity, :integer, default: 1
     field :maximum_public_order_quantity, :integer, default: 999
     field :primary, :boolean, default: false
     field :auto_fulfill, :boolean, null: false, default: false
@@ -45,9 +45,9 @@ defmodule BlueJet.Catalogue.Product do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :source_id, Ecto.UUID
-    field :source_type, :string
-    field :source, :map, virtual: true
+    field :goods_id, Ecto.UUID
+    field :goods_type, :string
+    field :goods, :map, virtual: true
 
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
@@ -86,7 +86,7 @@ defmodule BlueJet.Catalogue.Product do
   end
 
   defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:kind, :source_id, :source_type]
+    writable_fields() -- [:kind, :goods_id, :goods_type]
   end
 
   defp required_fields(changeset) do
@@ -94,36 +94,36 @@ defmodule BlueJet.Catalogue.Product do
 
     common = [:kind, :status, :name_sync, :name, :primary]
     case kind do
-      "simple" -> common ++ [:source_quantity, :maximum_public_order_quantity, :source_id, :source_type]
+      "simple" -> common ++ [:goods_quantity, :maximum_public_order_quantity, :goods_id, :goods_type]
       "with_variants" -> common
       "combo" -> common ++ [:maximum_public_order_quantity]
-      "variant" -> common ++ [:parent_id, :source_quantity, :maximum_public_order_quantity, :sort_index, :source_id, :source_type]
-      "item" -> common ++ [:parent_id, :source_quantity, :sort_index, :source_id, :source_type]
+      "variant" -> common ++ [:parent_id, :goods_quantity, :maximum_public_order_quantity, :sort_index, :goods_id, :goods_type]
+      "item" -> common ++ [:parent_id, :goods_quantity, :sort_index, :goods_id, :goods_type]
       _ -> common
     end
   end
 
-  defp validate_source(changeset = %{ valid?: true }) do
+  defp validate_goods(changeset = %{ valid?: true }) do
     kind = get_field(changeset, :kind)
-    validate_source(changeset, kind)
+    validate_goods(changeset, kind)
   end
 
-  defp validate_source(changeset), do: changeset
+  defp validate_goods(changeset), do: changeset
 
-  defp validate_source(changeset, "with_variants"), do: changeset
-  defp validate_source(changeset, "combo"), do: changeset
+  defp validate_goods(changeset, "with_variants"), do: changeset
+  defp validate_goods(changeset, "combo"), do: changeset
 
-  defp validate_source(changeset, _) do
-    source_id = get_field(changeset, :source_id)
-    source_type = get_field(changeset, :source_type)
+  defp validate_goods(changeset, _) do
+    goods_id = get_field(changeset, :goods_id)
+    goods_type = get_field(changeset, :goods_type)
     account_id = get_field(changeset, :account_id)
 
-    source = get_field(changeset, :source) || GoodsService.get_goods(source_type, source_id)
+    goods = get_field(changeset, :goods) || GoodsService.get_goods(goods_type, goods_id)
 
-    if source && source.account_id == account_id do
+    if goods && goods.account_id == account_id do
       changeset
     else
-      add_error(changeset, :source, "is invalid")
+      add_error(changeset, :goods, "is invalid")
     end
   end
 
@@ -241,7 +241,7 @@ defmodule BlueJet.Catalogue.Product do
     changeset
     |> validate_required(required_fields(changeset))
     |> validate_status()
-    |> validate_source()
+    |> validate_goods()
     |> validate_parent_id()
   end
 
@@ -260,20 +260,20 @@ defmodule BlueJet.Catalogue.Product do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_name(changeset = %{ changes: %{ name_sync: "sync_with_source" } }, _) do
-    source_id = get_field(changeset, :source_id)
-    source_type = get_field(changeset, :source_type)
-    source = get_field(changeset, :source) || GoodsService.get_goods(source_type, source_id)
+  def put_name(changeset = %{ changes: %{ name_sync: "sync_with_goods" } }, _) do
+    goods_id = get_field(changeset, :goods_id)
+    goods_type = get_field(changeset, :goods_type)
+    goods = get_field(changeset, :goods) || GoodsService.get_goods(goods_type, goods_id)
 
-    if source do
+    if goods do
       new_translations =
         changeset
         |> get_field(:translations)
-        |> Translation.merge_translations(source.translations, ["name"])
+        |> Translation.merge_translations(goods.translations, ["name"])
 
       changeset
-      |> put_change(:name, source.name)
-      |> put_change(:source, source)
+      |> put_change(:name, goods.name)
+      |> put_change(:goods, goods)
       |> put_change(:translations, new_translations)
     else
       changeset
@@ -298,7 +298,7 @@ defmodule BlueJet.Catalogue.Product do
     field: :external_file_collections,
     owner_type: "Product"
 
-  def put_external_resources(product, _, _), do: product
+  def put_external_regoodss(product, _, _), do: product
 
   defmodule Query do
     use BlueJet, :query

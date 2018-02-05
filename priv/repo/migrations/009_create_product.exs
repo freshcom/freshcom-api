@@ -8,8 +8,8 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
 
       add :parent_id, references(:products, type: :binary_id, on_delete: :delete_all)
       add :avatar_id, references(:external_files, type: :binary_id, on_delete: :nilify_all)
-      add :source_id, :binary_id
-      add :source_type, :string
+      add :goods_id, :binary_id
+      add :goods_type, :string
 
       add :status, :string, null: false
       add :code, :string
@@ -22,7 +22,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :kind, :string, null: false, default: "simple"
 
       add :sort_index, :integer, null: false
-      add :source_quantity, :integer, null: false
+      add :goods_quantity, :integer, null: false
       add :primary, :boolean, null: false, default: false
       add :maximum_public_order_quantity, :integer
       add :auto_fulfill, :boolean, null: false, default: false
@@ -41,6 +41,6 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
     create index(:products, [:account_id, :label], where: "label IS NOT NULL")
     create index(:products, [:account_id, :kind])
     create index(:products, [:account_id, :parent_id])
-    create index(:products, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
+    create index(:products, [:account_id, :goods_id, :goods_type], where: "goods_id IS NOT NULL")
   end
 end

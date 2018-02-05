@@ -320,14 +320,14 @@ defmodule BlueJet.OrderLineItemTest do
         name: Faker.String.base64(5)
       }
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
+      |> expect(:get_stockable, fn(_, _) -> stockable end)
 
       product = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_quantity: 2,
-        source_id: stockable.id,
-        source_type: "Stockable"
+        goods_quantity: 2,
+        goods_id: stockable.id,
+        goods_type: "Stockable"
       })
 
       CatalogueServiceMock
@@ -369,7 +369,7 @@ defmodule BlueJet.OrderLineItemTest do
       assert child.grand_total_cents == oli.grand_total_cents
       assert child.authorization_total_cents == oli.authorization_total_cents
       assert child.auto_fulfill == oli.auto_fulfill
-      assert child.order_quantity == oli.order_quantity * product.source_quantity
+      assert child.order_quantity == oli.order_quantity * product.goods_quantity
       assert child.charge_quantity == oli.charge_quantity
     end
 
@@ -412,6 +412,7 @@ defmodule BlueJet.OrderLineItemTest do
     end
 
     test "when source is an depositable" do
+      account = %Account{}
       depositable = %Depositable{
         id: Ecto.UUID.generate(),
         name: Faker.String.base64(5),
@@ -434,6 +435,7 @@ defmodule BlueJet.OrderLineItemTest do
 
       order = %Order{ customer_id: Ecto.UUID.generate() }
       OrderLineItem.auto_fulfill(%OrderLineItem{
+        account: account,
         order: order,
         source_id: depositable.id,
         source_type: "Depositable"

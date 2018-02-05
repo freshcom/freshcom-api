@@ -61,8 +61,8 @@ defmodule BlueJet.CatalogueTest do
         account: account,
         fields: %{
           "name" => Faker.String.base64(5),
-          "source_id" => Ecto.UUID.generate(),
-          "source_type" => "Stockable"
+          "goods_id" => Ecto.UUID.generate(),
+          "goods_type" => "Stockable"
         }
       }
 
@@ -91,8 +91,8 @@ defmodule BlueJet.CatalogueTest do
       product = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
 
       request = %AccessRequest{
@@ -123,8 +123,8 @@ defmodule BlueJet.CatalogueTest do
       product = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
 
       request = %AccessRequest{
@@ -166,8 +166,8 @@ defmodule BlueJet.CatalogueTest do
         account_id: account.id,
         avatar_id: avatar.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
 
       request = %AccessRequest{
@@ -326,15 +326,15 @@ defmodule BlueJet.CatalogueTest do
       product1 = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
       product2 = Repo.insert!(%Product{
         account_id: account.id,
         status: "active",
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
       Repo.insert!(%ProductCollectionMembership{
         account_id: account.id,
@@ -380,8 +380,8 @@ defmodule BlueJet.CatalogueTest do
       product = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
 
       request = %AccessRequest{
@@ -416,8 +416,8 @@ defmodule BlueJet.CatalogueTest do
   #     product = Repo.insert!(%Product{
   #       account_id: account.id,
   #       name: Faker.String.base64(5),
-  #       source_id: Ecto.UUID.generate(),
-  #       source_type: "Stockable"
+  #       goods_id: Ecto.UUID.generate(),
+  #       goods_type: "Stockable"
   #     })
   #     pcm = Repo.insert!(%ProductCollectionMembership{
   #       account_id: account.id,
@@ -456,8 +456,8 @@ defmodule BlueJet.CatalogueTest do
       product = Repo.insert!(%Product{
         account_id: account.id,
         name: Faker.String.base64(5),
-        source_id: Ecto.UUID.generate(),
-        source_type: "Stockable"
+        goods_id: Ecto.UUID.generate(),
+        goods_type: "Stockable"
       })
       pcm = Repo.insert!(%ProductCollectionMembership{
         account_id: account.id,

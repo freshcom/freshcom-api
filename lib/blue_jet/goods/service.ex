@@ -8,24 +8,12 @@ defmodule BlueJet.Goods.Service do
     opts[:account] || IdentityService.get_account(opts)
   end
 
-  def get_goods("Stockable", id) do
-    Repo.get(Stockable, id)
-  end
-
-  def get_goods("Unlockable", id) do
-    Repo.get(Unlockable, id)
-  end
-
-  def get_goods("Depositable", id) do
-    Repo.get(Depositable, id)
-  end
-
-  def get_depositable(fields, opts) do
+  def get_stockable(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
-    Depositable.Query.default()
-    |> Depositable.Query.for_account(account.id)
+    Stockable.Query.default()
+    |> Stockable.Query.for_account(account.id)
     |> Repo.get_by(fields)
     |> preload(preloads[:path], preloads[:opts])
   end
@@ -36,6 +24,16 @@ defmodule BlueJet.Goods.Service do
 
     Unlockable.Query.default()
     |> Unlockable.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def get_depositable(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    Depositable.Query.default()
+    |> Depositable.Query.for_account(account.id)
     |> Repo.get_by(fields)
     |> preload(preloads[:path], preloads[:opts])
   end

@@ -1,20 +1,36 @@
 defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Translation
+  alias BlueJet.{Repo, Translation}
   alias BlueJet.Storefront.{CrmService, IdentityService, CatalogueService, GoodsService, DistributionService}
 
   def get_account(oli) do
     oli.account || IdentityService.get_account(oli)
   end
 
-  def get_depositable(oli = %{ source_id: depositable_id, source_type: "Depositable" }) do
-    opts = get_sopts(oli)
-    oli.source || GoodsService.get_depositable(%{ id: depositable_id }, opts)
+  def get_goods(oli = %{ product: %{ goods_type: "Stockable", goods_id: id }}) do
+    account = get_account(oli)
+    GoodsService.get_stockable(%{ id: id }, %{ account: account })
+  end
+
+  def get_goods(oli = %{ product: %{ goods_type: "Unlockable", goods_id: id }}) do
+    account = get_account(oli)
+    GoodsService.get_unlockable(%{ id: id }, %{ account: account })
+  end
+
+  def get_depositable(oli = %{ source_type: "Depositable", source_id: id }) do
+    account = get_account(oli)
+    GoodsService.get_depositable(%{ id: id }, %{ account: account })
+  end
+
+  def get_depositable(oli = %{ product: %{ goods_type: "Depositable", goods_id: id }}) do
+    account = get_account(oli)
+    GoodsService.get_depositable(%{ id: id }, %{ account: account })
   end
 
   def get_point_account(oli) do
     opts = get_sopts(oli)
+    oli = Repo.preload(oli, :order)
     CrmService.get_point_account(%{ customer_id: oli.order.customer_id }, opts)
   end
 

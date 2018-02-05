@@ -82,7 +82,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       :short_name,
       :print_name,
       :sort_index,
-      :source_quantity,
+      :goods_quantity,
       :maximum_public_order_quantity,
       :primary,
       :auto_fulfill,
@@ -90,8 +90,8 @@ defmodule BlueJet.Catalogue.ProductTest do
       :description,
       :custom_data,
       :translations,
-      :source_id,
-      :source_type,
+      :goods_id,
+      :goods_type,
       :avatar_id,
       :parent_id
     ]
@@ -107,27 +107,27 @@ defmodule BlueJet.Catalogue.ProductTest do
         |> Product.validate()
 
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :source_id, :source_type]
+      assert Keyword.keys(changeset.errors) == [:name, :goods_id, :goods_type]
     end
 
-    test "when given invalid source" do
+    test "when given invalid goods" do
       GoodsServiceMock
       |> expect(:get_goods, fn(_, _) -> nil end)
 
       changeset =
         change(%Product{}, %{
-          source_id: Ecto.UUID.generate(),
-          source_type: "Stockable",
+          goods_id: Ecto.UUID.generate(),
+          goods_type: "Stockable",
           name: Faker.String.base64(5)
         })
         |> Product.validate()
 
       verify!()
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:source]
+      assert Keyword.keys(changeset.errors) == [:goods]
     end
 
-    test "when given valid source" do
+    test "when given valid goods" do
       account_id = Ecto.UUID.generate()
       stockable = %Stockable{
         id: Ecto.UUID.generate(),
@@ -138,8 +138,8 @@ defmodule BlueJet.Catalogue.ProductTest do
 
       changeset =
         change(%Product{ account_id: account_id }, %{
-          source_id: stockable.id,
-          source_type: "Stockable",
+          goods_id: stockable.id,
+          goods_type: "Stockable",
           name: Faker.String.base64(5)
         })
         |> Product.validate()
@@ -416,7 +416,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         |> Product.validate()
 
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :parent_id, :source_id, :source_type]
+      assert Keyword.keys(changeset.errors) == [:name, :parent_id, :goods_id, :goods_type]
     end
 
     test "when given product varaint with invalid internal status due to missing internal price" do
@@ -438,8 +438,8 @@ defmodule BlueJet.Catalogue.ProductTest do
           kind: "variant",
           parent_id: product_with_variants.id,
           name: Faker.String.base64(5),
-          source_id: stockable.id,
-          source_type: "Stockable"
+          goods_id: stockable.id,
+          goods_type: "Stockable"
         })
         |> Product.validate()
 
@@ -471,8 +471,8 @@ defmodule BlueJet.Catalogue.ProductTest do
         kind: "variant",
         parent_id: product_with_variants.id,
         name: Faker.String.base64(5),
-        source_id: stockable.id,
-        source_type: "Stockable"
+        goods_id: stockable.id,
+        goods_type: "Stockable"
       })
       Repo.insert!(%Price{
         account_id: account.id,
@@ -510,8 +510,8 @@ defmodule BlueJet.Catalogue.ProductTest do
           kind: "variant",
           parent_id: product_with_variants.id,
           name: Faker.String.base64(5),
-          source_id: stockable.id,
-          source_type: "Stockable"
+          goods_id: stockable.id,
+          goods_type: "Stockable"
         })
         |> Product.validate()
 
@@ -543,8 +543,8 @@ defmodule BlueJet.Catalogue.ProductTest do
         kind: "variant",
         parent_id: product_with_variants.id,
         name: Faker.String.base64(5),
-        source_id: stockable.id,
-        source_type: "Stockable"
+        goods_id: stockable.id,
+        goods_type: "Stockable"
       })
       Repo.insert!(%Price{
         account_id: account.id,
@@ -572,7 +572,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         |> Product.validate()
 
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :parent_id, :source_id, :source_type]
+      assert Keyword.keys(changeset.errors) == [:name, :parent_id, :goods_id, :goods_type]
     end
 
     test "when given product item with valid internal status" do
@@ -598,8 +598,8 @@ defmodule BlueJet.Catalogue.ProductTest do
           kind: "item",
           parent_id: product_combo.id,
           name: Faker.String.base64(5),
-          source_id: stockable.id,
-          source_type: "Stockable"
+          goods_id: stockable.id,
+          goods_type: "Stockable"
         })
         |> Product.validate()
 
@@ -630,8 +630,8 @@ defmodule BlueJet.Catalogue.ProductTest do
           kind: "item",
           parent_id: product_combo.id,
           name: Faker.String.base64(5),
-          source_id: stockable.id,
-          source_type: "Stockable"
+          goods_id: stockable.id,
+          goods_type: "Stockable"
         })
         |> Product.validate()
 
@@ -641,7 +641,7 @@ defmodule BlueJet.Catalogue.ProductTest do
   end
 
   describe "changeset/4" do
-    test "when given name sync is sync with source" do
+    test "when given name sync is sync with goods" do
       account = %Account{ id: Ecto.UUID.generate() }
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
@@ -655,9 +655,9 @@ defmodule BlueJet.Catalogue.ProductTest do
       |> expect(:get_goods, fn(_, _) -> stockable end)
 
       changeset = Product.changeset(%Product{ account_id: account.id, }, %{
-        name_sync: "sync_with_source",
-        source_id: stockable.id,
-        source_type: "Stockable"
+        name_sync: "sync_with_goods",
+        goods_id: stockable.id,
+        goods_type: "Stockable"
       })
 
       verify!()
