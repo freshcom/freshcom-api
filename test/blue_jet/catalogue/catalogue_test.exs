@@ -160,7 +160,9 @@ defmodule BlueJet.CatalogueTest do
       account = Repo.insert!(%Account{})
       avatar = Repo.insert!(%File{
         account_id: account.id,
-        name: Faker.String.base64(5)
+        name: Faker.String.base64(5),
+        content_type: "image/png",
+        size_bytes: 19890
       })
       product = Repo.insert!(%Product{
         account_id: account.id,

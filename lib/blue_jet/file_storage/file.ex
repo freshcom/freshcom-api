@@ -9,7 +9,7 @@ defmodule BlueJet.FileStorage.File do
   ], container: :translations
 
   alias BlueJet.FileStorage.FileCollectionMembership
-  alias BlueJet.FileStorage.IdentityService
+  alias BlueJet.FileStorage.File.Proxy
 
   schema "files" do
     field :account_id, Ecto.UUID
@@ -76,8 +76,15 @@ defmodule BlueJet.FileStorage.File do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(ef, params, locale \\ nil, default_locale \\ nil) do
-    ef = %{ ef | account: get_account(ef) }
+  def changeset(file, :insert, params) do
+    file
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  def changeset(ef, :update, params, locale \\ nil, default_locale \\ nil) do
+    ef = %{ ef | account: Proxy.get_account(ef) }
     default_locale = default_locale || ef.account.default_locale
     locale = locale || default_locale
 
@@ -85,10 +92,6 @@ defmodule BlueJet.FileStorage.File do
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
-  end
-
-  def get_account(ef) do
-    ef.account || IdentityService.get_account(ef)
   end
 
   def key(struct) do
@@ -126,23 +129,5 @@ defmodule BlueJet.FileStorage.File do
     ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(struct))
 
     struct
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.FileStorage.File
-
-    def default() do
-      from(ef in File, order_by: [desc: ef.updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(ef in query, where: ef.account_id == ^account_id)
-    end
-
-    def uploaded(query) do
-      from(ef in query, where: ef.status == "uploaded")
-    end
   end
 end

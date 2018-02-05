@@ -13,8 +13,8 @@ defmodule BlueJet.Repo.Migrations.CreateFile do
       add :name, :string, null: false
       add :label, :string
 
-      add :content_type, :string
-      add :size_bytes, :integer
+      add :content_type, :string, null: false
+      add :size_bytes, :integer, null: false
       add :public_readable, :boolean, default: true, null: false
 
       add :version_name, :string

@@ -6,37 +6,6 @@ defmodule BlueJet.FileStorage do
   alias BlueJet.FileStorage.FileCollection
   alias BlueJet.FileStorage.FileCollectionMembership
 
-  defmodule Service do
-    def delete_external_file(ef = %{}) do
-      ef
-      |> File.delete_object()
-      |> Repo.delete!()
-    end
-
-    def delete_external_file(id, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-
-      ef =
-        File.Query.default()
-        |> File.Query.for_account(account_id)
-        |> Repo.get(File, id)
-
-      if ef do
-        delete_external_file(ef)
-      else
-        {:error, :not_found}
-      end
-    end
-
-    def create_external_file(fields, opts) do
-      account_id = opts[:account_id] || opts[:account].id
-
-      %File{ account_id: account_id, account: opts[:account] }
-      |> File.changeset(fields)
-      |> Repo.insert()
-    end
-  end
-
   ####
   # Macro
   ####

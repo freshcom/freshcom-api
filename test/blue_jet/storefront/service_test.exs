@@ -10,10 +10,6 @@ defmodule BlueJet.Storefront.ServiceTest do
   alias BlueJet.Storefront.Service
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
-  test "play" do
-    # IO.inspect BlueJet.Plugs.Include.to_preloads("root_line_items.children,root_line_items.product,customer.point_account")
-  end
-
   describe "list_order/2" do
     test "order for different account is not returned" do
       account = Repo.insert!(%Account{})

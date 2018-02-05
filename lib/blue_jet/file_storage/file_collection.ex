@@ -8,8 +8,8 @@ defmodule BlueJet.FileStorage.FileCollection do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.FileStorage.IdentityService
   alias BlueJet.FileStorage.{File, FileCollectionMembership}
+  alias BlueJet.FileStorage.FileCollection.Proxy
 
   schema "file_collections" do
     field :account_id, Ecto.UUID
@@ -71,7 +71,7 @@ defmodule BlueJet.FileStorage.FileCollection do
   Builds a changeset based on the `struct` and `params`.
   """
   def changeset(efc, params, locale \\ nil, default_locale \\ nil) do
-    efc = %{ efc | account: get_account(efc) }
+    efc = %{ efc | account: Proxy.get_account(efc) }
     default_locale = default_locale || efc.account.default_locale
     locale = locale || default_locale
 
@@ -86,32 +86,5 @@ defmodule BlueJet.FileStorage.FileCollection do
       select: count(efcm.id),
       where: efcm.collection_id == ^efc_id)
     |> Repo.one()
-  end
-
-  def get_account(efc) do
-    efc.account || IdentityService.get_account(efc)
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.FileStorage.FileCollection
-
-    def default() do
-      from(efc in FileCollection, order_by: [desc: efc.updated_at])
-    end
-
-    def for_owner_type(owner_type) do
-      from(efc in FileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(efc in query, where: efc.account_id == ^account_id)
-    end
-
-    def preloads({:files, ef_preloads}, options) do
-      query = File.Query.default() |> File.Query.uploaded()
-      [files: {query, File.Query.preloads(ef_preloads, options)}]
-    end
   end
 end
