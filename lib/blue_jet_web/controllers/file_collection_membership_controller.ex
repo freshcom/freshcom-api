@@ -16,9 +16,9 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   #     locale: assigns[:locale]
   #   }
 
-  #   %{ external_file_collection_memberships: efcms,
+  #   %{ file_collection_memberships: efcms,
   #      total_count: total_count,
-  #      result_count: result_count } = FileStorage.list_external_file_collection_memberships(request)
+  #      result_count: result_count } = FileStorage.list_file_collection_memberships(request)
 
   #   meta = %{
   #     totalCount: total_count,
@@ -28,7 +28,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   #   render(conn, "index.json-api", data: efcms, opts: [meta: meta, include: conn.query_params["include"]])
   # end
 
-  # def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "external_file_collection_id" => efc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
+  # def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "file_collection_id" => efc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
   #   fields = Map.merge(Params.to_attributes(data), %{ "collection_id" => efc_id })
   #   request = %{
   #     vas: assigns[:vas],
@@ -36,7 +36,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   #     preloads: assigns[:preloads]
   #   }
 
-  #   case FileStorage.create_external_file_collection_membership(request) do
+  #   case FileStorage.create_file_collection_membership(request) do
   #     {:ok, efcm} ->
   #       conn
   #       |> put_status(:created)
@@ -51,13 +51,13 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   # def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
   #   request = %{
   #     vas: assigns[:vas],
-  #     external_file_collection_membership_id: efcm_id,
+  #     file_collection_membership_id: efcm_id,
   #     fields: Params.to_attributes(data),
   #     preloads: assigns[:preloads],
   #     locale: assigns[:locale]
   #   }
 
-  #   case FileStorage.update_external_file_collection_membership(request) do
+  #   case FileStorage.update_file_collection_membership(request) do
   #     {:ok, efcm} ->
   #       render(conn, "show.json-api", data: efcm, opts: [include: conn.query_params["include"]])
   #     {:error, changeset} ->
@@ -70,10 +70,10 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   # def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id }) do
   #   request = %{
   #     vas: assigns[:vas],
-  #     external_file_collection_membership_id: efcm_id
+  #     file_collection_membership_id: efcm_id
   #   }
 
-  #   FileStorage.delete_external_file_collection_membership!(request)
+  #   FileStorage.delete_file_collection_membership!(request)
 
   #   send_resp(conn, :no_content, "")
   # end

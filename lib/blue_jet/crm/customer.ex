@@ -158,8 +158,8 @@ defmodule BlueJet.Crm.Customer do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Customer"
 
   def put_external_resources(customer, _, _), do: customer

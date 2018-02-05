@@ -378,8 +378,8 @@ defmodule BlueJet.Storefront.Order do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Order"
 
   def put_external_resources(order, _, _), do: order

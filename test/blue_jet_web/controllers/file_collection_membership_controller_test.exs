@@ -51,9 +51,9 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id }
   end
 
-  describe "POST /v1/external_file_collections/:efc_id/memberships" do
+  describe "POST /v1/file_collections/:efc_id/memberships" do
     test "with no access token", %{ conn: conn, efc1_id: efc1_id } do
-      conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
+      conn = post(conn, "/v1/file_collections/#{efc1_id}/memberships", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs
@@ -66,7 +66,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     test "with missing rels", %{ conn: conn, uat1: uat1, efc1_id: efc1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
+      conn = post(conn, "/v1/file_collections/#{efc1_id}/memberships", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @invalid_attrs
@@ -98,7 +98,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
+      conn = post(conn, "/v1/file_collections/#{efc1_id}/memberships", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
@@ -120,7 +120,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     test "with valid attrs and rels", %{ conn: conn, uat1: uat1, efc1_id: efc1_id, ef1_id: ef1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
+      conn = post(conn, "/v1/file_collections/#{efc1_id}/memberships", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
@@ -144,7 +144,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, efc1_id: efc1_id, ef1_id: ef1_id } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships?include=file,collection", %{
+      conn = post(conn, "/v1/file_collections/#{efc1_id}/memberships?include=file,collection", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
@@ -168,9 +168,9 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     end
   end
 
-  describe "PATCH /v1/external_file_collection_memberships/:id" do
+  describe "PATCH /v1/file_collection_memberships/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = patch(conn, "/v1/external_file_collection_memberships/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/file_collection_memberships/#{Ecto.UUID.generate()}", %{
         "data" => %{
           "id" => "test",
           "type" => "FileCollectionMembership",
@@ -214,7 +214,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, "/v1/external_file_collection_memberships/#{efcm2_id}", %{
+        patch(conn, "/v1/file_collection_memberships/#{efcm2_id}", %{
           "data" => %{
             "id" => efcm2_id,
             "type" => "FileCollectionMembership",
@@ -246,7 +246,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}", %{
+      conn = patch(conn, "/v1/file_collection_memberships/#{efcm1_id}", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
@@ -295,7 +295,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}?locale=zh-CN&include=file,collection", %{
+      conn = patch(conn, "/v1/file_collection_memberships/#{efcm1_id}?locale=zh-CN&include=file,collection", %{
         "data" => %{
           "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
@@ -326,7 +326,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     end
   end
 
-  describe "GET /v1/external_file_collection_memberships" do
+  describe "GET /v1/file_collection_memberships" do
     test "with no access token", %{ conn: conn } do
       conn = get(conn, sku_path(conn, :index))
 
@@ -371,7 +371,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_collection_membership_path(conn, :index))
+      conn = get(conn, file_collection_membership_path(conn, :index))
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1
@@ -387,7 +387,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_collection_membership_path(conn, :index, include: "collection,file", locale: "zh-CN"))
+      conn = get(conn, file_collection_membership_path(conn, :index, include: "collection,file", locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1
@@ -425,7 +425,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, external_file_collection_membership_path(conn, :index, filter: %{ "collectionId" => efc1_id }, include: "collection,file", locale: "zh-CN"))
+      conn = get(conn, file_collection_membership_path(conn, :index, filter: %{ "collectionId" => efc1_id }, include: "collection,file", locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1
@@ -436,9 +436,9 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
     end
   end
 
-  describe "DELETE /v1/external_file_collection_memberships/:id" do
+  describe "DELETE /v1/file_collection_memberships/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = delete(conn, external_file_collection_membership_path(conn, :delete, "test"))
+      conn = delete(conn, file_collection_membership_path(conn, :delete, "test"))
 
       assert conn.status == 401
     end
@@ -476,7 +476,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        delete(conn, external_file_collection_membership_path(conn, :delete, efcm2_id))
+        delete(conn, file_collection_membership_path(conn, :delete, efcm2_id))
       end)
     end
 
@@ -489,7 +489,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = delete(conn, external_file_collection_membership_path(conn, :delete, efcm1_id))
+      conn = delete(conn, file_collection_membership_path(conn, :delete, efcm1_id))
 
       assert conn.status == 204
     end

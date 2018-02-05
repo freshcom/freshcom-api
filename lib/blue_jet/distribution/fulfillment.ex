@@ -30,7 +30,7 @@ defmodule BlueJet.Distribution.Fulfillment do
     field :source_type, :string
     field :source, :map, virtual: true
 
-    field :external_file_collections, {:array, :map}, default: [], virtual: true
+    field :file_collections, {:array, :map}, default: [], virtual: true
 
     timestamps()
 
@@ -81,8 +81,8 @@ defmodule BlueJet.Distribution.Fulfillment do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Fulfillment"
 
   def put_external_resources(fulfillment, _, _), do: fulfillment

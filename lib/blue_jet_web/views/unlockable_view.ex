@@ -19,7 +19,7 @@ defmodule BlueJetWeb.UnlockableView do
   ]
 
   has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :when_included
-  has_many :external_file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
+  has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
     "Unlockable"

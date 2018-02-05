@@ -194,7 +194,7 @@ defmodule BlueJetWeb.ProductControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/products/#{product.id}?locale=zh-CN&include=externalFileCollections")
+      conn = get(conn, "/v1/products/#{product.id}?locale=zh-CN&include=fileCollections")
 
       assert json_response(conn, 200)["data"]["id"] == product.id
       assert json_response(conn, 200)["data"]["attributes"]["status"] == product.status
@@ -333,7 +333,7 @@ defmodule BlueJetWeb.ProductControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/products/#{product.id}?locale=zh-CN&include=externalFileCollections", %{
+      conn = patch(conn, "/v1/products/#{product.id}?locale=zh-CN&include=fileCollections", %{
         "data" => %{
           "id" => product.id,
           "type" => "Product",
@@ -563,7 +563,7 @@ defmodule BlueJetWeb.ProductControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/products?locale=zh-CN&include=externalFileCollections")
+      conn = get(conn, "/v1/products?locale=zh-CN&include=fileCollections")
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3

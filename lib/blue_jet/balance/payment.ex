@@ -167,8 +167,8 @@ defmodule BlueJet.Balance.Payment do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Payment"
 
   def put_external_resources(payment, _, _), do: payment

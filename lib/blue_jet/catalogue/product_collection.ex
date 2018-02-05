@@ -80,12 +80,12 @@ defmodule BlueJet.Catalogue.ProductCollection do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file,
+    put_external_resources: :file,
     field: :avatar
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "ProductCollection"
 
   def put_external_resources(product_collection, _, _), do: product_collection

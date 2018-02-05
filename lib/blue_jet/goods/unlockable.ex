@@ -30,7 +30,7 @@ defmodule BlueJet.Goods.Unlockable do
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
 
-    field :external_file_collections, {:array, :map}, virtual: true, default: []
+    field :file_collections, {:array, :map}, virtual: true, default: []
 
     timestamps()
   end
@@ -85,12 +85,12 @@ defmodule BlueJet.Goods.Unlockable do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file,
+    put_external_resources: :file,
     field: :avatar
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Unlockable"
 
   def put_external_resources(unlockable, _, _), do: unlockable

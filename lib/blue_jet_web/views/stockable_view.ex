@@ -28,7 +28,7 @@ defmodule BlueJetWeb.StockableView do
   ]
 
   has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :always
-  has_many :external_file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
+  has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
     "Stockable"

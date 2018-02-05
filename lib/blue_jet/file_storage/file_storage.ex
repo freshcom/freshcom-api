@@ -17,7 +17,7 @@ defmodule BlueJet.FileStorage do
         def put_external_resources(resource = %{ unquote(foreign_key) => nil }, {unquote(field), nil}, _), do: resource
 
         def put_external_resources(resource = %{ unquote(foreign_key) => ef_id }, {unquote(field), nil}, %{ account: account, locale: locale }) do
-          {:ok, %{ data: ef }} = FileStorage.do_get_external_file(%AccessRequest{
+          {:ok, %{ data: ef }} = FileStorage.do_get_file(%AccessRequest{
             account: account,
             params: %{ "id" => ef_id },
             locale: locale
@@ -43,18 +43,18 @@ defmodule BlueJet.FileStorage do
           {:ok, %{ data: efcs }} =
             request
             |> AccessRequest.transform_by_role()
-            |> FileStorage.do_list_external_file_collection()
+            |> FileStorage.do_list_file_collection()
 
           Map.put(resource, unquote(field), efcs)
         end
       end
     end
 
-    defmacro __using__(put_external_resources: :external_file, field: field) do
+    defmacro __using__(put_external_resources: :file, field: field) do
       put_external_resources_ef(field)
     end
 
-    defmacro __using__(put_external_resources: :external_file_collection, field: field, owner_type: owner_type) do
+    defmacro __using__(put_external_resources: :file_collection, field: field, owner_type: owner_type) do
       put_external_resources_efc(field, owner_type)
     end
   end
@@ -62,16 +62,16 @@ defmodule BlueJet.FileStorage do
   #
   # MARK: External File
   #
-  def list_external_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.list_external_file") do
+  def list_file(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.list_file") do
       request
-      |> do_list_external_file
+      |> do_list_file
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_external_file(request = %{ account: account, filter: filter, pagination: pagination }) do
+  def do_list_file(request = %{ account: account, filter: filter, pagination: pagination }) do
     data_query =
       File.Query.default()
       |> search([:name, :code, :id], request.search, request.locale, account.default_locale, File.translatable_fields())
@@ -89,7 +89,7 @@ defmodule BlueJet.FileStorage do
     data_query = paginate(data_query, size: pagination[:size], number: pagination[:number])
 
     preloads = File.Query.preloads(request.preloads, role: request.role)
-    external_files =
+    files =
       data_query
       |> Repo.all()
       |> Repo.preload(preloads)
@@ -101,84 +101,84 @@ defmodule BlueJet.FileStorage do
         all_count: all_count,
         total_count: total_count
       },
-      data: external_files
+      data: files
     }
 
     {:ok, response}
   end
 
-  defp external_file_response(nil, _), do: {:error, :not_found}
+  defp file_response(nil, _), do: {:error, :not_found}
 
-  defp external_file_response(external_file, request = %{ account: account }) do
+  defp file_response(file, request = %{ account: account }) do
     preloads = File.Query.preloads(request.preloads, role: request.role)
 
-    external_file =
-      external_file
+    file =
+      file
       |> File.put_url()
       |> Repo.preload(preloads)
       |> Translation.translate(request.locale, account.default_locale)
 
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: external_file }}
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
   end
 
-  def create_external_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.create_external_file") do
+  def create_file(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.create_file") do
       request
-      |> do_create_external_file()
+      |> do_create_file()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_create_external_file(request = %{ vas: vas, account: account }) do
+  def do_create_file(request = %{ vas: vas, account: account }) do
     fields = Map.merge(request.fields, %{ "user_id" => vas[:user_id] })
 
-    with {:ok, external_file} <- Service.create_external_file(fields, %{ account: account }) do
-      external_file_response(external_file, request)
+    with {:ok, file} <- Service.create_file(fields, %{ account: account }) do
+      file_response(file, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
     end
   end
 
-  def get_external_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.get_external_file") do
+  def get_file(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.get_file") do
       request
-      |> do_get_external_file()
+      |> do_get_file()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_get_external_file(request = %{ account: account, params: %{ "id" => id }}) do
-    external_file =
+  def do_get_file(request = %{ account: account, params: %{ "id" => id }}) do
+    file =
       File.Query.default()
       |> File.Query.for_account(account.id)
       |> Repo.get(id)
 
-    external_file_response(external_file, request)
+    file_response(file, request)
   end
 
-  def update_external_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.update_external_file") do
+  def update_file(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.update_file") do
       request
-      |> do_update_external_file()
+      |> do_update_file()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_update_external_file(request = %{ account: account, params: %{ "id" => id }}) do
-    external_file =
+  def do_update_file(request = %{ account: account, params: %{ "id" => id }}) do
+    file =
       File.Query.default()
       |> File.Query.for_account(account.id)
       |> Repo.get(id)
 
-    with %File{} <- external_file,
-         changeset = File.changeset(external_file, request.fields, request.locale, account.default_locale),
-         {:ok, external_file} <- Repo.update(changeset)
+    with %File{} <- file,
+         changeset = File.changeset(file, request.fields, request.locale, account.default_locale),
+         {:ok, file} <- Repo.update(changeset)
     do
-      external_file_response(external_file, request)
+      file_response(file, request)
     else
       nil -> {:error, :not_found}
 
@@ -189,17 +189,17 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def delete_external_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.delete_external_file") do
+  def delete_file(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.delete_file") do
       request
-      |> do_delete_external_file()
+      |> do_delete_file()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_delete_external_file(%{ account: account, params: %{ "id" => ef_id } }) do
-    with {:ok, _} <- Service.delete_external_file(ef_id, %{ account: account }) do
+  def do_delete_file(%{ account: account, params: %{ "id" => ef_id } }) do
+    with {:ok, _} <- Service.delete_file(ef_id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
       other -> other
@@ -209,17 +209,17 @@ defmodule BlueJet.FileStorage do
   ####
   # FileCollection
   ####
-  def list_external_file_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.list_external_file_collection") do
+  def list_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.list_file_collection") do
       request
       |> AccessRequest.transform_by_role()
-      |> do_list_external_file_collection()
+      |> do_list_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_external_file_collection(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+  def do_list_file_collection(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
     data_query =
       FileCollection.Query.default()
       |> search(
@@ -265,9 +265,9 @@ defmodule BlueJet.FileStorage do
     {:ok, response}
   end
 
-  defp external_file_collection_response(nil, _), do: {:error, :not_found}
+  defp file_collection_response(nil, _), do: {:error, :not_found}
 
-  defp external_file_collection_response(efc, request = %{ account: account }) do
+  defp file_collection_response(efc, request = %{ account: account }) do
     preloads = FileCollection.Query.preloads(request.preloads, role: request.role)
 
     efc =
@@ -279,16 +279,16 @@ defmodule BlueJet.FileStorage do
     {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: efc }}
   end
 
-  def create_external_file_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.create_external_file_collection") do
+  def create_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.create_file_collection") do
       request
-      |> do_create_external_file_collection()
+      |> do_create_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_create_external_file_collection(request = %{ account: account }) do
+  def do_create_file_collection(request = %{ account: account }) do
     request = %{ request | locale: account.default_locale }
     efc = %FileCollection{ account_id: account.id, account: account }
 
@@ -298,7 +298,7 @@ defmodule BlueJet.FileStorage do
         create_efcms!(request.fields["file_ids"] || [], efc)
       end)
 
-      external_file_collection_response(efc, %{ request | locale: account.default_locale })
+      file_collection_response(efc, %{ request | locale: account.default_locale })
     else
       %{ errors: errors } ->
         {:error, %AccessResponse{ errors: errors }}
@@ -324,34 +324,34 @@ defmodule BlueJet.FileStorage do
     efc
   end
 
-  def get_external_file_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.get_external_file_collection") do
+  def get_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.get_file_collection") do
       request
-      |> do_get_external_file_collection()
+      |> do_get_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_get_external_file_collection(request = %{ account: account, params: %{ "id" => efc_id } }) do
+  def do_get_file_collection(request = %{ account: account, params: %{ "id" => efc_id } }) do
     efc =
       FileCollection.Query.default()
       |> FileCollection.Query.for_account(account.id)
       |> Repo.get(efc_id)
 
-    external_file_collection_response(efc, request)
+    file_collection_response(efc, request)
   end
 
-  def update_external_file_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.update_external_file_collection") do
+  def update_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.update_file_collection") do
       request
-      |> do_update_external_file_collection()
+      |> do_update_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_update_external_file_collection(request = %{ account: account, params: %{ "id" => efc_id }}) do
+  def do_update_file_collection(request = %{ account: account, params: %{ "id" => efc_id }}) do
     efc =
       FileCollection.Query.default()
       |> FileCollection.Query.for_account(account.id)
@@ -381,7 +381,7 @@ defmodule BlueJet.FileStorage do
         create_efcms!(file_ids_to_add, efc, initial_sort_index)
       end)
 
-      external_file_collection_response(efc, request)
+      file_collection_response(efc, request)
     else
       nil -> {:error, :not_found}
       {:error, %{ errors: errors }} ->
@@ -434,16 +434,16 @@ defmodule BlueJet.FileStorage do
   end
 
   # TODO: use another process to delete, and also need to remove the files
-  def delete_external_file_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.delete_external_file_collection") do
+  def delete_file_collection(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.delete_file_collection") do
       request
-      |> do_delete_external_file_collection()
+      |> do_delete_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_delete_external_file_collection(%{ account: account, params: %{ "id" => efc_id } }) do
+  def do_delete_file_collection(%{ account: account, params: %{ "id" => efc_id } }) do
     efc =
       FileCollection.Query.default()
       |> FileCollection.Query.for_account(account.id)
@@ -460,7 +460,7 @@ defmodule BlueJet.FileStorage do
   ####
   # FileCollectionMembership
   ####
-  # def create_external_file_collection_membership(request = %{ vas: vas }) do
+  # def create_file_collection_membership(request = %{ vas: vas }) do
   #   defaults = %{ preloads: [], fields: %{} }
   #   request = Map.merge(defaults, request)
 
@@ -475,7 +475,7 @@ defmodule BlueJet.FileStorage do
   #   end
   # end
 
-  # def update_external_file_collection_membership(request = %{ vas: vas, external_file_collection_membership_id: efcm_id }) do
+  # def update_file_collection_membership(request = %{ vas: vas, file_collection_membership_id: efcm_id }) do
   #   defaults = %{ preloads: [], fields: %{}, locale: "en" }
   #   request = Map.merge(defaults, request)
 
@@ -494,7 +494,7 @@ defmodule BlueJet.FileStorage do
   #   end
   # end
 
-  # def list_external_file_collection_memberships(request = %{ vas: vas }) do
+  # def list_file_collection_memberships(request = %{ vas: vas }) do
   #   defaults = %{ filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
   #   request = Map.merge(defaults, request)
   #   account_id = vas[:account_id]
@@ -518,11 +518,11 @@ defmodule BlueJet.FileStorage do
   #   %{
   #     total_count: total_count,
   #     result_count: result_count,
-  #     external_file_collection_memberships: efcms
+  #     file_collection_memberships: efcms
   #   }
   # end
 
-  # def delete_external_file_collection_membership!(%{ vas: vas, external_file_collection_membership_id: efcm_id }) do
+  # def delete_file_collection_membership!(%{ vas: vas, file_collection_membership_id: efcm_id }) do
   #   efcm = Repo.get_by!(FileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
   #   ef = Repo.get!(File, efcm.file_id)
 

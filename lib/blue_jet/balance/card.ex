@@ -106,8 +106,8 @@ defmodule BlueJet.Balance.Card do
   end
 
   use BlueJet.FileStorage.Macro,
-    put_external_resources: :external_file_collection,
-    field: :external_file_collections,
+    put_external_resources: :file_collection,
+    field: :file_collections,
     owner_type: "Card"
 
   def put_external_resources(card, _, _), do: card

@@ -18,9 +18,9 @@ defmodule BlueJetWeb.FileCollectionController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: external_file_collections, meta: meta }} = FileStorage.list_external_file_collection(request)
+    {:ok, %AccessResponse{ data: file_collections, meta: meta }} = FileStorage.list_file_collection(request)
 
-    render(conn, "index.json-api", data: external_file_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    render(conn, "index.json-api", data: file_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "FileCollection" } }) do
@@ -30,7 +30,7 @@ defmodule BlueJetWeb.FileCollectionController do
       preloads: assigns[:preloads]
     }
 
-    case FileStorage.create_external_file_collection(request) do
+    case FileStorage.create_file_collection(request) do
       {:ok, %{ data: efc, meta: meta }} ->
         conn
         |> put_status(:created)
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.FileCollectionController do
       locale: assigns[:locale]
     }
 
-    case FileStorage.get_external_file_collection(request) do
+    case FileStorage.get_file_collection(request) do
       {:ok, %AccessResponse{ data: efc, meta: meta }} ->
         render(conn, "show.json-api", data: efc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -70,7 +70,7 @@ defmodule BlueJetWeb.FileCollectionController do
       locale: assigns[:locale]
     }
 
-    case FileStorage.update_external_file_collection(request) do
+    case FileStorage.update_file_collection(request) do
       {:ok, %AccessResponse{ data: efc }} ->
         render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
 
@@ -89,7 +89,7 @@ defmodule BlueJetWeb.FileCollectionController do
       params: %{ "id" => efc_id }
     }
 
-    FileStorage.delete_external_file_collection(request)
+    FileStorage.delete_file_collection(request)
 
     send_resp(conn, :no_content, "")
   end

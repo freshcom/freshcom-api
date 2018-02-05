@@ -85,7 +85,7 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["unitOfMeasure"] == @valid_attrs["unitOfMeasure"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
       assert json_response(conn, 201)["data"]["relationships"]["avatar"] == %{}
-      assert json_response(conn, 201)["data"]["relationships"]["externalFileCollections"] == %{}
+      assert json_response(conn, 201)["data"]["relationships"]["fileCollections"] == %{}
     end
 
     test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
@@ -257,13 +257,13 @@ defmodule BlueJetWeb.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/skus/#{sku.id}?include=avatar,externalFileCollections&locale=zh-CN")
+      conn = get(conn, "/v1/skus/#{sku.id}?include=avatar,fileCollections&locale=zh-CN")
 
       assert json_response(conn, 200)["data"]["id"] == sku.id
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "Orange"
       assert json_response(conn, 200)["data"]["attributes"]["customData"]["kind"] == "Blue Jay"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
-      assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
+      assert length(json_response(conn, 200)["data"]["relationships"]["fileCollections"]["data"]) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
@@ -450,7 +450,7 @@ defmodule BlueJetWeb.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/skus/#{sku.id}?locale=zh-CN&include=avatar,externalFileCollections", %{
+      conn = patch(conn, "/v1/skus/#{sku.id}?locale=zh-CN&include=avatar,fileCollections", %{
         "data" => %{
           "id" => sku.id,
           "type" => "Sku",
@@ -466,7 +466,7 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["customData"]["kind"] == @valid_attrs["customData"]["kind"]
       assert json_response(conn, 200)["data"]["attributes"]["locale"] == "zh-CN"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
-      assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
+      assert length(json_response(conn, 200)["data"]["relationships"]["fileCollections"]["data"]) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
@@ -812,7 +812,7 @@ defmodule BlueJetWeb.SkuControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, sku_path(conn, :index, include: "avatar,externalFileCollections.files", locale: "zh-CN"))
+      conn = get(conn, sku_path(conn, :index, include: "avatar,fileCollections.files", locale: "zh-CN"))
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3

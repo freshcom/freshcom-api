@@ -19,7 +19,7 @@ defmodule BlueJetWeb.FileController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockables, meta: meta }} = FileStorage.list_external_file(request)
+    {:ok, %AccessResponse{ data: stockables, meta: meta }} = FileStorage.list_file(request)
 
     render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
@@ -31,11 +31,11 @@ defmodule BlueJetWeb.FileController do
       preloads: assigns[:preloads]
     }
 
-    case FileStorage.create_external_file(request) do
-      {:ok, %{ data: external_file, meta: meta }} ->
+    case FileStorage.create_file(request) do
+      {:ok, %{ data: file, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: external_file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+        |> render("show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       {:error, %{ errors: errors }} ->
         conn
@@ -54,9 +54,9 @@ defmodule BlueJetWeb.FileController do
       locale: assigns[:locale]
     }
 
-    case FileStorage.get_external_file(request) do
-      {:ok, %{ data: external_file, meta: meta }} ->
-        render(conn, "show.json-api", data: external_file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    case FileStorage.get_file(request) do
+      {:ok, %{ data: file, meta: meta }} ->
+        render(conn, "show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
     end
@@ -71,9 +71,9 @@ defmodule BlueJetWeb.FileController do
       locale: assigns[:locale]
     }
 
-    case FileStorage.update_external_file(request) do
-      {:ok, %AccessResponse{ data: external_file, meta: meta }} ->
-        render(conn, "show.json-api", data: external_file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    case FileStorage.update_file(request) do
+      {:ok, %AccessResponse{ data: file, meta: meta }} ->
+        render(conn, "show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       {:error, %AccessResponse{ errors: errors }} ->
         conn
@@ -90,7 +90,7 @@ defmodule BlueJetWeb.FileController do
       params: %{ "id" => ef_id }
     }
 
-    FileStorage.delete_external_file(request)
+    FileStorage.delete_file(request)
 
     send_resp(conn, :no_content, "")
   end

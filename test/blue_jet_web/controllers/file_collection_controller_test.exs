@@ -35,9 +35,9 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     %{ conn: conn, uat1: uat1, account1_id: account1_id }
   end
 
-  describe "POST /v1/external_file_collections" do
+  describe "POST /v1/file_collections" do
     test "with no access token", %{ conn: conn } do
-      conn = post(conn, "/v1/external_file_collections", %{
+      conn = post(conn, "/v1/file_collections", %{
         "data" => %{
           "type" => "FileCollection",
           "attributes" => @valid_attrs
@@ -50,7 +50,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections", %{
+      conn = post(conn, "/v1/file_collections", %{
         "data" => %{
           "type" => "FileCollection",
           "attributes" => @invalid_attrs
@@ -64,7 +64,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections", %{
+      conn = post(conn, "/v1/file_collections", %{
         "data" => %{
           "type" => "FileCollection",
           "attributes" => @valid_attrs
@@ -89,7 +89,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_file_collections?include=sku", %{
+      conn = post(conn, "/v1/file_collections?include=sku", %{
         "data" => %{
           "type" => "FileCollection",
           "attributes" => @valid_attrs,
@@ -111,9 +111,9 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     end
   end
 
-  describe "GET /v1/external_file_collections/:id" do
+  describe "GET /v1/file_collections/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, "/v1/external_file_collections/test")
+      conn = get(conn, "/v1/file_collections/test")
 
       assert conn.status == 401
     end
@@ -137,7 +137,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        get(conn, "/v1/external_file_collections/#{efc.id}")
+        get(conn, "/v1/file_collections/#{efc.id}")
       end)
     end
 
@@ -152,7 +152,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections/#{efc.id}")
+      conn = get(conn, "/v1/file_collections/#{efc.id}")
 
       assert json_response(conn, 200)["data"]["id"] == efc.id
       assert json_response(conn, 200)["data"]["attributes"]["label"] == "primary_images"
@@ -176,7 +176,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections/#{efc.id}?locale=zh-CN")
+      conn = get(conn, "/v1/file_collections/#{efc.id}?locale=zh-CN")
 
       assert json_response(conn, 200)["data"]["id"] == efc.id
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "主要图片"
@@ -234,7 +234,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections/#{efc.id}?include=sku,files&locale=zh-CN")
+      conn = get(conn, "/v1/file_collections/#{efc.id}?include=sku,files&locale=zh-CN")
 
       assert json_response(conn, 200)["data"]["id"] == efc.id
       assert json_response(conn, 200)["data"]["attributes"]["label"] == "primary_images"
@@ -246,9 +246,9 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     end
   end
 
-  describe "PATCH /v1/external_file_collections/:id" do
+  describe "PATCH /v1/file_collections/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = patch(conn, "/v1/external_file_collections/test", %{
+      conn = patch(conn, "/v1/file_collections/test", %{
         "data" => %{
           "id" => "test",
           "type" => "FileCollection",
@@ -278,7 +278,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, "/v1/external_file_collections/#{efc.id}", %{
+        patch(conn, "/v1/file_collections/#{efc.id}", %{
           "data" => %{
             "id" => efc.id,
             "type" => "FileCollection",
@@ -296,7 +296,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collections/#{efc.id}", %{
+      conn = patch(conn, "/v1/file_collections/#{efc.id}", %{
         "data" => %{
           "id" => efc.id,
           "type" => "FileCollection",
@@ -316,7 +316,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collections/#{efc.id}", %{
+      conn = patch(conn, "/v1/file_collections/#{efc.id}", %{
         "data" => %{
           "id" => efc.id,
           "type" => "FileCollection",
@@ -337,7 +337,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collections/#{efc.id}?locale=zh-CN", %{
+      conn = patch(conn, "/v1/file_collections/#{efc.id}?locale=zh-CN", %{
         "data" => %{
           "id" => efc.id,
           "type" => "FileCollection",
@@ -401,7 +401,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_file_collections/#{efc.id}?include=sku,files&locale=zh-CN", %{
+      conn = patch(conn, "/v1/file_collections/#{efc.id}?include=sku,files&locale=zh-CN", %{
         "data" => %{
           "id" => efc.id,
           "type" => "FileCollection",
@@ -421,9 +421,9 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     end
   end
 
-  describe "GET /v1/external_file_collections" do
+  describe "GET /v1/file_collections" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, "/v1/external_file_collections")
+      conn = get(conn, "/v1/file_collections")
 
       assert conn.status == 401
     end
@@ -454,7 +454,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections")
+      conn = get(conn, "/v1/file_collections")
 
       assert length(json_response(conn, 200)["data"]) == 2
     end
@@ -475,7 +475,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections?page[number]=2&page[size]=1")
+      conn = get(conn, "/v1/file_collections?page[number]=2&page[size]=1")
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
@@ -501,7 +501,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections?filter[label]=primary_images")
+      conn = get(conn, "/v1/file_collections?filter[label]=primary_images")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
@@ -532,7 +532,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections?locale=zh-CN")
+      conn = get(conn, "/v1/file_collections?locale=zh-CN")
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
@@ -574,7 +574,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections?search=主要&locale=zh-CN")
+      conn = get(conn, "/v1/file_collections?search=主要&locale=zh-CN")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
@@ -641,7 +641,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_file_collections?include=sku,files&locale=zh-CN")
+      conn = get(conn, "/v1/file_collections?include=sku,files&locale=zh-CN")
 
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
@@ -652,9 +652,9 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
     end
   end
 
-  describe "DELETE /v1/external_file_collections/:id" do
+  describe "DELETE /v1/file_collections/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = delete(conn, "/v1/external_file_collections/test")
+      conn = delete(conn, "/v1/file_collections/test")
 
       assert conn.status == 401
     end
@@ -678,7 +678,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        delete(conn, "/v1/external_file_collections/#{efc.id}")
+        delete(conn, "/v1/file_collections/#{efc.id}")
       end)
     end
 
@@ -690,7 +690,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = delete(conn, "/v1/external_file_collections/#{efc.id}")
+      conn = delete(conn, "/v1/file_collections/#{efc.id}")
 
       assert conn.status == 204
     end
