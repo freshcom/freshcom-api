@@ -123,7 +123,7 @@ defmodule BlueJet.Crm.PointTransaction do
   def process(point_transaction, _), do: {:ok, point_transaction}
 
   #
-  # ExternalFile
+  # File
   #
   def get_account(point_transaction) do
     point_transaction.account || IdentityService.get_account(point_transaction)

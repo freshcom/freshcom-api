@@ -1,12 +1,12 @@
-defmodule BlueJet.Repo.Migrations.CreateExternalFile do
+defmodule BlueJet.Repo.Migrations.CreateFile do
   use Ecto.Migration
 
   def change do
-    create table(:external_files, primary_key: false) do
+    create table(:files, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
       add :user_id, references(:users, type: :binary_id)
-      add :original_id, references(:external_files, type: :binary_id, on_delete: :delete_all)
+      add :original_id, references(:files, type: :binary_id, on_delete: :delete_all)
 
       add :status, :string, null: false, default: "pending"
       add :code, :string
@@ -29,14 +29,14 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFile do
       timestamps()
     end
 
-    create unique_index(:external_files, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:external_files, [:account_id, :name])
-    create index(:external_files, [:account_id, :label], where: "label IS NOT NULL")
-    create index(:external_files, [:account_id, :content_type])
-    create index(:external_files, [:account_id, :status])
-    create index(:external_files, [:account_id, :system_tag])
-    create index(:external_files, [:account_id, :version_label])
-    create index(:external_files, [:account_id, :user_id])
-    create index(:external_files, [:account_id, :original_id])
+    create unique_index(:files, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:files, [:account_id, :name])
+    create index(:files, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:files, [:account_id, :content_type])
+    create index(:files, [:account_id, :status])
+    create index(:files, [:account_id, :system_tag])
+    create index(:files, [:account_id, :version_label])
+    create index(:files, [:account_id, :user_id])
+    create index(:files, [:account_id, :original_id])
   end
 end

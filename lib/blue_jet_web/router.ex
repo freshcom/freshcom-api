@@ -46,9 +46,9 @@ defmodule BlueJetWeb.Router do
     ####
     # File Storage
     ####
-    resources "/external_files", ExternalFileController, except: [:new, :edit]
-    resources "/external_file_collections", ExternalFileCollectionController, except: [:new, :edit]
-    # resources "/external_file_collection_memberships", ExternalFileCollectionMembershipController, only: [:index, :update, :delete]
+    resources "/files", FileController, except: [:new, :edit]
+    resources "/file_collections", FileCollectionController, except: [:new, :edit]
+    # resources "/external_file_collection_memberships", FileCollectionMembershipController, only: [:index, :update, :delete]
 
     #####
     # Goods

@@ -7,7 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateProduct do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :parent_id, references(:products, type: :binary_id, on_delete: :delete_all)
-      add :avatar_id, references(:external_files, type: :binary_id, on_delete: :nilify_all)
+      add :avatar_id, references(:files, type: :binary_id, on_delete: :nilify_all)
       add :goods_id, :binary_id
       add :goods_type, :string
 

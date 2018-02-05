@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.ExternalFileController do
+defmodule BlueJetWeb.FileController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -24,7 +24,7 @@ defmodule BlueJetWeb.ExternalFileController do
     render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ExternalFile" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "File" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -62,7 +62,7 @@ defmodule BlueJetWeb.ExternalFileController do
     end
   end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => ef_id, "data" => data = %{ "type" => "ExternalFile" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => ef_id, "data" => data = %{ "type" => "File" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => ef_id },

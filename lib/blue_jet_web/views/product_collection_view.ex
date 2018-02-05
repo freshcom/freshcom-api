@@ -17,7 +17,7 @@ defmodule BlueJetWeb.ProductCollectionView do
     :updated_at
   ]
 
-  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :always
+  has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :always
 
   has_many :memberships, serializer: BlueJetWeb.ProductCollectionMembershipView, identifiers: :when_included
   has_many :products, serializer: BlueJetWeb.ProductView, include: false, identifiers: :when_included

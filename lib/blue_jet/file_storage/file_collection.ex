@@ -1,4 +1,4 @@
-defmodule BlueJet.FileStorage.ExternalFileCollection do
+defmodule BlueJet.FileStorage.FileCollection do
   use BlueJet, :data
 
   use Trans, translates: [
@@ -9,9 +9,9 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   ], container: :translations
 
   alias BlueJet.FileStorage.IdentityService
-  alias BlueJet.FileStorage.{ExternalFile, ExternalFileCollectionMembership}
+  alias BlueJet.FileStorage.{File, FileCollectionMembership}
 
-  schema "external_file_collections" do
+  schema "file_collections" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
@@ -30,7 +30,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
 
     timestamps()
 
-    has_many :file_memberships, ExternalFileCollectionMembership, foreign_key: :collection_id
+    has_many :file_memberships, FileCollectionMembership, foreign_key: :collection_id
     has_many :files, through: [:file_memberships, :file]
   end
 
@@ -65,7 +65,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   end
 
   def put_file_urls(efc = %__MODULE__{}, opts) do
-    Map.put(efc, :files, ExternalFile.put_url(efc.files, opts))
+    Map.put(efc, :files, File.put_url(efc.files, opts))
   end
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -82,7 +82,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   end
 
   def file_count(%__MODULE__{ id: efc_id }) do
-    from(efcm in ExternalFileCollectionMembership,
+    from(efcm in FileCollectionMembership,
       select: count(efcm.id),
       where: efcm.collection_id == ^efc_id)
     |> Repo.one()
@@ -95,14 +95,14 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
   defmodule Query do
     use BlueJet, :query
 
-    alias BlueJet.FileStorage.ExternalFileCollection
+    alias BlueJet.FileStorage.FileCollection
 
     def default() do
-      from(efc in ExternalFileCollection, order_by: [desc: efc.updated_at])
+      from(efc in FileCollection, order_by: [desc: efc.updated_at])
     end
 
     def for_owner_type(owner_type) do
-      from(efc in ExternalFileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
+      from(efc in FileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
     end
 
     def for_account(query, account_id) do
@@ -110,8 +110,8 @@ defmodule BlueJet.FileStorage.ExternalFileCollection do
     end
 
     def preloads({:files, ef_preloads}, options) do
-      query = ExternalFile.Query.default() |> ExternalFile.Query.uploaded()
-      [files: {query, ExternalFile.Query.preloads(ef_preloads, options)}]
+      query = File.Query.default() |> File.Query.uploaded()
+      [files: {query, File.Query.preloads(ef_preloads, options)}]
     end
   end
 end

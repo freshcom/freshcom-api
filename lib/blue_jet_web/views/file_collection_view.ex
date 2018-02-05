@@ -1,8 +1,8 @@
-defmodule BlueJetWeb.ExternalFileCollectionView do
+defmodule BlueJetWeb.FileCollectionView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.FileStorage.ExternalFileCollection
+  alias BlueJet.FileStorage.FileCollection
 
   attributes [
     :status,
@@ -20,15 +20,15 @@ defmodule BlueJetWeb.ExternalFileCollectionView do
     :updated_at
   ]
 
-  has_many :files, serializer: BlueJetWeb.ExternalFileView, identifiers: :when_included
+  has_many :files, serializer: BlueJetWeb.FileView, identifiers: :when_included
   has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type do
-    "ExternalFileCollection"
+    "FileCollection"
   end
 
   def file_count(efc, _conn) do
-    ExternalFileCollection.file_count(efc)
+    FileCollection.file_count(efc)
   end
 
   def owner(struct, _) do

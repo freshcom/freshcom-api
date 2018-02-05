@@ -1,9 +1,9 @@
-defmodule BlueJetWeb.ExternalFileControllerTest do
+defmodule BlueJetWeb.FileControllerTest do
   use BlueJetWeb.ConnCase
 
   alias BlueJet.Identity.User
 
-  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.File
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -35,11 +35,11 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id }
   end
 
-  describe "POST /v1/external_files" do
+  describe "POST /v1/files" do
     test "with no access token", %{ conn: conn } do
-      conn = post(conn, "/v1/external_files", %{
+      conn = post(conn, "/v1/files", %{
         "data" => %{
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @valid_attrs
         }
       })
@@ -50,9 +50,9 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     test "with invalid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_files", %{
+      conn = post(conn, "/v1/files", %{
         "data" => %{
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @invalid_attrs
         }
       })
@@ -64,9 +64,9 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     test "with valid attrs and rels", %{ conn: conn, uat1: uat1 } do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = post(conn, "/v1/external_files", %{
+      conn = post(conn, "/v1/files", %{
         "data" => %{
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @valid_attrs
         }
       })
@@ -79,9 +79,9 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     end
   end
 
-  describe "GET /v1/external_files/:id" do
+  describe "GET /v1/files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, "/v1/external_files/test")
+      conn = get(conn, "/v1/files/test")
 
       assert conn.status == 401
     end
@@ -97,7 +97,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -108,12 +108,12 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        get(conn, "/v1/external_files/#{ef.id}")
+        get(conn, "/v1/files/#{ef.id}")
       end)
     end
 
     test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -123,19 +123,19 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_files/#{ef.id}")
+      conn = get(conn, "/v1/files/#{ef.id}")
 
       assert json_response(conn, 200)["data"]["id"] == ef.id
       assert json_response(conn, 200)["data"]["attributes"]
     end
   end
 
-  describe "PATCH /v1/external_files/:id" do
+  describe "PATCH /v1/files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = patch(conn, "/v1/external_files/test", %{
+      conn = patch(conn, "/v1/files/test", %{
         "data" => %{
           "id" => "test",
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @valid_attrs
         }
       })
@@ -154,7 +154,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -165,10 +165,10 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        patch(conn, "/v1/external_files/#{ef.id}", %{
+        patch(conn, "/v1/files/#{ef.id}", %{
           "data" => %{
             "id" => ef.id,
-            "type" => "ExternalFile",
+            "type" => "File",
             "attributes" => @valid_attrs
           }
         })
@@ -176,7 +176,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     end
 
     test "with valid access token, invalid attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -186,10 +186,10 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_files/#{ef.id}", %{
+      conn = patch(conn, "/v1/files/#{ef.id}", %{
         "data" => %{
           "id" => ef.id,
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @invalid_attrs
         }
       })
@@ -199,7 +199,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     end
 
     test "with valid access token, attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id, user1_id: user1_id } do
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -210,10 +210,10 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = patch(conn, "/v1/external_files/#{ef.id}", %{
+      conn = patch(conn, "/v1/files/#{ef.id}", %{
         "data" => %{
           "id" => ef.id,
-          "type" => "ExternalFile",
+          "type" => "File",
           "attributes" => @valid_attrs
         }
       })
@@ -223,9 +223,9 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     end
   end
 
-  describe "GET /v1/external_files" do
+  describe "GET /v1/files" do
     test "with no access token", %{ conn: conn } do
-      conn = get(conn, "/v1/external_files")
+      conn = get(conn, "/v1/files")
 
       assert conn.status == 401
     end
@@ -241,21 +241,21 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -265,27 +265,27 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_files")
+      conn = get(conn, "/v1/files")
 
       assert length(json_response(conn, 200)["data"]) == 2
     end
 
     test "with valid access token and pagination", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -295,7 +295,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_files?page[number]=2&page[size]=1")
+      conn = get(conn, "/v1/files?page[number]=2&page[size]=1")
 
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
@@ -313,28 +313,28 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account2_id,
         name: "Orange",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "Apple",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "Orange",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "ORANGE",
         status: "uploaded",
@@ -344,7 +344,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_files?filter[status]=pending")
+      conn = get(conn, "/v1/files?filter[status]=pending")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
@@ -362,28 +362,28 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account2_id,
         name: "Orange",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "Apple",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "Orange",
         status: "pending",
         content_type: "image/png",
         size_bytes: 42
       })
-      Repo.insert!(%ExternalFile{
+      Repo.insert!(%File{
         account_id: account1_id,
         name: "ORANGE",
         status: "pending",
@@ -393,7 +393,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = get(conn, "/v1/external_files?search=oran")
+      conn = get(conn, "/v1/files?search=oran")
 
       assert length(json_response(conn, 200)["data"]) == 2
       assert json_response(conn, 200)["meta"]["resultCount"] == 2
@@ -401,9 +401,9 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
     end
   end
 
-  describe "DELETE /v1/external_files/:id" do
+  describe "DELETE /v1/files/:id" do
     test "with no access token", %{ conn: conn } do
-      conn = delete(conn, "/v1/external_files/test")
+      conn = delete(conn, "/v1/files/test")
 
       assert conn.status == 401
     end
@@ -419,7 +419,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
         }
       })
 
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -430,12 +430,12 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
       assert_error_sent(404, fn ->
-        delete(conn, "/v1/external_files/#{ef.id}")
+        delete(conn, "/v1/files/#{ef.id}")
       end)
     end
 
     test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      ef = Repo.insert!(%ExternalFile{
+      ef = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "pending",
@@ -445,7 +445,7 @@ defmodule BlueJetWeb.ExternalFileControllerTest do
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat1}")
 
-      conn = delete(conn, "/v1/external_files/#{ef.id}")
+      conn = delete(conn, "/v1/files/#{ef.id}")
 
       assert conn.status == 204
     end

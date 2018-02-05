@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.ExternalFileCollectionMembershipView do
+defmodule BlueJetWeb.FileCollectionMembershipView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -7,10 +7,11 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipView do
   attributes [
     :sort_index,
     :inserted_at,
-    :updated_at]
+    :updated_at
+  ]
 
-  has_one :collection, serializer: BlueJetWeb.ExternalFileCollectionView
-  has_one :file, serializer: BlueJetWeb.ExternalFileView
+  has_one :collection, serializer: BlueJetWeb.FileCollectionView
+  has_one :file, serializer: BlueJetWeb.FileView
 
   def collection(struct, %{ assigns: %{ locale: locale } }) do
     case struct.collection do

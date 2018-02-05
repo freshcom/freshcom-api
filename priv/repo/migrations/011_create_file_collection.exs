@@ -1,8 +1,8 @@
-defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
+defmodule BlueJet.Repo.Migrations.CreateFileCollection do
   use Ecto.Migration
 
   def change do
-    create table(:external_file_collections, primary_key: false) do
+    create table(:file_collections, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all)
       add :owner_id, :binary_id
@@ -23,10 +23,10 @@ defmodule BlueJet.Repo.Migrations.CreateExternalFileCollection do
       timestamps()
     end
 
-    create unique_index(:external_file_collections, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:external_file_collections, [:account_id, :status])
-    create index(:external_file_collections, [:account_id, :name])
-    create index(:external_file_collections, [:account_id, :label], where: "label IS NOT NULL")
-    create index(:external_file_collections, [:account_id, :owner_id, :owner_type], where: "owner_id IS NOT NULL")
+    create unique_index(:file_collections, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:file_collections, [:account_id, :status])
+    create index(:file_collections, [:account_id, :name])
+    create index(:file_collections, [:account_id, :label], where: "label IS NOT NULL")
+    create index(:file_collections, [:account_id, :owner_id, :owner_type], where: "owner_id IS NOT NULL")
   end
 end

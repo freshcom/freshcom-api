@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.ExternalFileView do
+defmodule BlueJetWeb.FileView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -22,11 +22,11 @@ defmodule BlueJetWeb.ExternalFileView do
   ]
 
   def type do
-    "ExternalFile"
+    "File"
   end
 
   # Avoid conflicts with path helper url/1
-  def url(external_file, _) do
-    external_file.url
+  def url(file, _) do
+    file.url
   end
 end

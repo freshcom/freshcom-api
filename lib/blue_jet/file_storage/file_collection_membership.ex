@@ -1,17 +1,17 @@
-defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
+defmodule BlueJet.FileStorage.FileCollectionMembership do
   use BlueJet, :data
 
-  alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.FileCollection
+  alias BlueJet.FileStorage.File
 
-  schema "external_file_collection_memberships" do
+  schema "file_collection_memberships" do
     field :account_id, Ecto.UUID
     field :sort_index, :integer, default: 100
 
     timestamps()
 
-    belongs_to :collection, ExternalFileCollection
-    belongs_to :file, ExternalFile
+    belongs_to :collection, FileCollection
+    belongs_to :file, File
   end
 
   @type t :: Ecto.Schema.t
@@ -36,7 +36,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
 
   defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
     account_id = get_field(changeset, :account_id)
-    collection = Repo.get(ExternalFileCollection, collection_id)
+    collection = Repo.get(FileCollection, collection_id)
 
     if collection && collection.account_id == account_id do
       changeset
@@ -49,7 +49,7 @@ defmodule BlueJet.FileStorage.ExternalFileCollectionMembership do
 
   defp validate_file_id(changeset = %{ valid?: true, changes: %{ file_id: file_id } }) do
     account_id = get_field(changeset, :account_id)
-    file = Repo.get(ExternalFile, file_id)
+    file = Repo.get(File, file_id)
 
     if file && file.account_id == account_id do
       changeset

@@ -1,11 +1,11 @@
-defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
+defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
   use BlueJetWeb.ConnCase
 
   alias BlueJet.Identity.User
 
-  alias BlueJet.FileStorage.ExternalFileCollectionMembership
-  alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.FileCollectionMembership
+  alias BlueJet.FileStorage.FileCollection
+  alias BlueJet.FileStorage.File
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -25,7 +25,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     })
     {:ok, %{ access_token: uat1 }} = Identity.authenticate(%{ username: "test1@example.com", password: "test1234", scope: "type:user" })
 
-    %ExternalFileCollection{ id: efc1_id } = Repo.insert!(%ExternalFileCollection{
+    %FileCollection{ id: efc1_id } = Repo.insert!(%FileCollection{
       account_id: account1_id,
       name: "Primary Images",
       label: "primary_images",
@@ -36,7 +36,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       }
     })
 
-    %ExternalFile{ id: ef1_id } = Repo.insert!(%ExternalFile{
+    %File{ id: ef1_id } = Repo.insert!(%File{
       account_id: account1_id,
       name: Faker.Lorem.word(),
       status: "uploaded",
@@ -55,7 +55,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     test "with no access token", %{ conn: conn, efc1_id: efc1_id } do
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs
         }
       })
@@ -68,7 +68,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @invalid_attrs
         }
       })
@@ -88,7 +88,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         }
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -100,12 +100,12 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
           "relationships" => %{
             "file": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => ef2_id
               }
             }
@@ -122,12 +122,12 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
           "relationships" => %{
             "file": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => ef1_id
               }
             }
@@ -146,12 +146,12 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = post(conn, "/v1/external_file_collections/#{efc1_id}/memberships?include=file,collection", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
           "relationships" => %{
             "file": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => ef1_id
               }
             }
@@ -163,8 +163,8 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["sortIndex"]
       assert json_response(conn, 201)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
       assert json_response(conn, 201)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
-      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
-      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "File" end)) == 1
     end
   end
 
@@ -173,7 +173,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       conn = patch(conn, "/v1/external_file_collection_memberships/#{Ecto.UUID.generate()}", %{
         "data" => %{
           "id" => "test",
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs
         }
       })
@@ -192,7 +192,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         }
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -200,12 +200,12 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account2_id,
         label: "primary_images"
       })
 
-      %ExternalFileCollectionMembership{ id: efcm2_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %FileCollectionMembership{ id: efcm2_id } = Repo.insert!(%FileCollectionMembership{
         account_id: account2_id,
         collection_id: efc2_id,
         file_id: ef2_id
@@ -217,7 +217,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         patch(conn, "/v1/external_file_collection_memberships/#{efcm2_id}", %{
           "data" => %{
             "id" => efcm2_id,
-            "type" => "ExternalFileCollectionMembership",
+            "type" => "FileCollectionMembership",
             "attributes" => @valid_attrs
           }
         })
@@ -225,13 +225,13 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     end
 
     test "with valid attrs and rels", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
-      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %FileCollectionMembership{ id: efcm1_id } = Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -239,7 +239,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account1_id,
         label: "primary_images"
       })
@@ -248,18 +248,18 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
           "relationships" => %{
             "file": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => ef2_id
               }
             },
             "collection": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => efc2_id
               }
             }
@@ -274,13 +274,13 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     end
 
     test "with valid attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
-      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %FileCollectionMembership{ id: efcm1_id } = Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -288,7 +288,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account1_id,
         label: "primary_images"
       })
@@ -297,18 +297,18 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
 
       conn = patch(conn, "/v1/external_file_collection_memberships/#{efcm1_id}?locale=zh-CN&include=file,collection", %{
         "data" => %{
-          "type" => "ExternalFileCollectionMembership",
+          "type" => "FileCollectionMembership",
           "attributes" => @valid_attrs,
           "relationships" => %{
             "file": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => ef2_id
               }
             },
             "collection": %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => efc2_id
               }
             }
@@ -320,8 +320,8 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["sortIndex"]
       assert json_response(conn, 200)["data"]["relationships"]["collection"]["data"]["id"] == efc1_id
       assert json_response(conn, 200)["data"]["relationships"]["file"]["data"]["id"] == ef1_id
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
   end
@@ -344,7 +344,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         }
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -352,18 +352,18 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account2_id,
         label: "primary_images"
       })
 
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account2_id,
         collection_id: efc2_id,
         file_id: ef2_id
       })
 
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
@@ -379,7 +379,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     end
 
     test "with good access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
@@ -392,13 +392,13 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1
       assert json_response(conn, 200)["meta"]["totalCount"] == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
 
     test "with good access token, locale, include and filter", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -406,18 +406,18 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account1_id,
         label: "primary_images"
       })
 
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc2_id,
         file_id: ef2_id
       })
 
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
@@ -430,8 +430,8 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
       assert length(json_response(conn, 200)["data"]) == 1
       assert json_response(conn, 200)["meta"]["resultCount"] == 1
       assert json_response(conn, 200)["meta"]["totalCount"] == 2
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 1
     end
   end
@@ -454,7 +454,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         }
       })
 
-      %ExternalFile{ id: ef2_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef2_id } = Repo.insert!(%File{
         account_id: account2_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -462,12 +462,12 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc2_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc2_id } = Repo.insert!(%FileCollection{
         account_id: account2_id,
         label: "primary_images"
       })
 
-      %ExternalFileCollectionMembership{ id: efcm2_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %FileCollectionMembership{ id: efcm2_id } = Repo.insert!(%FileCollectionMembership{
         account_id: account2_id,
         collection_id: efc2_id,
         file_id: ef2_id
@@ -481,7 +481,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipControllerTest do
     end
 
     test "with valid access token and id", %{ conn: conn, uat1: uat1, account1_id: account1_id, efc1_id: efc1_id, ef1_id: ef1_id } do
-      %ExternalFileCollectionMembership{ id: efcm1_id } = Repo.insert!(%ExternalFileCollectionMembership{
+      %FileCollectionMembership{ id: efcm1_id } = Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id

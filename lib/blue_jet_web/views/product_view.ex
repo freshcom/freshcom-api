@@ -27,12 +27,12 @@ defmodule BlueJetWeb.ProductView do
     :updated_at
   ]
 
-  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :always
+  has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :always
   has_one :parent, serializer: BlueJetWeb.ProductView, identifiers: :always
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   has_one :default_price, serializer: BlueJetWeb.PriceView, identifiers: :when_included
-  has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
+  has_many :external_file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :variants, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included

@@ -11,6 +11,6 @@ defmodule BlueJetWeb.UnlockView do
   end
 
   def unlockable(%{ unlockable_id: nil }, _), do: nil
-  def unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }, _), do: %{ id: unlockable_id, type: "ExternalFile" }
+  def unlockable(%{ unlockable_id: unlockable_id, unlockable: nil }, _), do: %{ id: unlockable_id, type: "File" }
   def unlockable(%{ unlockable: unlockable }, _), do: unlockable
 end

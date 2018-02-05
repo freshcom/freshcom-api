@@ -5,9 +5,9 @@ defmodule BlueJetWeb.SkuControllerTest do
   alias BlueJet.Identity
 
   alias BlueJet.Inventory.Sku
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
-  alias BlueJet.FileStorage.ExternalFileCollectionMembership
+  alias BlueJet.FileStorage.File
+  alias BlueJet.FileStorage.FileCollection
+  alias BlueJet.FileStorage.FileCollectionMembership
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -89,7 +89,7 @@ defmodule BlueJetWeb.SkuControllerTest do
     end
 
     test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+      %File{ id: avatar_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -106,7 +106,7 @@ defmodule BlueJetWeb.SkuControllerTest do
           "relationships" => %{
             "avatar" => %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => avatar_id
               }
             }
@@ -121,7 +121,7 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["unitOfMeasure"] == @valid_attrs["unitOfMeasure"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
       assert json_response(conn, 201)["data"]["relationships"]["avatar"]["data"]["id"]
-      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "File" end)) == 1
     end
   end
 
@@ -213,7 +213,7 @@ defmodule BlueJetWeb.SkuControllerTest do
     end
 
     test "with valid access token, id, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+      %File{ id: avatar_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -233,7 +233,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku.id,
         label: "primary_images",
@@ -244,7 +244,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku.id,
         label: "secondary_images",
@@ -264,8 +264,8 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["customData"]["kind"] == "Blue Jay"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
       assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
     end
   end
@@ -406,7 +406,7 @@ defmodule BlueJetWeb.SkuControllerTest do
     end
 
     test "with valid access token, attrs, rels, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+      %File{ id: avatar_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -426,7 +426,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku.id,
         label: "primary_images",
@@ -437,7 +437,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku.id,
         label: "secondary_images",
@@ -467,8 +467,8 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["locale"] == "zh-CN"
       assert json_response(conn, 200)["data"]["relationships"]["avatar"]["data"]["id"]
       assert length(json_response(conn, 200)["data"]["relationships"]["externalFileCollections"]["data"]) == 2
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 2
     end
   end
@@ -732,7 +732,7 @@ defmodule BlueJetWeb.SkuControllerTest do
     end
 
     test "with valid access token, locale and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+      %File{ id: avatar_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -763,7 +763,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      %ExternalFile{ id: ef1_id } = Repo.insert!(%ExternalFile{
+      %File{ id: ef1_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -771,7 +771,7 @@ defmodule BlueJetWeb.SkuControllerTest do
         size_bytes: 42
       })
 
-      %ExternalFileCollection{ id: efc1_id } = Repo.insert!(%ExternalFileCollection{
+      %FileCollection{ id: efc1_id } = Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku_id,
         label: "primary_images",
@@ -782,13 +782,13 @@ defmodule BlueJetWeb.SkuControllerTest do
         }
       })
 
-      Repo.insert!(%ExternalFileCollectionMembership{
+      Repo.insert!(%FileCollectionMembership{
         account_id: account1_id,
         collection_id: efc1_id,
         file_id: ef1_id
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         sku_id: sku_id,
         label: "secondary_images",
@@ -817,8 +817,8 @@ defmodule BlueJetWeb.SkuControllerTest do
       assert length(json_response(conn, 200)["data"]) == 3
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 2
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "File" end)) == 2
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 2
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "主要图片" end)) == 2
     end
   end

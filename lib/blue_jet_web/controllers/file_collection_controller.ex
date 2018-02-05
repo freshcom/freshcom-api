@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.ExternalFileCollectionController do
+defmodule BlueJetWeb.FileCollectionController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -23,7 +23,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     render(conn, "index.json-api", data: external_file_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "FileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
@@ -61,7 +61,7 @@ defmodule BlueJetWeb.ExternalFileCollectionController do
     end
   end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollection" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => efc_id, "data" => data = %{ "type" => "FileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => efc_id },

@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.ExternalFileCollectionMembershipController do
+defmodule BlueJetWeb.FileCollectionMembershipController do
   use BlueJetWeb, :controller
 
   # alias JaSerializer.Params
@@ -28,7 +28,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipController do
   #   render(conn, "index.json-api", data: efcms, opts: [meta: meta, include: conn.query_params["include"]])
   # end
 
-  # def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "external_file_collection_id" => efc_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
+  # def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "external_file_collection_id" => efc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
   #   fields = Map.merge(Params.to_attributes(data), %{ "collection_id" => efc_id })
   #   request = %{
   #     vas: assigns[:vas],
@@ -48,7 +48,7 @@ defmodule BlueJetWeb.ExternalFileCollectionMembershipController do
   #   end
   # end
 
-  # def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id, "data" => data = %{ "type" => "ExternalFileCollectionMembership" } }) do
+  # def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
   #   request = %{
   #     vas: assigns[:vas],
   #     external_file_collection_membership_id: efcm_id,

@@ -2,7 +2,7 @@ defmodule BlueJet.CatalogueTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
-  alias BlueJet.FileStorage.ExternalFile
+  alias BlueJet.FileStorage.File
   alias BlueJet.Catalogue
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
   alias BlueJet.Catalogue.{GoodsServiceMock, FileStorageServiceMock}
@@ -158,7 +158,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = Repo.insert!(%Account{})
-      avatar = Repo.insert!(%ExternalFile{
+      avatar = Repo.insert!(%File{
         account_id: account.id,
         name: Faker.String.base64(5)
       })

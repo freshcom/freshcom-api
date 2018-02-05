@@ -4,8 +4,8 @@ defmodule BlueJetWeb.ProductControllerTest do
   alias BlueJet.Identity.User
 
   alias BlueJet.Storefront.Product
-  alias BlueJet.FileStorage.ExternalFile
-  alias BlueJet.FileStorage.ExternalFileCollection
+  alias BlueJet.FileStorage.File
+  alias BlueJet.FileStorage.FileCollection
   alias BlueJet.Repo
 
   @valid_attrs %{
@@ -89,7 +89,7 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with valid attrs, rels and include", %{ conn: conn, uat1: uat1, account1_id: account1_id } do
-      %ExternalFile{ id: avatar_id } = Repo.insert!(%ExternalFile{
+      %File{ id: avatar_id } = Repo.insert!(%File{
         account_id: account1_id,
         name: Faker.Lorem.word(),
         status: "uploaded",
@@ -106,7 +106,7 @@ defmodule BlueJetWeb.ProductControllerTest do
           "relationships" => %{
             "avatar" => %{
               "data" => %{
-                "type" => "ExternalFile",
+                "type" => "File",
                 "id" => avatar_id
               }
             }
@@ -120,7 +120,7 @@ defmodule BlueJetWeb.ProductControllerTest do
       assert json_response(conn, 201)["data"]["attributes"]["customData"] == @valid_attrs["customData"]
       assert json_response(conn, 201)["data"]["attributes"]["customData"]["kind"] == @valid_attrs["customData"]["kind"]
       assert json_response(conn, 201)["data"]["relationships"]["avatar"]["data"]["id"]
-      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "ExternalFile" end)) == 1
+      assert length(Enum.filter(json_response(conn, 201)["included"], fn(item) -> item["type"] == "File" end)) == 1
     end
   end
 
@@ -181,7 +181,7 @@ defmodule BlueJetWeb.ProductControllerTest do
         @valid_fields)
       )
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         product_id: product.id,
         label: "primary_images",
@@ -200,7 +200,7 @@ defmodule BlueJetWeb.ProductControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["status"] == product.status
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "橙子"
       assert json_response(conn, 200)["data"]["attributes"]["customData"] == product.custom_data
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 1
     end
   end
@@ -320,7 +320,7 @@ defmodule BlueJetWeb.ProductControllerTest do
         @valid_fields)
       )
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         product_id: product.id,
         label: "primary_images",
@@ -347,7 +347,7 @@ defmodule BlueJetWeb.ProductControllerTest do
       assert json_response(conn, 200)["data"]["attributes"]["status"] == @valid_fields[:status]
       assert json_response(conn, 200)["data"]["attributes"]["name"] == "橙子"
       assert json_response(conn, 200)["data"]["attributes"]["customData"] == @valid_fields[:custom_data]
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 1
     end
   end
@@ -550,7 +550,7 @@ defmodule BlueJetWeb.ProductControllerTest do
         name: "Apple"
       })
 
-      Repo.insert!(%ExternalFileCollection{
+      Repo.insert!(%FileCollection{
         account_id: account1_id,
         product_id: product.id,
         label: "primary_images",
@@ -569,7 +569,7 @@ defmodule BlueJetWeb.ProductControllerTest do
       assert json_response(conn, 200)["meta"]["resultCount"] == 3
       assert json_response(conn, 200)["meta"]["totalCount"] == 3
       assert length(Enum.filter(json_response(conn, 200)["data"], fn(item) -> item["attributes"]["name"] == "苹果" end)) == 2
-      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "ExternalFileCollection" end)) == 1
+      assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["type"] == "FileCollection" end)) == 1
       assert length(Enum.filter(json_response(conn, 200)["included"], fn(item) -> item["attributes"]["name"] == "图片" end)) == 1
     end
   end

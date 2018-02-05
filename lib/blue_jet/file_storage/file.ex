@@ -1,4 +1,4 @@
-defmodule BlueJet.FileStorage.ExternalFile do
+defmodule BlueJet.FileStorage.File do
   use BlueJet, :data
 
   use Trans, translates: [
@@ -8,10 +8,10 @@ defmodule BlueJet.FileStorage.ExternalFile do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.FileStorage.ExternalFileCollectionMembership
+  alias BlueJet.FileStorage.FileCollectionMembership
   alias BlueJet.FileStorage.IdentityService
 
-  schema "external_files" do
+  schema "files" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
@@ -40,7 +40,7 @@ defmodule BlueJet.FileStorage.ExternalFile do
 
     field :url, :string, virtual: true
 
-    has_many :collection_memberships, ExternalFileCollectionMembership, foreign_key: :file_id
+    has_many :collection_memberships, FileCollectionMembership, foreign_key: :file_id
   end
 
   @type t :: Ecto.Schema.t
@@ -96,7 +96,7 @@ defmodule BlueJet.FileStorage.ExternalFile do
     id = struct.id
     name = struct.name
 
-    "#{prefix}/ExternalFile/#{id}/#{name}"
+    "#{prefix}/File/#{id}/#{name}"
   end
 
   def put_url(structs, opts \\ [])
@@ -131,10 +131,10 @@ defmodule BlueJet.FileStorage.ExternalFile do
   defmodule Query do
     use BlueJet, :query
 
-    alias BlueJet.FileStorage.ExternalFile
+    alias BlueJet.FileStorage.File
 
     def default() do
-      from(ef in ExternalFile, order_by: [desc: ef.updated_at])
+      from(ef in File, order_by: [desc: ef.updated_at])
     end
 
     def for_account(query, account_id) do

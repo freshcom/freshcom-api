@@ -20,14 +20,14 @@ defmodule BlueJetWeb.DepositableView do
     :updated_at
   ]
 
-  has_one :avatar, serializer: BlueJetWeb.ExternalFileView, identifiers: :always
-  has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
+  has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :always
+  has_many :external_file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
     "Depositable"
   end
 
   def avatar(%{ avatar_id: nil }, _), do: nil
-  def avatar(%{ avatar_id: avatar_id, avatar: nil }, _), do: %{ id: avatar_id, type: "ExternalFile" }
+  def avatar(%{ avatar_id: avatar_id, avatar: nil }, _), do: %{ id: avatar_id, type: "File" }
   def avatar(%{ avatar: avatar }, _), do: avatar
 end

@@ -20,7 +20,7 @@ defmodule BlueJetWeb.FulfillmentView do
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   has_many :line_items, serializer: BlueJetWeb.FulfillmentLineItemView, identifiers: :when_included
-  has_many :external_file_collections, serializer: BlueJetWeb.ExternalFileCollectionView, identifiers: :when_included
+  has_many :external_file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
     "Fulfillment"
