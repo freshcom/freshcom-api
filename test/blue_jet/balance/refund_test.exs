@@ -47,12 +47,12 @@ defmodule BlueJet.Balance.RefundTest do
       payment = Repo.insert!(%Payment{
         account_id: account.id,
         amount_cents: 5000,
-        gateway: "online"
+        gateway: "freshcom"
       })
       changeset =
         change(%Refund{ account_id: account.id }, %{
           payment_id: payment.id,
-          gateway: "online",
+          gateway: "freshcom",
           processor: "stripe",
           amount_cents: 6000
         })
@@ -66,7 +66,7 @@ defmodule BlueJet.Balance.RefundTest do
   end
 
   describe "process/1" do
-    test "when refund use online gateway" do
+    test "when refund use freshcom gateway" do
       account = Repo.insert!(%Account{})
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
@@ -89,7 +89,7 @@ defmodule BlueJet.Balance.RefundTest do
 
       payment = Repo.insert!(%Payment{
         account_id: account.id,
-        gateway: "online",
+        gateway: "freshcom",
         amount_cents: 5000,
         freshcom_fee_cents: 300
       })
@@ -97,7 +97,7 @@ defmodule BlueJet.Balance.RefundTest do
         account_id: account.id,
         payment_id: payment.id,
         amount_cents: 5000,
-        gateway: "online"
+        gateway: "freshcom"
       })
 
       changeset = change(%Refund{}, %{ amount_cents: 500 })

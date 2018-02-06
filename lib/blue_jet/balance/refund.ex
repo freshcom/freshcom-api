@@ -71,11 +71,11 @@ defmodule BlueJet.Balance.Refund do
     __MODULE__.__trans__(:fields)
   end
 
-  def castable_fields(%__MODULE__{ __meta__: %{ state: :built }}) do
+  def castable_fields(:insert) do
     writable_fields()
   end
 
-  def castable_fields(%__MODULE__{ __meta__: %{ state: :loaded }}) do
+  def castable_fields(:update) do
     writable_fields() -- [:amount_cents]
   end
 
@@ -84,7 +84,7 @@ defmodule BlueJet.Balance.Refund do
     common = [:amount_cents, :payment_id, :gateway]
 
     case gateway do
-      "online" -> common ++ [:processor]
+      "freshcom" -> common ++ [:processor]
       "offline" -> common ++ [:method]
       _ -> common
     end
@@ -117,13 +117,19 @@ defmodule BlueJet.Balance.Refund do
     |> validate_payment_id()
   end
 
-  def changeset(refund, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(refund, :insert, params) do
+    refund
+    |> cast(params, castable_fields(:insert))
+    |> validate()
+  end
+
+  def changeset(refund, :update, params, locale \\ nil, default_locale \\ nil) do
     refund = %{ refund | account: get_account(refund) }
     default_locale = default_locale || refund.account.default_locale
     locale = locale || default_locale
 
     refund
-    |> cast(params, castable_fields(refund))
+    |> cast(params, castable_fields(:update))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -143,12 +149,17 @@ defmodule BlueJet.Balance.Refund do
   def put_external_resources(refund, _, _), do: refund
 
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
-  def process(refund = %{ gateway: "online" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do
+  def process(refund = %{ gateway: "freshcom" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do
     refund = %{ refund | account: get_account(refund) }
     with {:ok, stripe_refund} <- create_stripe_refund(refund),
          {:ok, stripe_transfer_reversal} <- create_stripe_transfer_reversal(refund, stripe_refund)
     do
       sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
+
+      Repo.get(Payment, refund.payment_id)
+      |> Payment.sync_with_refund(refund)
+
+      {:ok, refund}
     else
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
@@ -207,18 +218,4 @@ defmodule BlueJet.Balance.Refund do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
   end
   defp format_stripe_errors(stripe_errors), do: stripe_errors
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Balance.Refund
-
-    def for_account(query, account_id) do
-      from(r in query, where: r.account_id == ^account_id)
-    end
-
-    def default() do
-      from(r in Refund, order_by: [desc: :updated_at])
-    end
-  end
 end

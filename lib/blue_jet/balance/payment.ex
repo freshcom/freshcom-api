@@ -212,6 +212,31 @@ defmodule BlueJet.Balance.Payment do
     D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
   end
 
+  def sync_with_refund(payment, refund) do
+    refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
+    refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
+    refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
+    gross_amount_cents = payment.amount_cents - refunded_amount_cents
+    net_amount_cents = gross_amount_cents - payment.processor_fee_cents + refunded_processor_fee_cents - payment.freshcom_fee_cents + refunded_freshcom_fee_cents
+
+    payment_status = cond do
+      refunded_amount_cents >= payment.amount_cents -> "refunded"
+      refunded_amount_cents > 0 -> "partially_refunded"
+      true -> payment.status
+    end
+
+    payment
+    |> change(
+        status: payment_status,
+        refunded_amount_cents: refunded_amount_cents,
+        refunded_processor_fee_cents: refunded_processor_fee_cents,
+        refunded_freshcom_fee_cents: refunded_freshcom_fee_cents,
+        gross_amount_cents: gross_amount_cents,
+        net_amount_cents: net_amount_cents
+       )
+    |> Repo.update!()
+  end
+
   @doc """
   Send a paylink
 

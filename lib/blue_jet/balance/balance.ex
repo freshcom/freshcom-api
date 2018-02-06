@@ -4,7 +4,7 @@ defmodule BlueJet.Balance do
 
   alias Ecto.{Changeset, Multi}
   alias BlueJet.Balance.Service
-  alias BlueJet.Balance.{Payment, Refund, Settings}
+  alias BlueJet.Balance.{Payment, Refund}
 
   def update_settings(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_settings") do

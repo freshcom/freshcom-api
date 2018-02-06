@@ -458,4 +458,62 @@ defmodule BlueJet.Balance.ServiceTest do
       refute Repo.get(Payment, payment.id)
     end
   end
+
+  describe "create_refund/2" do
+    test "when given invalid fields" do
+      account = Repo.insert!(%Account{})
+      fields = %{}
+
+      {:error, changeset} = Service.create_refund(fields, %{ account: account })
+
+      verify!()
+      assert changeset.valid? == false
+    end
+
+    # test "when given valid fields" do
+    #   account = Repo.insert!(%Account{})
+    #   Repo.insert!(%Settings{
+    #     account_id: account.id
+    #   })
+
+    #   stripe_charge_id = Faker.String.base64(12)
+    #   stripe_transfer_id = Faker.String.base64(12)
+    #   stripe_charge = %{
+    #     "captured" => true,
+    #     "id" => stripe_charge_id,
+    #     "amount" => 500,
+    #     "balance_transaction" => %{
+    #       "fee" => 50
+    #     },
+    #     "transfer" => %{
+    #       "id" => stripe_transfer_id,
+    #       "amount" => 400
+    #     }
+    #   }
+    #   StripeClientMock
+    #   |> expect(:post, fn(_, _, _) -> {:ok, stripe_charge} end)
+
+    #   EventHandlerMock
+    #   |> expect(:handle_event, fn(name, _) ->
+    #       assert name == "balance.payment.before_create"
+    #       {:ok, nil}
+    #      end)
+    #   |> expect(:handle_event, fn(name, _) ->
+    #       assert name == "balance.payment.after_create"
+    #       {:ok, nil}
+    #      end)
+
+    #   fields = %{
+    #     "gateway" => "freshcom",
+    #     "processor" => "stripe",
+    #     "amount_cents" => 500,
+    #     "source" => "tok_" <> Ecto.UUID.generate()
+    #   }
+
+    #   {:ok, payment} = Service.create_payment(fields, %{ account: account })
+
+    #   verify!()
+    #   assert payment
+    # end
+  end
 end

@@ -4,7 +4,7 @@ defmodule BlueJet.Balance.Service do
 
   alias Ecto.Multi
   alias BlueJet.Balance.IdentityService
-  alias BlueJet.Balance.{Settings, Card, Payment}
+  alias BlueJet.Balance.{Settings, Card, Payment, Refund}
 
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
@@ -303,4 +303,36 @@ defmodule BlueJet.Balance.Service do
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_payment(opts)
   end
+
+  def create_refund(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %Refund{ account_id: account.id, account: account }
+      |> Refund.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:refund, changeset)
+      |> Multi.run(:processed_refund, fn(%{ refund: refund }) ->
+          Refund.process(refund, changeset)
+         end)
+      |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
+          emit_event("balance.refund.after_create", %{ refund: refund })
+          {:ok, refund}
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_refund: refund }} ->
+        refund = preload(refund, preloads[:path], preloads[:opts])
+        {:ok, refund}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+
+      other -> other
+    end
+  end
+
 end
