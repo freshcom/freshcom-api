@@ -12,6 +12,7 @@ defmodule BlueJet.Balance.Payment do
 
   alias BlueJet.Balance.{Card, Refund, Settings}
   alias BlueJet.Balance.{StripeClient, IdentityService}
+  alias BlueJet.Balance.Payment.Proxy
 
   schema "payments" do
     field :account_id, Ecto.UUID
@@ -110,7 +111,7 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
-  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "online" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
+  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
     authorized_amount_cents = get_field(changeset, :amount_cents)
     case capture_amount_cents > authorized_amount_cents do
       true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", [validation: "lte_authorized_amount", full_error_message: true])
@@ -118,6 +119,16 @@ defmodule BlueJet.Balance.Payment do
     end
   end
   defp validate_capture_amount_cents(changeset), do: changeset
+
+  def validate(changeset = %{ action: :delete }) do
+    gateway = get_field(changeset, :gateway)
+
+    if gateway == "freshcom" do
+      add_error(changeset, :gateway, "must be custom", [validation: :must_be_custom])
+    else
+      changeset
+    end
+  end
 
   def validate(changeset) do
     changeset
@@ -145,8 +156,16 @@ defmodule BlueJet.Balance.Payment do
 
   defp put_net_amount_cents(changeset), do: changeset
 
-  def changeset(payment, params, locale \\ nil, default_locale \\ nil) do
-    payment = %{ payment | account: get_account(payment) }
+  def changeset(payment, :insert, params) do
+    payment
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_gross_amount_cents()
+    |> put_net_amount_cents()
+  end
+
+  def changeset(payment, :update, params, locale \\ nil, default_locale \\ nil) do
+    payment = Proxy.put_account(payment)
     default_locale = default_locale || payment.account.default_locale
     locale = locale || default_locale
 
@@ -158,14 +177,15 @@ defmodule BlueJet.Balance.Payment do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  def changeset(payment, :delete) do
+    change(payment)
+    |> Map.put(:action, :delete)
+    |> validate()
+  end
+
   ######
   # External Resources
   #####
-
-  def get_account(payment) do
-    payment.account || IdentityService.get_account(payment)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file_collection,
     field: :file_collections,
@@ -212,13 +232,13 @@ defmodule BlueJet.Balance.Payment do
   """
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(
-    payment = %{ gateway: "online", source: nil },
+    payment = %{ gateway: "freshcom", source: nil },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     send_paylink(payment)
   end
   def process(
-    payment = %{ gateway: "online", capture: false },
+    payment = %{ gateway: "freshcom", capture: false },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
@@ -229,7 +249,7 @@ defmodule BlueJet.Balance.Payment do
     end
   end
   def process(
-    payment = %{ gateway: "online", capture: true },
+    payment = %{ gateway: "freshcom", capture: true },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     with {:ok, payment} <- charge(payment) do
@@ -240,7 +260,7 @@ defmodule BlueJet.Balance.Payment do
     end
   end
   def process(
-    payment = %{ gateway: "online" },
+    payment = %{ gateway: "freshcom" },
     %{ data: %{ status: "authorized", capture_amount_cents: nil }, changes: %{ capture_amount_cents: _ } }
   ) do
     with {:ok, payment} <- capture(payment) do
@@ -353,13 +373,13 @@ defmodule BlueJet.Balance.Payment do
       stripe_request
     end
 
-    account = get_account(payment)
+    account = Proxy.get_account(payment)
     StripeClient.post("/charges", stripe_request, mode: account.mode)
   end
 
   @spec capture_stripe_charge(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp capture_stripe_charge(payment) do
-    account = get_account(payment)
+    account = Proxy.get_account(payment)
     StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount_cents }, mode: account.mode)
   end
 
@@ -368,39 +388,4 @@ defmodule BlueJet.Balance.Payment do
   end
 
   defp format_stripe_errors(stripe_errors), do: stripe_errors
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Balance.Payment
-
-    @filterable_fields [
-      :target_type,
-      :target_id
-    ]
-
-    def default() do
-      from(p in Payment, order_by: [desc: :updated_at])
-    end
-
-    def search(query, keyword, locale, default_locale) do
-      search(query, @searchable_fields, keyword, locale, default_locale, Payment.translatable_fields())
-    end
-
-    def filter_by(query, filter) do
-      filter_by(query, filter, @filterable_fields)
-    end
-
-    def for_account(query, account_id) do
-      from(p in query, where: p.account_id == ^account_id)
-    end
-
-    def for_target(query, target_type, target_id) do
-      from(p in query, where: p.target_type == ^target_type, where: p.target_id == ^target_id)
-    end
-
-    def preloads({:refunds, refund_preloads}, options) do
-      [refunds: {Refund.Query.default(), Refund.Query.preloads(refund_preloads, options)}]
-    end
-  end
 end

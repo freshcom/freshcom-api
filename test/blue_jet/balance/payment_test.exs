@@ -51,7 +51,7 @@ defmodule BlueJet.Balance.PaymentTest do
       ]
     end
 
-    test "when missing required fields for online gateway" do
+    test "when missing required fields for freshcom gateway" do
       changeset =
         change(%Payment{}, %{ gateway: "online" })
         |> Payment.validate()
@@ -65,7 +65,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
     test "when paid amount cents greater than authorization amount cents" do
       changeset =
-        change(%Payment{ gateway: "online", processor: "stripe", status: "authorized", amount_cents: 500 }, %{ capture_amount_cents: 501 })
+        change(%Payment{ gateway: "freshcom", processor: "stripe", status: "authorized", amount_cents: 500 }, %{ capture_amount_cents: 501 })
         |> Payment.validate()
 
       refute changeset.valid?
@@ -80,7 +80,7 @@ defmodule BlueJet.Balance.PaymentTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
-      changeset = Payment.changeset(%Payment{}, %{
+      changeset = Payment.changeset(%Payment{}, :update, %{
         amount_cents: 5000,
         gateway: "online",
         processor: "stripe"
@@ -93,7 +93,7 @@ defmodule BlueJet.Balance.PaymentTest do
   end
 
   describe "process/1" do
-    test "when when payment use online gateway and capture is false" do
+    test "when when payment use freshcom gateway and capture is false" do
       account = Repo.insert!(%Account{})
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
@@ -114,7 +114,7 @@ defmodule BlueJet.Balance.PaymentTest do
       payment = Repo.insert!(%Payment{
         account_id: account.id,
         source: stripe_card_id,
-        gateway: "online",
+        gateway: "freshcom",
         processor: "stripe",
         amount_cents: 500,
         stripe_customer_id: stripe_customer_id,

@@ -189,11 +189,6 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Returns the validated changeset.
   """
-  def validate(changeset = %{ action: :delete }) do
-    changeset
-    |> validate_no_payment()
-  end
-
   def validate(changeset = %{ action: :insert }) do
     changeset
   end
@@ -206,6 +201,11 @@ defmodule BlueJet.Storefront.Order do
     |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
     |> validate_inventory()
     |> validate_customer_id()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_no_payment()
   end
 
   defp castable_fields(_, :insert), do: writable_fields() -- [:status]

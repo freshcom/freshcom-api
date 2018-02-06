@@ -150,7 +150,7 @@ defmodule BlueJet.BalanceTest do
         role: "customer",
         account: account,
         fields: %{
-          "gateway" => "online",
+          "gateway" => "freshcom",
           "processor" => "stripe",
           "source" => Ecto.UUID.generate()
         }
@@ -179,7 +179,7 @@ defmodule BlueJet.BalanceTest do
         role: "customer",
         account: account,
         fields: %{
-          "gateway" => "online",
+          "gateway" => "freshcom",
           "processor" => "stripe",
           "amount_cents" => 500,
           "source" => "tok_" <> Faker.String.base64(12)
@@ -220,7 +220,7 @@ defmodule BlueJet.BalanceTest do
       assert response.data.stripe_charge_id == stripe_charge_id
       assert response.data.stripe_transfer_id == stripe_transfer_id
       assert response.data.amount_cents == 500
-      assert response.data.gateway == "online"
+      assert response.data.gateway == "freshcom"
       assert response.data.processor == "stripe"
       assert response.data.processor_fee_cents == 50
       assert response.data.freshcom_fee_cents == 50
@@ -271,7 +271,7 @@ defmodule BlueJet.BalanceTest do
       payment = Repo.insert!(%Payment{
         account_id: account.id,
         status: "authorized",
-        gateway: "online",
+        gateway: "freshcom",
         processor: "stripe",
         amount_cents: 500
       })

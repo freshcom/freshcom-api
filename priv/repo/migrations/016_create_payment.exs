@@ -16,7 +16,7 @@ defmodule BlueJet.Repo.Migrations.CreatePayment do
       add :target_id, :binary_id
       add :target_type, :string
 
-      add :status, :string, default: "pending"
+      add :status, :string, null: false
       add :code, :string
       add :label, :string
 

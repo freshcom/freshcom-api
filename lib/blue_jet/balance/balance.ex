@@ -4,52 +4,7 @@ defmodule BlueJet.Balance do
 
   alias Ecto.{Changeset, Multi}
   alias BlueJet.Balance.Service
-  alias BlueJet.Balance.{Payment, Refund, Card, Settings}
-
-  # defmodule Service do
-  #   use BlueJet, :service
-
-  #   alias BlueJet.Balance.IdentityService
-
-  #   defp get_account(opts) do
-  #     opts[:account] || IdentityService.get_account(opts)
-  #   end
-
-  #   def list_payment(%{ target_type: target_type, target_id: target_id }, opts) do
-  #     account_id = opts[:account_id] || opts[:account].id
-
-  #     Payment.Query.default()
-  #     |> Payment.Query.for_account(account_id)
-  #     |> Payment.Query.for_target(target_type, target_id)
-  #     |> Repo.all()
-  #   end
-
-  #   def count_payment(fields \\ %{}, opts) do
-  #     account = get_account(opts)
-  #     filter = get_filter(fields)
-
-  #     Payment.Query.default()
-  #     |> Payment.Query.filter_by(filter)
-  #     |> Payment.Query.for_account(account.id)
-  #     |> Repo.aggregate(:count, :id)
-  #   end
-  # end
-
-  defmodule EventHandler do
-    @behaviour BlueJet.EventHandler
-
-    def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
-      %Settings{ account_id: account.id }
-      |> Repo.insert!()
-
-      %Settings{ account_id: test_account.id }
-      |> Repo.insert!()
-
-      {:ok, nil}
-    end
-
-    def handle_event(_, _), do: {:ok, nil}
-  end
+  alias BlueJet.Balance.{Payment, Refund, Settings}
 
   def update_settings(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_settings") do
@@ -61,20 +16,11 @@ defmodule BlueJet.Balance do
   end
 
   def do_update_settings(request = %{ account: account }) do
-    balance_settings = Repo.get_by!(Settings, account_id: account.id)
-    changeset = Settings.changeset(balance_settings, request.fields)
-
-    statements = Multi.new()
-    |> Multi.update(:balance_settings, changeset)
-    |> Multi.run(:processed_balance_settings, fn(%{ balance_settings: balance_settings }) ->
-        Settings.process(balance_settings, changeset)
-       end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ processed_balance_settings: balance_settings }} ->
-        {:ok, %AccessResponse{ data: balance_settings }}
-
-      {:error, _, errors, _} ->
+    with {:ok, settings} <- Service.update_settings(request.fields, get_sopts(request)) do
+      settings = Translation.translate(settings, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: settings }}
+    else
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other
@@ -90,10 +36,16 @@ defmodule BlueJet.Balance do
     end
   end
 
-  def do_get_settings(%{ account: account }) do
-    balance_settings = Repo.get_by!(Settings, account_id: account.id)
+  def do_get_settings(request = %{ account: account }) do
+    settings =
+      Service.get_settings(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    {:ok, %AccessResponse{ data: balance_settings }}
+    if settings do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: settings }}
+    else
+      {:error, :not_found}
+    end
   end
 
   #
@@ -191,30 +143,16 @@ defmodule BlueJet.Balance do
   end
 
   # TODO: Customer can only view its own payment
-  def do_list_payment(request = %AccessRequest{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      Payment.Query.default()
-      |> filter_by(
-          target_id: filter[:target_id],
-          target_type: filter[:target_type],
-          owner_id: filter[:owner_id],
-          owner_type: filter[:owner_type]
-         )
-      |> Payment.Query.for_account(account.id)
+  def do_list_payment(request = %AccessRequest{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_payment(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
-    all_count =
-      Payment.Query.default()
-      |> Payment.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+    all_count = Service.count_payment(%{ account: account })
 
-    preloads = Payment.Query.preloads(request.preloads, role: request.role)
     payments =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-      |> Payment.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      %{ filter: filter, search: request.search }
+      |> Service.list_payment(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -229,20 +167,6 @@ defmodule BlueJet.Balance do
     {:ok, response}
   end
 
-  defp payment_response(nil, _), do: {:error, :not_found}
-
-  defp payment_response(payment, request = %{ account: account }) do
-    preloads = Payment.Query.preloads(request.preloads, role: request.role)
-
-    payment =
-      payment
-      |> Repo.preload(preloads)
-      |> Payment.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
-  end
-
   def create_payment(request) do
     with {:ok, request} <- preprocess_request(request, "balance.create_payment") do
       request
@@ -252,58 +176,14 @@ defmodule BlueJet.Balance do
     end
   end
 
-  def do_create_payment(request = %{ account: account, fields: fields }) do
-    owner = %{ id: fields["owner_id"], type: fields["owner_type"] }
-    target = %{ id: fields["target_id"], type: fields["target_type"]}
-
-    statements =
-      Multi.new()
-      |> Multi.run(:fields, fn(_) ->
-          run_payment_before_create(fields, owner, target)
-         end)
-      |> Multi.run(:changeset, fn(%{ fields: fields }) ->
-          payment = %Payment{ account_id: account.id, account: account }
-          changeset = Payment.changeset(payment, fields)
-          {:ok, changeset}
-         end)
-      |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:processed_payment, fn(%{ payment: payment, changeset: changeset }) ->
-          Payment.process(payment, changeset)
-         end)
-      |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.after_create", %{ payment: payment })
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ processed_payment: payment }} ->
-        {:ok, %AccessResponse{ data: payment }}
-
-      {:error, :payment, %{ errors: errors}, _ } ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      {:error, _, errors, _} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  # Allow other services to change the fields of payment
-  defp run_payment_before_create(fields, owner, target) do
-    with {:ok, results} <- emit_event("balance.payment.before_create", %{ fields: fields, target: target, owner: owner }) do
-      values = [fields] ++ Keyword.values(results)
-      fields = Enum.reduce(values, %{}, fn(fields, acc) ->
-        if fields do
-          Map.merge(acc, fields)
-        else
-          acc
-        end
-      end)
-
-      {:ok, fields}
+  def do_create_payment(request = %{ account: account }) do
+    with {:ok, payment} <- Service.create_payment(request.fields, get_sopts(request)) do
+      payment = Translation.translate(payment, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
     else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
       other -> other
     end
   end
@@ -319,11 +199,15 @@ defmodule BlueJet.Balance do
 
   def do_get_payment(request = %{ account: account, params: %{ "id" => id } }) do
     payment =
-      Payment.Query.default()
-      |> Payment.Query.for_account(account.id)
-      |> Repo.get(id)
+      %{ id: id }
+      |> Service.get_payment(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    payment_response(payment, request)
+    if payment do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_payment(request) do
@@ -336,31 +220,11 @@ defmodule BlueJet.Balance do
   end
 
   def do_update_payment(request = %{ account: account, params: %{ "id" => id } }) do
-    payment =
-      Payment.Query.default()
-      |> Payment.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %Payment{} <- payment,
-         changeset = %{valid?: true} <- Payment.changeset(payment, request.fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:payment, changeset)
-        |> Multi.run(:processed_payment, fn(%{ payment: payment }) ->
-            Payment.process(payment, changeset)
-           end)
-        |> Multi.run(:after_update, fn(%{ processed_payment: payment}) ->
-            emit_event("balance.payment.after_update", %{ payment: payment })
-           end)
-
-      {:ok, %{ processed_payment: payment }} = Repo.transaction(statements)
-      payment_response(payment, request)
+    with {:ok, payment} <- Service.update_payment(id, request.fields, get_sopts(request)) do
+      payment = Translation.translate(payment, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
     else
-      nil -> {:error, :not_found}
-
-      %{ errors: errors } ->
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other
@@ -376,18 +240,14 @@ defmodule BlueJet.Balance do
     end
   end
 
-  # TODO: do not allow delete payment using online gateway
   def do_delete_payment(%{ account: account, params: %{ "id" => id } }) do
-    payment =
-      Payment.Query.default()
-      |> Payment.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if payment do
-      Repo.delete!(payment)
+    with {:ok, _} <- Service.delete_payment(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
