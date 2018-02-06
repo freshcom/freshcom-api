@@ -58,16 +58,18 @@ defmodule BlueJet.FileStorage.FileCollection do
     |> validate_required([:name, :status])
   end
 
-  def put_file_urls(efc, opts \\ [])
+  def put_file_urls(file_collection, opts \\ [])
 
-  def put_file_urls(efcs, opts) when is_list(efcs) do
-    Enum.map(efcs, fn(efc) ->
-      put_file_urls(efc, opts)
+  def put_file_urls(nil, _), do: nil
+
+  def put_file_urls(file_collections, opts) when is_list(file_collections) do
+    Enum.map(file_collections, fn(file_collection) ->
+      put_file_urls(file_collection, opts)
     end)
   end
 
-  def put_file_urls(efc = %__MODULE__{}, opts) do
-    Map.put(efc, :files, File.put_url(efc.files, opts))
+  def put_file_urls(file_collection = %__MODULE__{}, opts) do
+    Map.put(file_collection, :files, File.put_url(file_collection.files, opts))
   end
   @doc """
   Builds a changeset based on the `struct` and `params`.

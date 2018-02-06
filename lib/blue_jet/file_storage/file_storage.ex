@@ -2,9 +2,7 @@ defmodule BlueJet.FileStorage do
   use BlueJet, :context
 
   alias BlueJet.FileStorage
-  alias BlueJet.FileStorage.File
-  alias BlueJet.FileStorage.FileCollection
-  alias BlueJet.FileStorage.FileCollectionMembership
+  alias BlueJet.FileStorage.Service
 
   ####
   # Macro
@@ -60,7 +58,7 @@ defmodule BlueJet.FileStorage do
   end
 
   #
-  # MARK: External File
+  # MARK: File
   #
   def list_file(request) do
     with {:ok, request} <- preprocess_request(request, "file_storage.list_file") do
@@ -71,28 +69,16 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def do_list_file(request = %{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      File.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, File.translatable_fields())
-      |> filter_by(label: filter[:label])
-      |> File.Query.uploaded()
-      |> File.Query.for_account(account.id)
+  def do_list_file(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_file(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
-    all_count =
-      File.Query.default()
-      |> File.Query.uploaded()
-      |> File.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+    all_count = Service.count_file(%{ account: account })
 
-    data_query = paginate(data_query, size: pagination[:size], number: pagination[:number])
-
-    preloads = File.Query.preloads(request.preloads, role: request.role)
     files =
-      data_query
-      |> Repo.all()
-      |> Repo.preload(preloads)
+      %{ filter: filter, search: request.search }
+      |> Service.list_file(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -107,20 +93,6 @@ defmodule BlueJet.FileStorage do
     {:ok, response}
   end
 
-  defp file_response(nil, _), do: {:error, :not_found}
-
-  defp file_response(file, request = %{ account: account }) do
-    preloads = File.Query.preloads(request.preloads, role: request.role)
-
-    file =
-      file
-      |> File.put_url()
-      |> Repo.preload(preloads)
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
-  end
-
   def create_file(request) do
     with {:ok, request} <- preprocess_request(request, "file_storage.create_file") do
       request
@@ -133,11 +105,14 @@ defmodule BlueJet.FileStorage do
   def do_create_file(request = %{ vas: vas, account: account }) do
     fields = Map.merge(request.fields, %{ "user_id" => vas[:user_id] })
 
-    with {:ok, file} <- Service.create_file(fields, %{ account: account }) do
-      file_response(file, request)
+    with {:ok, file} <- Service.create_file(fields, get_sopts(request)) do
+      file = Translation.translate(file, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -152,11 +127,15 @@ defmodule BlueJet.FileStorage do
 
   def do_get_file(request = %{ account: account, params: %{ "id" => id }}) do
     file =
-      File.Query.default()
-      |> File.Query.for_account(account.id)
-      |> Repo.get(id)
+      %{ id: id }
+      |> Service.get_file(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    file_response(file, request)
+    if file do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_file(request) do
@@ -169,19 +148,10 @@ defmodule BlueJet.FileStorage do
   end
 
   def do_update_file(request = %{ account: account, params: %{ "id" => id }}) do
-    file =
-      File.Query.default()
-      |> File.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    with %File{} <- file,
-         changeset = File.changeset(file, request.fields, request.locale, account.default_locale),
-         {:ok, file} <- Repo.update(changeset)
-    do
-      file_response(file, request)
+    with {:ok, file} <- Service.update_file(id, request.fields, get_sopts(request)) do
+      file = Translation.translate(file, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
     else
-      nil -> {:error, :not_found}
-
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
@@ -198,60 +168,42 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def do_delete_file(%{ account: account, params: %{ "id" => ef_id } }) do
-    with {:ok, _} <- Service.delete_file(ef_id, %{ account: account }) do
+  def do_delete_file(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_file(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
       other -> other
     end
   end
 
-  ####
-  # FileCollection
-  ####
+  #
+  # MARK: File Collection
+  #
   def list_file_collection(request) do
     with {:ok, request} <- preprocess_request(request, "file_storage.list_file_collection") do
       request
-      |> AccessRequest.transform_by_role()
       |> do_list_file_collection()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_file_collection(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
-    data_query =
-      FileCollection.Query.default()
-      |> search(
-          [:name, :code, :id],
-          request.search,
-          request.locale,
-          account.default_locale,
-          FileCollection.translatable_fields
-         )
-      |> filter_by(
-          owner_id: filter[:owner_id],
-          owner_type: filter[:owner_type],
-          label: filter[:label],
-          content_type: filter[:content_type]
-         )
-      |> FileCollection.Query.for_account(account.id)
+  def do_list_file_collection(request = %{ role: role, account: account, filter: filter }) when role in ["guest", "customer"] do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_file_collection(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      FileCollection.Query.default()
-      |> filter_by(status: counts[:all][:status])
-      |> FileCollection.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: %{ status: "active" } }
+      |> Service.count_file_collection(%{ account: account })
 
-    preloads = FileCollection.Query.preloads(request.preloads, role: request.role)
-    efcs =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
+    file_collections =
+      %{ filter: filter, search: request.search }
+      |> Service.list_file_collection(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
-      |> FileCollection.put_file_urls()
 
     response = %AccessResponse{
       meta: %{
@@ -259,24 +211,34 @@ defmodule BlueJet.FileStorage do
         all_count: all_count,
         total_count: total_count
       },
-      data: efcs
+      data: file_collections
     }
 
     {:ok, response}
   end
 
-  defp file_collection_response(nil, _), do: {:error, :not_found}
+  def do_list_file_collection(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_file_collection(%{ account: account })
 
-  defp file_collection_response(efc, request = %{ account: account }) do
-    preloads = FileCollection.Query.preloads(request.preloads, role: request.role)
+    all_count = Service.count_file_collection(%{ account: account })
 
-    efc =
-      efc
-      |> Repo.preload(preloads)
+    file_collections =
+      %{ filter: filter, search: request.search }
+      |> Service.list_file_collection(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
-      |> FileCollection.put_file_urls()
 
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: efc }}
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: file_collections
+    }
+
+    {:ok, response}
   end
 
   def create_file_collection(request) do
@@ -289,39 +251,15 @@ defmodule BlueJet.FileStorage do
   end
 
   def do_create_file_collection(request = %{ account: account }) do
-    request = %{ request | locale: account.default_locale }
-    efc = %FileCollection{ account_id: account.id, account: account }
-
-    with changeset = %{valid?: true} <- FileCollection.changeset(efc, request.fields, request.locale) do
-      {:ok, efc} = Repo.transaction(fn ->
-        efc = Repo.insert!(changeset)
-        create_efcms!(request.fields["file_ids"] || [], efc)
-      end)
-
-      file_collection_response(efc, %{ request | locale: account.default_locale })
+    with {:ok, file_collection} <- Service.create_file_collection(request.fields, get_sopts(request)) do
+      file_collection = Translation.translate(file_collection, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file_collection }}
     else
-      %{ errors: errors } ->
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other
     end
-  end
-
-  defp create_efcms!(file_ids, efc, initial_sort_index \\ 10000, sort_index_step \\ 10000) do
-    Enum.reduce(file_ids, initial_sort_index, fn(file_id, acc) ->
-      changeset = FileCollectionMembership.changeset(%FileCollectionMembership{
-        account_id: efc.account_id
-      }, %{
-        collection_id: efc.id,
-        file_id: file_id,
-        sort_index: acc
-      })
-
-      Repo.insert!(changeset)
-      acc + sort_index_step
-    end)
-
-    efc
   end
 
   def get_file_collection(request) do
@@ -333,13 +271,17 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def do_get_file_collection(request = %{ account: account, params: %{ "id" => efc_id } }) do
-    efc =
-      FileCollection.Query.default()
-      |> FileCollection.Query.for_account(account.id)
-      |> Repo.get(efc_id)
+  def do_get_file_collection(request = %{ account: account, params: %{ "id" => id } }) do
+    file_collection =
+      %{ id: id }
+      |> Service.get_file_collection(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    file_collection_response(efc, request)
+    if file_collection do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file_collection }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_file_collection(request) do
@@ -351,86 +293,16 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def do_update_file_collection(request = %{ account: account, params: %{ "id" => efc_id }}) do
-    efc =
-      FileCollection.Query.default()
-      |> FileCollection.Query.for_account(account.id)
-      |> Repo.get(efc_id)
-
-    with %FileCollection{} <- efc,
-         changeset = %{valid?: true} <- FileCollection.changeset(efc, request.fields, request.locale, account.default_locale)
-    do
-      source_file_ids = Ecto.assoc(efc, :files) |> ids_only() |> Repo.all()
-      target_file_ids = request.fields["file_ids"]
-      file_ids_to_delete = if target_file_ids do
-        source_file_ids -- target_file_ids
-      else
-        []
-      end
-
-      file_ids_to_add = if target_file_ids do
-        target_file_ids -- source_file_ids
-      else
-        []
-      end
-
-      {:ok, efc} = Repo.transaction(fn ->
-        efc = Repo.update!(changeset)
-        delete_efcms!(file_ids_to_delete, efc)
-        initial_sort_index = max_efcm_sort_index(efc) + 10000
-        create_efcms!(file_ids_to_add, efc, initial_sort_index)
-      end)
-
-      file_collection_response(efc, request)
+  def do_update_file_collection(request = %{ account: account, params: %{ "id" => id }}) do
+    with {:ok, file_collection} <- Service.update_file_collection(id, request.fields, get_sopts(request)) do
+      file_collection = Translation.translate(file_collection, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file_collection }}
     else
-      nil -> {:error, :not_found}
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
-    end
-  end
 
-  defp max_efcm_sort_index(%{ id: efc_id, account_id: account_id }) do
-    m_sort_index = from(efcm in FileCollectionMembership,
-      select: max(efcm.sort_index),
-      where: efcm.account_id == ^account_id,
-      where: efcm.collection_id == ^efc_id)
-    |> Repo.one()
-
-    case m_sort_index do
-      nil -> 0
       other -> other
     end
-  end
-
-  # TODO: need to also delete the s3 object
-  defp delete_efcms!(file_ids, efc = %{ id: efc_id, account_id: account_id }) do
-    efcms =
-      from(efcm in FileCollectionMembership,
-        where: efcm.account_id == ^account_id,
-        where: efcm.collection_id == ^efc_id,
-        where: efcm.file_id in ^file_ids)
-      |> Repo.all()
-
-    efcm_ids = Enum.map(efcms, fn(efcm) -> efcm.id end)
-    ef_ids = Enum.map(efcms, fn(efcm) -> efcm.file_id end)
-    efs =
-      from(ef in File,
-        where: ef.id in ^ef_ids)
-      |> Repo.all()
-
-    Enum.each(efs, fn(ef) ->
-      File.delete_object(ef)
-    end)
-
-    from(efcm in FileCollectionMembership,
-      where: efcm.id in ^efcm_ids)
-    |> Repo.delete_all()
-
-    from(ef in File,
-      where: ef.id in ^ef_ids)
-    |> Repo.delete_all()
-
-    efc
   end
 
   # TODO: use another process to delete, and also need to remove the files
@@ -443,93 +315,37 @@ defmodule BlueJet.FileStorage do
     end
   end
 
-  def do_delete_file_collection(%{ account: account, params: %{ "id" => efc_id } }) do
-    efc =
-      FileCollection.Query.default()
-      |> FileCollection.Query.for_account(account.id)
-      |> Repo.get(efc_id)
-
-    if efc do
-      Repo.delete!(efc)
+  def do_delete_file_collection(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_file_collection(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  ####
-  # FileCollectionMembership
-  ####
-  # def create_file_collection_membership(request = %{ vas: vas }) do
-  #   defaults = %{ preloads: [], fields: %{} }
-  #   request = Map.merge(defaults, request)
+  #
+  # MARK: File Collection Membership
+  #
+  def delete_file_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.delete_file_collection_membership") do
+      request
+      |> do_delete_file_collection_membership()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
 
-  #   fields = Map.merge(request.fields, %{ "account_id" => vas[:account_id] })
-  #   changeset = FileCollectionMembership.changeset(%FileCollectionMembership{}, fields)
+  def do_delete_file_collection_membership(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_file_collection_membership(id, %{ account: account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
-  #   with {:ok, efcm} <- Repo.insert(changeset) do
-  #     efcm = Repo.preload(efcm, request.preloads)
-  #     {:ok, efcm}
-  #   else
-  #     other -> other
-  #   end
-  # end
-
-  # def update_file_collection_membership(request = %{ vas: vas, file_collection_membership_id: efcm_id }) do
-  #   defaults = %{ preloads: [], fields: %{}, locale: "en" }
-  #   request = Map.merge(defaults, request)
-
-  #   efcm = Repo.get_by!(FileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
-  #   changeset = FileCollectionMembership.changeset(efcm, request.fields)
-
-  #   with {:ok, efcm} <- Repo.update(changeset) do
-  #     efcm =
-  #       efcm
-  #       |> Repo.preload(request.preloads)
-  #       |> Translation.translate(request.locale)
-
-  #     {:ok, efcm}
-  #   else
-  #     other -> other
-  #   end
-  # end
-
-  # def list_file_collection_memberships(request = %{ vas: vas }) do
-  #   defaults = %{ filter: %{}, page_size: 25, page_number: 1, locale: "en", preloads: [] }
-  #   request = Map.merge(defaults, request)
-  #   account_id = vas[:account_id]
-
-  #   query =
-  #     FileCollectionMembership
-  #     |> filter_by(collection_id: request.filter[:collection_id], file_id: request.filter[:file_id])
-  #     |> where([s], s.account_id == ^account_id)
-  #   result_count = Repo.aggregate(query, :count, :id)
-
-  #   total_query = FileCollectionMembership |> where([s], s.account_id == ^account_id)
-  #   total_count = Repo.aggregate(total_query, :count, :id)
-
-  #   query = paginate(query, size: request.page_size, number: request.page_number)
-
-  #   efcms =
-  #     Repo.all(query)
-  #     |> Repo.preload(request.preloads)
-  #     |> Translation.translate(request.locale)
-
-  #   %{
-  #     total_count: total_count,
-  #     result_count: result_count,
-  #     file_collection_memberships: efcms
-  #   }
-  # end
-
-  # def delete_file_collection_membership!(%{ vas: vas, file_collection_membership_id: efcm_id }) do
-  #   efcm = Repo.get_by!(FileCollectionMembership, account_id: vas[:account_id], id: efcm_id)
-  #   ef = Repo.get!(File, efcm.file_id)
-
-  #   Repo.transaction(fn ->
-  #     File.delete_object(ef)
-  #     Repo.delete!(efcm)
-  #     Repo.delete!(ef)
-  #   end)
-  # end
+      other -> other
+    end
+  end
 end
