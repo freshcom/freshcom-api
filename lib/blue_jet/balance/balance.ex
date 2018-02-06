@@ -3,45 +3,46 @@ defmodule BlueJet.Balance do
   use BlueJet.EventEmitter, namespace: :balance
 
   alias Ecto.{Changeset, Multi}
-  alias BlueJet.Balance.{Payment, Refund, Card, BalanceSettings}
+  alias BlueJet.Balance.Service
+  alias BlueJet.Balance.{Payment, Refund, Card, Settings}
 
-  defmodule Service do
-    use BlueJet, :service
+  # defmodule Service do
+  #   use BlueJet, :service
 
-    alias BlueJet.Balance.IdentityService
+  #   alias BlueJet.Balance.IdentityService
 
-    defp get_account(opts) do
-      opts[:account] || IdentityService.get_account(opts)
-    end
+  #   defp get_account(opts) do
+  #     opts[:account] || IdentityService.get_account(opts)
+  #   end
 
-    def list_payment(%{ target_type: target_type, target_id: target_id }, opts) do
-      account_id = opts[:account_id] || opts[:account].id
+  #   def list_payment(%{ target_type: target_type, target_id: target_id }, opts) do
+  #     account_id = opts[:account_id] || opts[:account].id
 
-      Payment.Query.default()
-      |> Payment.Query.for_account(account_id)
-      |> Payment.Query.for_target(target_type, target_id)
-      |> Repo.all()
-    end
+  #     Payment.Query.default()
+  #     |> Payment.Query.for_account(account_id)
+  #     |> Payment.Query.for_target(target_type, target_id)
+  #     |> Repo.all()
+  #   end
 
-    def count_payment(fields \\ %{}, opts) do
-      account = get_account(opts)
-      filter = get_filter(fields)
+  #   def count_payment(fields \\ %{}, opts) do
+  #     account = get_account(opts)
+  #     filter = get_filter(fields)
 
-      Payment.Query.default()
-      |> Payment.Query.filter_by(filter)
-      |> Payment.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
-    end
-  end
+  #     Payment.Query.default()
+  #     |> Payment.Query.filter_by(filter)
+  #     |> Payment.Query.for_account(account.id)
+  #     |> Repo.aggregate(:count, :id)
+  #   end
+  # end
 
   defmodule EventHandler do
     @behaviour BlueJet.EventHandler
 
     def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
-      %BalanceSettings{ account_id: account.id }
+      %Settings{ account_id: account.id }
       |> Repo.insert!()
 
-      %BalanceSettings{ account_id: test_account.id }
+      %Settings{ account_id: test_account.id }
       |> Repo.insert!()
 
       {:ok, nil}
@@ -60,13 +61,13 @@ defmodule BlueJet.Balance do
   end
 
   def do_update_settings(request = %{ account: account }) do
-    balance_settings = Repo.get_by!(BalanceSettings, account_id: account.id)
-    changeset = BalanceSettings.changeset(balance_settings, request.fields)
+    balance_settings = Repo.get_by!(Settings, account_id: account.id)
+    changeset = Settings.changeset(balance_settings, request.fields)
 
     statements = Multi.new()
     |> Multi.update(:balance_settings, changeset)
     |> Multi.run(:processed_balance_settings, fn(%{ balance_settings: balance_settings }) ->
-        BalanceSettings.process(balance_settings, changeset)
+        Settings.process(balance_settings, changeset)
        end)
 
     case Repo.transaction(statements) do
@@ -90,7 +91,7 @@ defmodule BlueJet.Balance do
   end
 
   def do_get_settings(%{ account: account }) do
-    balance_settings = Repo.get_by!(BalanceSettings, account_id: account.id)
+    balance_settings = Repo.get_by!(Settings, account_id: account.id)
 
     {:ok, %AccessResponse{ data: balance_settings }}
   end
@@ -101,30 +102,26 @@ defmodule BlueJet.Balance do
   def list_card(request) do
     with {:ok, request} <- preprocess_request(request, "balance.list_card") do
       request
-      |> AccessRequest.transform_by_role()
       |> do_list_card()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_card(request = %{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      Card.Query.default()
-      |> filter_by(status: "saved_by_owner", owner_id: filter[:owner_id], owner_type: filter[:owner_type])
-      |> Card.Query.for_account(account.id)
+  def do_list_card(request = %{ account: account, filter: filter }) do
+    filter = Map.put(filter, :status, "saved_by_owner")
 
-    total_count = Repo.aggregate(data_query, :count, :id)
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_card(%{ account: account })
+
     all_count =
-      Card
-      |> filter_by(status: "saved_by_owner")
-      |> Card.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: %{ status: "saved_by_owner" } }
+      |> Service.count_card(%{ account: account })
 
     cards =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
+      %{ filter: filter, search: request.search }
+      |> Service.list_card(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -139,20 +136,6 @@ defmodule BlueJet.Balance do
     {:ok, response}
   end
 
-  defp card_response(nil, _), do: {:error, :not_found}
-
-  defp card_response(card, request = %{ account: account }) do
-    preloads = Card.Query.preloads(request.preloads, role: request.role)
-
-    card =
-      card
-      |> Repo.preload(preloads)
-      |> Card.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: card }}
-  end
-
   def update_card(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_card") do
       request
@@ -163,24 +146,9 @@ defmodule BlueJet.Balance do
   end
 
   def do_update_card(request = %{ account: account, params: %{ "id" => id }}) do
-    card =
-      Card.Query.default()
-      |> Card.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %Card{} <- card,
-         changeset = %{valid?: true} <- Card.changeset(card, request.fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:card, changeset)
-        |> Multi.run(:processed_card, fn(%{ card: card }) ->
-            Card.process(card, changeset)
-           end)
-
-      {:ok, %{ processed_card: card }} = Repo.transaction(statements)
-      card_response(card, request)
+    with {:ok, card} <- Service.update_card(id, request.fields, get_sopts(request)) do
+      card = Translation.translate(card, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: card }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -199,21 +167,13 @@ defmodule BlueJet.Balance do
   end
 
   def do_delete_card(%{ account: account, params: %{ "id" => id } }) do
-    card =
-      Card.Query.default()
-      |> Card.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    if card do
-      Repo.transaction(fn ->
-        Card.process(card, :delete)
-        Repo.delete!(card)
-      end)
-
+    with {:ok, _} <- Service.delete_card(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 

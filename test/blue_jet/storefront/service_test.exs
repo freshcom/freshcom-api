@@ -185,7 +185,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: other_account.id
       })
 
-      {:error, error} =Service.update_order(order.id, %{}, %{ account: account })
+      {:error, error} = Service.update_order(order.id, %{}, %{ account: account })
       assert error == :not_found
     end
 

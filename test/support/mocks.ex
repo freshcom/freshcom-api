@@ -4,6 +4,7 @@ Mox.defmock(BlueJet.AuthorizationMock, for: BlueJet.Authorization)
 Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
 
 Mox.defmock(BlueJet.Balance.StripeClientMock, for: BlueJet.Balance.StripeClient)
+Mox.defmock(BlueJet.Balance.OauthClientMock, for: BlueJet.Balance.OauthClient)
 Mox.defmock(BlueJet.Balance.IdentityServiceMock, for: BlueJet.Balance.IdentityService)
 
 Mox.defmock(BlueJet.Crm.StripeClientMock, for: BlueJet.Crm.StripeClient)

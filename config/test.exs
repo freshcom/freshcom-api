@@ -37,6 +37,7 @@ config :blue_jet, :goods, %{
 
 config :blue_jet, :balance, %{
   stripe_client: BlueJet.Balance.StripeClientMock,
+  oauth_client: BlueJet.Balance.OauthClientMock,
   identity_service: BlueJet.Balance.IdentityServiceMock,
   listeners: [BlueJet.EventHandlerMock]
 }

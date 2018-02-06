@@ -1,8 +1,8 @@
-defmodule BlueJet.Balance.BalanceSettings do
+defmodule BlueJet.Balance.Settings do
   use BlueJet, :data
 
   alias Ecto.Changeset
-  alias BlueJet.Balance.IdentityService
+  alias BlueJet.Balance.{IdentityService, OauthClient}
 
   schema "balance_settings" do
     field :account_id, Ecto.UUID
@@ -49,7 +49,7 @@ defmodule BlueJet.Balance.BalanceSettings do
     (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:stripe_auth_code]
   end
 
-  def changeset(struct, params \\ %{}) do
+  def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
   end

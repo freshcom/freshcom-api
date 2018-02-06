@@ -86,6 +86,7 @@ config :blue_jet, :file_storage, %{
 
 config :blue_jet, :balance, %{
   stripe_client: BlueJet.Stripe.Client,
+  oauth_client: BlueJet.OauthClient,
   identity_service: BlueJet.Identity.Service,
   listeners: [BlueJet.Storefront.EventHandler, BlueJet.Crm.EventHandler]
 }

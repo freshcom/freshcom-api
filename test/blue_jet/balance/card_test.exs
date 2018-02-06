@@ -9,7 +9,7 @@ defmodule BlueJet.Balance.CardTest do
 
   test "writable_fields/0" do
     assert Card.writable_fields() == [
-      :status,
+      :label,
       :exp_month,
       :exp_year,
       :primary,
@@ -28,7 +28,6 @@ defmodule BlueJet.Balance.CardTest do
 
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [
-        :status,
         :exp_month,
         :exp_year,
         :owner_id,
@@ -39,10 +38,7 @@ defmodule BlueJet.Balance.CardTest do
 
   describe "changeset/4" do
     test "when there is no primary card saved by owner" do
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> %Account{} end)
-
-      changeset = Card.changeset(%Card{}, %{
+      changeset = Card.changeset(%Card{}, :insert, %{
         owner_id: Ecto.UUID.generate(),
         owner_type: "Customer"
       })

@@ -3,7 +3,7 @@ defmodule BlueJet.BalanceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance
-  alias BlueJet.Balance.{Card, Payment, BalanceSettings}
+  alias BlueJet.Balance.{Card, Payment, Settings}
   alias BlueJet.Balance.{StripeClientMock}
 
   setup :verify_on_exit!
@@ -171,7 +171,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = Repo.insert!(%Account{})
-      Repo.insert!(%BalanceSettings{
+      Repo.insert!(%Settings{
         account_id: account.id
       })
 

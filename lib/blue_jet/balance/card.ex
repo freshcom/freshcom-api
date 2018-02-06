@@ -4,6 +4,7 @@ defmodule BlueJet.Balance.Card do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
+  alias BlueJet.Balance.Card.Proxy
   alias BlueJet.Balance.{StripeClient, IdentityService}
 
   schema "cards" do
@@ -11,6 +12,7 @@ defmodule BlueJet.Balance.Card do
     field :account, :map, virtual: true
 
     field :status, :string
+    field :label, :string
     field :last_four_digit, :string
     field :exp_month, :integer
     field :exp_year, :integer
@@ -36,6 +38,7 @@ defmodule BlueJet.Balance.Card do
 
   @system_fields [
     :id,
+    :status,
     :account_id,
     :brand,
     :cardholder_name,
@@ -57,7 +60,7 @@ defmodule BlueJet.Balance.Card do
   end
 
   def required_fields() do
-    writable_fields() -- [:cardholder_name]
+    writable_fields() -- [:cardholder_name, :label]
   end
 
   def validate(changeset) do
@@ -65,16 +68,29 @@ defmodule BlueJet.Balance.Card do
     |> validate_required(required_fields())
   end
 
-  def changeset(card, params, locale \\ nil, default_locale \\ nil) do
-    card = %{ card | account: get_account(card) }
+  def changeset(card, :insert, params) do
+    card
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> put_primary()
+    |> validate()
+  end
+
+  def changeset(card, :update, params, locale \\ nil, default_locale \\ nil) do
+    card = Proxy.put_account(card)
     default_locale = default_locale || card.account.default_locale
     locale = locale || default_locale
 
     card
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
-    |> put_primary()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(card, :delete) do
+    change(card)
+    |> Map.put(:action, :delete)
   end
 
   def put_primary(changeset = %{ changes: %{ primary: true } }) do
@@ -101,10 +117,6 @@ defmodule BlueJet.Balance.Card do
   ######
   # External Resources
   #####
-  def get_account(payment) do
-    payment.account || IdentityService.get_account(payment)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file_collection,
     field: :file_collections,
@@ -184,7 +196,7 @@ defmodule BlueJet.Balance.Card do
   """
   @spec keep_stripe_token_as_card(map, map, map) :: {:ok, String.t} | {:error, map}
   def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status }, opts) when not is_nil(stripe_customer_id) do
-    account = get_account(%{ account_id: opts[:account_id], account: opts[:account] })
+    account = IdentityService.get_account(%{ account_id: opts[:account_id], account: opts[:account] })
 
     case retrieve_stripe_token(token, mode: account.mode) do
       {:ok, token_object} ->
@@ -232,8 +244,8 @@ defmodule BlueJet.Balance.Card do
 
   @spec process(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(card = %__MODULE__{ source: source }) when not is_nil(source) do
-    account = get_account(card)
-    card = %{ card | account: account }
+    card = Proxy.put_account(card)
+
     with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
         last_four_digit: stripe_card["last4"],
@@ -258,24 +270,26 @@ defmodule BlueJet.Balance.Card do
   end
 
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, map}
-  def process(card, changeset = %Changeset{}) do
-    card = %{ card | account: get_account(card) }
+  def process(card, changeset = %{ action: :update }) do
+    card = Proxy.put_account(card)
+
     if get_change(changeset, :exp_month) || get_change(changeset, :exp_year) do
       update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
 
     # TODO: set as primary if this is the only card
-    if get_change(changeset, :primary) do
-      __MODULE__
-      |> __MODULE__.Query.for_account(card.account_id)
-      |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
-      |> __MODULE__.Query.not_id(card.id)
-      |> Repo.update_all(set: [primary: false])
-    end
+    # if get_change(changeset, :primary) do
+    #   __MODULE__
+    #   |> __MODULE__.Query.for_account(card.account_id)
+    #   |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
+    #   |> __MODULE__.Query.not_id(card.id)
+    #   |> Repo.update_all(set: [primary: false])
+    # end
 
     {:ok, card}
   end
-  def process(card = %{ primary: true }, :delete) do
+
+  def process(card = %{ primary: true }, %{ action: :delete }) do
     last_inserted_card =
       __MODULE__.Query.default()
       |> __MODULE__.Query.for_account(card.account_id)
@@ -293,8 +307,8 @@ defmodule BlueJet.Balance.Card do
 
     {:ok, card}
   end
-  def process(card = %{ primary: false }, :delete) do
-    card = %{ card | account: get_account(card) }
+  def process(card = %{ primary: false }, %{ action: :delete }) do
+    card = Proxy.put_account(card)
     delete_stripe_card(card)
 
     {:ok, card}
@@ -302,19 +316,19 @@ defmodule BlueJet.Balance.Card do
   def process(card, _), do: {:ok, card}
 
   defp update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
-    account = get_account(card)
+    account = Proxy.get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
   end
 
   @spec create_stripe_card(__MODULE__.t, Map.t) :: {:ok, map} | {:error, map}
   defp create_stripe_card(card = %{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
-    account = get_account(card)
+    account = Proxy.get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata }, mode: account.mode)
   end
 
   @spec delete_stripe_card(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp delete_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
-    account = get_account(card)
+    account = Proxy.get_account(card)
     StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", mode: account.mode)
   end
 
@@ -325,35 +339,5 @@ defmodule BlueJet.Balance.Card do
 
   defp format_stripe_errors(stripe_errors) do
     [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Balance.Card
-
-    def for_account(query, account_id) do
-      from(c in query, where: c.account_id == ^account_id)
-    end
-
-    def not_primary(query) do
-      from(c in query, where: c.primary != true)
-    end
-
-    def not_id(query, id) do
-      from(c in query, where: c.id != ^id)
-    end
-
-    def with_owner(query, owner_type, owner_id) do
-      from(c in query, where: c.owner_type == ^owner_type, where: c.owner_id == ^owner_id)
-    end
-
-    def with_status(query, status) do
-      from(c in query, where: c.status == ^status)
-    end
-
-    def default() do
-      from(c in Card, order_by: [desc: :inserted_at])
-    end
   end
 end

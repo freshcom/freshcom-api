@@ -76,10 +76,4 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     change(fcm)
     |> Map.put(:action, :delete)
   end
-
-  def changeset(struct, params \\ %{}) do
-    struct
-    |> cast(params, castable_fields(struct))
-    |> validate()
-  end
 end

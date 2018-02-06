@@ -1,4 +1,4 @@
-defmodule OauthClient do
+defmodule BlueJet.OauthClient do
   def post(path, body) do
     {:ok, response} = OauthHttpClient.post(path, body)
     unwrap_response(response)

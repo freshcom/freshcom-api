@@ -10,7 +10,7 @@ defmodule BlueJet.Balance.Payment do
   alias Decimal, as: D
   alias Ecto.Changeset
 
-  alias BlueJet.Balance.{Card, Refund, BalanceSettings}
+  alias BlueJet.Balance.{Card, Refund, Settings}
   alias BlueJet.Balance.{StripeClient, IdentityService}
 
   schema "payments" do
@@ -263,7 +263,7 @@ defmodule BlueJet.Balance.Payment do
   """
   @spec charge(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
   def charge(payment = %__MODULE__{ processor: "stripe" }) do
-    balance_settings = BalanceSettings.for_account(payment.account_id)
+    balance_settings = Settings.for_account(payment.account_id)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
@@ -329,7 +329,7 @@ defmodule BlueJet.Balance.Payment do
     {:ok, payment}
   end
 
-  @spec create_stripe_charge(__MODULE__.t, String.t, BalanceSettings.t) :: {:ok, map} | {:error, map}
+  @spec create_stripe_charge(__MODULE__.t, String.t, Settings.t) :: {:ok, map} | {:error, map}
   defp create_stripe_charge(
     payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
     source,

@@ -28,6 +28,7 @@ defmodule BlueJet.FileStorage.Service do
     |> File.Query.for_account(account.id)
     |> File.Query.paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
+    |> File.put_url()
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -51,7 +52,11 @@ defmodule BlueJet.FileStorage.Service do
       |> File.changeset(:insert, fields)
 
     with {:ok, file} <- Repo.insert(changeset) do
-      file = preload(file, preloads[:path], preloads[:opts])
+      file =
+        file
+        |> File.put_url()
+        |> preload(preloads[:path], preloads[:opts])
+
       {:ok, file}
     else
       other -> other
@@ -82,8 +87,8 @@ defmodule BlueJet.FileStorage.Service do
     with {:ok, file} <- Repo.update(changeset) do
       file =
         file
-        |> preload(preloads[:path], preloads[:opts])
         |> File.put_url()
+        |> preload(preloads[:path], preloads[:opts])
 
       {:ok, file}
     else
