@@ -7,13 +7,20 @@ defmodule BlueJet.Goods do
   alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable
 
-  ####
-  # Stockable
-  ####
+  defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
+    request = %{ request | filter: Map.put(request.filter, :status, "active") }
+    %{ request | count_filter: %{ all: %{ status: "active" } } }
+  end
+
+  defp filter_by_role(request), do: request
+
+  #
+  # MARK: Stockable
+  #
   def list_stockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_stockable") do
       request
-      |> AccessRequest.transform_by_role()
+      |> filter_by_role()
       |> do_list_stockable()
     else
       {:error, _} -> {:error, :access_denied}
@@ -21,26 +28,17 @@ defmodule BlueJet.Goods do
   end
 
   def do_list_stockable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
-    data_query =
-      Stockable.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Stockable.translatable_fields)
-      |> filter_by(status: filter[:status])
-      |> Stockable.Query.for_account(account.id)
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_stockable(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      Stockable.Query.default()
-      |> filter_by(status: counts[:all][:status])
-      |> Stockable.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: Map.take(request.count_filter, [:all]) }
+      |> Service.count_stockable(%{ account: account })
 
-    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
     stockables =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      %{ filter: filter, search: request.search }
+      |> Service.list_stockable(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -55,20 +53,6 @@ defmodule BlueJet.Goods do
     {:ok, response}
   end
 
-  defp stockable_response(nil, _), do: {:error, :not_found}
-
-  defp stockable_response(stockable, request = %{ account: account }) do
-    preloads = Stockable.Query.preloads(request.preloads, role: request.role)
-
-    stockable =
-      stockable
-      |> Repo.preload(preloads)
-      |> Stockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
-  end
-
   def create_stockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.create_stockable") do
       request
@@ -79,11 +63,9 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_stockable(request = %{ account: account }) do
-    stockable = %Stockable{ account: account, account_id: account.id }
-    changeset = Stockable.changeset(stockable, request.fields, request.locale, account.default_locale)
-
-    with {:ok, stockable} <- Repo.insert(changeset) do
-      stockable_response(stockable, request)
+    with {:ok, stockable} <- Service.create_stockable(request.fields, get_sopts(request)) do
+      stockable = Translation.translate(stockable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -103,11 +85,15 @@ defmodule BlueJet.Goods do
 
   def do_get_stockable(request = %{ account: account, params: %{ "id" => id } }) do
     stockable =
-      Stockable.Query.default()
-      |> Stockable.Query.for_account(account.id)
-      |> Repo.get(id)
+      %{ id: id }
+      |> Service.get_stockable(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    stockable_response(stockable, request)
+    if stockable do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_stockable(request) do
@@ -120,23 +106,14 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_stockable(request = %{ account: account, params: %{ "id" => id } }) do
-    stockable =
-      Stockable.Query.default()
-      |> Stockable.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %Stockable{} <- stockable,
-         changeset <- Stockable.changeset(stockable, request.fields, request.locale, account.default_locale),
-         {:ok, stockable} <- Repo.update(changeset)
-    do
-      stockable_response(stockable, request)
+    with {:ok, stockable} <- Service.update_stockable(id, request.fields, get_sopts(request)) do
+      stockable = Translation.translate(stockable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
-      nil ->
-        {:error, :not_found}
+      other -> other
     end
   end
 
@@ -150,22 +127,19 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_stockable(%{ account: account, params: %{ "id" => id } }) do
-    stockable =
-      Stockable.Query.default()
-      |> Stockable.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if stockable do
-      Repo.delete!(stockable)
+    with {:ok, _} <- Service.delete_stockable(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
-  ####
-  # Unlockable
-  ####
+  #
+  # MARK: Unlockable
+  #
   def list_unlockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_unlockable") do
       request

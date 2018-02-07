@@ -9,7 +9,7 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.IdentityService
+  alias BlueJet.Goods.Unlockable.Proxy
 
   schema "unlockables" do
     field :account_id, Ecto.UUID
@@ -65,8 +65,15 @@ defmodule BlueJet.Goods.Unlockable do
 
   def put_print_name(changeset), do: changeset
 
-  def changeset(unlockable, params, locale \\ nil, default_locale \\ nil) do
-    unlockable = %{ unlockable | account: get_account(unlockable) }
+  def changeset(unlockable, :insert, params) do
+    unlockable
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_print_name()
+  end
+
+  def changeset(unlockable, :update, params, locale \\ nil, default_locale \\ nil) do
+    unlockable = Proxy.put_account(unlockable)
     default_locale = default_locale || unlockable.account.default_locale
     locale = locale || default_locale
 
@@ -77,13 +84,14 @@ defmodule BlueJet.Goods.Unlockable do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  def changeset(unlockable, :delete) do
+    change(unlockable)
+    |> Map.put(:action, :delete)
+  end
+
   ######
   # External Resources
   #####
-  def get_account(unlockable) do
-    unlockable.account || IdentityService.get_account(unlockable)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file,
     field: :avatar
@@ -94,22 +102,4 @@ defmodule BlueJet.Goods.Unlockable do
     owner_type: "Unlockable"
 
   def put_external_resources(unlockable, _, _), do: unlockable
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Goods.Unlockable
-
-    def default() do
-      from(u in Unlockable, order_by: [desc: :updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(u in query, where: u.account_id == ^account_id)
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end

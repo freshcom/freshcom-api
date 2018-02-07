@@ -470,50 +470,48 @@ defmodule BlueJet.Balance.ServiceTest do
       assert changeset.valid? == false
     end
 
-    # test "when given valid fields" do
-    #   account = Repo.insert!(%Account{})
-    #   Repo.insert!(%Settings{
-    #     account_id: account.id
-    #   })
+    test "when given valid fields" do
+      account = Repo.insert!(%Account{})
+      payment = Repo.insert!(%Payment{
+        account_id: account.id,
+        gateway: "freshcom",
+        amount_cents: 5000,
+        gross_amount_cents: 5000
+      })
 
-    #   stripe_charge_id = Faker.String.base64(12)
-    #   stripe_transfer_id = Faker.String.base64(12)
-    #   stripe_charge = %{
-    #     "captured" => true,
-    #     "id" => stripe_charge_id,
-    #     "amount" => 500,
-    #     "balance_transaction" => %{
-    #       "fee" => 50
-    #     },
-    #     "transfer" => %{
-    #       "id" => stripe_transfer_id,
-    #       "amount" => 400
-    #     }
-    #   }
-    #   StripeClientMock
-    #   |> expect(:post, fn(_, _, _) -> {:ok, stripe_charge} end)
+      stripe_refund_id = Faker.String.base64(12)
+      stripe_refund = %{
+        "id" => stripe_refund_id,
+        "balance_transaction" => %{
+          "fee" => -500
+        }
+      }
+      stripe_transfer_reversal_id = Faker.String.base64(12)
+      stripe_transfer_reversal = %{
+        "id" => stripe_transfer_reversal_id,
+        "amount" => 4200
+      }
+      StripeClientMock
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_refund} end)
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_transfer_reversal} end)
 
-    #   EventHandlerMock
-    #   |> expect(:handle_event, fn(name, _) ->
-    #       assert name == "balance.payment.before_create"
-    #       {:ok, nil}
-    #      end)
-    #   |> expect(:handle_event, fn(name, _) ->
-    #       assert name == "balance.payment.after_create"
-    #       {:ok, nil}
-    #      end)
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance.refund.after_create"
+          {:ok, nil}
+         end)
 
-    #   fields = %{
-    #     "gateway" => "freshcom",
-    #     "processor" => "stripe",
-    #     "amount_cents" => 500,
-    #     "source" => "tok_" <> Ecto.UUID.generate()
-    #   }
+      fields = %{
+        "payment_id" => payment.id,
+        "gateway" => "freshcom",
+        "processor" => "stripe",
+        "amount_cents" => 500
+      }
 
-    #   {:ok, payment} = Service.create_payment(fields, %{ account: account })
+      {:ok, refund} = Service.create_refund(fields, %{ account: account })
 
-    #   verify!()
-    #   assert payment
-    # end
+      verify!()
+      assert refund
+    end
   end
 end

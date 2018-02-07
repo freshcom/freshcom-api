@@ -62,7 +62,7 @@ defmodule BlueJet.Goods.StockableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       })
@@ -78,7 +78,7 @@ defmodule BlueJet.Goods.StockableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         unit_of_measure: Faker.String.base64(2)
       }, "en", "zh-CN")
@@ -94,7 +94,7 @@ defmodule BlueJet.Goods.StockableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, %{})
+      changeset = Stockable.changeset(%Stockable{ account_id: account.id }, :update, %{})
 
       refute changeset.valid?
     end

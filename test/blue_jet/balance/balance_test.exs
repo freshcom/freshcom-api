@@ -117,7 +117,7 @@ defmodule BlueJet.BalanceTest do
       account = Repo.insert!(%Account{})
       Repo.insert!(%Payment{
         account_id: account.id,
-        gateway: "online",
+        gateway: "freshcom",
         amount_cents: 500
       })
 
@@ -312,7 +312,7 @@ defmodule BlueJet.BalanceTest do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: account.id,
-        gateway: "online",
+        gateway: "freshcom",
         amount_cents: 5000,
         gross_amount_cents: 5000
       })
@@ -324,7 +324,7 @@ defmodule BlueJet.BalanceTest do
           "payment_id" => payment.id
         },
         fields: %{
-          "gateway" => "online",
+          "gateway" => "freshcom",
           "processor" => "stripe",
           "amount_cents" => 5000
         }

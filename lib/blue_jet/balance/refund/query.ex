@@ -3,6 +3,22 @@ defmodule BlueJet.Balance.Refund.Query do
 
   alias BlueJet.Balance.Refund
 
+  @searchable_fields [
+    :code
+  ]
+
+  @filterable_fields [
+    :status,
+    :gateway,
+    :processor,
+    :method,
+    :label,
+    :owner_id,
+    :owner_type,
+    :target_id,
+    :target_type
+  ]
+
   def default() do
     from(r in Refund, order_by: [desc: :updated_at])
   end
