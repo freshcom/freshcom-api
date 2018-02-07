@@ -4,7 +4,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Service
-  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.{Product, ProductCollection}
   alias BlueJet.Catalogue.GoodsServiceMock
 
   setup :verify_on_exit!
@@ -179,6 +179,81 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
       assert product
       refute Repo.get(Product, product.id)
+    end
+  end
+
+  describe "list_product_collection/2" do
+    test "product_collection for different account is not returned" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      product_collections = Service.list_product_collection(%{ account: account })
+      assert length(product_collections) == 2
+    end
+
+    test "pagination should change result size" do
+      account = Repo.insert!(%Account{})
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      product_collections = Service.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      assert length(product_collections) == 3
+
+      product_collections = Service.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      assert length(product_collections) == 2
+    end
+  end
+
+  describe "create_product_collection/2" do
+    test "when given invalid fields" do
+      account = Repo.insert!(%Account{})
+      fields = %{}
+
+      {:error, changeset} = Service.create_product_collection(fields, %{ account: account })
+
+      assert changeset.valid? == false
+    end
+
+    test "when given valid fields" do
+      account = Repo.insert!(%Account{})
+
+      fields = %{
+        "name" => Faker.Commerce.product_name()
+      }
+
+      {:ok, product_collection} = Service.create_product_collection(fields, %{ account: account })
+
+      assert product_collection
     end
   end
 end

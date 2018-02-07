@@ -8,8 +8,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Catalogue.IdentityService
-  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.ProductCollection.Proxy
   alias BlueJet.Catalogue.ProductCollectionMembership
 
   schema "product_collections" do
@@ -61,8 +60,14 @@ defmodule BlueJet.Catalogue.ProductCollection do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(product_collection, :insert, params) do
+    product_collection
+    |> cast(params, writable_fields())
+    |> validate()
+  end
+
   def changeset(product_collection, params, locale \\ nil, default_locale \\ nil) do
-    product_collection = %{ product_collection | account: get_account(product_collection) }
+    product_collection = Proxy.put_account(product_collection)
     default_locale = default_locale || product_collection.account.default_locale
     locale = locale || default_locale
 
@@ -75,10 +80,6 @@ defmodule BlueJet.Catalogue.ProductCollection do
   #
   # MARK: External Resources
   #
-  def get_account(product) do
-    product.account || IdentityService.get_account(product)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file,
     field: :avatar
@@ -89,38 +90,4 @@ defmodule BlueJet.Catalogue.ProductCollection do
     owner_type: "ProductCollection"
 
   def put_external_resources(product_collection, _, _), do: product_collection
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Catalogue.ProductCollection
-
-    def default() do
-      from(pc in ProductCollection, order_by: [desc: pc.sort_index])
-    end
-
-    def for_account(query, account_id) do
-      from(pc in query, where: pc.account_id == ^account_id)
-    end
-
-    def preloads({:products, product_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = Product.Query.default() |> Product.Query.active()
-      [products: {query, Product.Query.preloads(product_preloads, options)}]
-    end
-
-    def preloads({:products, product_preloads}, options = [role: _]) do
-      query = Product.Query.default()
-      [products: {query, Product.Query.preloads(product_preloads, options)}]
-    end
-
-    def preloads({:memberships, membership_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = ProductCollectionMembership.Query.default() |> ProductCollectionMembership.Query.with_active_product()
-      [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
-    end
-
-    def preloads({:memberships, membership_preloads}, options = [role: _]) do
-      query = ProductCollectionMembership.Query.default()
-      [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
-    end
-  end
 end

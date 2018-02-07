@@ -1,8 +1,8 @@
 defmodule BlueJet.Catalogue.Service do
   use BlueJet, :service
 
+  alias Ecto.Multi
   alias BlueJet.Repo
-  alias Ecto.{Multi, Changeset}
   alias BlueJet.Catalogue.IdentityService
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
@@ -149,6 +149,48 @@ defmodule BlueJet.Catalogue.Service do
   #
   # MARK: Product Collection
   #
+  def list_product_collection(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    ProductCollection.Query.default()
+    |> ProductCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> ProductCollection.Query.filter_by(filter)
+    |> ProductCollection.Query.for_account(account.id)
+    |> ProductCollection.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_product_collection(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    ProductCollection.Query.default()
+    |> ProductCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> ProductCollection.Query.filter_by(filter)
+    |> ProductCollection.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_product_collection(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %ProductCollection{ account_id: account.id, account: account }
+      |> ProductCollection.changeset(:insert, fields)
+
+    with {:ok, product_collection} <- Repo.insert(changeset) do
+      product_collection = preload(product_collection, preloads[:path], preloads[:opts])
+      {:ok, product_collection}
+    else
+      other -> other
+    end
+  end
+
   def get_product_collection(id, opts) do
     account_id = opts[:account_id] || opts[:account].id
     Repo.get_by(ProductCollection, id: id, account_id: account_id)
@@ -157,14 +199,6 @@ defmodule BlueJet.Catalogue.Service do
   def get_product_collection_by_code(code, opts) do
     account_id = opts[:account_id] || opts[:account].id
     Repo.get_by(ProductCollection, code: code, account_id: account_id)
-  end
-
-  def create_product_collection(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-
-    %ProductCollection{ account_id: account_id, account: opts[:account] }
-    |> ProductCollection.changeset(fields)
-    |> Repo.insert()
   end
 
   def update_product_collection(id, fields, opts) do

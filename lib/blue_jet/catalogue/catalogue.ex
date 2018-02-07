@@ -174,9 +174,9 @@ defmodule BlueJet.Catalogue do
   end
 
 
-  ######
-  # ProductCollection
-  ######
+  #
+  # MARK: Product Collection
+  #
   def list_product_collection(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.list_product_collection") do
       request
