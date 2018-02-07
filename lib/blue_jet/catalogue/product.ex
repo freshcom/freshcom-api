@@ -19,7 +19,7 @@ defmodule BlueJet.Catalogue.Product do
 
   alias BlueJet.Catalogue.Price
   alias BlueJet.Catalogue.ProductCollectionMembership
-  alias BlueJet.Catalogue.{IdentityService, GoodsService}
+  alias BlueJet.Catalogue.Product.{Query, Proxy}
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -81,11 +81,11 @@ defmodule BlueJet.Catalogue.Product do
     __MODULE__.__trans__(:fields)
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}) do
+  defp castable_fields(:insert) do
     writable_fields()
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+  defp castable_fields(:update) do
     writable_fields() -- [:kind, :goods_id, :goods_type]
   end
 
@@ -114,11 +114,12 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_goods(changeset, "combo"), do: changeset
 
   defp validate_goods(changeset, _) do
+    account = get_field(changeset, :account)
     goods_id = get_field(changeset, :goods_id)
     goods_type = get_field(changeset, :goods_type)
     account_id = get_field(changeset, :account_id)
 
-    goods = get_field(changeset, :goods) || GoodsService.get_goods(goods_type, goods_id)
+    goods = get_field(changeset, :goods) || Proxy.get_goods(%{ goods_type: goods_type, goods_id: goods_id, account: account })
 
     if goods && goods.account_id == account_id do
       changeset
@@ -237,7 +238,7 @@ defmodule BlueJet.Catalogue.Product do
 
   defp validate_parent_id(changeset), do: changeset
 
-  def validate(changeset) do
+  def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required(required_fields(changeset))
     |> validate_status()
@@ -245,25 +246,48 @@ defmodule BlueJet.Catalogue.Product do
     |> validate_parent_id()
   end
 
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_status()
+  end
+
+  def validate(changeset), do: changeset
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(product, params, locale \\ nil, default_locale \\ nil) do
-    product = %{ product | account: get_account(product) }
+  def changeset(product, :insert, params) do
+    product
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> put_name()
+    |> validate()
+  end
+
+  def changeset(product, :update, params, locale \\ nil, default_locale \\ nil) do
+    product = Proxy.put_account(product)
     default_locale = default_locale || product.account.default_locale
     locale = locale || default_locale
 
     product
-    |> cast(params, castable_fields(product))
-    |> put_name(locale)
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> put_name()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def put_name(changeset = %{ changes: %{ name_sync: "sync_with_goods" } }, _) do
+  def changeset(product, :delete) do
+    change(product)
+    |> Map.put(:action, :delete)
+  end
+
+  def put_name(changeset = %{ action: :insert, changes: %{ name_sync: "sync_with_goods" } }) do
+    account = get_field(changeset, :account)
     goods_id = get_field(changeset, :goods_id)
     goods_type = get_field(changeset, :goods_type)
-    goods = get_field(changeset, :goods) || GoodsService.get_goods(goods_type, goods_id)
+    goods = get_field(changeset, :goods) || Proxy.get_goods(%{ goods_type: goods_type, goods_id: goods_id, account: account })
 
     if goods do
       new_translations =
@@ -280,15 +304,27 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  def put_name(changeset, _), do: changeset
+  def put_name(changeset), do: changeset
+
+  def process(product = %{ parent_id: parent_id }, %{ action: :update, changes: %{ primary: true } }) when not is_nil(parent_id) do
+    Query.default()
+    |> Query.with_parent(parent_id)
+    |> Repo.update_all(set: [primary: false])
+
+    {:ok, product}
+  end
+
+  def process(product, %{ action: :delete }) do
+    Proxy.delete_avatar(product)
+
+    {:ok, product}
+  end
+
+  def process(product, _), do: {:ok, product}
 
   #
   # MARK: External Resources
   #
-  def get_account(product) do
-    product.account || IdentityService.get_account(product)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file,
     field: :avatar
@@ -298,90 +334,5 @@ defmodule BlueJet.Catalogue.Product do
     field: :file_collections,
     owner_type: "Product"
 
-  def put_external_regoodss(product, _, _), do: product
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Catalogue.Product
-
-    def default() do
-      from p in Product
-    end
-
-    def default_order(query) do
-      from p in query, order_by: [desc: p.updated_at]
-    end
-
-    def for_account(query, account_id) do
-      from(p in query, where: p.account_id == ^account_id)
-    end
-
-    def in_collection(query, nil), do: query
-    def in_collection(query, collection_id) do
-      from p in query,
-        join: pcm in ProductCollectionMembership, on: pcm.product_id == p.id,
-        where: pcm.collection_id == ^collection_id,
-        order_by: [desc: pcm.sort_index]
-    end
-
-    def variant_default() do
-      from(p in Product, where: p.kind == "variant", order_by: [desc: :updated_at])
-    end
-
-    def item_default() do
-      from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
-    end
-
-    def with_parent(query, parent_id) do
-      from p in query, where: p.parent_id == ^parent_id
-    end
-
-    def preloads({:items, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = Product.Query.default() |> Product.Query.active()
-      [items: {query, Product.Query.preloads(item_preloads, options)}]
-    end
-
-    def preloads({:items, item_preloads}, options = [role: _]) do
-      query = Product.Query.default()
-      [items: {query, Product.Query.preloads(item_preloads, options)}]
-    end
-
-    def preloads({:variants, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = Product.Query.default() |> Product.Query.active()
-      [variants: {query, Product.Query.preloads(item_preloads, options)}]
-    end
-
-    def preloads({:variants, item_preloads}, options = [role: _]) do
-      query = Product.Query.default()
-      [variants: {query, Product.Query.preloads(item_preloads, options)}]
-    end
-
-    def preloads({:prices, price_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = Price.Query.default() |> Price.Query.active()
-      [prices: {query, Price.Query.preloads(price_preloads, options)}]
-    end
-
-    def preloads({:prices, price_preloads}, options = [role: _]) do
-      query = Price.Query.default()
-      [prices: {query, Price.Query.preloads(price_preloads, options)}]
-    end
-
-    def preloads({:default_price, price_preloads}, options) do
-      query = Price.Query.active_by_moq()
-      [default_price: {query, Price.Query.preloads(price_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-
-    def root(query) do
-      from(p in query, where: is_nil(p.parent_id))
-    end
-
-    def active(query) do
-      from(p in query, where: p.status == "active")
-    end
-  end
+  def put_external_resources(product, _, _), do: product
 end

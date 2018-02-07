@@ -29,7 +29,7 @@ defmodule BlueJet.Goods do
       |> Service.count_stockable(%{ account: account })
 
     all_count =
-      %{ filter: Map.take(request.count_filter, [:all]) }
+      %{ filter: request.count_filter[:all] }
       |> Service.count_stockable(%{ account: account })
 
     stockables =
@@ -152,7 +152,7 @@ defmodule BlueJet.Goods do
       |> Service.count_unlockable(%{ account: account })
 
     all_count =
-      %{ filter: Map.take(request.count_filter, [:all]) }
+      %{ filter: request.count_filter[:all] }
       |> Service.count_unlockable(%{ account: account })
 
     unlockables =
@@ -275,7 +275,7 @@ defmodule BlueJet.Goods do
       |> Service.count_depositable(%{ account: account })
 
     all_count =
-      %{ filter: Map.take(request.count_filter, [:all]) }
+      %{ filter: request.count_filter[:all] }
       |> Service.count_depositable(%{ account: account })
 
     depositables =

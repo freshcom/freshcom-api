@@ -2,9 +2,7 @@ defmodule BlueJet.Balance do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :balance
 
-  alias Ecto.{Changeset, Multi}
   alias BlueJet.Balance.Service
-  alias BlueJet.Balance.{Payment, Refund}
 
   def update_settings(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_settings") do
@@ -254,20 +252,6 @@ defmodule BlueJet.Balance do
   #
   # MARK: Refund
   #
-  defp refund_response(nil, _), do: {:error, :not_found}
-
-  defp refund_response(refund, request = %{ account: account }) do
-    preloads = Refund.Query.preloads(request.preloads, role: request.role)
-
-    refund =
-      refund
-      |> Repo.preload(preloads)
-      |> Refund.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: refund }}
-  end
-
   def create_refund(request) do
     with {:ok, request} <- preprocess_request(request, "balance.create_refund") do
       request

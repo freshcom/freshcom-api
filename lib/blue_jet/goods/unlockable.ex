@@ -68,6 +68,7 @@ defmodule BlueJet.Goods.Unlockable do
   def changeset(unlockable, :insert, params) do
     unlockable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
@@ -79,6 +80,7 @@ defmodule BlueJet.Goods.Unlockable do
 
     unlockable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

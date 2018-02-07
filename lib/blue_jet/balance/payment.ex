@@ -11,7 +11,7 @@ defmodule BlueJet.Balance.Payment do
   alias Ecto.Changeset
 
   alias BlueJet.Balance.{Card, Refund, Settings}
-  alias BlueJet.Balance.{StripeClient, IdentityService}
+  alias BlueJet.Balance.StripeClient
   alias BlueJet.Balance.Payment.Proxy
 
   schema "payments" do

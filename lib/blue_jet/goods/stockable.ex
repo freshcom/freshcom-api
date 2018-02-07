@@ -80,6 +80,7 @@ defmodule BlueJet.Goods.Stockable do
   def changeset(stockable, :insert, params) do
     stockable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
@@ -91,6 +92,7 @@ defmodule BlueJet.Goods.Stockable do
 
     stockable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

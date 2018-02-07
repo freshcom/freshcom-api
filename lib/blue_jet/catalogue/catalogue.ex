@@ -1,10 +1,16 @@
 defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
-  alias Ecto.Changeset
   alias BlueJet.Catalogue.Service
   alias BlueJet.Catalogue.{FileStorageService}
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
+
+  defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
+    request = %{ request | filter: Map.put(request.filter, :status, "active") }
+    %{ request | count_filter: %{ all: Map.take(request.filter, [:status, :collection_id, :parent_id]) } }
+  end
+
+  defp filter_by_role(request), do: request
 
   #
   # MARK: Product
@@ -12,39 +18,25 @@ defmodule BlueJet.Catalogue do
   def list_product(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.list_product") do
       request
-      |> AccessRequest.transform_by_role()
+      |> filter_by_role()
       |> do_list_product
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_product(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
-    data_query =
-      Product.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Product.translatable_fields())
-      |> filter_by(status: filter[:status], kind: underscore(filter[:kind]), parent_id: filter[:parent_id])
-      |> Product.Query.in_collection(filter[:collection_id])
-      |> root_only_if_no_parent_id(filter[:parent_id])
-      |> Product.Query.for_account(account.id)
-      |> default_order_if_no_collection_id(filter[:collection_id])
+  def do_list_product(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_product(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      Product.Query.default()
-      |> filter_by(parent_id: filter[:parent_id], status: counts[:all][:status])
-      |> Product.Query.in_collection(filter[:collection_id])
-      |> Product.Query.for_account(account.id)
-      |> root_only_if_no_parent_id(filter[:parent_id])
-      |> Repo.aggregate(:count, :id)
+      %{ filter: request.count_filter[:all] }
+      |> Service.count_product(%{ account: account })
 
-    preloads = Product.Query.preloads(request.preloads, role: request.role)
     products =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-      |> Product.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      %{ filter: filter, search: request.search }
+      |> Service.list_product(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -58,12 +50,6 @@ defmodule BlueJet.Catalogue do
 
     {:ok, response}
   end
-
-  defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
-  defp root_only_if_no_parent_id(query, _), do: query
-
-  defp default_order_if_no_collection_id(query, nil), do: Product.Query.default_order(query)
-  defp default_order_if_no_collection_id(query, _), do: query
 
   defp product_response(nil, _), do: {:error, :not_found}
 
@@ -89,11 +75,14 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_create_product(request = %{ account: account }) do
-    with {:ok, product} <- Service.create_product(request.fields, %{ account: account }) do
-      product_response(product, request)
+    with {:ok, product} <- Service.create_product(request.fields, get_sopts(request)) do
+      product = Translation.translate(product, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -174,25 +163,13 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_delete_product(%{ account: account, params: %{ "id" => id } }) do
-    product =
-      Product.Query.default()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get(id)
+    with {:ok, _} <- Service.delete_product(id, %{ account: account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
-    cond do
-      product && product.avatar_id ->
-        {:ok, _} = Repo.transaction(fn ->
-          FileStorageService.delete_file(product.avatar_id, %{ account: account })
-          Repo.delete!(product)
-        end)
-        {:ok, %AccessResponse{}}
-
-      product ->
-        Repo.delete!(product)
-        {:ok, %AccessResponse{}}
-
-      !product ->
-        {:error, :not_found}
+      other -> other
     end
   end
 

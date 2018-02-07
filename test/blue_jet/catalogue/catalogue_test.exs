@@ -70,7 +70,7 @@ defmodule BlueJet.CatalogueTest do
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> %{ account_id: account.id } end)
+      |> expect(:get_stockable, fn(_, _) -> %{ account_id: account.id } end)
 
       {:ok, response} = Catalogue.create_product(request)
       assert response.data
@@ -138,9 +138,6 @@ defmodule BlueJet.CatalogueTest do
 
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
-
-      GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> %{ account_id: account.id } end)
 
       {:ok, response} = Catalogue.update_product(request)
       assert response.data.id == product.id

@@ -70,6 +70,7 @@ defmodule BlueJet.Goods.Depositable do
   def changeset(depositable, :insert, params) do
     depositable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
@@ -81,6 +82,7 @@ defmodule BlueJet.Goods.Depositable do
 
     depositable
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

@@ -7,7 +7,7 @@ defmodule BlueJet.Catalogue.ProductTest do
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Product
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.{IdentityServiceMock, GoodsServiceMock}
+  alias BlueJet.Catalogue.GoodsServiceMock
 
   describe "schema" do
     test "when account is deleted product is automatically deleted" do
@@ -104,6 +104,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when missing required fields" do
       changeset =
         change(%Product{}, %{})
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -111,15 +112,18 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given invalid goods" do
+      account = %Account{}
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> nil end)
+      |> expect(:get_stockable, fn(_, _) -> nil end)
 
       changeset =
         change(%Product{}, %{
+          account: account,
           goods_id: Ecto.UUID.generate(),
           goods_type: "Stockable",
           name: Faker.String.base64(5)
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       verify!()
@@ -134,14 +138,15 @@ defmodule BlueJet.Catalogue.ProductTest do
         account_id: account_id
       }
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
+      |> expect(:get_stockable, fn(_, _) -> stockable end)
 
       changeset =
-        change(%Product{ account_id: account_id }, %{
+        change(%Product{ account_id: account_id, account: %Account{} }, %{
           goods_id: stockable.id,
           goods_type: "Stockable",
           name: Faker.String.base64(5)
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       verify!()
@@ -154,6 +159,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product with variants and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "with_variants" })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -167,6 +173,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           name: Faker.String.base64(5),
           status: "internal"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -207,6 +214,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           name: Faker.String.base64(5),
           status: "active"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -247,6 +255,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product combo and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "combo" })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -260,6 +269,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           name: Faker.String.base64(5),
           status: "internal"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -288,6 +298,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         change(product_combo, %{
           status: "internal"
         })
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       refute changeset.valid?
@@ -337,6 +348,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           name: Faker.String.base64(5),
           status: "active"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -365,6 +377,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         change(product_combo, %{
           status: "active"
         })
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       refute changeset.valid?
@@ -413,6 +426,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product variant and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "variant" })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -441,6 +455,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -453,29 +468,24 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product varaint with valid internal status" do
       account = Repo.insert!(%Account{})
 
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        name: Faker.String.base64(5),
-        account_id: account.id
-      }
-      GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
-
       product_with_variants = Repo.insert!(%Product{
         account_id: account.id,
+        account: account,
         kind: "with_variants",
         name: Faker.String.base64(5)
       })
       product_variant = Repo.insert!(%Product{
         account_id: account.id,
+        account: account,
         kind: "variant",
         parent_id: product_with_variants.id,
         name: Faker.String.base64(5),
-        goods_id: stockable.id,
+        goods_id: Ecto.UUID.generate(),
         goods_type: "Stockable"
       })
       Repo.insert!(%Price{
         account_id: account.id,
+        account: account,
         product_id: product_variant.id,
         status: "internal",
         charge_amount_cents: 500,
@@ -485,6 +495,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       })
       changeset =
         change(product_variant, %{ status: "internal" })
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       verify!()
@@ -513,6 +524,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       refute changeset.valid?
@@ -525,29 +537,24 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product varaint with valid active status" do
       account = Repo.insert!(%Account{})
 
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        name: Faker.String.base64(5),
-        account_id: account.id
-      }
-      GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
-
       product_with_variants = Repo.insert!(%Product{
         account_id: account.id,
+        account: account,
         kind: "with_variants",
         name: Faker.String.base64(5)
       })
       product_variant = Repo.insert!(%Product{
         account_id: account.id,
+        account: account,
         kind: "variant",
         parent_id: product_with_variants.id,
         name: Faker.String.base64(5),
-        goods_id: stockable.id,
+        goods_id: Ecto.UUID.generate(),
         goods_type: "Stockable"
       })
       Repo.insert!(%Price{
         account_id: account.id,
+        account: account,
         product_id: product_variant.id,
         status: "active",
         charge_amount_cents: 500,
@@ -557,6 +564,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       })
       changeset =
         change(product_variant, %{ status: "active" })
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       verify!()
@@ -569,6 +577,7 @@ defmodule BlueJet.Catalogue.ProductTest do
     test "when given product item and missing required fields" do
       changeset =
         change(%Product{}, %{ kind: "item" })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
@@ -584,7 +593,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         name: Faker.String.base64(5)
       }
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
+      |> expect(:get_stockable, fn(_, _) -> stockable end)
 
       product_combo = Repo.insert!(%Product{
         account_id: account.id,
@@ -594,6 +603,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       changeset =
         change(%Product{}, %{
           account_id: account.id,
+          account: account,
           status: "internal",
           kind: "item",
           parent_id: product_combo.id,
@@ -601,6 +611,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       verify!()
@@ -616,7 +627,7 @@ defmodule BlueJet.Catalogue.ProductTest do
         account_id: account.id
       }
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
+      |> expect(:get_stockable, fn(_, _) -> stockable end)
 
       product_combo = Repo.insert!(%Product{
         account_id: account.id,
@@ -626,6 +637,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       changeset =
         change(%Product{}, %{
           account_id: account.id,
+          account: account,
           status: "active",
           kind: "item",
           parent_id: product_combo.id,
@@ -633,6 +645,7 @@ defmodule BlueJet.Catalogue.ProductTest do
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       verify!()
@@ -643,8 +656,6 @@ defmodule BlueJet.Catalogue.ProductTest do
   describe "changeset/4" do
     test "when given name sync is sync with goods" do
       account = %Account{ id: Ecto.UUID.generate() }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
 
       stockable = %Stockable{
         id: Ecto.UUID.generate(),
@@ -652,9 +663,9 @@ defmodule BlueJet.Catalogue.ProductTest do
         account_id: account.id
       }
       GoodsServiceMock
-      |> expect(:get_goods, fn(_, _) -> stockable end)
+      |> expect(:get_stockable, fn(_, _) -> stockable end)
 
-      changeset = Product.changeset(%Product{ account_id: account.id, }, %{
+      changeset = Product.changeset(%Product{ account_id: account.id, account: account }, :insert, %{
         name_sync: "sync_with_goods",
         goods_id: stockable.id,
         goods_type: "Stockable"
