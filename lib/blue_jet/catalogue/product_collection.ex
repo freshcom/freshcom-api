@@ -66,7 +66,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> validate()
   end
 
-  def changeset(product_collection, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(product_collection, :update, params, locale \\ nil, default_locale \\ nil) do
     product_collection = Proxy.put_account(product_collection)
     default_locale = default_locale || product_collection.account.default_locale
     locale = locale || default_locale
@@ -76,6 +76,19 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def changeset(product_collection, :delete) do
+    change(product_collection)
+    |> Map.put(:action, :delete)
+  end
+
+  def process(product_collection, %{ action: :delete }) do
+    Proxy.delete_avatar(product_collection)
+
+    {:ok, product_collection}
+  end
+
+  def process(product_collection, _), do: {:ok, product_collection}
 
   #
   # MARK: External Resources

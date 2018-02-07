@@ -191,34 +191,81 @@ defmodule BlueJet.Catalogue.Service do
     end
   end
 
-  def get_product_collection(id, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    Repo.get_by(ProductCollection, id: id, account_id: account_id)
+  def get_product_collection(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    ProductCollection.Query.default()
+    |> ProductCollection.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
   end
 
-  def get_product_collection_by_code(code, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    Repo.get_by(ProductCollection, code: code, account_id: account_id)
-  end
 
-  def update_product_collection(id, fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+  def update_product_collection(nil, _, _), do: {:error, :not_found}
 
-    product_collection =
-      ProductCollection.Query.default()
-      |> ProductCollection.Query.for_account(account_id)
-      |> Repo.get(id)
+  def update_product_collection(product_collection = %ProductCollection{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
 
-    if product_collection do
-      product_collection
-      |> Map.put(:account, opts[:account])
-      |> ProductCollection.changeset(fields, opts[:locale])
-      |> Repo.update()
+    changeset =
+      %{ product_collection | account: account }
+      |> ProductCollection.changeset(:update, fields, opts[:locale])
+
+    with {:ok, product_collection} <- Repo.update(changeset) do
+      product_collection = preload(product_collection, preloads[:path], preloads[:opts])
+      {:ok, product_collection}
     else
-      {:error, :not_found}
+      other -> other
     end
   end
 
+  def update_product_collection(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    ProductCollection
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_product_collection(fields, opts)
+  end
+
+  def delete_product_collection(nil, _), do: {:error, :not_found}
+
+  def delete_product_collection(product_collection = %ProductCollection{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ product_collection | account: account }
+      |> ProductCollection.changeset(:delete)
+
+    statements =
+      Multi.new()
+      |> Multi.delete(:product_collection, changeset)
+      |> Multi.run(:processed_product_collection, fn(%{ product_collection: product_collection }) ->
+          ProductCollection.process(product_collection, changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_product_collection: product_collection }} ->
+        {:ok, product_collection}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def delete_product_collection(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    ProductCollection
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_product_collection(opts)
+  end
+
+  #
+  # MARK: Price
+  #
   def get_price(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)

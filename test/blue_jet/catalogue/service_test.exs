@@ -256,4 +256,93 @@ defmodule BlueJet.Catalogue.ServiceTest do
       assert product_collection
     end
   end
+
+  describe "get_product_collection/2" do
+    test "when given id" do
+      account = Repo.insert!(%Account{})
+      product_collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      assert Service.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+    end
+
+    test "when given id belongs to a different account" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      product_collection = Repo.insert!(%ProductCollection{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      refute Service.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+    end
+
+    test "when give id does not exist" do
+      account = Repo.insert!(%Account{})
+
+      refute Service.get_product_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
+    end
+  end
+
+  describe "update_product_collection/2" do
+    test "when given nil for product_collection" do
+      {:error, error} = Service.update_product_collection(nil, %{}, %{})
+
+      assert error == :not_found
+    end
+
+    test "when given id does not exist" do
+      account = Repo.insert!(%Account{})
+
+      {:error, error} = Service.update_product_collection(Ecto.UUID.generate(), %{}, %{ account: account })
+
+      assert error == :not_found
+    end
+
+    test "when given id belongs to a different account" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      product_collection = Repo.insert!(%ProductCollection{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      {:error, error} = Service.update_product_collection(product_collection.id, %{}, %{ account: account })
+
+      assert error == :not_found
+    end
+
+    test "when given valid id and valid fields" do
+      account = Repo.insert!(%Account{})
+      product_collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      fields = %{
+        "name" => Faker.Commerce.product_name()
+      }
+
+      {:ok, product_collection} = Service.update_product_collection(product_collection.id, fields, %{ account: account })
+
+      assert product_collection
+    end
+  end
+
+  describe "delete_product_collection/2" do
+    test "when given valid product collection" do
+      account = Repo.insert!(%Account{})
+      product_collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+
+      {:ok, product_collection} = Service.delete_product_collection(product_collection, %{ account: account })
+
+      assert product_collection
+      refute Repo.get(ProductCollection, product_collection.id)
+    end
+  end
 end

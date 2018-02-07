@@ -2,7 +2,6 @@ defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
   alias BlueJet.Catalogue.Service
-  alias BlueJet.Catalogue.{FileStorageService}
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
   defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
@@ -51,20 +50,6 @@ defmodule BlueJet.Catalogue do
     {:ok, response}
   end
 
-  defp product_response(nil, _), do: {:error, :not_found}
-
-  defp product_response(product, request = %{ account: account }) do
-    preloads = Product.Query.preloads(request.preloads, role: request.role)
-
-    product =
-      product
-      |> Repo.preload(preloads)
-      |> Product.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
-  end
-
   def create_product(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.create_product") do
       request
@@ -89,48 +74,24 @@ defmodule BlueJet.Catalogue do
   def get_product(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.get_product") do
       request
+      |> filter_by_role()
       |> do_get_product()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_get_product(request = %{ role: role, account: account, params: %{ "id" => id } }) when role in ["guest", "customer"] do
+  def do_get_product(request = %{ account: account, params: params }) do
     product =
-      Product.Query.default()
-      |> Product.Query.active()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get(id)
+      atom_map(params)
+      |> Service.get_product(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    product_response(product, request)
-  end
-
-  def do_get_product(request = %{ account: account, params: %{ "id" => id } }) do
-    product =
-      Product.Query.default()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    product_response(product, request)
-  end
-
-  def do_get_product(request = %{ role: role, account: account, params: %{ "code" => code } }) when role in ["guest", "customer"] do
-    product =
-      Product.Query.default()
-      |> Product.Query.active()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get_by(code: code)
-
-    product_response(product, request)
-  end
-
-  def do_get_product(request = %{ account: account, params: %{ "code" => code } }) do
-    product =
-      Product.Query.default()
-      |> Product.Query.for_account(account.id)
-      |> Repo.get_by(code: code)
-
-    product_response(product, request)
+    if product do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_product(request) do
@@ -143,10 +104,11 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_update_product(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, product} <- Service.update_product(id, request.fields, %{ account: account }) do
-      product_response(product, request)
+    with {:ok, product} <- Service.update_product(id, request.fields, get_sopts(request)) do
+      product = Translation.translate(product, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
     else
-      %{ errors: errors } ->
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other
@@ -172,7 +134,6 @@ defmodule BlueJet.Catalogue do
       other -> other
     end
   end
-
 
   #
   # MARK: Product Collection
