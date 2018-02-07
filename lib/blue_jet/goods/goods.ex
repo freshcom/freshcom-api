@@ -2,7 +2,6 @@ defmodule BlueJet.Goods do
   use BlueJet, :context
 
   alias BlueJet.Goods.Service
-  alias BlueJet.Goods.Depositable
 
   defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
     request = %{ request | filter: Map.put(request.filter, :status, "active") }
@@ -294,20 +293,6 @@ defmodule BlueJet.Goods do
     }
 
     {:ok, response}
-  end
-
-  defp depositable_response(nil, _), do: {:error, :not_found}
-
-  defp depositable_response(depositable, request = %{ account: account }) do
-    preloads = Depositable.Query.preloads(request.preloads, role: request.role)
-
-    depositable =
-      depositable
-      |> Repo.preload(preloads)
-      |> Depositable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
   end
 
   def create_depositable(request) do
