@@ -9,7 +9,7 @@ defmodule BlueJet.Goods.Depositable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.IdentityService
+  alias BlueJet.Goods.Depositable.Proxy
 
   schema "depositables" do
     field :account_id, Ecto.UUID
@@ -67,8 +67,15 @@ defmodule BlueJet.Goods.Depositable do
 
   def put_print_name(changeset), do: changeset
 
-  def changeset(depositable, params, locale \\ nil, default_locale \\ nil) do
-    depositable = %{ depositable | account: get_account(depositable) }
+  def changeset(depositable, :insert, params) do
+    depositable
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_print_name()
+  end
+
+  def changeset(depositable, :update, params, locale \\ nil, default_locale \\ nil) do
+    depositable = Proxy.put_account(depositable)
     default_locale = default_locale || depositable.account.default_locale
     locale = locale || default_locale
 
@@ -79,13 +86,14 @@ defmodule BlueJet.Goods.Depositable do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  def changeset(depositable, :delete) do
+    change(depositable)
+    |> Map.put(:action, :delete)
+  end
+
   ######
   # External Resources
   #####
-  def get_account(depositable) do
-    depositable.account || IdentityService.get_account(depositable)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file,
     field: :avatar
@@ -96,23 +104,4 @@ defmodule BlueJet.Goods.Depositable do
     owner_type: "Stockable"
 
   def put_external_resources(depositable, _, _), do: depositable
-
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Goods.Depositable
-
-    def default() do
-      from(d in Depositable, order_by: [desc: :updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(d in query, where: d.account_id == ^account_id)
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end

@@ -58,7 +58,7 @@ defmodule BlueJet.Goods.DepositableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
+      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         amount: 500,
         target_type: "PointAccount"
@@ -75,7 +75,7 @@ defmodule BlueJet.Goods.DepositableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{
+      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         amount: 500,
         target_type: "PointAccount"
@@ -92,7 +92,7 @@ defmodule BlueJet.Goods.DepositableTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, %{})
+      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{})
 
       refute changeset.valid?
     end

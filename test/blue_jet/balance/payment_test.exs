@@ -113,6 +113,7 @@ defmodule BlueJet.Balance.PaymentTest do
       })
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        status: "paid",
         source: stripe_card_id,
         gateway: "freshcom",
         processor: "stripe",

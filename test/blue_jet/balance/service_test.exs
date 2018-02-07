@@ -342,6 +342,7 @@ defmodule BlueJet.Balance.ServiceTest do
          end)
 
       fields = %{
+        "status" => "paid",
         "gateway" => "freshcom",
         "processor" => "stripe",
         "amount_cents" => 500,
@@ -360,6 +361,7 @@ defmodule BlueJet.Balance.ServiceTest do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        status: "paid",
         gateway: "freshcom",
         amount_cents: 500
       })
@@ -372,6 +374,7 @@ defmodule BlueJet.Balance.ServiceTest do
       other_account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: other_account.id,
+        status: "paid",
         gateway: "freshcom",
         amount_cents: 500
       })
@@ -404,6 +407,7 @@ defmodule BlueJet.Balance.ServiceTest do
       other_account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: other_account.id,
+        status: "paid",
         gateway: "freshcom",
         amount_cents: 500
       })
@@ -448,6 +452,7 @@ defmodule BlueJet.Balance.ServiceTest do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        status: "paid",
         gateway: "custom",
         amount_cents: 500
       })
@@ -474,6 +479,7 @@ defmodule BlueJet.Balance.ServiceTest do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        status: "paid",
         gateway: "freshcom",
         amount_cents: 5000,
         gross_amount_cents: 5000

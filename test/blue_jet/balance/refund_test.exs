@@ -45,6 +45,7 @@ defmodule BlueJet.Balance.RefundTest do
     test "when amount greater than payment amount" do
       account = Repo.insert!(%Account{})
       payment = Repo.insert!(%Payment{
+        status: "paid",
         account_id: account.id,
         amount_cents: 5000,
         gateway: "freshcom"
@@ -89,6 +90,7 @@ defmodule BlueJet.Balance.RefundTest do
 
       payment = Repo.insert!(%Payment{
         account_id: account.id,
+        status: "paid",
         gateway: "freshcom",
         amount_cents: 5000,
         freshcom_fee_cents: 300

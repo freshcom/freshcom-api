@@ -2,9 +2,6 @@ defmodule BlueJet.Goods do
   use BlueJet, :context
 
   alias BlueJet.Goods.Service
-
-  alias BlueJet.Goods.Stockable
-  alias BlueJet.Goods.Unlockable
   alias BlueJet.Goods.Depositable
 
   defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
@@ -27,7 +24,7 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def do_list_stockable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
+  def do_list_stockable(request = %{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
       |> Service.count_stockable(%{ account: account })
@@ -83,9 +80,9 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def do_get_stockable(request = %{ account: account, params: %{ "id" => id } }) do
+  def do_get_stockable(request = %{ account: account, params: params }) do
     stockable =
-      %{ id: id }
+      atom_map(params)
       |> Service.get_stockable(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
@@ -143,60 +140,37 @@ defmodule BlueJet.Goods do
   def list_unlockable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_unlockable") do
       request
-      |> AccessRequest.transform_by_role()
+      |> filter_by_role()
       |> do_list_unlockable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_unlockable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
-    data_query =
-      Unlockable.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale, Unlockable.translatable_fields())
-      |> filter_by(status: filter[:status])
-      |> Unlockable.Query.for_account(account.id)
+  def do_list_unlockable(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_unlockable(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      Unlockable.Query.default()
-      |> filter_by(status: counts[:all][:status])
-      |> Unlockable.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: Map.take(request.count_filter, [:all]) }
+      |> Service.count_unlockable(%{ account: account })
 
-    preloads = Unlockable.Query.preloads(request.preloads, role: request.role)
     unlockables =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-      |> Unlockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      %{ filter: filter, search: request.search }
+      |> Service.list_unlockable(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
         locale: request.locale,
         all_count: all_count,
-        total_count: total_count,
+        total_count: total_count
       },
       data: unlockables
     }
 
     {:ok, response}
-  end
-
-  defp unlockable_response(nil, _), do: {:error, :not_found}
-
-  defp unlockable_response(unlockable, request = %{ account: account }) do
-    preloads = Unlockable.Query.preloads(request.preloads, role: request.role)
-
-    unlockable =
-      unlockable
-      |> Repo.preload(preloads)
-      |> Unlockable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
   end
 
   def create_unlockable(request) do
@@ -209,10 +183,10 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_unlockable(request = %{ account: account }) do
-    case Service.create_unlockable(request.fields, %{ account_id: account.id, account: account, locale: request.locale }) do
-      {:ok, unlockable} ->
-        unlockable_response(unlockable, request)
-
+    with {:ok, unlockable} <- Service.create_unlockable(request.fields, get_sopts(request)) do
+      unlockable = Translation.translate(unlockable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+    else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
@@ -229,22 +203,17 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def do_get_unlockable(request = %AccessRequest{ account: account, params: %{ "id" => id } }) do
+  def do_get_unlockable(request = %AccessRequest{ account: account, params: params }) do
     unlockable =
-      Unlockable.Query.default()
-      |> Unlockable.Query.for_account(account.id)
-      |> Repo.get(id)
+      atom_map(params)
+      |> Service.get_unlockable(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    unlockable_response(unlockable, request)
-  end
-
-  def do_get_unlockable(request = %AccessRequest{ account: account, params: %{ "code" => code } }) do
-    unlockable =
-      Unlockable.Query.default()
-      |> Unlockable.Query.for_account(account.id)
-      |> Repo.get_by(code: code)
-
-    unlockable_response(unlockable, request)
+    if unlockable do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_unlockable(request) do
@@ -257,11 +226,11 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_unlockable(request = %{ account: account, params: %{ "id" => id }}) do
-    case Service.update_unlockable(id, request.fields, %{ account: account, locale: request.locale }) do
-      {:ok, unlockable} ->
-        unlockable_response(unlockable, request)
-
-      {:error, %{ errors: errors}} ->
+    with {:ok, unlockable} <- Service.update_unlockable(id, request.fields, get_sopts(request)) do
+      unlockable = Translation.translate(unlockable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+    else
+      {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
       other -> other
@@ -278,53 +247,41 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_unlockable(%{ account: account, params: %{ "id" => id } }) do
-    unlockable =
-      Unlockable.Query.default()
-      |> Unlockable.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if unlockable do
-      Repo.delete!(unlockable)
+    with {:ok, _} <- Service.delete_unlockable(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
   #
-  # Depositable
+  # MARK: Depositable
   #
   def list_depositable(request) do
     with {:ok, request} <- preprocess_request(request, "goods.list_depositable") do
       request
-      |> AccessRequest.transform_by_role()
+      |> filter_by_role()
       |> do_list_depositable()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_depositable(request = %{ account: account, filter: filter, counts: counts, pagination: pagination }) do
-    data_query =
-      Depositable.Query.default()
-      |> search([:name, :code, :id], request.search, request.locale, account.default_locale)
-      |> filter_by(status: filter[:status])
-      |> Depositable.Query.for_account(account.id)
+  def do_list_depositable(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_depositable(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      Depositable.Query.default()
-      |> filter_by(status: counts[:all][:status])
-      |> Depositable.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+      %{ filter: Map.take(request.count_filter, [:all]) }
+      |> Service.count_depositable(%{ account: account })
 
-    preloads = Depositable.Query.preloads(request.preloads, role: request.role)
     depositables =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-      |> Depositable.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      %{ filter: filter, search: request.search }
+      |> Service.list_depositable(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -363,11 +320,9 @@ defmodule BlueJet.Goods do
   end
 
   def do_create_depositable(request = %{ account: account }) do
-    depositable = %Depositable{ account_id: account.id, account: account}
-    changeset = Depositable.changeset(depositable, request.fields, request.locale, account.default_locale)
-
-    with {:ok, depositable} <- Repo.insert(changeset) do
-      depositable_response(depositable, request)
+    with {:ok, depositable} <- Service.create_depositable(request.fields, get_sopts(request)) do
+      depositable = Translation.translate(depositable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -385,13 +340,17 @@ defmodule BlueJet.Goods do
     end
   end
 
-  def do_get_depositable(request = %{ account: account, params: %{ "id" => id } }) do
+  def do_get_depositable(request = %{ account: account, params: params }) do
     depositable =
-      Depositable.Query.default()
-      |> Depositable.Query.for_account(account.id)
-      |> Repo.get(id)
+      atom_map(params)
+      |> Service.get_depositable(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    depositable_response(depositable, request)
+    if depositable do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_depositable(request) do
@@ -404,21 +363,14 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_depositable(request = %{ account: account, params: %{ "id" => id }}) do
-    depositable =
-      Depositable.Query.default()
-      |> Depositable.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Map.put(:account, account)
-
-    with %Depositable{} <- depositable,
-         changeset <- Depositable.changeset(depositable, request.fields, request.locale, account.default_locale),
-        {:ok, depositable} <- Repo.update(changeset)
-    do
-      depositable_response(depositable, request)
+    with {:ok, depositable} <- Service.update_depositable(id, request.fields, get_sopts(request)) do
+      depositable = Translation.translate(depositable, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
     else
-      nil -> {:error, :not_found}
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -432,16 +384,13 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_depositable(%AccessRequest{ account: account, params: %{ "id" => id } }) do
-    depositable =
-      Depositable.Query.default()
-      |> Depositable.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if depositable do
-      Repo.delete!(depositable)
+    with {:ok, _} <- Service.delete_depositable(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 end

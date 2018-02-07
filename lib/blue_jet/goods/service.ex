@@ -145,6 +145,22 @@ defmodule BlueJet.Goods.Service do
     |> Repo.aggregate(:count, :id)
   end
 
+  def create_unlockable(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %Unlockable{ account_id: account.id, account: account }
+      |> Unlockable.changeset(:insert, fields)
+
+    with {:ok, unlockable} <- Repo.insert(changeset) do
+      unlockable = preload(unlockable, preloads[:path], preloads[:opts])
+      {:ok, unlockable}
+    else
+      other -> other
+    end
+  end
+
   def get_unlockable(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
@@ -153,6 +169,103 @@ defmodule BlueJet.Goods.Service do
     |> Unlockable.Query.for_account(account.id)
     |> Repo.get_by(fields)
     |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def update_unlockable(nil, _, _), do: {:error, :not_found}
+
+  def update_unlockable(unlockable = %Unlockable{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ unlockable | account: account }
+      |> Unlockable.changeset(:update, fields, opts[:locale])
+
+    with {:ok, unlockable} <- Repo.update(changeset) do
+      unlockable = preload(unlockable, preloads[:path], preloads[:opts])
+      {:ok, unlockable}
+    else
+      other -> other
+    end
+  end
+
+  def update_unlockable(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Unlockable
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_unlockable(fields, opts)
+  end
+
+  def delete_unlockable(nil, _), do: {:error, :not_found}
+
+  def delete_unlockable(unlockable = %Unlockable{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ unlockable | account: account }
+      |> Unlockable.changeset(:delete)
+
+    with {:ok, unlockable} <- Repo.delete(changeset) do
+      {:ok, unlockable}
+    else
+      other -> other
+    end
+  end
+
+  def delete_unlockable(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Unlockable
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_unlockable(opts)
+  end
+
+  #
+  # MARK: Depositable
+  #
+  def list_depositable(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Depositable.Query.default()
+    |> Depositable.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Depositable.Query.filter_by(filter)
+    |> Depositable.Query.for_account(account.id)
+    |> Depositable.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_depositable(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    Depositable.Query.default()
+    |> Depositable.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Depositable.Query.filter_by(filter)
+    |> Depositable.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_depositable(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %Depositable{ account_id: account.id, account: account }
+      |> Depositable.changeset(:insert, fields)
+
+    with {:ok, depositable} <- Repo.insert(changeset) do
+      depositable = preload(depositable, preloads[:path], preloads[:opts])
+      {:ok, depositable}
+    else
+      other -> other
+    end
   end
 
   def get_depositable(fields, opts) do
@@ -165,28 +278,55 @@ defmodule BlueJet.Goods.Service do
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  def create_unlockable(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+  def update_depositable(nil, _, _), do: {:error, :not_found}
 
-    %Unlockable{ account_id: account_id, account: opts[:account] }
-    |> Unlockable.changeset(fields)
-    |> Repo.insert()
+  def update_depositable(depositable = %Depositable{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ depositable | account: account }
+      |> Depositable.changeset(:update, fields, opts[:locale])
+
+    with {:ok, depositable} <- Repo.update(changeset) do
+      depositable = preload(depositable, preloads[:path], preloads[:opts])
+      {:ok, depositable}
+    else
+      other -> other
+    end
   end
 
-  def update_unlockable(id, fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    unlockable =
-      Unlockable.Query.default()
-      |> Unlockable.Query.for_account(account_id)
-      |> Repo.get(id)
+  def update_depositable(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
 
-    if unlockable do
-      unlockable
-      |> Map.put(:account, opts[:account])
-      |> Unlockable.changeset(fields, opts[:locale])
-      |> Repo.update()
+    Depositable
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_depositable(fields, opts)
+  end
+
+  def delete_depositable(nil, _), do: {:error, :not_found}
+
+  def delete_depositable(depositable = %Depositable{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ depositable | account: account }
+      |> Depositable.changeset(:delete)
+
+    with {:ok, depositable} <- Repo.delete(changeset) do
+      {:ok, depositable}
     else
-      {:error, :not_found}
+      other -> other
     end
+  end
+
+  def delete_depositable(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Depositable
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_depositable(opts)
   end
 end

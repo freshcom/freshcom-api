@@ -25,6 +25,10 @@ defmodule BlueJet.ContextHelpers do
     end
   end
 
+  def atom_map(m) do
+    for {key, val} <- m, into: %{}, do: {String.to_atom(key), val}
+  end
+
   def underscore(nil), do: nil
   def underscore(s), do: Inflex.underscore(s)
 
