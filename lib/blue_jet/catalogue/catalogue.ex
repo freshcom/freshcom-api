@@ -6,7 +6,7 @@ defmodule BlueJet.Catalogue do
   #
   # MARK: Product
   #
-  defp filter_product_by_role(request = %{ role: role, filter: filter, count_filter: count_filter }) when role in ["guest", "customer"] do
+  defp filter_product_by_role(request = %{ role: role, filter: filter }) when role in ["guest", "customer"] do
     filter = Map.put(filter, :status, "active")
     all_count_filter = Map.take(filter, [:status, :collection_id, :parent_id])
     preload_filters = %{
@@ -15,7 +15,7 @@ defmodule BlueJet.Catalogue do
       variants: %{ status: "active" }
     }
 
-    request = %{ request | filter: filter, count_filter: %{ all: all_count_filter }, preload_filters: preload_filters }
+    %{ request | filter: filter, count_filter: %{ all: all_count_filter }, preload_filters: preload_filters }
   end
 
   defp filter_product_by_role(request), do: request
