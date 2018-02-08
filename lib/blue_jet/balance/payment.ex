@@ -409,7 +409,7 @@ defmodule BlueJet.Balance.Payment do
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
-    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
+    %{ errors: [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }] }
   end
 
   defp format_stripe_errors(stripe_errors), do: stripe_errors

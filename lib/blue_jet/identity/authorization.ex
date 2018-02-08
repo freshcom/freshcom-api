@@ -86,6 +86,7 @@ defmodule BlueJet.Identity.Authorization do
     "balance.create_payment",
     "balance.get_payment",
     "balance.update_payment",
+    "balance.delete_payment",
     "balance.list_card",
     "balance.update_card",
     "balance.delete_card",

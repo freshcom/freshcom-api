@@ -88,7 +88,6 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_get_product(request = %{ account: account, params: params }) do
-
     product =
       atom_map(params)
       |> Service.get_product(get_sopts(request))

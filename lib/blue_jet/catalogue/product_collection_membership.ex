@@ -46,6 +46,8 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     end
   end
 
+  defp validate_collection_id(changeset), do: changeset
+
   defp validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account_id = get_field(changeset, :account_id)
     product = Repo.get(Product, product_id)
@@ -56,6 +58,8 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
       add_error(changeset, :product, "is invalid", [validation: :must_exist])
     end
   end
+
+  defp validate_product_id(changeset), do: changeset
 
   def validate(changeset) do
     changeset

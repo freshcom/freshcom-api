@@ -204,9 +204,7 @@ defmodule BlueJet.Goods do
 
   def do_get_unlockable(request = %AccessRequest{ account: account, params: params }) do
     unlockable =
-      params
-      |> Map.take(["id", "code"])
-      |> atom_map()
+      atom_map(params)
       |> Service.get_unlockable(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 

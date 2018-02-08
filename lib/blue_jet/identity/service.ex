@@ -34,6 +34,7 @@ defmodule BlueJet.Identity.Service do
 
   def get_account(%{ account_id: nil }), do: nil
   def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
+  def get_account(%{ account_id: account_id }), do: get_account(account_id)
   def get_account(%{ account: account }), do: account
   def get_account(id), do: Repo.get!(Account, id)
 
@@ -106,7 +107,7 @@ defmodule BlueJet.Identity.Service do
           refresh_token = Repo.insert!(%RefreshToken{ account_id: account.test_account_id, user_id: user.id })
           {:ok, refresh_token}
          end)
-      |> Multi.run(:after_create, fn(%{ user: user, account: account }) ->
+      |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.user.after_create", %{ user: user, account: nil })
           emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: nil })
          end)
@@ -223,7 +224,7 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_email_confirmation_token(%{ "email" => nil }, opts), do: {:error, :not_found}
+  def create_email_confirmation_token(%{ "email" => nil }, _), do: {:error, :not_found}
 
   def create_email_confirmation_token(%{ "email" => email }, opts) do
     user = get_user_by_email(email, opts)

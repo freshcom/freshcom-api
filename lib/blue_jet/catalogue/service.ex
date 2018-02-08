@@ -194,10 +194,11 @@ defmodule BlueJet.Catalogue.Service do
   def get_product_collection(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
 
     ProductCollection.Query.default()
     |> ProductCollection.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 

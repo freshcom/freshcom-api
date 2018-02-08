@@ -7,6 +7,8 @@ defmodule BlueJetWeb.RefundView do
     :label,
     :gateway,
     :amount_cents,
+    :processor_fee_cents,
+    :freshcom_fee_cents,
     :caption,
     :descrption,
     :custom_data,

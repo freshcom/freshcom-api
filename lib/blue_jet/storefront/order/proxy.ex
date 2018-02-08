@@ -25,12 +25,12 @@ defmodule BlueJet.Storefront.Order.Proxy do
 
   def count_payment(order) do
     opts = get_sopts(order)
-    BalanceService.count_payment(%{ target_type: "Order", target_id: order.id }, opts)
+    BalanceService.count_payment(%{ filter: %{ target_type: "Order", target_id: order.id } }, opts)
   end
 
   def list_payment(order) do
     opts = get_sopts(order)
-    BalanceService.list_payment(%{ target_type: "Order", target_id: order.id }, opts)
+    BalanceService.list_payment(%{ filter: %{ target_type: "Order", target_id: order.id } }, opts)
   end
 
   def create_fulfillment(order) do

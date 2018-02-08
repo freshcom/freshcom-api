@@ -6,7 +6,6 @@ defmodule BlueJet.Crm do
   alias BlueJet.Identity
 
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
-  alias BlueJet.Crm.IdentityService
   alias BlueJet.Crm.Service
 
   defmodule EventHandler do

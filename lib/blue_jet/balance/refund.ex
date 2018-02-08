@@ -154,7 +154,7 @@ defmodule BlueJet.Balance.Refund do
     with {:ok, stripe_refund} <- create_stripe_refund(refund),
          {:ok, stripe_transfer_reversal} <- create_stripe_transfer_reversal(refund, stripe_refund)
     do
-      sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
+      refund = sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
 
       Repo.get(Payment, refund.payment_id)
       |> Payment.sync_with_refund(refund)
@@ -171,18 +171,15 @@ defmodule BlueJet.Balance.Refund do
     processor_fee_cents = -stripe_refund["balance_transaction"]["fee"]
     freshcom_fee_cents = refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
 
-    refund =
-      refund
-      |> change(
-          stripe_refund_id: stripe_refund["id"],
-          stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
-          processor_fee_cents: processor_fee_cents,
-          freshcom_fee_cents: freshcom_fee_cents,
-          status: stripe_refund["status"]
-         )
-      |> Repo.update!()
-
-    {:ok, refund}
+    refund
+    |> change(
+        stripe_refund_id: stripe_refund["id"],
+        stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
+        processor_fee_cents: processor_fee_cents,
+        freshcom_fee_cents: freshcom_fee_cents,
+        status: stripe_refund["status"]
+       )
+    |> Repo.update!()
   end
 
   def create_stripe_refund(refund) do

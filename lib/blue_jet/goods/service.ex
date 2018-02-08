@@ -57,10 +57,11 @@ defmodule BlueJet.Goods.Service do
   def get_stockable(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
 
     Stockable.Query.default()
     |> Stockable.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -164,10 +165,11 @@ defmodule BlueJet.Goods.Service do
   def get_unlockable(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
 
     Unlockable.Query.default()
     |> Unlockable.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -271,10 +273,11 @@ defmodule BlueJet.Goods.Service do
   def get_depositable(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
 
     Depositable.Query.default()
     |> Depositable.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 

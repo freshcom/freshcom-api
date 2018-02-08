@@ -10,4 +10,6 @@ defmodule BlueJet.Balance.Payment.Proxy do
   def put_account(payment) do
     %{ payment | account: get_account(payment) }
   end
+
+  def put(payment, _, _), do: payment
 end

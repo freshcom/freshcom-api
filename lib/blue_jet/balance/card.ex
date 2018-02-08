@@ -195,7 +195,7 @@ defmodule BlueJet.Balance.Card do
   Returns `{:ok, stripe_card_id}` if successful.
   """
   @spec keep_stripe_token_as_card(map, map, map) :: {:ok, String.t} | {:error, map}
-  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields = %{ status: status }, opts) when not is_nil(stripe_customer_id) do
+  def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields, opts) when not is_nil(stripe_customer_id) do
     account = IdentityService.get_account(%{ account_id: opts[:account_id], account: opts[:account] })
 
     case retrieve_stripe_token(token, mode: account.mode) do

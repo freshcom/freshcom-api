@@ -18,6 +18,11 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
     GoodsService.get_unlockable(%{ id: id }, %{ account: account })
   end
 
+  def get_goods(oli = %{ product: %{ goods_type: "Depositable", goods_id: id }}) do
+    account = get_account(oli)
+    GoodsService.get_depositable(%{ id: id }, %{ account: account })
+  end
+
   def get_depositable(oli = %{ source_type: "Depositable", source_id: id }) do
     account = get_account(oli)
     GoodsService.get_depositable(%{ id: id }, %{ account: account })
