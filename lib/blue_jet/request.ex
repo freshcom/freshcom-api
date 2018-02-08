@@ -15,6 +15,7 @@ defmodule BlueJet.AccessRequest do
             account: nil,
 
             preloads: [],
+            preload_filters: %{},
             locale: nil
 
   @type t :: map

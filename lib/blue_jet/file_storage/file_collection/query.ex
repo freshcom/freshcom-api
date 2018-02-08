@@ -13,6 +13,8 @@ defmodule BlueJet.FileStorage.FileCollection.Query do
   @filterable_fields [
     :status,
     :label,
+    :owner_id,
+    :owner_type,
     :content_type
   ]
 

@@ -3,15 +3,6 @@ defmodule BlueJet.Balance.Card.Proxy do
 
   alias BlueJet.Balance.IdentityService
 
-  @searchable_fields [
-    :code
-  ]
-
-  @filterable_fields [
-    :payment_id,
-    :label
-  ]
-
   def get_account(card) do
     card.account || IdentityService.get_account(card)
   end

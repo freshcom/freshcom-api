@@ -3,7 +3,9 @@ defmodule BlueJet.FileStorage.FileCollection.Proxy do
 
   alias BlueJet.FileStorage.IdentityService
 
-  def get_account(file) do
-    file.account || IdentityService.get_account(file)
+  def get_account(file_collection) do
+    file_collection.account || IdentityService.get_account(file_collection)
   end
+
+  def put(file_collection, _, _), do: file_collection
 end

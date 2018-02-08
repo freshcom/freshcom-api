@@ -78,6 +78,7 @@ config :blue_jet, :identity, %{
 
 config :blue_jet, :goods, %{
   identity_service: BlueJet.Identity.Service,
+  file_storage_service: BlueJet.FileStorage.Service
 }
 
 config :blue_jet, :file_storage, %{

@@ -32,4 +32,6 @@ defmodule BlueJet.Catalogue.Product.Proxy do
     account = get_account(product)
     FileStorageService.delete_file(%{ id: product.avatar_id }, %{ account: account })
   end
+
+  def put(product, _, _), do: product
 end

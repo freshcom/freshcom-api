@@ -2,6 +2,7 @@ Mox.defmock(BlueJet.EventHandlerMock, for: BlueJet.EventHandler)
 Mox.defmock(BlueJet.AuthorizationMock, for: BlueJet.Authorization)
 
 Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
+Mox.defmock(BlueJet.Goods.FileStorageServiceMock, for: BlueJet.Goods.FileStorageService)
 
 Mox.defmock(BlueJet.Balance.StripeClientMock, for: BlueJet.Balance.StripeClient)
 Mox.defmock(BlueJet.Balance.OauthClientMock, for: BlueJet.Balance.OauthClient)

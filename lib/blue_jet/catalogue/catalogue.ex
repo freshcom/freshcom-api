@@ -6,9 +6,16 @@ defmodule BlueJet.Catalogue do
   #
   # MARK: Product
   #
-  defp filter_product_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
-    request = %{ request | filter: Map.put(request.filter, :status, "active") }
-    %{ request | count_filter: %{ all: Map.take(request.filter, [:status, :collection_id, :parent_id]) } }
+  defp filter_product_by_role(request = %{ role: role, filter: filter, count_filter: count_filter }) when role in ["guest", "customer"] do
+    filter = Map.put(filter, :status, "active")
+    all_count_filter = Map.take(filter, [:status, :collection_id, :parent_id])
+    preload_filters = %{
+      prices: %{ status: "active" },
+      items: %{ status: "active" },
+      variants: %{ status: "active" }
+    }
+
+    request = %{ request | filter: filter, count_filter: %{ all: all_count_filter }, preload_filters: preload_filters }
   end
 
   defp filter_product_by_role(request), do: request
@@ -81,6 +88,7 @@ defmodule BlueJet.Catalogue do
   end
 
   def do_get_product(request = %{ account: account, params: params }) do
+
     product =
       atom_map(params)
       |> Service.get_product(get_sopts(request))

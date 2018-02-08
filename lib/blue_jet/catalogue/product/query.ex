@@ -54,33 +54,38 @@ defmodule BlueJet.Catalogue.Product.Query do
     from p in query, where: p.parent_id == ^parent_id
   end
 
-  def preloads({:items, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = Product.Query.default() |> Product.Query.active()
+  defp get_preload_filter(opts, key) do
+    filters = opts[:filters] || %{}
+    filters[key] || %{}
+  end
+
+  def preloads({:items, item_preloads}, options) do
+    filter = get_preload_filter(options, :items)
+
+    query =
+      Product.Query.default()
+      |> Product.Query.filter_by(filter)
+
     [items: {query, Product.Query.preloads(item_preloads, options)}]
   end
 
-  def preloads({:items, item_preloads}, options = [role: _]) do
-    query = Product.Query.default()
-    [items: {query, Product.Query.preloads(item_preloads, options)}]
-  end
+  def preloads({:variants, item_preloads}, options) do
+    filter = get_preload_filter(options, :variants)
 
-  def preloads({:variants, item_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = Product.Query.default() |> Product.Query.active()
+    query =
+      Product.Query.default()
+      |> Product.Query.filter_by(filter)
+
     [variants: {query, Product.Query.preloads(item_preloads, options)}]
   end
 
-  def preloads({:variants, item_preloads}, options = [role: _]) do
-    query = Product.Query.default()
-    [variants: {query, Product.Query.preloads(item_preloads, options)}]
-  end
+  def preloads({:prices, price_preloads}, options) do
+    filter = get_preload_filter(options, :prices)
 
-  def preloads({:prices, price_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = Price.Query.default() |> Price.Query.active()
-    [prices: {query, Price.Query.preloads(price_preloads, options)}]
-  end
+    query =
+      Price.Query.default()
+      |> Price.Query.filter_by(filter)
 
-  def preloads({:prices, price_preloads}, options = [role: _]) do
-    query = Price.Query.default()
     [prices: {query, Price.Query.preloads(price_preloads, options)}]
   end
 

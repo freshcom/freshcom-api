@@ -135,7 +135,7 @@ defmodule BlueJet.DataTrading do
     source_id
   end
   defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account) when byte_size(code) > 0 do
-    unlockable = GoodsService.get_unlockable_by_code(code, %{ account: account })
+    unlockable = GoodsService.get_unlockable(%{ code: code }, %{ account: account })
 
     case unlockable do
       nil -> nil
@@ -213,10 +213,10 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_unlockable(%{ "id" => id }, account) when byte_size(id) > 0 do
-    GoodsService.get_unlockable(id, %{ account: account })
+    GoodsService.get_unlockable(%{ id: id }, %{ account: account })
   end
   defp get_unlockable(%{ "code" => code }, account) when byte_size(code) > 0 do
-    GoodsService.get_unlockable_by_code(code, %{ account: account })
+    GoodsService.get_unlockable(%{ code: code }, %{ account: account })
   end
 
   defp get_product(%{ "id" => id }, account) when byte_size(id) > 0 do

@@ -32,7 +32,8 @@ config :blue_jet, :identity, %{
 }
 
 config :blue_jet, :goods, %{
-  identity_service: BlueJet.Goods.IdentityServiceMock
+  identity_service: BlueJet.Goods.IdentityServiceMock,
+  file_storage_service: BlueJet.Goods.FileStorageServiceMock
 }
 
 config :blue_jet, :balance, %{

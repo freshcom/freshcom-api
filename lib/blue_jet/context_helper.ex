@@ -7,7 +7,7 @@ defmodule BlueJet.ContextHelpers do
     %{
       account: request.account,
       pagination: request.pagination,
-      preloads: %{ path: request.preloads },
+      preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
       locale: request.locale
     }
   end
