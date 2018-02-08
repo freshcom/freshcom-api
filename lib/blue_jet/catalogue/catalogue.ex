@@ -2,7 +2,6 @@ defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
   alias BlueJet.Catalogue.Service
-  alias BlueJet.Catalogue.{Price}
 
   #
   # MARK: Product
@@ -418,19 +417,6 @@ defmodule BlueJet.Catalogue do
     {:ok, response}
   end
 
-  defp price_response(nil, _), do: {:error, :not_found}
-
-  defp price_response(price, request = %{ account: account }) do
-    preloads = Price.Query.preloads(request.preloads, role: request.role)
-
-    price =
-      price
-      |> Repo.preload(preloads)
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: price }}
-  end
-
   def create_price(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.create_price") do
       request
@@ -516,24 +502,6 @@ defmodule BlueJet.Catalogue do
 
       other -> other
     end
-
-    # price =
-    #   Price
-    #   |> Price.Query.for_account(account.id)
-    #   |> Repo.get(id)
-
-    # cond do
-    #   !price ->
-    #     {:error, :not_found}
-
-    #   price.status == "disabled" ->
-    #     Repo.delete!(price)
-    #     {:ok, %AccessResponse{}}
-
-    #   true ->
-    #     errors = %{ id: {"Only Disabled Price can be deleted.", [validation: :only_disabled_can_be_deleted]} }
-    #     {:error, %AccessResponse{ errors: errors }}
-    # end
   end
 
 end

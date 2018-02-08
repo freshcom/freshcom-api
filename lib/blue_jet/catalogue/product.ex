@@ -18,7 +18,6 @@ defmodule BlueJet.Catalogue.Product do
   ], container: :translations
 
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.ProductCollectionMembership
   alias BlueJet.Catalogue.Product.{Query, Proxy}
 
   schema "products" do
