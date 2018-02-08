@@ -220,7 +220,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> account end)
 
-      changeset = Price.changeset(%Price{ account_id: account.id }, %{
+      changeset = Price.changeset(%Price{ account_id: account.id }, :insert, %{
         product_id: product.id,
         parent_id: price.id
       })
@@ -235,7 +235,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
-      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, :insert, %{
         product_id: Ecto.UUID.generate(),
         charge_unit: "CU"
       })
@@ -247,7 +247,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
-      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, :insert, %{
         product_id: Ecto.UUID.generate(),
         estimate_by_default: true,
         charge_unit: "CU"
@@ -260,7 +260,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       IdentityServiceMock
       |> expect(:get_account, fn(_) -> %Account{} end)
 
-      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, %{
+      changeset = Price.changeset(%Price{ account_id: Ecto.UUID.generate() }, :update, %{
         name: Faker.String.base64(5),
         charge_unit: Faker.String.base64(2),
         order_unit: Faker.String.base64(2)

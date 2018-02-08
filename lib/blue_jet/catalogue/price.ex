@@ -12,7 +12,7 @@ defmodule BlueJet.Catalogue.Price do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.IdentityService
+  alias BlueJet.Catalogue.Price.Proxy
 
   schema "prices" do
     field :account_id, Ecto.UUID
@@ -132,6 +132,14 @@ defmodule BlueJet.Catalogue.Price do
     |> validate_status()
   end
 
+  def validate(changeset = %{ data: price }, :delete) do
+    if price.status != "disabled" do
+      add_error(changeset, :status, {"must be disabled", [validation: :must_be_disabled]})
+    else
+      changeset
+    end
+  end
+
   defp castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
@@ -143,13 +151,26 @@ defmodule BlueJet.Catalogue.Price do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(price, params, locale \\ nil, default_locale \\ nil) do
-    price = %{ price | account: get_account(price) }
+  def changeset(price, :insert, params) do
+    price
+    |> cast(params, castable_fields(price))
+    |> Map.put(:action, :insert)
+    |> put_status()
+    |> put_label()
+    |> put_charge_unit()
+    |> put_order_unit()
+    |> put_minimum_order_quantity()
+    |> validate()
+  end
+
+  def changeset(price, :update, params, locale \\ nil, default_locale \\ nil) do
+    price = Proxy.put_account(price)
     default_locale = default_locale || price.account.default_locale
     locale = locale || default_locale
 
     price
     |> cast(params, castable_fields(price))
+    |> Map.put(:action, :update)
     |> put_status()
     |> put_label()
     |> put_charge_unit()
@@ -157,6 +178,12 @@ defmodule BlueJet.Catalogue.Price do
     |> put_minimum_order_quantity()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(price, :delete) do
+    change(price)
+    |> Map.put(:action, :delete)
+    |> validate(:delete)
   end
 
   def put_status(changeset = %{ changes: %{ parent_id: parent_id } }) do
@@ -218,44 +245,6 @@ defmodule BlueJet.Catalogue.Price do
     D.new(p) |> D.div(D.new(100))
   end
 
-  def get_account(price) do
-    price.account || IdentityService.get_account(price)
-  end
-
-  # TODO: Refactor this
-  def query_for(product_item_id: product_item_id, order_quantity: order_quantity) do
-    query = from p in __MODULE__,
-      where: p.status == "active",
-      where: p.product_item_id == ^product_item_id,
-      where: p.minimum_order_quantity <= ^order_quantity,
-      order_by: [desc: p.minimum_order_quantity]
-
-    query |> first()
-  end
-  def query_for(product_id: product_id, order_quantity: order_quantity) do
-    query = from p in __MODULE__,
-      where: p.status == "active",
-      where: p.product_id == ^product_id,
-      where: p.minimum_order_quantity <= ^order_quantity,
-      order_by: [desc: p.minimum_order_quantity]
-
-    query |> first()
-  end
-  def query_for(product_item_ids: product_item_ids, order_quantity: order_quantity) do
-    query = from p in __MODULE__,
-      select: %{ row_number: fragment("ROW_NUMBER() OVER (PARTITION BY product_item_id ORDER BY minimum_order_quantity DESC)"), id: p.id },
-      where: p.status == "active",
-      where: p.product_item_id in ^product_item_ids,
-      where: p.minimum_order_quantity <= ^order_quantity
-
-    query = from pp in subquery(query),
-      join: p in ^__MODULE__, on: pp.id == p.id,
-      where: pp.row_number == 1,
-      select: p
-
-    query
-  end
-
   def balance(price) do
     children = Ecto.assoc(price, :children) |> Repo.all()
     charge_amount_cents = Enum.reduce(children, 0, fn(child, acc) ->
@@ -266,54 +255,13 @@ defmodule BlueJet.Catalogue.Price do
     Repo.update!(changeset)
   end
 
-  defmodule Query do
-    use BlueJet, :query
+  def process(price, %{ action: :update }) do
+    price = Repo.preload(price, :parent)
 
-    alias BlueJet.Catalogue.Price
-
-    def default() do
-      from(p in Price, order_by: [desc: :inserted_at])
+    if price.parent do
+      {:ok, balance(price.parent)}
+    else
+      {:ok, price}
     end
-
-    def for_product(product_id) do
-      from(p in Price, where: p.product_id == ^product_id, order_by: [asc: :minimum_order_quantity])
-    end
-
-    def with_order_quantity(query, nil), do: query
-
-    def with_order_quantity(query, order_quantity) do
-      from(p in query, where: p.minimum_order_quantity <= ^order_quantity)
-    end
-
-    def with_status(query, status) do
-      from p in query, where: p.status == ^status
-    end
-
-    def active_by_moq() do
-      from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])
-    end
-
-    def for_account(query, account_id) do
-      from(p in query, where: p.account_id == ^account_id)
-    end
-
-    def active(query) do
-      from(p in query, where: p.status == "active")
-    end
-
-    def preloads({:product, product_preloads}, options) do
-      query = Product.Query.default()
-      [product: {query, Product.Query.preloads(product_preloads, options)}]
-    end
-
-    def preloads({:children, children_preloads}, options) do
-      query = Price.Query.default()
-      [children: {query, Price.Query.preloads(children_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-
   end
 end

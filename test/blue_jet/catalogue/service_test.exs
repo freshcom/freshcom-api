@@ -4,7 +4,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Service
-  alias BlueJet.Catalogue.{Product, ProductCollection}
+  alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership}
   alias BlueJet.Catalogue.GoodsServiceMock
 
   setup :verify_on_exit!
@@ -343,6 +343,137 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
       assert product_collection
       refute Repo.get(ProductCollection, product_collection.id)
+    end
+  end
+
+  describe "list_product_collection_membership/2" do
+    test "product collection membership for different account is not returned" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: other_account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: other_account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product_collection_memberships = Service.list_product_collection_membership(%{ account: account })
+      assert length(product_collection_memberships) == 2
+    end
+
+    test "pagination should change result size" do
+      account = Repo.insert!(%Account{})
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product = Repo.insert!(%Product{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      collection = Repo.insert!(%ProductCollection{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      Repo.insert!(%ProductCollectionMembership{
+        account_id: account.id,
+        product_id: product.id,
+        collection_id: collection.id
+      })
+
+      product_collection_memberships = Service.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      assert length(product_collection_memberships) == 3
+
+      product_collection_memberships = Service.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      assert length(product_collection_memberships) == 2
     end
   end
 end

@@ -264,8 +264,134 @@ defmodule BlueJet.Catalogue.Service do
   end
 
   #
+  # MARK: Product Collection Membership
+  #
+  def with_product_status(query, nil), do: query
+
+  def with_product_status(query, product_status) do
+    ProductCollectionMembership.Query.with_product_status(query, product_status)
+  end
+
+  def list_product_collection_membership(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    ProductCollectionMembership.Query.default()
+    |> ProductCollectionMembership.Query.filter_by(filter)
+    |> with_product_status(filter[:product_status])
+    |> ProductCollectionMembership.Query.for_account(account.id)
+    |> ProductCollectionMembership.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_product_collection_membership(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    ProductCollectionMembership.Query.default()
+    |> ProductCollectionMembership.Query.filter_by(filter)
+    |> with_product_status(filter[:product_status])
+    |> ProductCollectionMembership.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_product_collection_membership(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %ProductCollectionMembership{ account_id: account.id, account: account }
+      |> ProductCollectionMembership.changeset(:insert, fields)
+
+    with {:ok, product_collection_membership} <- Repo.insert(changeset) do
+      product_collection_membership = preload(product_collection_membership, preloads[:path], preloads[:opts])
+      {:ok, product_collection_membership}
+    else
+      other -> other
+    end
+  end
+
+  def get_product_collection_membership(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    ProductCollectionMembership.Query.default()
+    |> ProductCollectionMembership.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def delete_product_collection_membership(nil, _), do: {:error, :not_found}
+
+  def delete_product_collection_membership(product_collection_membership = %ProductCollectionMembership{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ product_collection_membership | account: account }
+      |> ProductCollectionMembership.changeset(:delete)
+
+    with {:ok, product_collection_membership} <- Repo.delete(changeset) do
+      {:ok, product_collection_membership}
+    else
+      other -> other
+    end
+  end
+
+  def delete_product_collection_membership(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    ProductCollectionMembership
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_product_collection_membership(opts)
+  end
+
+  #
   # MARK: Price
   #
+  def list_price(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Price.Query.default()
+    |> Price.Query.filter_by(filter)
+    |> Price.Query.for_account(account.id)
+    |> Price.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_price(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    Price.Query.default()
+    |> Price.Query.filter_by(filter)
+    |> Price.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_price(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %Price{ account_id: account.id, account: account }
+      |> Price.changeset(:insert, fields)
+
+    with {:ok, price} <- Repo.insert(changeset) do
+      price = preload(price, preloads[:path], preloads[:opts])
+      {:ok, price}
+    else
+      other -> other
+    end
+  end
+
   def get_price(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
@@ -276,76 +402,64 @@ defmodule BlueJet.Catalogue.Service do
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  # def get_price(id, opts) do
-  #   account_id = opts[:account_id] || opts[:account].id
-  #   Repo.get_by(Price, id: id, account_id: account_id)
-  # end
+  def update_price(nil, _, _), do: {:error, :not_found}
 
-  # def get_price_by_code(code, opts) do
-  #   account_id = opts[:account_id] || opts[:account].id
-  #   Repo.get_by(Price, code: code, account_id: account_id)
-  # end
+  def update_price(price = %Price{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
 
-  def create_price(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-
-    %Price{ account_id: account_id, account: opts[:account] }
-    |> Price.changeset(fields)
-    |> Repo.insert()
-  end
-
-  def update_price(price = %{}, fields, opts) do
     changeset =
-      price
-      |> Repo.preload(:parent)
-      |> Map.put(:account, opts[:account])
-      |> Price.changeset(fields, opts[:locale])
+      %{ price | account: account }
+      |> Price.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
       |> Multi.update(:price, changeset)
-      |> Multi.run(:balanced_price, fn(%{ price: price }) ->
-          if price.parent do
-            {:ok, Price.balance(price.parent)}
-          else
-            {:ok, price}
-          end
+      |> Multi.run(:processed_price, fn(%{ price: price }) ->
+          Price.process(price, changeset)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ balanced_price: price }} -> {:ok, price}
+      {:ok, %{ processed_price: price }} ->
+        price = preload(price, preloads[:path], preloads[:opts])
+        {:ok, price}
 
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
   def update_price(id, fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+    opts = put_account(opts)
+    account = opts[:account]
 
-    price =
-      Price.Query.default()
-      |> Price.Query.for_account(account_id)
-      |> Repo.get(id)
+    Price
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_price(fields, opts)
+  end
 
-    if price do
-      update_price(price, fields, opts)
+  def delete_price(nil, _), do: {:error, :not_found}
+
+  def delete_price(price = %Price{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ price | account: account }
+      |> Price.changeset(:delete)
+
+    with {:ok, price} <- Repo.delete(changeset) do
+      {:ok, price}
     else
-      {:error, :not_found}
+      other -> other
     end
   end
 
-  def get_product_collection_membership(%{ collection_id: collection_id, product_id: product_id }, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+  def delete_price(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
 
-    ProductCollectionMembership
-    |> Repo.get_by(collection_id: collection_id, product_id: product_id, account_id: account_id)
-  end
-
-  def create_product_collection_membership(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-
-    %ProductCollectionMembership{ account_id: account_id, account: opts[:account] }
-    |> ProductCollectionMembership.changeset(fields)
-    |> Repo.insert()
+    Price
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_price(opts)
   end
 end

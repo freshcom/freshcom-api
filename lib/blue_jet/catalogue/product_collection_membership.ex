@@ -28,10 +28,10 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
+  def castable_fields(:insert) do
     writable_fields()
   end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
+  def castable_fields(:update) do
     writable_fields() -- [:collection_id, :product_id]
   end
 
@@ -68,47 +68,22 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(struct, params \\ %{}) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def changeset(membership, :insert, params) do
+    membership
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
     |> validate()
   end
 
-  defmodule Query do
-    use BlueJet, :query
+  def changeset(membership, :update, params) do
+    membership
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> validate()
+  end
 
-    alias BlueJet.Catalogue.ProductCollectionMembership
-
-    def default() do
-      from pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index]
-    end
-
-    def for_account(query, account_id) do
-      from pcm in query, where: pcm.account_id == ^account_id
-    end
-
-    def for_collection(query, collection_id) do
-      from pcm in query, where: pcm.collection_id == ^collection_id
-    end
-
-    def with_active_product(query) do
-      from pcm in query,
-        join: p in Product, on: p.id == pcm.product_id,
-        where: p.status == "active"
-    end
-
-    def preloads({:product, product_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-      query = Product.Query.default() |> Product.Query.active()
-      [product: {query, Product.Query.preloads(product_preloads, options)}]
-    end
-
-    def preloads({:product, product_preloads}, options = [role: _]) do
-      query = Product.Query.default()
-      [product: {query, Product.Query.preloads(product_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
+  def changeset(membership, :delete) do
+    change(membership)
+    |> Map.put(:action, :delete)
   end
 end

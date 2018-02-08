@@ -40,7 +40,7 @@ defmodule BlueJet.Catalogue.ProductCollection.Query do
   end
 
   def preloads({:memberships, membership_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = ProductCollectionMembership.Query.default() |> ProductCollectionMembership.Query.with_active_product()
+    query = ProductCollectionMembership.Query.default() |> ProductCollectionMembership.Query.with_product_status("active")
     [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
   end
 
