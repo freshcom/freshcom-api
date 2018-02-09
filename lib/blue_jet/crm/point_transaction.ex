@@ -57,6 +57,14 @@ defmodule BlueJet.Crm.PointTransaction do
     __MODULE__.__trans__(:fields)
   end
 
+  def validate(changeset = %{ action: :delete }) do
+    if get_field(changeset, :amount) == 0 do
+      changeset
+    else
+      add_error(changeset, :amount, {"must be zero", [validation: :must_be_zero]})
+    end
+  end
+
   def validate(changeset) do
     changeset
     |> validate_required([:status, :amount])
@@ -104,7 +112,7 @@ defmodule BlueJet.Crm.PointTransaction do
     |> put_balance_after_commit()
   end
 
-  def changeset(point_transaction, params \\ %{}, locale \\ nil, default_locale \\ nil) do
+  def changeset(point_transaction, :update, params, locale \\ nil, default_locale \\ nil) do
     point_transaction = Proxy.put_account(point_transaction)
     default_locale = default_locale || point_transaction.account.default_locale
     locale = locale || default_locale
@@ -115,6 +123,12 @@ defmodule BlueJet.Crm.PointTransaction do
     |> put_committed_at()
     |> put_balance_after_commit()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  def changeset(point_transaction, :delete) do
+    change(point_transaction)
+    |> Map.put(:action, :delete)
+    |> validate()
   end
 
   def process(point_transaction, %{

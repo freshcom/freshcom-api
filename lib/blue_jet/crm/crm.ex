@@ -1,7 +1,6 @@
 defmodule BlueJet.Crm do
   use BlueJet, :context
 
-  alias BlueJet.Crm.{Customer, PointTransaction}
   alias BlueJet.Crm.Service
 
   #
@@ -40,20 +39,6 @@ defmodule BlueJet.Crm do
     {:ok, response}
   end
 
-  defp customer_response(nil, _), do: {:error, :not_found}
-
-  defp customer_response(customer, request = %{ account: account }) do
-    preloads = Customer.Query.preloads(request.preloads, role: request.role)
-
-    customer =
-      customer
-      |> Repo.preload(preloads)
-      |> Customer.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
-  end
-
   def create_customer(request) do
     with {:ok, request} <- preprocess_request(request, "crm.create_customer") do
       request
@@ -70,7 +55,8 @@ defmodule BlueJet.Crm do
 
     case Service.create_customer(fields, %{ account: account }) do
       {:ok, customer} ->
-        customer_response(customer, request)
+        customer = Translation.translate(customer, request.locale, account.default_locale)
+        {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
 
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
@@ -146,7 +132,6 @@ defmodule BlueJet.Crm do
   def list_point_transaction(request) do
     with {:ok, request} <- preprocess_request(request, "crm.list_point_transaction") do
       request
-      |> AccessRequest.transform_by_role()
       |> do_list_point_transaction()
     else
       {:error, _} -> {:error, :access_denied}
@@ -159,6 +144,8 @@ defmodule BlueJet.Crm do
     filter: filter,
     params: %{ "point_account_id" => point_account_id }
   }) do
+    filter = Map.put(filter, :status, "committed")
+
     total_count =
       %{ filter: filter }
       |> Service.count_point_transaction(%{ account: account })
@@ -183,20 +170,6 @@ defmodule BlueJet.Crm do
     }
 
     {:ok, response}
-  end
-
-  defp point_transaction_response(nil, _), do: {:error, :not_found}
-
-  defp point_transaction_response(point_transaction, request = %{ account: account }) do
-    preloads = PointTransaction.Query.preloads(request.preloads, role: request.role)
-
-    point_transaction =
-      point_transaction
-      |> Repo.preload(preloads)
-      |> PointTransaction.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: point_transaction }}
   end
 
   defp point_transaction_fields_by_role(request = %{ role: "customer", fields: fields }) do
@@ -239,13 +212,17 @@ defmodule BlueJet.Crm do
     end
   end
 
-  def do_get_point_transaction(request = %{ account: account, params: %{ "id" => id } }) do
+  def do_get_point_transaction(request = %{ account: account, params: params }) do
     point_transaction =
-      PointTransaction.Query.default()
-      |> PointTransaction.Query.for_account(account.id)
-      |> Repo.get(id)
+      atom_map(params)
+      |> Service.get_point_transaction(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    point_transaction_response(point_transaction, request)
+    if point_transaction do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: point_transaction }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_point_transaction(request) do
@@ -259,7 +236,8 @@ defmodule BlueJet.Crm do
 
   def do_update_point_transaction(request = %{ account: account, params: %{ "id" => id } }) do
     with {:ok, pt} <- Service.update_point_transaction(id, request.fields, %{ account: account }) do
-      point_transaction_response(pt, request)
+      pt = Translation.translate(pt, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: pt }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -278,16 +256,13 @@ defmodule BlueJet.Crm do
   end
 
   def do_delete_point_transaction(%{ account: account, params: %{ "id" => id } }) do
-    point_transaction =
-      PointTransaction.Query.default()
-      |> PointTransaction.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if point_transaction.amount == 0 do
-      Repo.delete!(point_transaction)
+    with {:ok, _} <- Service.delete_point_transaction(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 end

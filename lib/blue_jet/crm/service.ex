@@ -231,22 +231,26 @@ defmodule BlueJet.Crm.Service do
     end
   end
 
-  ##########
   def get_point_transaction(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
 
     PointTransaction.Query.default()
     |> PointTransaction.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 
+  def update_point_transaction(nil, _, _), do: {:error, :not_found}
+
   def update_point_transaction(point_transaction = %{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
     changeset =
-      point_transaction
-      |> Map.put(:account, opts[:account])
-      |> PointTransaction.changeset(fields, opts[:locale])
+      %{ point_transaction | account: account }
+      |> PointTransaction.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
@@ -256,24 +260,46 @@ defmodule BlueJet.Crm.Service do
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_point_transaction: point_transaction }} -> {:ok, point_transaction}
+      {:ok, %{ processed_point_transaction: point_transaction }} ->
+        point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
+        {:ok, point_transaction}
 
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
   def update_point_transaction(id, fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+    opts = put_account(opts)
+    account = opts[:account]
 
-    point_transaction =
-      PointTransaction.Query.default()
-      |> PointTransaction.Query.for_account(account_id)
-      |> Repo.get(id)
+    PointTransaction
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_point_transaction(fields, opts)
+  end
 
-    if point_transaction do
-      update_point_transaction(point_transaction, fields, opts)
+  def delete_point_transaction(nil, _), do: {:error, :not_found}
+
+  def delete_point_transaction(point_transaction = %PointTransaction{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ point_transaction | account: account }
+      |> PointTransaction.changeset(:delete)
+
+    with {:ok, point_transaction} <- Repo.delete(changeset) do
+      {:ok, point_transaction}
     else
-      {:error, :not_found}
+      other -> other
     end
+  end
+
+  def delete_point_transaction(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    PointTransaction
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_point_transaction(opts)
   end
 end
