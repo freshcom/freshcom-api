@@ -24,6 +24,10 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
     from pcm in query, where: pcm.collection_id == ^collection_id
   end
 
+  def with_product_status(query, nil) do
+    query
+  end
+
   def with_product_status(query, status) do
     from pcm in query,
       join: p in Product, on: p.id == pcm.product_id,

@@ -29,23 +29,22 @@ defmodule BlueJet.Catalogue.ProductCollection.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def preloads({:products, product_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = Product.Query.default() |> Product.Query.active()
-    [products: {query, Product.Query.preloads(product_preloads, options)}]
-  end
-
-  def preloads({:products, product_preloads}, options = [role: _]) do
+  def preloads({:products, product_preloads}, options) do
     query = Product.Query.default()
     [products: {query, Product.Query.preloads(product_preloads, options)}]
   end
 
-  def preloads({:memberships, membership_preloads}, options = [role: role]) when role in ["guest", "customer"] do
-    query = ProductCollectionMembership.Query.default() |> ProductCollectionMembership.Query.with_product_status("active")
+  def preloads({:memberships, membership_preloads}, options) do
+    filter = get_preload_filter(options, :memberships)
+
+    query =
+      ProductCollectionMembership.Query.default()
+      |> ProductCollectionMembership.Query.with_product_status(filter[:product_status])
+
     [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
   end
 
-  def preloads({:memberships, membership_preloads}, options = [role: _]) do
-    query = ProductCollectionMembership.Query.default()
-    [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
+  def preloads(_, _) do
+    []
   end
 end

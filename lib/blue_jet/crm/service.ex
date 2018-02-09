@@ -75,13 +75,12 @@ defmodule BlueJet.Crm.Service do
   def get_customer(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
-    matcher = Mapa.take(fields, [:name, :phone_number])
+    filter = Map.take(fields, [:id, :code, :user_id, :status])
 
     Customer.Query.default()
     |> Customer.Query.for_account(account.id)
     |> Repo.get_by(filter)
-    |> Customer.match_by(matcher) # TODO: impl this
+    |> Customer.match_by(fields) # TODO: impl this
     |> preload(preloads[:path], preloads[:opts])
   end
 

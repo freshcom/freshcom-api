@@ -73,9 +73,8 @@ defmodule BlueJet do
         preloads = opts[:preloads] || %{}
         path = preloads[:path] || []
 
-        opts =
-          preloads[:opts] || %{}
-          |> Map.put(:account, account)
+        opts = preloads[:opts] || %{}
+        opts = Map.put(opts, :account, account)
 
         %{ path: path, opts: opts }
       end
@@ -205,6 +204,10 @@ defmodule BlueJet do
         |> offset(^offset)
       end
 
+      defp get_preload_filter(opts, key) do
+        filters = opts[:filters] || %{}
+        filters[key] || %{}
+      end
 
       def preloads(targets) when is_list(targets) and length(targets) == 0 do
         []

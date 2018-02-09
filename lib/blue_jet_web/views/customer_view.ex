@@ -30,6 +30,7 @@ defmodule BlueJetWeb.CustomerView do
 
   has_one :enroller, serializer: BlueJetWeb.CustomerView, identifiers: :always
   has_one :sponsor, serializer: BlueJetWeb.CustomerView, identifiers: :always
+  has_one :user, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   # has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
   has_one :point_account, serializer: BlueJetWeb.PointAccountView, identifiers: :when_included
@@ -45,4 +46,8 @@ defmodule BlueJetWeb.CustomerView do
   def sponsor(%{ sponsor_id: nil }, _), do: nil
   def sponsor(%{ sponsor_id: sponsor_id, sponsor: %Ecto.Association.NotLoaded{} }, _), do: %{ id: sponsor_id, type: "Customer" }
   def sponsor(%{ sponsor: sponsor }, _), do: sponsor
+
+  def user(%{ user_id: nil }, _), do: nil
+  def user(%{ user_id: user_id, user: nil }, _), do: %{ id: user_id, type: "User" }
+  def user(%{ user: user }, _), do: user
 end

@@ -396,10 +396,11 @@ defmodule BlueJet.Catalogue.Service do
   def get_price(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code, :status, :product_id, :parent_id])
 
     Price.Query.default()
     |> Price.Query.with_order_quantity(fields[:order_quantity])
-    |> Repo.get_by(fields)
+    |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
   end
 

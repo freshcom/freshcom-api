@@ -54,11 +54,6 @@ defmodule BlueJet.Catalogue.Product.Query do
     from p in query, where: p.parent_id == ^parent_id
   end
 
-  defp get_preload_filter(opts, key) do
-    filters = opts[:filters] || %{}
-    filters[key] || %{}
-  end
-
   def preloads({:items, item_preloads}, options) do
     filter = get_preload_filter(options, :items)
 

@@ -33,7 +33,9 @@ defmodule BlueJet.Crm.Customer do
     field :translations, :map, default: %{}
 
     field :stripe_customer_id, :string
+
     field :user_id, Ecto.UUID
+    field :user, :map, virtual: true
 
     timestamps()
 
@@ -119,6 +121,37 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
+  def match_by(nil, _), do: nil
+
+  def match_by(customer, matcher) do
+    matcher = Map.take(matcher, [:name, :phone_number])
+    do_match_by(customer, matcher)
+  end
+
+  def do_match_by(customer, matcher) when map_size(matcher) == 0, do: customer
+
+  def do_match_by(customer, matcher) do
+    leftover = Enum.reject(matcher, fn({k, v}) ->
+      case k do
+        :first_name ->
+          String.downcase(v) == remove_space(downcase(customer.first_name))
+        :last_name ->
+          String.downcase(v) == remove_space(downcase(customer.last_name))
+        :name ->
+          remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
+        :phone_number ->
+          digit_only(v) == digit_only(customer.phone_number)
+        :email ->
+          downcase(v) == downcase(customer.email)
+      end
+    end)
+
+    case length(leftover) do
+      0 -> customer
+      _ -> nil
+    end
+  end
+
   def match?(nil, _) do
     false
   end
@@ -177,8 +210,8 @@ defmodule BlueJet.Crm.Customer do
     fields = Map.merge(fields, %{ "role" => "customer" })
 
     with {:ok, user} <- IdentityService.create_user(fields, %{ account: account }) do
-      customer = %{ customer | user_id: user.id }
-      changeset = %{ changeset | data: customer }
+      changeset = put_change(changeset, :user_id, user.id)
+
       {:ok, changeset}
     else
       other -> other

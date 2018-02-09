@@ -63,9 +63,16 @@ defmodule BlueJet.Crm do
     end
   end
 
+  defp filter_customer_by_role(request = %{ role: "customer", vas: vas }) do
+    request = %{ request | params: %{ "user_id" => vas[:user_id] }}
+  end
+
+  defp filter_customer_by_role(request), do: request
+
   def get_customer(request) do
     with {:ok, request} <- preprocess_request(request, "crm.get_customer") do
       request
+      |> filter_customer_by_role()
       |> do_get_customer()
     else
       {:error, _} -> {:error, :access_denied}

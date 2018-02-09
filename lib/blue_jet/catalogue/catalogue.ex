@@ -144,9 +144,14 @@ defmodule BlueJet.Catalogue do
   #
   # MARK: Product Collection
   #
-  defp filter_product_collection_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
-    request = %{ request | filter: Map.put(request.filter, :status, "active") }
-    %{ request | count_filter: %{ all: %{ status: "active" } } }
+  defp filter_product_collection_by_role(request = %{ role: role, filter: filter }) when role in ["guest", "customer"] do
+    filter = Map.put(filter, :status, "active")
+    all_count_filter = Map.take(filter, [:status])
+    preload_filters = %{
+      memberships: %{ product_status: "active" }
+    }
+
+    %{ request | filter: filter, count_filter: %{ all: all_count_filter }, preload_filters: preload_filters }
   end
 
   defp filter_product_collection_by_role(request), do: request
@@ -211,6 +216,7 @@ defmodule BlueJet.Catalogue do
   def get_product_collection(request) do
     with {:ok, request} <- preprocess_request(request, "catalogue.get_product_collection") do
       request
+      |> filter_product_collection_by_role()
       |> do_get_product_collection()
     else
       {:error, _} -> {:error, :access_denied}
