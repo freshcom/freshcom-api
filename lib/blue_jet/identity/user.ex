@@ -156,6 +156,11 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  def changeset(user, :delete) do
+    change(user)
+    |> Map.put(:action, :delete)
+  end
+
   def changeset(struct, params) do
     struct
     |> cast(params, writable_fields())

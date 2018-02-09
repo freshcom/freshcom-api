@@ -9,7 +9,7 @@ defmodule BlueJet.Crm.PointTransaction do
   ], container: :translations
 
   alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.IdentityService
+  alias BlueJet.Crm.PointTransaction.Proxy
 
   schema "point_transactions" do
     field :account_id, Ecto.UUID
@@ -96,8 +96,16 @@ defmodule BlueJet.Crm.PointTransaction do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(point_transaction, :insert, params) do
+    point_transaction
+    |> cast(params, writable_fields())
+    |> validate()
+    |> put_committed_at()
+    |> put_balance_after_commit()
+  end
+
   def changeset(point_transaction, params \\ %{}, locale \\ nil, default_locale \\ nil) do
-    point_transaction = %{ point_transaction | account: get_account(point_transaction) }
+    point_transaction = Proxy.put_account(point_transaction)
     default_locale = default_locale || point_transaction.account.default_locale
     locale = locale || default_locale
 
@@ -118,6 +126,8 @@ defmodule BlueJet.Crm.PointTransaction do
 
     changeset = change(point_account, %{ balance: point_transaction.balance_after_commit })
     Repo.update(changeset)
+
+    {:ok, point_transaction}
   end
 
   def process(point_transaction, _), do: {:ok, point_transaction}
@@ -125,48 +135,10 @@ defmodule BlueJet.Crm.PointTransaction do
   #
   # File
   #
-  def get_account(point_transaction) do
-    point_transaction.account || IdentityService.get_account(point_transaction)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file_collection,
     field: :file_collections,
     owner_type: "PointTransaction"
 
   def put_external_resources(point_transaction, _, _), do: point_transaction
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Crm.PointTransaction
-
-    def default() do
-      from(pt in PointTransaction, order_by: [desc: pt.inserted_at])
-    end
-
-    def committed(query) do
-      from pt in query, where: pt.status == "committed"
-    end
-
-    def only(query, limit) do
-      from pt in query, limit: ^limit
-    end
-
-    def for_point_account(query, point_account_id) do
-      from(pt in query, where: pt.point_account_id == ^point_account_id)
-    end
-
-    def for_account(query, account_id) do
-      from(pt in query, where: pt.account_id == ^account_id)
-    end
-
-    def preloads({:point_account, point_account_preloads}, options) do
-      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end

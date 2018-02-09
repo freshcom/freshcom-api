@@ -9,6 +9,166 @@ defmodule BlueJet.Crm.Service do
     opts[:account] || IdentityService.get_account(opts)
   end
 
+  defp put_account(opts) do
+    %{ opts | account: get_account(opts) }
+  end
+
+  #
+  # MARK: Customer
+  #
+  def list_customer(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Customer.Query.default()
+    |> Customer.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Customer.Query.filter_by(filter)
+    |> Customer.Query.for_account(account.id)
+    |> Customer.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_customer(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    Customer.Query.default()
+    |> Customer.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Customer.Query.filter_by(filter)
+    |> Customer.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_customer(fields, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %Customer{ account_id: account.id, account: account }
+      |> Customer.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:changeset, fn(_) ->
+          Customer.preprocess(fields, changeset)
+         end)
+      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
+          Repo.insert(changeset)
+         end)
+      |> Multi.run(:processed_customer, fn(%{ customer: customer, changeset: changeset }) ->
+          Customer.process(customer, changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ customer: customer }} ->
+        {:ok, customer}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+
+      other -> other
+    end
+  end
+
+  def get_customer(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+    filter = Map.take(fields, [:id, :code])
+
+    customer =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Repo.get_by(filter)
+
+    matchers = Map.drop(fields, ["code", :code])
+    if Map.has_key?(filter, :code) && !Customer.match?(customer, matchers) do
+      {:error, :not_found}
+    else
+      preload(customer, preloads[:path], preloads[:opts])
+    end
+  end
+
+  def update_customer(nil, _, _), do: {:error, :not_found}
+
+  def update_customer(customer = %Customer{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ customer | account: account }
+      |> Customer.changeset(:update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.run(:changeset, fn(_) ->
+          Customer.preprocess(fields, changeset)
+         end)
+      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
+          Repo.update(changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ customer: customer }} ->
+        customer = preload(customer, preloads[:path], preloads[:opts])
+        {:ok, customer}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+
+      other -> other
+    end
+  end
+
+  def update_customer(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Customer
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_customer(fields, opts)
+  end
+
+  def delete_customer(nil, _), do: {:error, :not_found}
+
+  def delete_customer(customer = %Customer{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ customer | account: account }
+      |> Customer.changeset(:delete)
+
+    statements =
+      Multi.new()
+      |> Multi.delete(:customer, changeset)
+      |> Multi.run(:process, fn(%{ customer: customer }) ->
+          Customer.process(customer, changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ customer: customer }} ->
+        {:ok, customer}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+
+      other -> other
+    end
+  end
+
+  def delete_customer(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Customer
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_customer(opts)
+  end
+
+  #
+  # MARK: Point Account
+  #
   def get_point_account(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
@@ -19,12 +179,40 @@ defmodule BlueJet.Crm.Service do
     |> preload(preloads[:path], preloads[:opts])
   end
 
+  #
+  # MARK: Point Transaction
+  #
+  def list_point_transaction(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    PointTransaction.Query.default()
+    |> PointTransaction.Query.filter_by(filter)
+    |> PointTransaction.Query.for_account(account.id)
+    |> PointTransaction.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_point_transaction(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    PointTransaction.Query.default()
+    |> PointTransaction.Query.filter_by(filter)
+    |> PointTransaction.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
   def create_point_transaction(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
 
     changeset =
-      %PointTransaction{ account_id: account_id, account: opts[:account] }
-      |> PointTransaction.changeset(fields)
+      %PointTransaction{ account_id: account.id, account: account }
+      |> PointTransaction.changeset(:insert, fields)
 
     statements =
       Multi.new()
@@ -34,16 +222,16 @@ defmodule BlueJet.Crm.Service do
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_point_transaction: point_transaction }} -> {:ok, point_transaction}
+      {:ok, %{ processed_point_transaction: point_transaction }} ->
+        point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
+        {:ok, point_transaction}
 
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
-  def get_point_transaction(id) do
-    Repo.get(PointTransaction, id)
-  end
-
+  ##########
   def get_point_transaction(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
@@ -84,116 +272,6 @@ defmodule BlueJet.Crm.Service do
 
     if point_transaction do
       update_point_transaction(point_transaction, fields, opts)
-    else
-      {:error, :not_found}
-    end
-  end
-
-  def get_customer(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(fields, account)
-
-    preload_query = Customer.Query.preloads(preloads[:path], preloads[:filter])
-    Customer.Query.default()
-    |> Customer.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> Repo.preload(preload_query)
-  end
-
-  def get_customer_by_code(code, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    Repo.get_by(Customer, code: code, account_id: account_id)
-  end
-
-  def create_customer(fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-    statements =
-      Multi.new()
-      |> Multi.run(:user, fn(_) ->
-          if fields["status"] == "registered" do
-            IdentityService.create_user(fields, %{ account_id: account_id })
-          else
-            {:ok, nil}
-          end
-         end)
-      |> Multi.run(:changeset, fn(%{ user: user }) ->
-          customer = %Customer{ account_id: account_id, account: opts[:account] }
-          customer = if user do
-            %{ customer | user_id: user.id }
-          else
-            customer
-          end
-
-          changeset = Customer.changeset(customer, fields)
-          {:ok, changeset}
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:point_account, fn(%{ customer: customer }) ->
-          Repo.insert(%PointAccount{ account_id: customer.account.id, customer_id: customer.id })
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
-        {:ok, customer}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-
-      other -> other
-    end
-  end
-
-  def update_customer(customer = %{}, fields, opts) do
-    account_id = opts[:account_id] || opts[:account].id
-
-    statements =
-      Multi.new()
-      |> Multi.run(:user, fn(_) ->
-          cond do
-            customer.status == "guest" && fields["status"] == "registered" ->
-              fields = Map.merge(fields, %{ "role" => "customer" })
-              IdentityService.create_user(fields, %{ account_id: account_id })
-
-            true ->
-              {:ok, nil}
-          end
-         end)
-      |> Multi.run(:changeset, fn(%{ user: user }) ->
-          fields = if user do
-            Map.merge(fields, %{ "user_id" => user.id, "account_id" => account_id })
-          else
-            fields
-          end
-
-          changeset =
-            customer
-            |> Map.put(:account, opts[:account])
-            |> Customer.changeset(fields, opts[:locale])
-
-          {:ok, changeset}
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset}) ->
-          Repo.update(changeset)
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
-        {:ok, customer}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-
-      other -> other
-    end
-  end
-
-  def update_customer(id, fields, opts) do
-    customer = Repo.get(Customer, id)
-
-    if customer do
-      update_customer(customer, fields, opts)
     else
       {:error, :not_found}
     end

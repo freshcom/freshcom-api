@@ -11,32 +11,32 @@ defmodule BlueJet.Identity.Service do
   alias Ecto.Changeset
 
   @callback get_account(map | String.t) :: Account.t | nil
-
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
 
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
+  @callback delete_user(String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback get_user_by_email(String.t, map) :: User.t | nil
 
   @callback create_email_confirmation_token(User.t) :: {:ok, User.t} | {:error, any}
-
   @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_email_confirmation(User.t) :: {:ok, User.t} | {:error, any}
-
   @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
-
   @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
-
-  @callback get_user_by_email(String.t, map) :: User.t | nil
 
   def get_account(%{ account_id: nil }), do: nil
   def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
   def get_account(%{ account_id: account_id }), do: get_account(account_id)
   def get_account(%{ account: account }), do: account
   def get_account(id), do: Repo.get!(Account, id)
+
+  defp put_account(opts) do
+    %{ opts | account: get_account(opts) }
+  end
 
   def create_account(fields) do
     changeset =
@@ -175,6 +175,31 @@ defmodule BlueJet.Identity.Service do
       {:ok, %{ user: user }} -> {:ok, user}
       {:error, _, changeset, _} -> {:error, changeset}
     end
+  end
+
+  def delete_user(nil, _), do: {:error, :not_found}
+
+  def delete_user(user = %User{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ user | account: account }
+      |> User.changeset(:delete)
+
+    with {:ok, user} <- Repo.delete(changeset) do
+      {:ok, user}
+    else
+      other -> other
+    end
+  end
+
+  def delete_user(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    User
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_user(opts)
   end
 
   def create_email_confirmation(nil), do: {:error, :not_found}

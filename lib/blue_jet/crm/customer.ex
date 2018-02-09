@@ -9,6 +9,7 @@ defmodule BlueJet.Crm.Customer do
 
   alias BlueJet.Utils
 
+  alias BlueJet.Crm.Customer.Proxy
   alias BlueJet.Crm.PointAccount
   alias BlueJet.Crm.{IdentityService, StripeClient}
 
@@ -63,10 +64,10 @@ defmodule BlueJet.Crm.Customer do
     status = get_field(changeset, :status)
 
     case status do
-      "guest" -> [:status]
-      "internal" -> [:status]
-      "registered" -> [:status, :user_id, :name, :email]
-      "suspended" -> [:status]
+      "guest" -> [:status, :name]
+      "internal" -> [:status, :name]
+      "registered" -> [:status, :name, :email]
+      "suspended" -> [:status, :name]
     end
   end
 
@@ -78,8 +79,17 @@ defmodule BlueJet.Crm.Customer do
     |> unique_constraint(:email, name: :customers_account_id_status_email_index)
   end
 
-  def changeset(customer, params, locale \\ nil, default_locale \\ nil) do
-    customer = %{ customer | account: get_account(customer) }
+  def changeset(customer, :insert, params) do
+    customer
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> put_name()
+    |> Utils.put_clean_email()
+    |> validate()
+  end
+
+  def changeset(customer, :update, params, locale \\ nil, default_locale \\ nil) do
+    customer = Proxy.put_account(customer)
     default_locale = default_locale || customer.account.default_locale
     locale = locale || default_locale
 
@@ -89,6 +99,11 @@ defmodule BlueJet.Crm.Customer do
     |> Utils.put_clean_email()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(customer, :delete) do
+    change(customer)
+    |> Map.put(:action, :delete)
   end
 
   def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
@@ -109,6 +124,13 @@ defmodule BlueJet.Crm.Customer do
   end
 
   def match?(customer, params) do
+    params = Map.take(params, ["first_name", "last_name", "name", "phone_number"])
+    do_match?(customer, params)
+  end
+
+  def do_match?(_, params) when map_size(params) == 0, do: false
+
+  def do_match?(customer, params) do
     params = Map.take(params, ["first_name", "last_name", "name", "phone_number"])
 
     leftover = Enum.reject(params, fn({k, v}) ->
@@ -150,13 +172,44 @@ defmodule BlueJet.Crm.Customer do
     String.replace(value, " ", "")
   end
 
+  def preprocess(fields, changeset = %{ data: customer, changes: %{ status: "registered" } }) do
+    account = Proxy.get_account(customer)
+    fields = Map.merge(fields, %{ "role" => "customer" })
+
+    with {:ok, user} <- IdentityService.create_user(fields, %{ account: account }) do
+      customer = %{ customer | user_id: user.id }
+      changeset = %{ changeset | data: customer }
+      {:ok, changeset}
+    else
+      other -> other
+    end
+  end
+
+  def preprocess(_, changeset), do: {:ok, changeset}
+
+  def process(customer, %{ action: :insert }) do
+    Repo.insert(%PointAccount{
+      account_id: customer.account_id,
+      customer_id: customer.id
+    })
+
+    {:ok, customer}
+  end
+
+  def process(customer = %{ user_id: user_id }, %{ action: :delete }) when not is_nil(user_id) do
+    account = Proxy.get_account(customer)
+    with {:ok, _} <- IdentityService.delete_user(user_id, %{ account: account }) do
+      {:ok, customer}
+    else
+      other -> other
+    end
+  end
+
+  def process(customer, _), do: {:ok, customer}
+
   ######
   # External Resources
   #####
-  def get_account(customer) do
-    customer.account || IdentityService.get_account(customer)
-  end
-
   use BlueJet.FileStorage.Macro,
     put_external_resources: :file_collection,
     field: :file_collections,
@@ -168,16 +221,17 @@ defmodule BlueJet.Crm.Customer do
   @doc """
   Preprocess the customer to be ready for its first payment
   """
-  @spec preprocess(__MODULE__.t, Keyword.t) :: __MODULE__.t
-  def preprocess(customer = %__MODULE__{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
-    customer = %{ customer | account: get_account(customer) }
+  @spec ensure_stripe_customer(__MODULE__.t, Keyword.t) :: __MODULE__.t
+  def ensure_stripe_customer(customer = %__MODULE__{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
+    customer = Proxy.put_account(customer)
     {:ok, stripe_customer} = create_stripe_customer(customer)
 
     customer
     |> change(stripe_customer_id: stripe_customer["id"])
     |> Repo.update!()
   end
-  def preprocess(customer, _), do: customer
+
+  def ensure_stripe_customer(customer, _), do: customer
 
   # @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
   # defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
@@ -191,7 +245,7 @@ defmodule BlueJet.Crm.Customer do
 
   @spec create_stripe_customer(__MODULE__.t) :: {:ok, map} | {:error, map}
   defp create_stripe_customer(customer) do
-    account = get_account(customer)
+    account = Proxy.get_account(customer)
     StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
   end
 
@@ -200,33 +254,4 @@ defmodule BlueJet.Crm.Customer do
   #   account = get_account(customer)
   #   StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
   # end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Crm.Customer
-
-    def default() do
-      from(c in Customer, order_by: [desc: :updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(c in query, where: c.account_id == ^account_id)
-    end
-
-    def with_id_or_code(query, id_or_code) do
-      case Ecto.UUID.dump(id_or_code) do
-        :error -> from(c in query, where: c.code == ^id_or_code)
-        _ -> from(c in query, where: (c.id == ^id_or_code) or (c.code == ^id_or_code))
-      end
-    end
-
-    def preloads({:point_account, point_account_preloads}, options) do
-      [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end
