@@ -98,12 +98,12 @@ defmodule BlueJet.DataTrading do
     end
   end
   def import_resource(row, account, "Product") do
-    source_id = extract_product_source_id(row, account)
+    goods_id = extract_product_goods_id(row, account)
     collection_id = extract_product_collection_id(row, account, "collection")
 
     fields =
       merge_custom_data(row, row["custom_data"])
-      |> Map.merge(%{ "source_id" => source_id })
+      |> Map.merge(%{ "goods_id" => goods_id })
 
     product =
       get_product(row, account)
@@ -131,10 +131,10 @@ defmodule BlueJet.DataTrading do
     |> update_or_create_price(account, fields)
   end
 
-  defp extract_product_source_id(%{ "source_id" => source_id }, _) when byte_size(source_id) > 0 do
-    source_id
+  defp extract_product_goods_id(%{ "goods_id" => goods_id }, _) when byte_size(goods_id) > 0 do
+    goods_id
   end
-  defp extract_product_source_id(%{ "source_code" => code, "source_type" => "Unlockable" }, account) when byte_size(code) > 0 do
+  defp extract_product_goods_id(%{ "goods_code" => code, "goods_type" => "Unlockable" }, account) when byte_size(code) > 0 do
     unlockable = GoodsService.get_unlockable(%{ code: code }, %{ account: account })
 
     case unlockable do
@@ -175,7 +175,7 @@ defmodule BlueJet.DataTrading do
       row[id_key] && row[id_key] != "" -> row[id_key]
 
       row[code_key] && row[code_key] != "" ->
-        product = CatalogueService.get_product_by_code(row[code_key], %{ account: account })
+        product = CatalogueService.get_product(%{ code: row[code_key] }, %{ account: account })
 
         if product do
           product.id
@@ -194,7 +194,7 @@ defmodule BlueJet.DataTrading do
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
-        product_collection = CatalogueService.get_product_collection_by_code(row[code_key], %{ account: account })
+        product_collection = CatalogueService.get_product_collection(%{ code: row[code_key] }, %{ account: account })
 
         if product_collection do
           product_collection.id
@@ -220,17 +220,17 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_product(%{ "id" => id }, account) when byte_size(id) > 0 do
-    CatalogueService.get_product(id, %{ account: account })
+    CatalogueService.get_product(%{ id: id }, %{ account: account })
   end
   defp get_product(%{ "code" => code }, account) when byte_size(code) > 0 do
-    CatalogueService.get_product_by_code(code, %{ account: account })
+    CatalogueService.get_product(%{ code: code }, %{ account: account })
   end
 
   defp get_price(%{ "id" => id }, account) when byte_size(id) > 0 do
-    CatalogueService.get_price(id, %{ account: account })
+    CatalogueService.get_price(%{ id: id }, %{ account: account })
   end
   defp get_price(%{ "code" => code }, account) when byte_size(code) > 0 do
-    CatalogueService.get_price_by_code(code, %{ account: account })
+    CatalogueService.get_price(%{ code: code }, %{ account: account })
   end
 
   defp update_or_create_product(nil, account, fields) do
