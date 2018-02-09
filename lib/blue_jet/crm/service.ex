@@ -76,18 +76,13 @@ defmodule BlueJet.Crm.Service do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
     filter = Map.take(fields, [:id, :code])
+    matcher = Mapa.take(fields, [:name, :phone_number])
 
-    customer =
-      Customer.Query.default()
-      |> Customer.Query.for_account(account.id)
-      |> Repo.get_by(filter)
-
-    matchers = Map.drop(fields, ["code", :code])
-    if Map.has_key?(filter, :code) && !Customer.match?(customer, matchers) do
-      {:error, :not_found}
-    else
-      preload(customer, preloads[:path], preloads[:opts])
-    end
+    Customer.Query.default()
+    |> Customer.Query.for_account(account.id)
+    |> Repo.get_by(filter)
+    |> Customer.match_by(matcher) # TODO: impl this
+    |> preload(preloads[:path], preloads[:opts])
   end
 
   def update_customer(nil, _, _), do: {:error, :not_found}

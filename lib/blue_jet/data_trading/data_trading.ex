@@ -156,7 +156,7 @@ defmodule BlueJet.DataTrading do
     cond do
       row[id_key] && row[id_key] != "" -> row[id_key]
       row[code_key] && row[code_key] != "" ->
-        customer = CrmService.get_customer_by_code(row[code_key], %{ account: account })
+        customer = CrmService.get_customer(%{ code: row[code_key] }, %{ account: account })
 
         if customer do
           customer.id
@@ -206,10 +206,10 @@ defmodule BlueJet.DataTrading do
   end
 
   defp get_customer(%{ "id" => id }, account) when byte_size(id) > 0 do
-    CrmService.get_customer(id, %{ account: account })
+    CrmService.get_customer(%{ id: id }, %{ account: account })
   end
   defp get_customer(%{ "code" => code }, account) when byte_size(code) > 0 do
-    CrmService.get_customer_by_code(code, %{ account: account })
+    CrmService.get_customer(%{ code: code }, %{ account: account })
   end
 
   defp get_unlockable(%{ "id" => id }, account) when byte_size(id) > 0 do
