@@ -10,7 +10,7 @@ defmodule BlueJet.Crm.Service do
   end
 
   defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
+    Map.put(opts, :account, get_account(opts))
   end
 
   #

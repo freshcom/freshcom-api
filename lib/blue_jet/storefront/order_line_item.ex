@@ -317,20 +317,23 @@ defmodule BlueJet.Storefront.OrderLineItem do
     end
   end
 
-  defp put_amount_fields(changeset = %{ action: :update, data: %{ price_id: price_id } }) when not is_nil(price_id) do
+  defp put_amount_fields(changeset = %{
+    action: :update,
+    data: %{ price_id: price_id },
+    changes: %{ price_id: nil }})
+  when not is_nil(price_id) do
+    changeset
+  end
+
+  defp put_amount_fields(changeset = %{
+    action: :update,
+    data: %{ price_id: price_id } })
+  when not is_nil(price_id) do
     put_amount_fields(changeset, :with_price)
   end
 
   defp put_amount_fields(changeset = %{ action: :insert, changes: %{ price_id: _ } }) do
     put_amount_fields(changeset, :with_price)
-  end
-
-  defp put_amount_fields(changeset = %{ action: :insert }) do
-    if get_field(changeset, :sub_total_cents) do
-      put_amount_fields(changeset, :no_price)
-    else
-      changeset
-    end
   end
 
   defp put_amount_fields(changeset) do
@@ -353,14 +356,19 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp put_amount_fields(changeset, :no_price) do
     sub_total_cents = get_field(changeset, :sub_total_cents)
-    tax_one_cents = get_field(changeset, :tax_one_cents)
-    tax_two_cents = get_field(changeset, :tax_two_cents)
-    tax_three_cents = get_field(changeset, :tax_three_cents)
-    grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
 
-    changeset
-    |> put_change(:grand_total_cents, grand_total_cents)
-    |> put_change(:authorization_total_cents, grand_total_cents)
+    if !sub_total_cents do
+      changeset
+    else
+      tax_one_cents = get_field(changeset, :tax_one_cents)
+      tax_two_cents = get_field(changeset, :tax_two_cents)
+      tax_three_cents = get_field(changeset, :tax_three_cents)
+      grand_total_cents = sub_total_cents + tax_one_cents + tax_two_cents + tax_three_cents
+
+      changeset
+      |> put_change(:grand_total_cents, grand_total_cents)
+      |> put_change(:authorization_total_cents, grand_total_cents)
+    end
   end
 
   defp put_amount_fields(changeset, :with_price) do

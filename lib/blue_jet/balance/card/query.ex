@@ -9,7 +9,9 @@ defmodule BlueJet.Balance.Card.Query do
     :name,
     :status,
     :label,
-    :last_four_digit
+    :last_four_digit,
+    :owner_id,
+    :owner_type
   ]
 
   def default() do

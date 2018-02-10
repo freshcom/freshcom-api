@@ -180,7 +180,7 @@ defmodule BlueJet.Crm do
   end
 
   defp point_transaction_fields_by_role(request = %{ role: "customer", fields: fields }) do
-    fields = Map.put(fields, :status, "pending")
+    fields = Map.put(fields, "status", "pending")
     Map.put(request, :fields, fields)
   end
 
