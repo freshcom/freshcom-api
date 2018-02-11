@@ -64,7 +64,7 @@ defmodule BlueJet.Crm do
   end
 
   defp filter_customer_by_role(request = %{ role: "customer", vas: vas }) do
-    request = %{ request | params: %{ "user_id" => vas[:user_id] }}
+    %{ request | params: %{ "user_id" => vas[:user_id] }}
   end
 
   defp filter_customer_by_role(request), do: request

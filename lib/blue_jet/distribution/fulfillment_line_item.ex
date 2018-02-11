@@ -12,7 +12,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   ], container: :translations
 
   alias BlueJet.Distribution.Fulfillment
-  alias BlueJet.Distribution.IdentityService
+  alias BlueJet.Distribution.FulfillmentLineItem.Proxy
 
   schema "fulfillment_line_items" do
     field :account_id, Ecto.UUID
@@ -69,8 +69,14 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(fli, :insert, params) do
+    fli
+    |> cast(params, writable_fields())
+    |> validate()
+  end
+
   def changeset(fli, params, locale \\ nil, default_locale \\ nil) do
-    fli = %{ fli | account: get_account(fli) }
+    fli = Proxy.put_account(fli)
     default_locale = default_locale || fli.account.default_locale
     locale = locale || default_locale
 
@@ -78,43 +84,5 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
-  end
-
-  ####
-  # External Resources
-  ###
-  def get_account(fli) do
-    fli.account || IdentityService.get_account(fli)
-  end
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "FulfillmentLineItem"
-
-  def put_external_resources(fli, _, _), do: fli
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Distribution.FulfillmentLineItem
-
-    def default() do
-      from fli in FulfillmentLineItem
-    end
-
-    def for_account(query, account_id) do
-      from(fli in query, where: fli.account_id == ^account_id)
-    end
-
-    def for_source(query, source_type, source_id) do
-      from fli in query,
-        where: fli.source_type == ^source_type,
-        where: fli.source_id == ^source_id
-    end
-
-    def preloads(_, _) do
-      []
-    end
   end
 end

@@ -12,7 +12,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Storefront.{CatalogueService, GoodsService, CrmService, DistributionService}
+  alias BlueJet.Storefront.{CatalogueService, CrmService, DistributionService}
   alias BlueJet.Storefront.{Order, Unlock}
   alias BlueJet.Storefront.OrderLineItem.Proxy
 

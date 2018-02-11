@@ -62,6 +62,12 @@ defmodule BlueJet.Distribution.Fulfillment do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  def changeset(fulfillment, :insert, params) do
+    fulfillment
+    |> cast(params, writable_fields())
+    |> validate()
+  end
+
   def changeset(fulfillment, params, locale \\ nil, default_locale \\ nil) do
     fulfillment = %{ fulfillment | account: get_account(fulfillment) }
     default_locale = default_locale || get_account(fulfillment).default_locale
@@ -86,27 +92,4 @@ defmodule BlueJet.Distribution.Fulfillment do
     owner_type: "Fulfillment"
 
   def put_external_resources(fulfillment, _, _), do: fulfillment
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Distribution.Fulfillment
-
-    def default() do
-      from(f in Fulfillment, order_by: [desc: f.inserted_at])
-    end
-
-    def for_account(query, account_id) do
-      from(f in query, where: f.account_id == ^account_id)
-    end
-
-    def preloads({:line_items, line_item_preloads}, options) do
-      query = FulfillmentLineItem.Query.default()
-      [line_items: {query, FulfillmentLineItem.Query.preloads(line_item_preloads, options)}]
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end

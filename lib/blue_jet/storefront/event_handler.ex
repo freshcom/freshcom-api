@@ -4,7 +4,7 @@ defmodule BlueJet.Storefront.EventHandler do
   alias BlueJet.Repo
   alias Ecto.Changeset
 
-  alias BlueJet.Storefront.{Order, OrderLineItem}
+  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
   def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)

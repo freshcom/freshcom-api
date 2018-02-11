@@ -56,7 +56,7 @@ config :sentry,
   tags: %{
     env: Mix.env
   },
-  included_environments: [:prod, :dev]
+  included_environments: [:prod]
 
 config :blue_jet, BlueJet.Gettext,
   default_locale: "en"
