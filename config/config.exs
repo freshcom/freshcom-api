@@ -33,6 +33,31 @@ config :mime, :types, %{
   "application/vnd.api+json" => ["json-api"]
 }
 
+defmodule JaKeyFormatter do
+  def camelize(key) do
+    Inflex.camelize(key, :lower)
+  end
+
+  def underscore(key) do
+    Inflex.underscore(key)
+  end
+end
+
+config :ja_serializer,
+  key_format: {:custom, JaKeyFormatter, :camelize, :underscore}
+
+config :ex_aws, region: System.get_env("AWS_REGION")
+
+config :sentry,
+  dsn: "https://4409d5822eb148cd8b2d7883c4e14a59:f8772da31a684c3684e573e2f6644049@sentry.io/286411",
+  environment_name: Mix.env,
+  enable_source_code_context: true,
+  root_source_code_path: File.cwd!,
+  tags: %{
+    env: Mix.env
+  },
+  included_environments: [:prod, :dev]
+
 config :blue_jet, BlueJet.Gettext,
   default_locale: "en"
 
@@ -50,21 +75,6 @@ config :blue_jet, BlueJet.AccountMailer,
   # allowed_tls_versions: [:"tlsv1", :"tlsv1.1", :"tlsv1.2"], # or {":system", ALLOWED_TLS_VERSIONS"} w/ comma seprated values (e.g. "tlsv1.1,tlsv1.2")
   ssl: false, # can be `true`
   retries: 0
-
-defmodule JaKeyFormatter do
-  def camelize(key) do
-    Inflex.camelize(key, :lower)
-  end
-
-  def underscore(key) do
-    Inflex.underscore(key)
-  end
-end
-
-config :ja_serializer,
-  key_format: {:custom, JaKeyFormatter, :camelize, :underscore}
-
-config :ex_aws, region: System.get_env("AWS_REGION")
 
 config :blue_jet, :email_regex, ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/
 

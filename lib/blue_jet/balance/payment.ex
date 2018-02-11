@@ -101,7 +101,7 @@ defmodule BlueJet.Balance.Payment do
   defp required_fields(changeset) do
     status = get_field(changeset, :status)
     gateway = get_field(changeset, :gateway)
-    common = [:gateway, :amount_cents]
+    common = [:status, :gateway, :amount_cents]
 
     cond do
       gateway == "online" -> common ++ [:processor]
@@ -323,6 +323,8 @@ defmodule BlueJet.Balance.Payment do
     do
       sync_with_stripe_charge(payment, stripe_charge)
     else
+      {:error, errors = %{ errors: _ }} -> {:error, errors}
+
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end

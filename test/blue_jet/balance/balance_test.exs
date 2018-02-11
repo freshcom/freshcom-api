@@ -151,6 +151,7 @@ defmodule BlueJet.BalanceTest do
         role: "customer",
         account: account,
         fields: %{
+          "status" => "paid",
           "gateway" => "freshcom",
           "processor" => "stripe",
           "source" => Ecto.UUID.generate()

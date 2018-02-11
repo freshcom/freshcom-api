@@ -1,5 +1,7 @@
 defmodule BlueJetWeb.Router do
   use BlueJetWeb, :router
+  use Plug.ErrorHandler
+  use Sentry.Plug
 
   pipeline :api do
     plug :accepts, ["json-api"]

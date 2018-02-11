@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.Card do
 
   alias Ecto.Changeset
   alias BlueJet.Balance.Card.Proxy
-  alias BlueJet.Balance.{StripeClient, IdentityService}
+  alias BlueJet.Balance.IdentityService
 
   schema "cards" do
     field :account_id, Ecto.UUID
@@ -114,16 +114,6 @@ defmodule BlueJet.Balance.Card do
     end
   end
 
-  ######
-  # External Resources
-  #####
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Card"
-
-  def put_external_resources(card, _, _), do: card
-
   defp create_or_update_card(%{ token_object: token_object, customer_id: stripe_customer_id }, fields = %{ status: status }, %{ account: account }) do
     existing_card = Repo.get_by(__MODULE__,
       account_id: account.id,
@@ -152,11 +142,10 @@ defmodule BlueJet.Balance.Card do
           owner_type: fields[:owner_type],
           primary: primary
         })
-        {:ok, card} = process(card)
-        card
+        process(card)
 
       %{ status: ^status } ->
-        existing_card
+        {:ok, existing_card}
 
       existing_card ->
         card =
@@ -164,8 +153,8 @@ defmodule BlueJet.Balance.Card do
           |> change(%{ status: status, account: account })
           |> Repo.update!()
 
-        update_stripe_card(card, %{ metadata: %{ fc_status: status, fc_account_id: account.id } })
-        card
+        Proxy.update_stripe_card(card, %{ metadata: %{ fc_status: status, fc_account_id: account.id } })
+        {:ok, card}
     end
   end
 
@@ -198,47 +187,13 @@ defmodule BlueJet.Balance.Card do
   def keep_stripe_token_as_card(%{ source: token, customer_id: stripe_customer_id }, fields, opts) when not is_nil(stripe_customer_id) do
     account = IdentityService.get_account(%{ account_id: opts[:account_id], account: opts[:account] })
 
-    case retrieve_stripe_token(token, mode: account.mode) do
-      {:ok, token_object} ->
-        card = create_or_update_card(%{ token_object: token_object, customer_id: stripe_customer_id }, fields, %{ account: account })
-        {:ok, card.stripe_card_id}
-
+    with {:ok, token_object} <- Proxy.retrieve_stripe_token(token, mode: account.mode),
+         {:ok, card} <- create_or_update_card(%{ token_object: token_object, customer_id: stripe_customer_id }, fields, %{ account: account })
+    do
+      {:ok, card.stripe_card_id}
+    else
       other -> other
     end
-
-    # Repo.transaction(fn ->
-    #   with {:ok, token_object} <- retrieve_stripe_token(token, mode: account.mode),
-    #        nil <- Repo.get_by(__MODULE__, owner_id: fields[:owner_id], owner_type: fields[:owner_type], fingerprint: token_object["card"]["fingerprint"]),
-    #        # Create the new card, TODO: set primary
-    #        card <- Repo.insert!(%__MODULE__{
-    #           account_id: account.id,
-    #           account: account,
-    #           status: status,
-    #           source: token,
-    #           stripe_customer_id: stripe_customer_id,
-    #           owner_id: fields[:owner_id],
-    #           owner_type: fields[:owner_type]
-    #        }),
-    #        {:ok, card} <- process(card)
-    #   do
-    #     card.stripe_card_id
-    #   else
-    #     # If there is existing card with the same status just return
-    #     %__MODULE__{ stripe_card_id: stripe_card_id, status: ^status } -> stripe_card_id
-
-    #     # If there is existing card with different status then we update the card
-    #     card = %__MODULE__{ stripe_card_id: stripe_card_id } ->
-    #       card
-    #       |> change(%{ status: status, account: account })
-    #       |> Repo.update!()
-    #       |> update_stripe_card(%{ metadata: %{ fc_status: status, fc_account_id: card.account_id } })
-
-    #       stripe_card_id
-
-    #     {:error, errors} -> Repo.rollback(errors)
-    #     other -> Repo.rollback(other)
-    #   end
-    # end)
   end
   def keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
@@ -246,7 +201,7 @@ defmodule BlueJet.Balance.Card do
   def process(card = %__MODULE__{ source: source }) when not is_nil(source) do
     card = Proxy.put_account(card)
 
-    with {:ok, stripe_card} <- create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
+    with {:ok, stripe_card} <- Proxy.create_stripe_card(card, %{ status: card.status, fc_card_id: card.id, owner_id: card.owner_id, owner_type: card.owner_type }) do
       changes = %{
         last_four_digit: stripe_card["last4"],
         exp_month: stripe_card["exp_month"],
@@ -265,7 +220,7 @@ defmodule BlueJet.Balance.Card do
 
       {:ok, card}
     else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+      other -> other
     end
   end
 
@@ -274,17 +229,8 @@ defmodule BlueJet.Balance.Card do
     card = Proxy.put_account(card)
 
     if get_change(changeset, :exp_month) || get_change(changeset, :exp_year) do
-      update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
+      Proxy.update_stripe_card(card, %{ exp_month: card.exp_month, exp_year: card.exp_year })
     end
-
-    # TODO: set as primary if this is the only card
-    # if get_change(changeset, :primary) do
-    #   __MODULE__
-    #   |> __MODULE__.Query.for_account(card.account_id)
-    #   |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
-    #   |> __MODULE__.Query.not_id(card.id)
-    #   |> Repo.update_all(set: [primary: false])
-    # end
 
     {:ok, card}
   end
@@ -303,41 +249,17 @@ defmodule BlueJet.Balance.Card do
       |> Repo.update!()
     end
 
-    delete_stripe_card(card)
+    Proxy.delete_stripe_card(card)
 
     {:ok, card}
   end
+
   def process(card = %{ primary: false }, %{ action: :delete }) do
     card = Proxy.put_account(card)
-    delete_stripe_card(card)
+    Proxy.delete_stripe_card(card)
 
     {:ok, card}
   end
+
   def process(card, _), do: {:ok, card}
-
-  defp update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
-    account = Proxy.get_account(card)
-    StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
-  end
-
-  @spec create_stripe_card(__MODULE__.t, Map.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_card(card = %{ source: source, stripe_customer_id: stripe_customer_id }, metadata) when not is_nil(stripe_customer_id) do
-    account = Proxy.get_account(card)
-    StripeClient.post("/customers/#{stripe_customer_id}/sources", %{ source: source, metadata: metadata }, mode: account.mode)
-  end
-
-  @spec delete_stripe_card(__MODULE__.t) :: {:ok, map} | {:error, map}
-  defp delete_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }) do
-    account = Proxy.get_account(card)
-    StripeClient.delete("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", mode: account.mode)
-  end
-
-  @spec retrieve_stripe_token(String.t, Map.t) :: {:ok, map} | {:error, map}
-  defp retrieve_stripe_token(token, options) do
-    StripeClient.get("/tokens/#{token}", options)
-  end
-
-  defp format_stripe_errors(stripe_errors) do
-    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
-  end
 end

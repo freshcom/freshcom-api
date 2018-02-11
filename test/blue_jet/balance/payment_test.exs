@@ -46,6 +46,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [
+        :status,
         :gateway,
         :amount_cents
       ]
@@ -58,6 +59,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [
+        :status,
         :amount_cents,
         :processor
       ]

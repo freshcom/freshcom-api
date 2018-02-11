@@ -199,7 +199,6 @@ defmodule BlueJet.Balance.Service do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
-    IO.inspect fields
     statements =
       Multi.new()
       |> Multi.run(:fields, fn(_) ->
