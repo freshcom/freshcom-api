@@ -33,11 +33,13 @@ defmodule BlueJet.Storefront.Order.Proxy do
     BalanceService.list_payment(%{ filter: %{ target_type: "Order", target_id: order.id } }, opts)
   end
 
-  def create_fulfillment(order) do
+  def create_auto_fulfillment(order) do
     opts = get_sopts(order)
 
     {:ok, fulfillment} = DistributionService.create_fulfillment(%{
-      order_id: order.id
+      customer_id: order.customer_id,
+      order_id: order.id,
+      system_label: "auto"
     }, opts)
 
     fulfillment

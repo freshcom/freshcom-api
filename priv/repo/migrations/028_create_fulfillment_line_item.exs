@@ -11,6 +11,7 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
 
       add :target_id, :binary_id
       add :target_type, :string
+      add :target_quantity, :integer
 
       add :source_id, :binary_id
       add :source_type, :string

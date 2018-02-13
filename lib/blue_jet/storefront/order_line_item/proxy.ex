@@ -61,7 +61,10 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   end
 
   def create_fulfillment_line_item(oli, fulfillment) do
-    opts = get_sopts(oli)
+    opts =
+      get_sopts(oli)
+      |> Map.put(:fulfillment, fulfillment)
+
     translations = Translation.merge_translations(%{}, oli.translations, ["name"])
 
     DistributionService.create_fulfillment_line_item(%{
@@ -69,6 +72,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
       order_line_item_id: oli.id,
       target_id: oli.target_id,
       target_type: oli.target_type,
+      status: "fulfilled",
       name: oli.name,
       quantity: oli.order_quantity,
       translations: translations

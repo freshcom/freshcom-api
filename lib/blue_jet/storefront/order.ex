@@ -163,7 +163,7 @@ defmodule BlueJet.Storefront.Order do
       changeset
     else
       ordered_unlockable_count =
-        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: oli.source_type == "Unlockable")
+        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: oli.target_type == "Unlockable")
         |> Repo.aggregate(:count, :id)
 
       # TODO: Also need to consider depositable
@@ -428,10 +428,11 @@ defmodule BlueJet.Storefront.Order do
       |> OrderLineItem.Query.leaf()
       |> Repo.all()
 
+    fulfillment = Proxy.create_auto_fulfillment(order)
     if length(af_line_items) > 0 do
-      fulfillment = Proxy.create_fulfillment(order)
       Enum.each(af_line_items, fn(af_line_item) ->
-        OrderLineItem.auto_fulfill(af_line_item, fulfillment)
+        OrderLineItem.Proxy.create_fulfillment_line_item(af_line_item, fulfillment)
+        OrderLineItem.refresh_fulfillment_status(af_line_item)
       end)
     end
 

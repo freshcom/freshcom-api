@@ -6,6 +6,7 @@ defmodule BlueJetWeb.FulfillmentView do
     :code,
     :name,
     :label,
+    :system_label,
 
     :print_name,
 
@@ -26,7 +27,7 @@ defmodule BlueJetWeb.FulfillmentView do
     "Fulfillment"
   end
 
-  def source(%{ source_id: nil }, _), do: nil
-  def source(%{ source_id: source_id, source_type: source_type, source: nil }, _), do: %{ id: source_id, type: source_type }
-  def source(%{ source: source }, _), do: source
+  def order(%{ order_id: nil }, _), do: nil
+  def order(%{ order_id: order_id, order: nil }, _), do: %{ id: order_id, type: "Order" }
+  def order(%{ order: order }, _), do: order
 end

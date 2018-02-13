@@ -4,6 +4,7 @@ defmodule BlueJet.Distribution do
 
   alias Ecto.Multi
 
+  alias BlueJet.Distribution.CrmService
   alias BlueJet.Distribution.Service
   alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
 
@@ -16,7 +17,7 @@ defmodule BlueJet.Distribution do
     end
   end
 
-  def do_list_fulfillment(request = %{ account: account, filter: filter, pagination: pagination }) do
+  def do_list_fulfillment(request = %{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
       |> Service.count_fulfillment(%{ account: account })
@@ -52,24 +53,13 @@ defmodule BlueJet.Distribution do
   end
 
   def do_delete_fulfillment(%{ account: account, params: %{ "id" => id } }) do
-    fulfillment =
-      Fulfillment.Query.default()
-      |> Fulfillment.Query.for_account(account.id)
-      |> Repo.get(id)
-      |> Repo.preload(:line_items)
-
-    if fulfillment do
-      statements =
-        Multi.new()
-        |> Multi.delete(:fulfillment, fulfillment)
-        |> Multi.run(:after_delete, fn(%{ fulfillment: fulfillment }) ->
-            emit_event("distribution.fulfillment.after_delete", %{ fulfillment: fulfillment })
-           end)
-
-      {:ok, _, _, _} = Repo.transaction(statements)
+    with {:ok, _} <- Service.delete_fulfillment(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -85,7 +75,7 @@ defmodule BlueJet.Distribution do
     end
   end
 
-  def do_list_fulfillment_line_item(request = %{ account: account, filter: filter, pagination: pagination }) do
+  def do_list_fulfillment_line_item(request = %{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
       |> Service.count_fulfillment_line_item(%{ account: account })
@@ -102,7 +92,7 @@ defmodule BlueJet.Distribution do
     response = %AccessResponse{
       meta: %{
         locale: request.locale,
-        all_count: total_count,
+        all_count: all_count,
         total_count: total_count
       },
       data: flis
@@ -153,32 +143,116 @@ defmodule BlueJet.Distribution do
   end
 
   def do_update_fulfillment_line_item(request = %{ account: account, params: %{ "id" => id }}) do
-    fulfillment_line_item =
-      FulfillmentLineItem.Query.default()
-      |> FulfillmentLineItem.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    with %FulfillmentLineItem{} <- fulfillment_line_item,
-         changeset = %{ valid?: true } <- FulfillmentLineItem.changeset(fulfillment_line_item, request.fields, request.locale, account.default_locale)
-    do
-      statements =
-        Multi.new()
-        |> Multi.update(:fulfillment_line_item, changeset)
-        |> Multi.run(:after_update, fn(%{ fulfillment_line_item: fli }) ->
-            emit_event("distribution.fulfillment_line_item.after_update", %{ fulfillment_line_item: fli, changeset: changeset })
-           end)
-
-      {:ok, %{ fulfillment_line_item: fli }} = Repo.transaction(statements)
-      fulfillment_line_item_response(fli, request)
+    with {:ok, fli} <- Service.update_fulfillment_line_item(id, request.fields, get_sopts(request)) do
+      fli = Translation.translate(fli, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fli }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
-      nil ->
-        {:error, :not_found}
+      other -> other
+    end
+  end
 
-      changeset ->
-        {:error, %AccessResponse{ errors: changeset.errors }}
+  #
+  # MARK: Unlock
+  #
+  defp filter_unlock_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
+    customer = CrmService.get_customer(%{ user_id: vas[:user_id] }, %{ account: account })
+    %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
+  end
+
+  defp filter_unlock_by_role(request), do: request
+
+  def list_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.list_unlock") do
+      request
+      |> filter_unlock_by_role()
+      |> do_list_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_unlock(request = %{ account: account, filter: filter }) do
+    total_count = Service.count_unlock(%{ filter: filter }, %{ account: account })
+    all_count = Service.count_unlock(%{ filter: Map.take(filter, [:customer_id]) }, %{ account: account })
+    unlocks =
+      Service.list_unlock(%{ filter: filter }, get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: unlocks
+    }
+
+    {:ok, response}
+  end
+
+  def create_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.create_unlock") do
+      request
+      |> do_create_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_unlock(request = %{ account: account }) do
+    with {:ok, unlock} <- Service.create_unlock(request.fields, get_sopts(request)) do
+      unlock = Translation.translate(unlock, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  def get_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.get_unlock") do
+      request
+      |> do_get_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_get_unlock(request = %{ account: account, params: %{ "id" => id } }) do
+    unlock =
+      %{ id: id }
+      |> Service.get_unlock(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    if unlock do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}
+    else
+      {:error, :not_found}
+    end
+  end
+
+  def delete_unlock(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.delete_unlock") do
+      request
+      |> do_delete_unlock()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_unlock(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_unlock(id, %{ account: account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 end

@@ -6,9 +6,10 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillment do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
-      add :customer_id, references(:accounts, type: :binary_id, on_delete: :nilify_all), null: false
-      add :order_id, references(:accounts, type: :binary_id, on_delete: :nilify_all), null: false
+      add :customer_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
+      add :order_id, references(:orders, type: :binary_id, on_delete: :nilify_all), null: false
 
+      add :system_label, :string
       add :code, :string
       add :name, :string
       add :label, :string
@@ -22,6 +23,7 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillment do
     end
 
     create unique_index(:fulfillments, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:fulfillments, [:account_id, :system_label])
     create index(:fulfillments, [:account_id, :order_id])
     create index(:fulfillments, [:account_id, :name])
     create index(:fulfillments, [:account_id, :label], where: "label IS NOT NULL")

@@ -4,8 +4,7 @@ defmodule BlueJet.Distribution.Fulfillment.Query do
   alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
 
   @filterable_fields [
-    :source_type,
-    :source_id
+    :order_id
   ]
 
   def default() do

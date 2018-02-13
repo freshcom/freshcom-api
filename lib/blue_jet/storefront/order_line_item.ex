@@ -13,7 +13,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias Decimal, as: D
   alias BlueJet.Catalogue.Price
   alias BlueJet.Storefront.{CatalogueService, CrmService, DistributionService}
-  alias BlueJet.Storefront.{Order, Unlock}
+  alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem.Proxy
 
   schema "order_line_items" do
@@ -596,46 +596,46 @@ defmodule BlueJet.Storefront.OrderLineItem do
     oli
   end
 
-  def auto_fulfill(%{ auto_fulfill: false }, _), do: nil
+  # def auto_fulfill(%{ auto_fulfill: false }, _), do: nil
 
-  def auto_fulfill(line_item = %{ target_type: nil }, fulfillment) do
-    Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  end
+  # def auto_fulfill(line_item = %{ target_type: nil }, fulfillment) do
+  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  # end
 
-  def auto_fulfill(line_item = %{ target_type: "Unlockable", target_id: target_id }, fulfillment) do
-    line_item = Repo.preload(line_item, :order)
+  # def auto_fulfill(line_item = %{ target_type: "Unlockable", target_id: target_id }, fulfillment) do
+  #   line_item = Repo.preload(line_item, :order)
 
-    %Unlock{ account_id: line_item.account_id }
-    |> change(%{
-        unlockable_id: target_id,
-        customer_id: line_item.order.customer_id,
-        target_id: line_item.id,
-        target_type: "OrderLineItem"
-       })
-    |> Repo.insert!()
+  #   %Unlock{ account_id: line_item.account_id }
+  #   |> change(%{
+  #       unlockable_id: target_id,
+  #       customer_id: line_item.order.customer_id,
+  #       target_id: line_item.id,
+  #       target_type: "OrderLineItem"
+  #      })
+  #   |> Repo.insert!()
 
-    Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  end
+  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  # end
 
-  def auto_fulfill(line_item = %{ target_type: "Depositable" }, fulfillment) do
-    line_item = Repo.preload(line_item, :order)
-    depositable = Proxy.get_depositable(line_item)
+  # def auto_fulfill(line_item = %{ target_type: "Depositable" }, fulfillment) do
+  #   line_item = Repo.preload(line_item, :order)
+  #   depositable = Proxy.get_depositable(line_item)
 
-    if depositable.target_type == "PointAccount" do
-      Proxy.create_point_transaction(%{
-        status: "committed",
-        amount: line_item.order_quantity * depositable.amount,
-        reason_label: "deposit_by_depositable"
-      }, line_item)
-    end
+  #   if depositable.target_type == "PointAccount" do
+  #     Proxy.create_point_transaction(%{
+  #       status: "committed",
+  #       amount: line_item.order_quantity * depositable.amount,
+  #       reason_label: "deposit_by_depositable"
+  #     }, line_item)
+  #   end
 
-    Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  end
+  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  # end
 
-  def auto_fulfill(line_item = %{ target_type: "PointTransaction", target_id: target_id }, fulfillment) do
-    Proxy.commit_point_transaction(target_id, line_item)
-    Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  end
+  # def auto_fulfill(line_item = %{ target_type: "PointTransaction", target_id: target_id }, fulfillment) do
+  #   Proxy.commit_point_transaction(target_id, line_item)
+  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
+  # end
 
   @doc """
   Process the given order line item so that other related retarget can be created/updated.

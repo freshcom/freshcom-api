@@ -1,4 +1,4 @@
-defmodule BlueJet.Storefront.Unlock do
+defmodule BlueJet.Distribution.Unlock do
   use BlueJet, :data
 
   use Trans, translates: [:custom_data], container: :translations

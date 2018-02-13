@@ -20,6 +20,7 @@ defmodule BlueJet.Distribution.Fulfillment do
     field :code, :string
     field :name, :string
     field :label, :string
+    field :system_label, :string
 
     field :caption, :string
     field :description, :string
@@ -28,6 +29,9 @@ defmodule BlueJet.Distribution.Fulfillment do
 
     field :order_id, Ecto.UUID
     field :order, :map, virtual: true
+
+    field :customer_id, Ecto.UUID
+    field :customer, :map, virtual: true
 
     field :file_collections, {:array, :map}, default: [], virtual: true
 

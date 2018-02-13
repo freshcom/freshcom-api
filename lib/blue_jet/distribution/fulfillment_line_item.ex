@@ -11,7 +11,8 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Distribution.Fulfillment
+  alias BlueJet.Distribution.{GoodsService, CrmService}
+  alias BlueJet.Distribution.{Fulfillment, Unlock}
   alias BlueJet.Distribution.FulfillmentLineItem.Proxy
 
   schema "fulfillment_line_items" do
@@ -66,7 +67,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:order_line_item_id, :source_id, :source_type])
+    |> validate_required([:order_line_item_id])
   end
 
   @doc """
@@ -79,7 +80,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     |> validate()
   end
 
-  def changeset(fli, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(fli, :update, params, locale \\ nil, default_locale \\ nil) do
     fli = Proxy.put_account(fli)
     default_locale = default_locale || fli.account.default_locale
     locale = locale || default_locale
@@ -102,13 +103,13 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     {:ok, unlock}
   end
 
-  defp fulfill_depositable(depositable_id, customer_id, opts) do
-    depositable = GoodsService.get_depositable(depositable_id, opts)
+  defp fulfill_depositable(depositable_id, quantity, customer_id, opts) do
+    depositable = GoodsService.get_depositable(%{ id: depositable_id }, opts)
     point_account = CrmService.get_point_account(%{ customer_id: customer_id }, opts)
     CrmService.create_point_transaction(%{
       point_account_id: point_account.id,
       status: "committed",
-      amount: order_quantity * depositable.amount,
+      amount: quantity * depositable.amount,
       reason_label: "deposit_by_depositable"
     }, opts)
   end
@@ -118,7 +119,6 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   end
 
   def preprocess(changeset = %{
-    action: :insert,
     data: %{
       fulfillment: %{ customer_id: customer_id },
       account: account
@@ -133,13 +133,15 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
     {:ok, unlock} = fulfill_unlockable(unlockable_id, customer_id, opts)
 
-    changeset
-    |> add_change(:source_type, "Unlock")
-    |> add_change(:source_id, unlock.id)
+    changeset =
+      changeset
+      |> put_change(:source_type, "Unlock")
+      |> put_change(:source_id, unlock.id)
+
+    {:ok, changeset}
   end
 
   def preprocess(changeset = %{
-    action: :insert,
     data: %{
       fulfillment: %{ customer_id: customer_id },
       account: account
@@ -147,25 +149,27 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     changes: %{
       status: "fulfilled",
       target_type: "Depositable",
-      target_id: depositable_id
+      target_id: depositable_id,
+      quantity: quantity
     }
   }) do
     opts = %{ account: account }
-    case fulfill_depositable(depositable_id, customer_id, opts) do
+    case fulfill_depositable(depositable_id, quantity, customer_id, opts) do
       {:ok, nil} ->
-        changeset
+        {:ok, changeset}
 
       {:ok, point_transaction} ->
-        changeset
-        |> add_change(:source_type, "PointTransaction")
-        |> add_change(:source_id, point_transaction.id)
+        changeset =
+          changeset
+          |> put_change(:source_type, "PointTransaction")
+          |> put_change(:source_id, point_transaction.id)
+        {:ok, changeset}
 
       other -> other
     end
   end
 
   def preprocess(changeset = %{
-    action: :insert,
     data: %{
       account: account
     },
@@ -176,18 +180,21 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     }
   }) do
     opts = %{ account: account }
+
     case fulfill_point_transaction(point_transaction_id, opts) do
       {:ok, point_transaction} ->
-        changeset
-        |> add_change(:source_type, "PointTransaction")
-        |> add_change(:source_id, point_transaction.id)
+        changeset =
+          changeset
+          |> put_change(:source_type, "PointTransaction")
+          |> put_change(:source_id, point_transaction.id)
+        {:ok, changeset}
 
       other -> other
     end
   end
 
   def preprocess(changeset = %{
-      data: data
+      data: data,
       changes: %{ status: "fulfilled" }
     }
   ) do
@@ -197,4 +204,23 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     preprocess(changeset)
   end
 
+  def preprocess(changeset = %{
+    data: %{
+      source_type: "Unlock",
+      source_id: unlock_id
+    },
+    changes: %{
+      status: "returned"
+    }
+  }) do
+    Repo.get!(Unlock, unlock_id)
+    |> Repo.delete!()
+
+    changeset =
+      changeset
+      |> put_change(:source_type, nil)
+      |> put_change(:source_id, nil)
+
+    {:ok, changeset}
+  end
 end

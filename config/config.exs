@@ -134,6 +134,8 @@ config :blue_jet, :storefront, %{
 
 config :blue_jet, :distribution, %{
   identity_service: BlueJet.Identity.Service,
+  crm_service: BlueJet.Crm.Service,
+  goods_service: BlueJet.Goods.Service,
   listeners: [BlueJet.Storefront.EventHandler]
 }
 

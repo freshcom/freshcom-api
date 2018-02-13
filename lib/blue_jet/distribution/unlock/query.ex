@@ -1,7 +1,7 @@
-defmodule BlueJet.Storefront.Unlock.Query do
+defmodule BlueJet.Distribution.Unlock.Query do
   use BlueJet, :query
 
-  alias BlueJet.Storefront.Unlock
+  alias BlueJet.Distribution.Unlock
 
     @filterable_fields [
       :customer_id,

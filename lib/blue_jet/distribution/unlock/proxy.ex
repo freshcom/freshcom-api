@@ -1,7 +1,7 @@
-defmodule BlueJet.Storefront.Unlock.Proxy do
+defmodule BlueJet.Distribution.Unlock.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Storefront.{GoodsService, CrmService}
+  alias BlueJet.Distribution.{GoodsService, CrmService}
 
   def put(order, {:customer, customer_path}, opts) do
     preloads = %{ path: customer_path, opts: opts }
