@@ -60,9 +60,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :source_id, Ecto.UUID
-    field :source_type, :string
-    field :source, :map, virtual: true
+    field :target_id, Ecto.UUID
+    field :target_type, :string
+    field :target, :map, virtual: true
 
     field :product_id, Ecto.UUID
     field :product, :map, virtual: true
@@ -340,9 +340,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
     put_amount_fields(changeset, :no_price)
   end
 
-  defp put_amount_fields(changeset = %{ changes: %{ source_id: source_id, source_type: "PointTransaction" } }, :no_price) do
+  defp put_amount_fields(changeset = %{ changes: %{ target_id: target_id, target_type: "PointTransaction" } }, :no_price) do
     account = Proxy.get_account(changeset.data)
-    point_transaction = CrmService.get_point_transaction(%{ id: source_id }, %{ account: account })
+    point_transaction = CrmService.get_point_transaction(%{ id: target_id }, %{ account: account })
     sub_total_cents = point_transaction.amount
 
     changeset
@@ -517,11 +517,11 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   ######
   defp balance_by_product(oli, product = %{ kind: kind }) when kind in ["simple", "item", "variant"] do
-    source_order_quantity = product.goods_quantity * oli.order_quantity
-    source_charge_quantity = if oli.price_estimate_by_default do
+    target_order_quantity = product.goods_quantity * oli.order_quantity
+    target_charge_quantity = if oli.price_estimate_by_default do
       oli.charge_quantity
     else
-      D.new(source_order_quantity)
+      D.new(target_order_quantity)
     end
     oli = %{ oli | product: product }
     goods = Proxy.get_goods(oli)
@@ -531,14 +531,14 @@ defmodule BlueJet.Storefront.OrderLineItem do
     child_fields = %{
       account_id: oli.account_id,
       order_id: oli.order_id,
-      source_id: product.goods_id,
-      source_type: product.goods_type,
+      target_id: product.goods_id,
+      target_type: product.goods_type,
       parent_id: oli.id,
       is_leaf: true,
       auto_fulfill: oli.auto_fulfill,
       name: goods.name,
-      order_quantity: source_order_quantity,
-      charge_quantity: source_charge_quantity,
+      order_quantity: target_order_quantity,
+      charge_quantity: target_charge_quantity,
       sub_total_cents: oli.sub_total_cents,
       tax_one_cents: oli.tax_one_cents,
       tax_two_cents: oli.tax_two_cents,
@@ -598,26 +598,26 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def auto_fulfill(%{ auto_fulfill: false }, _), do: nil
 
-  def auto_fulfill(line_item = %{ source_type: nil }, fulfillment) do
+  def auto_fulfill(line_item = %{ target_type: nil }, fulfillment) do
     Proxy.create_fulfillment_line_item(line_item, fulfillment)
   end
 
-  def auto_fulfill(line_item = %{ source_type: "Unlockable", source_id: source_id }, fulfillment) do
+  def auto_fulfill(line_item = %{ target_type: "Unlockable", target_id: target_id }, fulfillment) do
     line_item = Repo.preload(line_item, :order)
 
     %Unlock{ account_id: line_item.account_id }
     |> change(%{
-        unlockable_id: source_id,
+        unlockable_id: target_id,
         customer_id: line_item.order.customer_id,
-        source_id: line_item.id,
-        source_type: "OrderLineItem"
+        target_id: line_item.id,
+        target_type: "OrderLineItem"
        })
     |> Repo.insert!()
 
     Proxy.create_fulfillment_line_item(line_item, fulfillment)
   end
 
-  def auto_fulfill(line_item = %{ source_type: "Depositable" }, fulfillment) do
+  def auto_fulfill(line_item = %{ target_type: "Depositable" }, fulfillment) do
     line_item = Repo.preload(line_item, :order)
     depositable = Proxy.get_depositable(line_item)
 
@@ -632,17 +632,17 @@ defmodule BlueJet.Storefront.OrderLineItem do
     Proxy.create_fulfillment_line_item(line_item, fulfillment)
   end
 
-  def auto_fulfill(line_item = %{ source_type: "PointTransaction", source_id: source_id }, fulfillment) do
-    Proxy.commit_point_transaction(source_id, line_item)
+  def auto_fulfill(line_item = %{ target_type: "PointTransaction", target_id: target_id }, fulfillment) do
+    Proxy.commit_point_transaction(target_id, line_item)
     Proxy.create_fulfillment_line_item(line_item, fulfillment)
   end
 
   @doc """
-  Process the given order line item so that other related resource can be created/updated.
+  Process the given order line item so that other related retarget can be created/updated.
 
   This function may change the order line item in database.
 
-  External resources maybe created/updated.
+  External retargets maybe created/updated.
 
   Returns the processed order line item.
   """
@@ -702,7 +702,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
-    flis = DistributionService.list_fulfillment_line_item(%{ source_type: "OrderLineItem", source_id: oli.id }, %{ account_id: oli.account_id })
+    flis = DistributionService.list_fulfillment_line_item(%{ target_type: "OrderLineItem", target_id: oli.id }, %{ account_id: oli.account_id })
 
     fulfillable_quantity = oli.order_quantity
     fulfilled_quantity =

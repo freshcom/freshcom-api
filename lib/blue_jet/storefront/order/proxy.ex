@@ -37,8 +37,7 @@ defmodule BlueJet.Storefront.Order.Proxy do
     opts = get_sopts(order)
 
     {:ok, fulfillment} = DistributionService.create_fulfillment(%{
-      source_id: order.id,
-      source_type: "Order"
+      order_id: order.id
     }, opts)
 
     fulfillment

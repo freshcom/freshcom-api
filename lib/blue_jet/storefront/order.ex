@@ -451,8 +451,6 @@ defmodule BlueJet.Storefront.Order do
       |> Proxy.put_account()
       |> Proxy.put_customer()
       |> auto_fulfill()
-      # |> process_leaf_line_items()
-      # |> process_auto_fulfill()
       |> refresh_fulfillment_status()
 
     {:ok, order}

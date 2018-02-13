@@ -26,9 +26,8 @@ defmodule BlueJet.Distribution.Fulfillment do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :source_id, Ecto.UUID
-    field :source_type, :string
-    field :source, :map, virtual: true
+    field :order_id, Ecto.UUID
+    field :order, :map, virtual: true
 
     field :file_collections, {:array, :map}, default: [], virtual: true
 
@@ -56,7 +55,7 @@ defmodule BlueJet.Distribution.Fulfillment do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:source_id, :source_type])
+    |> validate_required([:order_id])
   end
 
   @doc """
@@ -79,17 +78,7 @@ defmodule BlueJet.Distribution.Fulfillment do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  ######
-  # External Resources
-  #####
   def get_account(fulfillment) do
     fulfillment.account || IdentityService.get_account(fulfillment)
   end
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Fulfillment"
-
-  def put_external_resources(fulfillment, _, _), do: fulfillment
 end

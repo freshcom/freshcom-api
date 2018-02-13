@@ -7,12 +7,13 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :fulfillment_id, references(:fulfillments, type: :binary_id, on_delete: :delete_all), null: false
+      add :order_line_item_id, references(:order_line_items, type: :binary_id, on_delete: :nilify_all), null: false
+
+      add :target_id, :binary_id
+      add :target_type, :string
 
       add :source_id, :binary_id
       add :source_type, :string
-
-      add :goods_id, :binary_id
-      add :goods_type, :string
 
       add :status, :string, null: false
       add :code, :string
@@ -35,7 +36,8 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
     create index(:fulfillment_line_items, [:account_id, :status])
     create index(:fulfillment_line_items, [:account_id, :label], where: "label IS NOT NULL")
     create index(:fulfillment_line_items, [:account_id, :fulfillment_id])
+    create index(:fulfillment_line_items, [:account_id, :order_line_item_id])
     create index(:fulfillment_line_items, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
-    create index(:fulfillment_line_items, [:account_id, :goods_id, :goods_type], where: "goods_id IS NOT NULL")
+    create index(:fulfillment_line_items, [:account_id, :target_id, :target_type], where: "target_id IS NOT NULL")
   end
 end

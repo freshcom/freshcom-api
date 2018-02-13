@@ -11,8 +11,8 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
       add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
 
-      add :source_id, :binary_id
-      add :source_type, :string
+      add :target_id, :binary_id
+      add :target_type, :string
 
       add :code, :string
       add :name, :string, null: false
@@ -63,6 +63,6 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
     create index(:order_line_items, [:account_id, :order_id])
     create index(:order_line_items, [:account_id, :price_id])
     create index(:order_line_items, [:account_id, :product_id])
-    create index(:order_line_items, [:account_id, :source_id, :source_type], where: "source_id IS NOT NULL")
+    create index(:order_line_items, [:account_id, :target_id, :target_type], where: "target_id IS NOT NULL")
   end
 end
