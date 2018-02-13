@@ -3,7 +3,7 @@ defmodule BlueJetWeb.UnlockController do
 
   alias JaSerializer.Params
 
-  alias BlueJet.Distribution
+  alias BlueJet.Fulfillment
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -19,7 +19,7 @@ defmodule BlueJetWeb.UnlockController do
       locale: assigns[:locale]
     }
 
-    case Distribution.list_unlock(request) do
+    case Fulfillment.list_unlock(request) do
       {:ok, %{ data: unlocks, meta: meta }} ->
         render(conn, "index.json-api", data: unlocks, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -34,7 +34,7 @@ defmodule BlueJetWeb.UnlockController do
       preloads: assigns[:preloads]
     }
 
-    case Distribution.create_unlock(request) do
+    case Fulfillment.create_unlock(request) do
       {:ok, %{ data: unlock, meta: meta }} ->
         conn
         |> put_status(:created)
@@ -57,7 +57,7 @@ defmodule BlueJetWeb.UnlockController do
       locale: assigns[:locale]
     }
 
-    case Distribution.get_unlock(request) do
+    case Fulfillment.get_unlock(request) do
       {:ok, %{ data: unlock, meta: meta }} ->
         render(conn, "show.json-api", data: unlock, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -71,7 +71,7 @@ defmodule BlueJetWeb.UnlockController do
       params: %{ "id" => id }
     }
 
-    case Distribution.delete_unlock(request) do
+    case Fulfillment.delete_unlock(request) do
       {:ok, _} -> send_resp(conn, :no_content, "")
 
       other -> other

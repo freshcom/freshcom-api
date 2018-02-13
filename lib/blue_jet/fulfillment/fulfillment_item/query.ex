@@ -1,7 +1,7 @@
-defmodule BlueJet.Distribution.FulfillmentLineItem.Query do
+defmodule BlueJet.Fulfillment.FulfillmentItem.Query do
   use BlueJet, :query
 
-  alias BlueJet.Distribution.FulfillmentLineItem
+  alias BlueJet.Fulfillment.FulfillmentItem
 
   @filterable_fields [
     :source_type,
@@ -10,7 +10,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem.Query do
   ]
 
   def default() do
-    from fli in FulfillmentLineItem
+    from fli in FulfillmentItem
   end
 
   def for_account(query, account_id) do

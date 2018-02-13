@@ -1,7 +1,7 @@
-defmodule BlueJet.Distribution.GoodsService do
+defmodule BlueJet.Fulfillment.GoodsService do
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
 
-  @goods_service Application.get_env(:blue_jet, :distribution)[:goods_service]
+  @goods_service Application.get_env(:blue_jet, :fulfillment)[:goods_service]
 
   @callback get_stockable(map, map) :: Stockable.t | nil
   @callback get_unlockable(map, map) :: Unlockable.t | nil

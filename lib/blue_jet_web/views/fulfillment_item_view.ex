@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.FulfillmentLineItemView do
+defmodule BlueJetWeb.FulfillmentItemView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -10,6 +10,8 @@ defmodule BlueJetWeb.FulfillmentLineItemView do
 
     :print_name,
     :quantity,
+    :returned_quantity,
+    :gross_quantity,
 
     :caption,
     :description,
@@ -19,18 +21,18 @@ defmodule BlueJetWeb.FulfillmentLineItemView do
     :updated_at
   ]
 
-  has_one :fulfillment, serializer: BlueJetWeb.FulfillmentView, identifiers: :always
+  has_one :package, serializer: BlueJetWeb.FulfillmentPackageView, identifiers: :always
   has_one :order_line_item, serializer: BlueJetWeb.IdentifierView, identifiers: :always
   has_one :goods, serializer: BlueJetWeb.IdentifierView, identifiers: :always
   has_one :target, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type do
-    "FulfillmentLineItem"
+    "FulfillmentItem"
   end
 
-  def fulfillment(%{ fulfillment_id: nil }, _), do: nil
-  def fulfillment(%{ fulfillment_id: fulfillment_id, fulfillment: %Ecto.Association.NotLoaded{} }, _), do: %{ id: fulfillment_id, type: "Fulfillment" }
-  def fulfillment(%{ fulfillment: fulfillment }, _), do: fulfillment
+  def package(%{ package_id: nil }, _), do: nil
+  def package(%{ package_id: package_id, package: %Ecto.Association.NotLoaded{} }, _), do: %{ id: package_id, type: "FulfillmentPackage" }
+  def package(%{ package: package }, _), do: package
 
   def source(%{ source_id: nil }, _), do: nil
   def source(%{ source_id: source_id, source_type: source_type, source: nil }, _), do: %{ id: source_id, type: source_type }

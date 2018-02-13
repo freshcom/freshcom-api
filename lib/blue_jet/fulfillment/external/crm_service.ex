@@ -1,7 +1,7 @@
-defmodule BlueJet.Distribution.CrmService do
+defmodule BlueJet.Fulfillment.CrmService do
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
 
-  @crm_service Application.get_env(:blue_jet, :distribution)[:crm_service]
+  @crm_service Application.get_env(:blue_jet, :fulfillment)[:crm_service]
 
   @callback get_customer(map, map) :: Customer.t | nil
   @callback get_point_account(map, map) :: PointAccount.t | nil

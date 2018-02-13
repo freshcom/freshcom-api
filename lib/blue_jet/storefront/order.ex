@@ -428,10 +428,10 @@ defmodule BlueJet.Storefront.Order do
       |> OrderLineItem.Query.leaf()
       |> Repo.all()
 
-    fulfillment = Proxy.create_auto_fulfillment(order)
+    package = Proxy.create_auto_fulfillment_package(order)
     if length(af_line_items) > 0 do
       Enum.each(af_line_items, fn(af_line_item) ->
-        OrderLineItem.Proxy.create_fulfillment_line_item(af_line_item, fulfillment)
+        OrderLineItem.Proxy.create_fulfillment_item(af_line_item, package)
         OrderLineItem.refresh_fulfillment_status(af_line_item)
       end)
     end

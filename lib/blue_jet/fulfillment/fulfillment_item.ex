@@ -1,4 +1,4 @@
-defmodule BlueJet.Distribution.FulfillmentLineItem do
+defmodule BlueJet.Fulfillment.FulfillmentItem do
   @moduledoc """
   """
   use BlueJet, :data
@@ -11,11 +11,11 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Distribution.{GoodsService, CrmService}
-  alias BlueJet.Distribution.{Fulfillment, Unlock}
-  alias BlueJet.Distribution.FulfillmentLineItem.Proxy
+  alias BlueJet.Fulfillment.{GoodsService, CrmService}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, Unlock}
+  alias BlueJet.Fulfillment.FulfillmentItem.Proxy
 
-  schema "fulfillment_line_items" do
+  schema "fulfillment_items" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
@@ -25,6 +25,8 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
     field :label, :string
 
     field :quantity, :integer
+    field :returned_quantity, :integer, default: 0, null: false
+    field :gross_quantity, :integer, default: 0, null: false
     field :print_name, :string
 
     field :caption, :string
@@ -47,7 +49,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
     timestamps()
 
-    belongs_to :fulfillment, Fulfillment
+    belongs_to :package, FulfillmentPackage
   end
 
   @system_fields [
@@ -73,19 +75,19 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(fli, :insert, params) do
-    fli
+  def changeset(fulfillment_item, :insert, params) do
+    fulfillment_item
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(fli, :update, params, locale \\ nil, default_locale \\ nil) do
-    fli = Proxy.put_account(fli)
-    default_locale = default_locale || fli.account.default_locale
+  def changeset(fulfillment_item, :update, params, locale \\ nil, default_locale \\ nil) do
+    fulfillment_item = Proxy.put_account(fulfillment_item)
+    default_locale = default_locale || fulfillment_item.account.default_locale
     locale = locale || default_locale
 
-    fli
+    fulfillment_item
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
@@ -120,7 +122,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
   def preprocess(changeset = %{
     data: %{
-      fulfillment: %{ customer_id: customer_id },
+      package: %{ customer_id: customer_id },
       account: account
     },
     changes: %{
@@ -143,7 +145,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
 
   def preprocess(changeset = %{
     data: %{
-      fulfillment: %{ customer_id: customer_id },
+      package: %{ customer_id: customer_id },
       account: account
     },
     changes: %{
@@ -198,7 +200,7 @@ defmodule BlueJet.Distribution.FulfillmentLineItem do
       changes: %{ status: "fulfilled" }
     }
   ) do
-    data = Repo.preload(data, :fulfillment)
+    data = Repo.preload(data, :package)
     changeset = %{ changeset | data: data }
 
     preprocess(changeset)

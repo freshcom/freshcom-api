@@ -12,7 +12,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Storefront.{CatalogueService, CrmService, DistributionService}
+  alias BlueJet.Storefront.{CatalogueService, CrmService, FulfillmentService}
   alias BlueJet.Storefront.Order
   alias BlueJet.Storefront.OrderLineItem.Proxy
 
@@ -702,17 +702,17 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
-    flis = DistributionService.list_fulfillment_line_item(%{ target_type: "OrderLineItem", target_id: oli.id }, %{ account_id: oli.account_id })
+    fulfillment_items = FulfillmentService.list_fulfillment_item(%{ target_type: "OrderLineItem", target_id: oli.id }, %{ account_id: oli.account_id })
 
     fulfillable_quantity = oli.order_quantity
     fulfilled_quantity =
-      flis
+      fulfillment_items
       |> Enum.filter(fn(fli) -> fli.status == "fulfilled" end)
       |> Enum.map(fn(fli) -> fli.quantity end)
       |> Enum.sum()
 
     returned_quantity =
-      flis
+      fulfillment_items
       |> Enum.filter(fn(fli) -> fli.status == "returned" end)
       |> Enum.map(fn(fli) -> fli.quantity end)
       |> Enum.sum()

@@ -125,14 +125,14 @@ config :blue_jet, :data_trading, %{
 
 config :blue_jet, :storefront, %{
   balance_service: BlueJet.Balance.Service,
-  distribution_service: BlueJet.Distribution.Service,
+  fulfillment_service: BlueJet.Fulfillment.Service,
   catalogue_service: BlueJet.Catalogue.Service,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
   crm_service: BlueJet.Crm.Service
 }
 
-config :blue_jet, :distribution, %{
+config :blue_jet, :fulfillment, %{
   identity_service: BlueJet.Identity.Service,
   crm_service: BlueJet.Crm.Service,
   goods_service: BlueJet.Goods.Service,

@@ -1,10 +1,10 @@
-defmodule BlueJet.Distribution.Service do
+defmodule BlueJet.Fulfillment.Service do
   use BlueJet, :service
-  use BlueJet.EventEmitter, namespace: :distribution
+  use BlueJet.EventEmitter, namespace: :fulfillment
 
   alias Ecto.Multi
-  alias BlueJet.Distribution.IdentityService
-  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem, Unlock}
+  alias BlueJet.Fulfillment.IdentityService
+  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, Unlock}
 
   @callback list_unlock(map, map) :: list
   @callback count_unlock(map, map) :: integer
@@ -25,178 +25,178 @@ defmodule BlueJet.Distribution.Service do
   end
 
   #
-  # MARK: Fulfillment
+  # MARK: FulfillmentPackage
   #
-  def create_fulfillment(fields, opts) do
+  def create_fulfillment_package(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
     changeset =
-      %Fulfillment{ account_id: account.id, account: account }
-      |> Fulfillment.changeset(:insert, fields)
+      %FulfillmentPackage{ account_id: account.id, account: account }
+      |> FulfillmentPackage.changeset(:insert, fields)
 
-    with {:ok, fulfillment} <- Repo.insert(changeset) do
-      fulfillment = preload(fulfillment, preloads[:path], preloads[:opts])
-      {:ok, fulfillment}
+    with {:ok, fulfillment_package} <- Repo.insert(changeset) do
+      fulfillment_package = preload(fulfillment_package, preloads[:path], preloads[:opts])
+      {:ok, fulfillment_package}
     else
       other -> other
     end
   end
 
-  def list_fulfillment(fields \\ %{}, opts) do
+  def list_fulfillment_package(fields \\ %{}, opts) do
     account = get_account(opts)
     pagination = get_pagination(opts)
     preloads = get_preloads(opts, account)
     filter = get_filter(fields)
 
-    Fulfillment.Query.default()
-    |> Fulfillment.Query.filter_by(filter)
-    |> Fulfillment.Query.for_account(account.id)
-    |> Fulfillment.Query.paginate(size: pagination[:size], number: pagination[:number])
+    FulfillmentPackage.Query.default()
+    |> FulfillmentPackage.Query.filter_by(filter)
+    |> FulfillmentPackage.Query.for_account(account.id)
+    |> FulfillmentPackage.Query.paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  def count_fulfillment(fields \\ %{}, opts) do
+  def count_fulfillment_package(fields \\ %{}, opts) do
     account = get_account(opts)
     filter = get_filter(fields)
 
-    Fulfillment.Query.default()
-    |> Fulfillment.Query.filter_by(filter)
-    |> Fulfillment.Query.for_account(account.id)
+    FulfillmentPackage.Query.default()
+    |> FulfillmentPackage.Query.filter_by(filter)
+    |> FulfillmentPackage.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
 
-  def delete_fulfillment(nil, _), do: {:error, :not_found}
+  def delete_fulfillment_package(nil, _), do: {:error, :not_found}
 
-  def delete_fulfillment(fulfillment = %Fulfillment{}, opts) do
+  def delete_fulfillment_package(fulfillment_package = %FulfillmentPackage{}, opts) do
     account = get_account(opts)
 
     changeset =
-      %{ fulfillment | account: account }
-      |> Fulfillment.changeset(:delete)
+      %{ fulfillment_package | account: account }
+      |> FulfillmentPackage.changeset(:delete)
 
     statements =
       Multi.new()
-      |> Multi.delete(:fulfillment, changeset)
-      |> Multi.run(:after_delete, fn(%{ fulfillment: fulfillment}) ->
-          emit_event("distribution.fulfillment.after_delete", %{ fulfillment: fulfillment })
+      |> Multi.delete(:fulfillment_package, changeset)
+      |> Multi.run(:after_delete, fn(%{ fulfillment_package: fulfillment_package}) ->
+          emit_event("fulfillment.fulfillment_package.after_delete", %{ fulfillment_package: fulfillment_package })
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fulfillment: fulfillment }} ->
-        {:ok, fulfillment}
+      {:ok, %{ fulfillment_package: fulfillment_package }} ->
+        {:ok, fulfillment_package}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
   end
 
-  def delete_fulfillment(id, opts) do
+  def delete_fulfillment_package(id, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    Fulfillment
+    FulfillmentPackage
     |> Repo.get_by(id: id, account_id: account.id)
-    |> delete_fulfillment(opts)
+    |> delete_fulfillment_package(opts)
   end
 
   #
   # MARK: Fulfillment Line Item
   #
-  def list_fulfillment_line_item(fields \\ %{}, opts) do
+  def list_fulfillment_item(fields \\ %{}, opts) do
     account = get_account(opts)
     pagination = get_pagination(opts)
     preloads = get_preloads(opts, account)
     filter = get_filter(fields)
 
-    FulfillmentLineItem.Query.default()
-    |> FulfillmentLineItem.Query.filter_by(filter)
-    |> FulfillmentLineItem.Query.for_account(account.id)
-    |> FulfillmentLineItem.Query.paginate(size: pagination[:size], number: pagination[:number])
+    FulfillmentItem.Query.default()
+    |> FulfillmentItem.Query.filter_by(filter)
+    |> FulfillmentItem.Query.for_account(account.id)
+    |> FulfillmentItem.Query.paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  def count_fulfillment_line_item(fields \\ %{}, opts) do
+  def count_fulfillment_item(fields \\ %{}, opts) do
     account = get_account(opts)
     filter = get_filter(fields)
 
-    FulfillmentLineItem.Query.default()
-    |> FulfillmentLineItem.Query.filter_by(filter)
-    |> FulfillmentLineItem.Query.for_account(account.id)
+    FulfillmentItem.Query.default()
+    |> FulfillmentItem.Query.filter_by(filter)
+    |> FulfillmentItem.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
 
-  def create_fulfillment_line_item(fields, opts) do
+  def create_fulfillment_item(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
     changeset =
-      %FulfillmentLineItem{ account_id: account.id, account: account, fulfillment: opts[:fulfillment] }
-      |> FulfillmentLineItem.changeset(:insert, fields)
+      %FulfillmentItem{ account_id: account.id, account: account, package: opts[:package] }
+      |> FulfillmentItem.changeset(:insert, fields)
 
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          FulfillmentLineItem.preprocess(changeset)
+          FulfillmentItem.preprocess(changeset)
          end)
-      |> Multi.run(:fli, fn(%{ changeset: changeset}) ->
+      |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset}) ->
           Repo.insert(changeset)
          end)
-      |> Multi.run(:after_create, fn(%{ fli: fli }) ->
-          emit_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli })
+      |> Multi.run(:after_create, fn(%{ fulfillment_item: fulfillment_item }) ->
+          emit_event("fulfillment.fulfillment_item.after_create", %{ fulfillment_item: fulfillment_item })
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fli: fli }} ->
-        fli = preload(fli, preloads[:path], preloads[:opts])
-        {:ok, fli}
+      {:ok, %{ fulfillment_item: fulfillment_item }} ->
+        fulfillment_item = preload(fulfillment_item, preloads[:path], preloads[:opts])
+        {:ok, fulfillment_item}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
   end
 
-  def update_fulfillment_line_item(nil, _, _), do: {:error, :not_found}
+  def update_fulfillment_item(nil, _, _), do: {:error, :not_found}
 
-  def update_fulfillment_line_item(fli = %FulfillmentLineItem{}, fields, opts) do
+  def update_fulfillment_item(fulfillment_item = %FulfillmentItem{}, fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
     changeset =
-      %{ fli | account: account }
-      |> FulfillmentLineItem.changeset(:update, fields, opts[:locale])
+      %{ fulfillment_item | account: account }
+      |> FulfillmentItem.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          FulfillmentLineItem.preprocess(changeset)
+          FulfillmentItem.preprocess(changeset)
          end)
-      |> Multi.run(:fli, fn(%{ changeset: changeset }) ->
+      |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset }) ->
           Repo.update(changeset)
          end)
-      |> Multi.run(:after_update, fn(%{ fli: fli }) ->
-          emit_event("distribution.fulfillment_line_item.after_update", %{ fulfillment_line_item: fli, changeset: changeset })
+      |> Multi.run(:after_update, fn(%{ fulfillment_item: fulfillment_item }) ->
+          emit_event("fulfillment.fulfillment_item.after_update", %{ fulfillment_item: fulfillment_item, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fli: fli }} ->
-        fli = preload(fli, preloads[:path], preloads[:opts])
-        {:ok, fli}
+      {:ok, %{ fulfillment_item: fulfillment_item }} ->
+        fulfillment_item = preload(fulfillment_item, preloads[:path], preloads[:opts])
+        {:ok, fulfillment_item}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
   end
 
-  def update_fulfillment_line_item(id, fields, opts) do
+  def update_fulfillment_item(id, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    FulfillmentLineItem
+    FulfillmentItem
     |> Repo.get_by(id: id, account_id: account.id)
-    |> update_fulfillment_line_item(fields, opts)
+    |> update_fulfillment_item(fields, opts)
   end
 
   #

@@ -1,4 +1,4 @@
-defmodule BlueJet.Distribution.Fulfillment do
+defmodule BlueJet.Fulfillment.FulfillmentPackage do
   @moduledoc """
   """
   use BlueJet, :data
@@ -10,10 +10,10 @@ defmodule BlueJet.Distribution.Fulfillment do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Distribution.IdentityService
-  alias BlueJet.Distribution.FulfillmentLineItem
+  alias BlueJet.Fulfillment.IdentityService
+  alias BlueJet.Fulfillment.FulfillmentItem
 
-  schema "fulfillments" do
+  schema "fulfillment_packages" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
@@ -37,7 +37,7 @@ defmodule BlueJet.Distribution.Fulfillment do
 
     timestamps()
 
-    has_many :line_items, FulfillmentLineItem
+    has_many :items, FulfillmentItem, foreign_key: :package_id
   end
 
   @type t :: Ecto.Schema.t
@@ -65,24 +65,24 @@ defmodule BlueJet.Distribution.Fulfillment do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(fulfillment, :insert, params) do
-    fulfillment
+  def changeset(fulfillment_package, :insert, params) do
+    fulfillment_package
     |> cast(params, writable_fields())
     |> validate()
   end
 
-  def changeset(fulfillment, params, locale \\ nil, default_locale \\ nil) do
-    fulfillment = %{ fulfillment | account: get_account(fulfillment) }
-    default_locale = default_locale || get_account(fulfillment).default_locale
+  def changeset(fulfillment_package, params, locale \\ nil, default_locale \\ nil) do
+    fulfillment_package = %{ fulfillment_package | account: get_account(fulfillment_package) }
+    default_locale = default_locale || get_account(fulfillment_package).default_locale
     locale = locale || default_locale
 
-    fulfillment
+    fulfillment_package
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def get_account(fulfillment) do
-    fulfillment.account || IdentityService.get_account(fulfillment)
+  def get_account(fulfillment_package) do
+    fulfillment_package.account || IdentityService.get_account(fulfillment_package)
   end
 end

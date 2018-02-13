@@ -1,8 +1,8 @@
-defmodule BlueJetWeb.FulfillmentController do
+defmodule BlueJetWeb.FulfillmentPackageController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
-  alias BlueJet.Distribution
+  alias BlueJet.Fulfillment
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -17,9 +17,9 @@ defmodule BlueJetWeb.FulfillmentController do
       locale: assigns[:locale]
     }
 
-    case Distribution.list_fulfillment(request) do
-      {:ok, %{ data: fulfillments, meta: meta }} ->
-        render(conn, "index.json-api", data: fulfillments, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    case Fulfillment.list_fulfillment_package(request) do
+      {:ok, %{ data: fulfillment_packages, meta: meta }} ->
+        render(conn, "index.json-api", data: fulfillment_packages, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
     end
@@ -32,11 +32,11 @@ defmodule BlueJetWeb.FulfillmentController do
       preloads: assigns[:preloads]
     }
 
-    case Distribution.create_fulfillment(request) do
-      {:ok, %{ data: fulfillment, meta: meta }} ->
+    case Fulfillment.create_fulfillment_package(request) do
+      {:ok, %{ data: fulfillment_package, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: fulfillment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+        |> render("show.json-api", data: fulfillment_package, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       {:error, %{ errors: errors }} ->
         conn
@@ -55,9 +55,9 @@ defmodule BlueJetWeb.FulfillmentController do
       locale: assigns[:locale]
     }
 
-    case Distribution.get_fulfillment(request) do
-      {:ok, %{ data: fulfillment, meta: meta }} ->
-        render(conn, "show.json-api", data: fulfillment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    case Fulfillment.get_fulfillment_package(request) do
+      {:ok, %{ data: fulfillment_package, meta: meta }} ->
+        render(conn, "show.json-api", data: fulfillment_package, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
     end
@@ -72,9 +72,9 @@ defmodule BlueJetWeb.FulfillmentController do
   #     locale: assigns[:locale]
   #   }
 
-  #   case Distribution.update_fulfillment(request) do
-  #     {:ok, %{ data: fulfillment, meta: meta }} ->
-  #       render(conn, "show.json-api", data: fulfillment, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  #   case Fulfillment.update_fulfillment_package(request) do
+  #     {:ok, %{ data: fulfillment_package, meta: meta }} ->
+  #       render(conn, "show.json-api", data: fulfillment_package, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
   #     {:error, %{ errors: errors }} ->
   #       conn
@@ -91,7 +91,7 @@ defmodule BlueJetWeb.FulfillmentController do
       params: %{ "id" => id }
     }
 
-    case Distribution.delete_fulfillment(request) do
+    case Fulfillment.delete_fulfillment_package(request) do
       {:ok, _} -> send_resp(conn, :no_content, "")
 
       other -> other

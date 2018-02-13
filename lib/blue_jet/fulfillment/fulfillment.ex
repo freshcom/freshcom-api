@@ -1,34 +1,35 @@
-defmodule BlueJet.Distribution do
+defmodule BlueJet.Fulfillment do
   use BlueJet, :context
-  use BlueJet.EventEmitter, namespace: :distribution
+  use BlueJet.EventEmitter, namespace: :fulfillment
 
-  alias Ecto.Multi
+  alias BlueJet.Fulfillment.CrmService
+  alias BlueJet.Fulfillment.Service
+  alias BlueJet.Fulfillment.FulfillmentItem
 
-  alias BlueJet.Distribution.CrmService
-  alias BlueJet.Distribution.Service
-  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
-
-  def list_fulfillment(request) do
-    with {:ok, request} <- preprocess_request(request, "distribution.list_fulfillment") do
+  #
+  # MARK: Fulfillment Package
+  #
+  def list_fulfillment_package(request) do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.list_fulfillment_package") do
       request
-      |> do_list_fulfillment()
+      |> do_list_fulfillment_package()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_fulfillment(request = %{ account: account, filter: filter }) do
+  def do_list_fulfillment_package(request = %{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
-      |> Service.count_fulfillment(%{ account: account })
+      |> Service.count_fulfillment_package(%{ account: account })
 
     all_count =
       %{ filter: request.count_filter[:all] }
-      |> Service.count_fulfillment(%{ account: account })
+      |> Service.count_fulfillment_package(%{ account: account })
 
-    fulfillments =
+    fulfillment_packages =
       %{ filter: filter, search: request.search }
-      |> Service.list_fulfillment(get_sopts(request))
+      |> Service.list_fulfillment_package(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -37,23 +38,23 @@ defmodule BlueJet.Distribution do
         all_count: all_count,
         total_count: total_count,
       },
-      data: fulfillments
+      data: fulfillment_packages
     }
 
     {:ok, response}
   end
 
-  def delete_fulfillment(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.delete_fulfillment") do
+  def delete_fulfillment_package(request) do
+    with {:ok, request} <- preprocess_request(request, "goods.delete_fulfillment_package") do
       request
-      |> do_delete_fulfillment()
+      |> do_delete_fulfillment_package()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_delete_fulfillment(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_fulfillment(id, %{ account: account }) do
+  def do_delete_fulfillment_package(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_fulfillment_package(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -64,29 +65,29 @@ defmodule BlueJet.Distribution do
   end
 
   #
-  # Fulfillment Line Item
+  # MARK: Fulfillment Item
   #
-  def list_fulfillment_line_item(request) do
-    with {:ok, request} <- preprocess_request(request, "distribution.list_fulfillment_line_item") do
+  def list_fulfillment_item(request) do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.list_fulfillment_item") do
       request
-      |> do_list_fulfillment_line_item()
+      |> do_list_fulfillment_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_list_fulfillment_line_item(request = %{ account: account, filter: filter }) do
+  def do_list_fulfillment_item(request = %{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
-      |> Service.count_fulfillment_line_item(%{ account: account })
+      |> Service.count_fulfillment_item(%{ account: account })
 
     all_count =
       %{ filter: request.count_filter[:all] }
-      |> Service.count_fulfillment_line_item(%{ account: account })
+      |> Service.count_fulfillment_item(%{ account: account })
 
-    flis =
+    fulfillment_items =
       %{ filter: filter, search: request.search }
-      |> Service.list_fulfillment_line_item(get_sopts(request))
+      |> Service.list_fulfillment_item(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -95,57 +96,57 @@ defmodule BlueJet.Distribution do
         all_count: all_count,
         total_count: total_count
       },
-      data: flis
+      data: fulfillment_items
     }
 
     {:ok, response}
   end
 
-  defp fulfillment_line_item_response(nil, _), do: {:error, :not_found}
+  defp fulfillment_item_response(nil, _), do: {:error, :not_found}
 
-  defp fulfillment_line_item_response(fulfillment_line_item, request = %{ account: account }) do
-    preloads = FulfillmentLineItem.Query.preloads(request.preloads, role: request.role)
+  defp fulfillment_item_response(fulfillment_item, request = %{ account: account }) do
+    preloads = FulfillmentItem.Query.preloads(request.preloads, role: request.role)
 
-    fulfillment_line_item =
-      fulfillment_line_item
+    fulfillment_item =
+      fulfillment_item
       |> Repo.preload(preloads)
-      |> FulfillmentLineItem.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
+      |> FulfillmentItem.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
       |> Translation.translate(request.locale, account.default_locale)
 
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_line_item }}
+    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
   end
 
-  def create_fulfillment_line_item(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.create_fulfillment_line_item") do
+  def create_fulfillment_item(request) do
+    with {:ok, request} <- preprocess_request(request, "storefront.create_fulfillment_item") do
       request
-      |> do_create_fulfillment_line_item()
+      |> do_create_fulfillment_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_create_fulfillment_line_item(request = %{ account: account }) do
-    with {:ok, fli} <- Service.create_fulfillment_line_item(request.fields, %{ account: account }) do
-      fulfillment_line_item_response(fli, request)
+  def do_create_fulfillment_item(request = %{ account: account }) do
+    with {:ok, fulfillment_item} <- Service.create_fulfillment_item(request.fields, %{ account: account }) do
+      fulfillment_item_response(fulfillment_item, request)
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
-  def update_fulfillment_line_item(request) do
-    with {:ok, request} <- preprocess_request(request, "distribution.update_fulfillment_line_item") do
+  def update_fulfillment_item(request) do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.update_fulfillment_item") do
       request
-      |> do_update_fulfillment_line_item()
+      |> do_update_fulfillment_item()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_update_fulfillment_line_item(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, fli} <- Service.update_fulfillment_line_item(id, request.fields, get_sopts(request)) do
-      fli = Translation.translate(fli, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fli }}
+  def do_update_fulfillment_item(request = %{ account: account, params: %{ "id" => id }}) do
+    with {:ok, fulfillment_item} <- Service.update_fulfillment_item(id, request.fields, get_sopts(request)) do
+      fulfillment_item = Translation.translate(fulfillment_item, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}

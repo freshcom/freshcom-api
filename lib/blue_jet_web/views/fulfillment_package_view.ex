@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.FulfillmentView do
+defmodule BlueJetWeb.FulfillmentPackageView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -20,11 +20,11 @@ defmodule BlueJetWeb.FulfillmentView do
 
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
-  has_many :line_items, serializer: BlueJetWeb.FulfillmentLineItemView, identifiers: :when_included
+  has_many :items, serializer: BlueJetWeb.FulfillmentItemView, identifiers: :when_included
   has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
-    "Fulfillment"
+    "FulfillmentPackage"
   end
 
   def order(%{ order_id: nil }, _), do: nil

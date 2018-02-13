@@ -1,8 +1,8 @@
-defmodule BlueJet.Repo.Migrations.CreateFulfillment do
+defmodule BlueJet.Repo.Migrations.CreateReturnPackage do
   use Ecto.Migration
 
   def change do
-    create table(:fulfillments, primary_key: false) do
+    create table(:return_packages, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
@@ -22,10 +22,10 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillment do
       timestamps()
     end
 
-    create unique_index(:fulfillments, [:account_id, :code], where: "code IS NOT NULL")
-    create index(:fulfillments, [:account_id, :system_label])
-    create index(:fulfillments, [:account_id, :order_id])
-    create index(:fulfillments, [:account_id, :name])
-    create index(:fulfillments, [:account_id, :label], where: "label IS NOT NULL")
+    create unique_index(:return_packages, [:account_id, :code], where: "code IS NOT NULL")
+    create index(:return_packages, [:account_id, :system_label])
+    create index(:return_packages, [:account_id, :order_id])
+    create index(:return_packages, [:account_id, :name])
+    create index(:return_packages, [:account_id, :label], where: "label IS NOT NULL")
   end
 end

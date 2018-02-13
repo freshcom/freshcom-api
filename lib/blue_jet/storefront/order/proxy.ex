@@ -1,7 +1,7 @@
 defmodule BlueJet.Storefront.Order.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Storefront.{IdentityService, CrmService, DistributionService, BalanceService}
+  alias BlueJet.Storefront.{IdentityService, CrmService, FulfillmentService, BalanceService}
   alias BlueJet.Storefront.OrderLineItem
 
   def get_account(order) do
@@ -33,10 +33,10 @@ defmodule BlueJet.Storefront.Order.Proxy do
     BalanceService.list_payment(%{ filter: %{ target_type: "Order", target_id: order.id } }, opts)
   end
 
-  def create_auto_fulfillment(order) do
+  def create_auto_fulfillment_package(order) do
     opts = get_sopts(order)
 
-    {:ok, fulfillment} = DistributionService.create_fulfillment(%{
+    {:ok, fulfillment} = FulfillmentService.create_fulfillment_package(%{
       customer_id: order.customer_id,
       order_id: order.id,
       system_label: "auto"

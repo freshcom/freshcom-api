@@ -2,7 +2,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.{Repo, Translation}
-  alias BlueJet.Storefront.{CrmService, IdentityService, CatalogueService, GoodsService, DistributionService}
+  alias BlueJet.Storefront.{CrmService, IdentityService, CatalogueService, GoodsService, FulfillmentService}
 
   def get_account(oli) do
     oli.account || IdentityService.get_account(oli)
@@ -60,15 +60,15 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
     pt
   end
 
-  def create_fulfillment_line_item(oli, fulfillment) do
+  def create_fulfillment_item(oli, package) do
     opts =
       get_sopts(oli)
-      |> Map.put(:fulfillment, fulfillment)
+      |> Map.put(:package, package)
 
     translations = Translation.merge_translations(%{}, oli.translations, ["name"])
 
-    DistributionService.create_fulfillment_line_item(%{
-      fulfillment_id: fulfillment.id,
+    FulfillmentService.create_fulfillment_item(%{
+      package_id: package.id,
       order_line_item_id: oli.id,
       target_id: oli.target_id,
       target_type: oli.target_type,
