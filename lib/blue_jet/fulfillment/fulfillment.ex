@@ -145,6 +145,44 @@ defmodule BlueJet.Fulfillment do
   end
 
   #
+  # MARK: Return Package
+  #
+  def list_return_package(request) do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.list_return_package") do
+      request
+      |> do_list_return_package()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_return_package(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_return_package(%{ account: account })
+
+    all_count =
+      %{ filter: request.count_filter[:all] }
+      |> Service.count_return_package(%{ account: account })
+
+    return_packages =
+      %{ filter: filter, search: request.search }
+      |> Service.list_return_package(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count,
+      },
+      data: return_packages
+    }
+
+    {:ok, response}
+  end
+
+  #
   # MARK: Return Item
   #
   def create_return_item(request) do

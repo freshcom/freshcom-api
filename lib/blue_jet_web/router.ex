@@ -110,6 +110,7 @@ defmodule BlueJetWeb.Router do
       resources "/items", RefundController, only: [:create]
     end
     resources "/fulfillment_items", FulfillmentItemController, only: [:update, :delete]
+    resources "/return_packages", ReturnPackageController, only: [:index]
     resources "/return_items", ReturnItemController, only: [:create, :update, :delete]
 
     ####

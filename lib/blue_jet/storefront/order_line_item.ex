@@ -702,7 +702,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
-    fulfillment_items = FulfillmentService.list_fulfillment_item(%{ target_type: "OrderLineItem", target_id: oli.id }, %{ account_id: oli.account_id })
+    fulfillment_items = FulfillmentService.list_fulfillment_item(%{ filter: %{ order_line_item_id: oli.id } }, %{ account_id: oli.account_id })
 
     fulfillable_quantity = oli.order_quantity
     fulfilled_quantity =

@@ -60,6 +60,16 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
+  def handle_event("fulfillment.return_item.after_create", %{
+    return_item: return_item,
+    changeset: %{ changes: %{ status: "returned" } }
+  }) do
+    oli = Repo.get!(OrderLineItem, return_item.order_line_item_id)
+    OrderLineItem.refresh_fulfillment_status(oli)
+
+    {:ok, nil}
+  end
+
   def handle_event(_, _) do
     {:ok, nil}
   end

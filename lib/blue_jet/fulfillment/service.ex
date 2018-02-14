@@ -200,6 +200,33 @@ defmodule BlueJet.Fulfillment.Service do
   end
 
   #
+  # MARK: Return Package
+  #
+  def list_return_package(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    ReturnPackage.Query.default()
+    |> ReturnPackage.Query.filter_by(filter)
+    |> ReturnPackage.Query.for_account(account.id)
+    |> ReturnPackage.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_return_package(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    ReturnPackage.Query.default()
+    |> ReturnPackage.Query.filter_by(filter)
+    |> ReturnPackage.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  #
   # MARK: Return Item
   #
   def create_return_item(fields, opts) do
@@ -213,7 +240,6 @@ defmodule BlueJet.Fulfillment.Service do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          IO.inspect "preprocessing..."
           ReturnItem.preprocess(changeset)
          end)
       |> Multi.run(:return_item, fn(%{ changeset: changeset}) ->
@@ -223,7 +249,7 @@ defmodule BlueJet.Fulfillment.Service do
           ReturnItem.process(return_item, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ return_item: return_item }) ->
-          emit_event("fulfillment.return_item.after_create", %{ return_item: return_item })
+          emit_event("fulfillment.return_item.after_create", %{ return_item: return_item, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do

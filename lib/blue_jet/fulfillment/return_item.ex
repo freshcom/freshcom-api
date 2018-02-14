@@ -35,6 +35,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     field :order_id, Ecto.UUID
     field :order, :map, virtual: true
 
+    field :order_line_item_id, Ecto.UUID
+    field :order_line_item, :map, virtual: true
+
     field :target_id, Ecto.UUID
     field :target_type, :string
     field :target, :map, virtual: true
@@ -102,25 +105,47 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_order_id(changeset), do: changeset
 
+  defp put_order_line_item_id(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+    put_change(changeset, :order_line_item_id, fulfillment_item.order_line_item_id)
+  end
+
+  defp put_order_line_item_id(changeset), do: changeset
+
+  defp put_name(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+    put_change(changeset, :name, fulfillment_item.name)
+  end
+
+  defp put_name(changeset), do: changeset
+
+  defp put_translations(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+    translations = Translation.merge_translations(%{}, fulfillment_item.translations, ["name"])
+    put_change(changeset, :translations, translations)
+  end
+
+  defp put_translations(changeset), do: changeset
+
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(fulfillment_item, :insert, params) do
-    fulfillment_item
+  def changeset(return_item, :insert, params) do
+    return_item
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
     |> put_fulfillment_item()
     |> put_order_id()
+    |> put_order_line_item_id()
     |> put_target()
+    |> put_name()
+    |> put_translations()
     |> validate()
   end
 
-  def changeset(fulfillment_item, :update, params, locale \\ nil, default_locale \\ nil) do
-    fulfillment_item = Proxy.put_account(fulfillment_item)
-    default_locale = default_locale || fulfillment_item.account.default_locale
+  def changeset(return_item, :update, params, locale \\ nil, default_locale \\ nil) do
+    return_item = Proxy.put_account(return_item)
+    default_locale = default_locale || return_item.account.default_locale
     locale = locale || default_locale
 
-    fulfillment_item
+    return_item
     |> cast(params, writable_fields())
     |> Map.put(:action, :update)
     |> validate()

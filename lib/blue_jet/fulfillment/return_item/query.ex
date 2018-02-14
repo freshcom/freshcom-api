@@ -6,6 +6,7 @@ defmodule BlueJet.Fulfillment.ReturnItem.Query do
   @filterable_fields [
     :source_type,
     :source_id,
+    :order_line_item_id,
     :fulfillment_item_id,
     :package_id,
     :status
