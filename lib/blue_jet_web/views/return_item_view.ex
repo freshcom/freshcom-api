@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.FulfillmentItemView do
+defmodule BlueJetWeb.ReturnItemView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -10,8 +10,6 @@ defmodule BlueJetWeb.FulfillmentItemView do
 
     :print_name,
     :quantity,
-    :returned_quantity,
-    :gross_quantity,
 
     :caption,
     :description,
@@ -21,17 +19,17 @@ defmodule BlueJetWeb.FulfillmentItemView do
     :updated_at
   ]
 
-  has_one :package, serializer: BlueJetWeb.FulfillmentPackageView, identifiers: :always
-  has_one :order_line_item, serializer: BlueJetWeb.IdentifierView, identifiers: :always
+  # has_one :package, serializer: BlueJetWeb.FulfillmentPackageView, identifiers: :always
+  has_one :fulfillment_item, serializer: BlueJetWeb.FulfillmentItemView, identifiers: :always
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
   has_one :target, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type do
-    "FulfillmentItem"
+    "ReturnItem"
   end
 
   def package(%{ package_id: nil }, _), do: nil
-  def package(%{ package_id: package_id, package: %Ecto.Association.NotLoaded{} }, _), do: %{ id: package_id, type: "FulfillmentPackage" }
+  def package(%{ package_id: package_id, package: %Ecto.Association.NotLoaded{} }, _), do: %{ id: package_id, type: "ReturnPackage" }
   def package(%{ package: package }, _), do: package
 
   def source(%{ source_id: nil }, _), do: nil
@@ -42,7 +40,7 @@ defmodule BlueJetWeb.FulfillmentItemView do
   def target(%{ target_id: target_id, target_type: target_type, target: nil }, _), do: %{ id: target_id, type: target_type }
   def target(%{ target: target }, _), do: target
 
-  def order_line_item(%{ order_line_item_id: nil }, _), do: nil
-  def order_line_item(%{ order_line_item_id: order_line_item_id, order_line_item: nil }, _), do: %{ id: order_line_item_id, type: "OrderLineItem" }
-  def order_line_item(%{ order_line_item: order_line_item }, _), do: order_line_item
+  def fulfillment_item(%{ fulfillment_item_id: nil }, _), do: nil
+  def fulfillment_item(%{ fulfillment_item_id: fulfillment_item_id, fulfillment_item: nil }, _), do: %{ id: fulfillment_item_id, type: "FulfillmentItem" }
+  def fulfillment_item(%{ fulfillment_item: fulfillment_item }, _), do: fulfillment_item
 end

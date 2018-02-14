@@ -69,6 +69,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
 
     FulfillmentService.create_fulfillment_item(%{
       package_id: package.id,
+      order_id: package.order_id,
       order_line_item_id: oli.id,
       target_id: oli.target_id,
       target_type: oli.target_type,

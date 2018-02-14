@@ -1,4 +1,4 @@
-defmodule BlueJet.Fulfillment.FulfillmentPackage do
+defmodule BlueJet.Fulfillment.ReturnPackage do
   @moduledoc """
   """
   use BlueJet, :data
@@ -11,10 +11,10 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   ], container: :translations
 
   alias BlueJet.Fulfillment.IdentityService
-  alias BlueJet.Fulfillment.FulfillmentPackage.Proxy
-  alias BlueJet.Fulfillment.FulfillmentItem
+  alias BlueJet.Fulfillment.ReturnPackage.Proxy
+  alias BlueJet.Fulfillment.ReturnItem
 
-  schema "fulfillment_packages" do
+  schema "return_packages" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
@@ -38,7 +38,7 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
 
     timestamps()
 
-    has_many :items, FulfillmentItem, foreign_key: :package_id
+    has_many :items, ReturnItem, foreign_key: :package_id
   end
 
   @type t :: Ecto.Schema.t
@@ -66,18 +66,18 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  def changeset(fulfillment_package, :insert, params) do
-    fulfillment_package
+  def changeset(return_package, :insert, params) do
+    return_package
     |> cast(params, writable_fields())
     |> validate()
   end
 
-  def changeset(fulfillment_package, params, locale \\ nil, default_locale \\ nil) do
-    fulfillment_package = Proxy.put_account(fulfillment_package)
-    default_locale = default_locale || fulfillment_package.account.default_locale
+  def changeset(return_package, params, locale \\ nil, default_locale \\ nil) do
+    return_package = Proxy.put_account(return_package)
+    default_locale = default_locale || return_package.account.default_locale
     locale = locale || default_locale
 
-    fulfillment_package
+    return_package
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

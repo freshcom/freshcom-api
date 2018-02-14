@@ -7,6 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateReturnItem do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :package_id, references(:return_packages, type: :binary_id, on_delete: :delete_all), null: false
+      add :order_id, references(:orders, type: :binary_id, on_delete: :nilify_all), null: false
       add :fulfillment_item_id, references(:fulfillment_items, type: :binary_id, on_delete: :nilify_all), null: false
 
       add :target_id, :binary_id

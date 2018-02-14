@@ -12,7 +12,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   ], container: :translations
 
   alias BlueJet.Fulfillment.{GoodsService, CrmService}
-  alias BlueJet.Fulfillment.{FulfillmentPackage, Unlock}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, ReturnItem, Unlock}
   alias BlueJet.Fulfillment.FulfillmentItem.Proxy
 
   schema "fulfillment_items" do
@@ -33,6 +33,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
+
+    field :order_id, Ecto.UUID
+    field :order, :map, virtual: true
 
     field :order_line_item_id, Ecto.UUID
     field :order_line_item, :map, virtual: true
@@ -91,6 +94,24 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def get_status(fulfillment_item) do
+    returned_quantity =
+      ReturnItem.Query.default()
+      |> ReturnItem.Query.filter_by(%{ fulfillment_item_id: fulfillment_item.id, status: "returned" })
+      |> Repo.aggregate(:sum, :quantity)
+
+    cond do
+      returned_quantity == 0 ->
+        fulfillment_item.status
+
+      returned_quantity < fulfillment_item.quantity ->
+        "partially_returned"
+
+      returned_quantity >= fulfillment_item.quantity ->
+        "returned"
+    end
   end
 
   defp fulfill_unlockable(unlockable_id, customer_id, opts) do

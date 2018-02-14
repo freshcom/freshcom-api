@@ -104,12 +104,13 @@ defmodule BlueJetWeb.Router do
     patch "/balance_settings", BalanceSettingsController, :update
 
     #
-    # Fulfillment
+    # MARK: Fulfillment
     #
     resources "/fulfillment_packages", FulfillmentPackageController, only: [:index, :create, :show, :delete] do
       resources "/items", RefundController, only: [:create]
     end
     resources "/fulfillment_items", FulfillmentItemController, only: [:update, :delete]
+    resources "/return_items", ReturnItemController, only: [:create, :update, :delete]
 
     ####
     # Data Trading

@@ -1,4 +1,4 @@
-defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
+defmodule BlueJet.Repo.Migrations.CreateFulfillmentItem do
   use Ecto.Migration
 
   def change do
@@ -7,6 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateFulfillmentLineItem do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :package_id, references(:fulfillment_packages, type: :binary_id, on_delete: :delete_all), null: false
+      add :order_id, references(:orders, type: :binary_id, on_delete: :nilify_all), null: false
       add :order_line_item_id, references(:order_line_items, type: :binary_id, on_delete: :nilify_all), null: false
 
       add :target_id, :binary_id

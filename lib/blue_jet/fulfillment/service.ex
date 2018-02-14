@@ -4,7 +4,7 @@ defmodule BlueJet.Fulfillment.Service do
 
   alias Ecto.Multi
   alias BlueJet.Fulfillment.IdentityService
-  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, Unlock}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, ReturnItem, Unlock}
 
   @callback list_unlock(map, map) :: list
   @callback count_unlock(map, map) :: integer
@@ -197,6 +197,43 @@ defmodule BlueJet.Fulfillment.Service do
     FulfillmentItem
     |> Repo.get_by(id: id, account_id: account.id)
     |> update_fulfillment_item(fields, opts)
+  end
+
+  #
+  # MARK: Return Item
+  #
+  def create_return_item(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %ReturnItem{ account_id: account.id, account: account, package: opts[:package] }
+      |> ReturnItem.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:changeset, fn(_) ->
+          IO.inspect "preprocessing..."
+          ReturnItem.preprocess(changeset)
+         end)
+      |> Multi.run(:return_item, fn(%{ changeset: changeset}) ->
+          Repo.insert(changeset)
+         end)
+      |> Multi.run(:processed_return_item, fn(%{ return_item: return_item, changeset: changeset }) ->
+          ReturnItem.process(return_item, changeset)
+         end)
+      |> Multi.run(:after_create, fn(%{ return_item: return_item }) ->
+          emit_event("fulfillment.return_item.after_create", %{ return_item: return_item })
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ return_item: return_item }} ->
+        return_item = preload(return_item, preloads[:path], preloads[:opts])
+        {:ok, return_item}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
   end
 
   #

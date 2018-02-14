@@ -102,22 +102,8 @@ defmodule BlueJet.Fulfillment do
     {:ok, response}
   end
 
-  defp fulfillment_item_response(nil, _), do: {:error, :not_found}
-
-  defp fulfillment_item_response(fulfillment_item, request = %{ account: account }) do
-    preloads = FulfillmentItem.Query.preloads(request.preloads, role: request.role)
-
-    fulfillment_item =
-      fulfillment_item
-      |> Repo.preload(preloads)
-      |> FulfillmentItem.put_external_resources(request.preloads, %{ account: account, role: request.role, locale: request.locale })
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
-  end
-
   def create_fulfillment_item(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.create_fulfillment_item") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.create_fulfillment_item") do
       request
       |> do_create_fulfillment_item()
     else
@@ -127,10 +113,13 @@ defmodule BlueJet.Fulfillment do
 
   def do_create_fulfillment_item(request = %{ account: account }) do
     with {:ok, fulfillment_item} <- Service.create_fulfillment_item(request.fields, %{ account: account }) do
-      fulfillment_item_response(fulfillment_item, request)
+      fulfillment_item = Translation.translate(fulfillment_item, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
     end
   end
 
@@ -156,6 +145,30 @@ defmodule BlueJet.Fulfillment do
   end
 
   #
+  # MARK: Return Item
+  #
+  def create_return_item(request) do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.create_return_item") do
+      request
+      |> do_create_return_item()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_return_item(request = %{ account: account }) do
+    with {:ok, return_item} <- Service.create_return_item(request.fields, %{ account: account }) do
+      return_item = Translation.translate(return_item, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: return_item }}
+    else
+      {:error, changeset} ->
+        {:error, %AccessResponse{ errors: changeset.errors }}
+
+      other -> other
+    end
+  end
+
+  #
   # MARK: Unlock
   #
   defp filter_unlock_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
@@ -166,7 +179,7 @@ defmodule BlueJet.Fulfillment do
   defp filter_unlock_by_role(request), do: request
 
   def list_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.list_unlock") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.list_unlock") do
       request
       |> filter_unlock_by_role()
       |> do_list_unlock()
@@ -195,7 +208,7 @@ defmodule BlueJet.Fulfillment do
   end
 
   def create_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.create_unlock") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.create_unlock") do
       request
       |> do_create_unlock()
     else
@@ -216,7 +229,7 @@ defmodule BlueJet.Fulfillment do
   end
 
   def get_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.get_unlock") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.get_unlock") do
       request
       |> do_get_unlock()
     else
@@ -238,7 +251,7 @@ defmodule BlueJet.Fulfillment do
   end
 
   def delete_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "storefront.delete_unlock") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.delete_unlock") do
       request
       |> do_delete_unlock()
     else

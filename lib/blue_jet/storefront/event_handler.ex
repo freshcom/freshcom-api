@@ -41,28 +41,23 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, order}
   end
 
-  def handle_event("distribution.fulfillment_line_item.after_create", %{ fulfillment_line_item: fli = %{ source_type: "OrderLineItem" } }) do
-    oli = Repo.get!(OrderLineItem, fli.source_id)
+  def handle_event("fulfillment.fulfillment_item.after_create", %{
+    fulfillment_item: fulfillment_item = %{ status: "fulfilled" }
+  }) do
+    oli = Repo.get!(OrderLineItem, fulfillment_item.order_line_item_id)
     OrderLineItem.refresh_fulfillment_status(oli)
 
-    {:ok, fli}
+    {:ok, nil}
   end
 
-  def handle_event("distribution.fulfillment_line_item.after_update", %{
-    fulfillment_line_item: fli = %{ source_type: "OrderLineItem" },
-    changeset: %{ changes: %{ status: status } }
+  def handle_event("fulfillment.fulfillment_item.after_update", %{
+    fulfillment_item: fulfillment_item,
+    changeset: %{ changes: %{ status: _ } }
   }) do
-    oli = Repo.get!(OrderLineItem, fli.source_id)
+    oli = Repo.get!(OrderLineItem, fulfillment_item.order_line_item_id)
     OrderLineItem.refresh_fulfillment_status(oli)
 
-    if oli.source_type == "Unlockable" && (status == "returned" || status == "discarded") do
-      unlock = Repo.get_by(Unlock, source_id: oli.id, source_type: "OrderLineItem")
-      if unlock do
-        Repo.delete!(unlock)
-      end
-    end
-
-    {:ok, fli}
+    {:ok, nil}
   end
 
   def handle_event(_, _) do
