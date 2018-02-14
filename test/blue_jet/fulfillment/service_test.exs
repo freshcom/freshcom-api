@@ -97,9 +97,9 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         "unlockable_id" => unlockable.id
       }
 
-      {:ok, order} = Service.create_order(fields, %{ account: account })
+      {:ok, unlock} = Service.create_unlock(fields, %{ account: account })
 
-      assert order
+      assert unlock
     end
   end
 

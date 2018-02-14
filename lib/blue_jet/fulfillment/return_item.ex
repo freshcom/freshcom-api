@@ -19,6 +19,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    # pending, in_progress, fulfilled, partially_returned, returned
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -79,6 +80,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     |> validate_required([:fulfillment_item_id])
   end
 
+  #
+  # MARK: Changeset
+  #
   defp get_fulfillment_item(changeset) do
     fulfillment_item_id = get_field(changeset, :fulfillment_item_id)
     get_field(changeset, :fulfillment_item) || Repo.get(FulfillmentItem, fulfillment_item_id)
@@ -123,9 +127,6 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_translations(changeset), do: changeset
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
   def changeset(return_item, :insert, params) do
     return_item
     |> cast(params, writable_fields())
@@ -151,6 +152,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  #
+  # MARK: Preprocess
+  #
   defp get_or_create_auto_return_package(changeset) do
     account_id = get_field(changeset, :account_id)
     order_id = get_field(changeset, :order_id)
@@ -281,6 +285,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     preprocess(changeset, data.fulfillment_item)
   end
 
+  #
+  # MARK: Process
+  #
   def process(return_item, %{
     changes: %{ status: "returned" }
   }) do

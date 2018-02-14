@@ -378,89 +378,89 @@ defmodule BlueJet.OrderLineItemTest do
     end
   end
 
-  describe "auto_fulfill/1" do
-    test "when target is an unlockable" do
-      account = Repo.insert!(%Account{})
+  # describe "auto_fulfill/1" do
+  #   test "when target is an unlockable" do
+  #     account = Repo.insert!(%Account{})
 
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.String.base64(5)
+  #     })
 
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+  #     customer = Repo.insert!(%Customer{
+  #       account_id: account.id,
+  #       name: Faker.String.base64(5)
+  #     })
 
-      fulfillment_package = %FulfillmentPackage{}
-      fulfillment_item = %FulfillmentItem{}
-      FulfillmentServiceMock
-      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
+  #     fulfillment_package = %FulfillmentPackage{}
+  #     fulfillment_item = %FulfillmentItem{}
+  #     FulfillmentServiceMock
+  #     |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
-      order = Repo.insert!(%Order{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-      OrderLineItem.auto_fulfill(%OrderLineItem{
-        account_id: account.id,
-        order_id: order.id,
-        target_id: unlockable.id,
-        target_type: "Unlockable"
-      }, fulfillment_package)
+  #     order = Repo.insert!(%Order{
+  #       account_id: account.id,
+  #       customer_id: customer.id
+  #     })
+  #     OrderLineItem.auto_fulfill(%OrderLineItem{
+  #       account_id: account.id,
+  #       order_id: order.id,
+  #       target_id: unlockable.id,
+  #       target_type: "Unlockable"
+  #     }, fulfillment_package)
 
-      assert Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
-    end
+  #     assert Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
+  #   end
 
-    test "when target is an depositable" do
-      account = %Account{}
-      depositable = %Depositable{
-        id: Ecto.UUID.generate(),
-        name: Faker.String.base64(5),
-        amount: 5000,
-        target_type: "PointAccount"
-      }
-      GoodsServiceMock
-      |> expect(:get_depositable, fn(_, _) -> depositable end)
+  #   test "when target is an depositable" do
+  #     account = %Account{}
+  #     depositable = %Depositable{
+  #       id: Ecto.UUID.generate(),
+  #       name: Faker.String.base64(5),
+  #       amount: 5000,
+  #       target_type: "PointAccount"
+  #     }
+  #     GoodsServiceMock
+  #     |> expect(:get_depositable, fn(_, _) -> depositable end)
 
-      point_account = %PointAccount{}
-      point_transaction = %PointTransaction{}
-      CrmServiceMock
-      |> expect(:get_point_account, fn(_, _) -> point_account end)
-      |> expect(:create_point_transaction, fn(_, _) -> {:ok, point_transaction} end)
+  #     point_account = %PointAccount{}
+  #     point_transaction = %PointTransaction{}
+  #     CrmServiceMock
+  #     |> expect(:get_point_account, fn(_, _) -> point_account end)
+  #     |> expect(:create_point_transaction, fn(_, _) -> {:ok, point_transaction} end)
 
-      fulfillment_package = %FulfillmentPackage{}
-      fulfillment_item = %FulfillmentItem{}
-      FulfillmentServiceMock
-      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
+  #     fulfillment_package = %FulfillmentPackage{}
+  #     fulfillment_item = %FulfillmentItem{}
+  #     FulfillmentServiceMock
+  #     |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
-      order = %Order{ customer_id: Ecto.UUID.generate() }
-      OrderLineItem.auto_fulfill(%OrderLineItem{
-        account: account,
-        order: order,
-        target_id: depositable.id,
-        target_type: "Depositable"
-      }, fulfillment_package)
+  #     order = %Order{ customer_id: Ecto.UUID.generate() }
+  #     OrderLineItem.auto_fulfill(%OrderLineItem{
+  #       account: account,
+  #       order: order,
+  #       target_id: depositable.id,
+  #       target_type: "Depositable"
+  #     }, fulfillment_package)
 
-      verify!()
-    end
+  #     verify!()
+  #   end
 
-    test "when target is a point transaction" do
-      CrmServiceMock
-      |> expect(:update_point_transaction, fn(_, _, _) -> {:ok, %PointTransaction{}} end)
+  #   test "when target is a point transaction" do
+  #     CrmServiceMock
+  #     |> expect(:update_point_transaction, fn(_, _, _) -> {:ok, %PointTransaction{}} end)
 
-      fulfillment_package = %FulfillmentPackage{}
-      fulfillment_item = %FulfillmentItem{}
-      FulfillmentServiceMock
-      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
+  #     fulfillment_package = %FulfillmentPackage{}
+  #     fulfillment_item = %FulfillmentItem{}
+  #     FulfillmentServiceMock
+  #     |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
-      OrderLineItem.auto_fulfill(%OrderLineItem{
-        target_id: Ecto.UUID.generate(),
-        target_type: "PointTransaction"
-      }, fulfillment_package)
+  #     OrderLineItem.auto_fulfill(%OrderLineItem{
+  #       target_id: Ecto.UUID.generate(),
+  #       target_type: "PointTransaction"
+  #     }, fulfillment_package)
 
-      verify!()
-    end
-  end
+  #     verify!()
+  #   end
+  # end
 
   describe "get_fulfillment_status/1" do
     test "when grand total cents is less than 0" do

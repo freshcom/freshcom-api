@@ -17,11 +17,12 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    field :system_label, :string
+
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
     field :label, :string
-    field :system_label, :string
 
     field :caption, :string
     field :description, :string
@@ -46,6 +47,8 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   @system_fields [
     :id,
     :account_id,
+    :system_label,
+    :status,
     :inserted_at,
     :updated_at
   ]
@@ -58,27 +61,40 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     __MODULE__.__trans__(:fields)
   end
 
-  def validate(changeset) do
+  def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required([:order_id])
+    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled"])
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled"])
+  end
+
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields -- [:order_id, :customer_id]
+  end
+
   def changeset(fulfillment_package, :insert, params) do
     fulfillment_package
-    |> cast(params, writable_fields())
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(fulfillment_package, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(fulfillment_package, :update, params, locale \\ nil, default_locale \\ nil) do
     fulfillment_package = Proxy.put_account(fulfillment_package)
     default_locale = default_locale || fulfillment_package.account.default_locale
     locale = locale || default_locale
 
     fulfillment_package
-    |> cast(params, writable_fields())
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end

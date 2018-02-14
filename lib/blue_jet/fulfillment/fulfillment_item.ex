@@ -19,6 +19,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    # pending, fulfilled, partially_returned, returned
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -58,6 +59,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   @system_fields [
     :id,
     :account_id,
+    :order_id,
     :inserted_at,
     :updated_at
   ]
@@ -70,14 +72,46 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     __MODULE__.__trans__(:fields)
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:order_line_item_id])
+  #
+  # MARK: Validation
+  #
+  defp validate_package_id(changeset = %{
+    action: :insert,
+    valid?: true,
+    changes: %{ package_id: package_id }
+  }) do
+    account_id = get_field(changeset, :account_id)
+    package = Repo.get_by(FulfillmentPackage, account_id: account_id, id: package_id)
+
+    if package do
+      changeset
+    else
+      add_error(changeset, :package_id, "is invalid", validation: :must_exist)
+    end
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  defp validate_package_id(changeset), do: changeset
+
+  def validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:status, :quantity, :order_line_item_id, :package_id])
+    |> validate_package_id()
+    |> validate_inclusion(:status, ["pending", "fulfilled"])
+  end
+
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "fulfilled"])
+  end
+
+  # TODO:
+  defp put_order_id() do
+
+  end
+
+  #
+  # MARK: Changeset
+  #
   def changeset(fulfillment_item, :insert, params) do
     fulfillment_item
     |> cast(params, writable_fields())
@@ -96,6 +130,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  #
+  # MARK: Reader
+  #
   def get_status(fulfillment_item) do
     returned_quantity =
       ReturnItem.Query.default()
@@ -114,6 +151,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     end
   end
 
+  #
+  # MARK: Preprocess
+  #
   defp fulfill_unlockable(unlockable_id, customer_id, opts) do
     unlock =
       %Unlock{ account_id: opts[:account].id, account: opts[:account] }
