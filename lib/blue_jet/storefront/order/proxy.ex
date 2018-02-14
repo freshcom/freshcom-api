@@ -34,12 +34,14 @@ defmodule BlueJet.Storefront.Order.Proxy do
   end
 
   def create_auto_fulfillment_package(order) do
-    opts = get_sopts(order)
+    opts =
+      get_sopts(order)
+      |> Map.put(:system_label, "auto")
 
     {:ok, fulfillment} = FulfillmentService.create_fulfillment_package(%{
       customer_id: order.customer_id,
       order_id: order.id,
-      system_label: "auto"
+      status: "fulfilled"
     }, opts)
 
     fulfillment

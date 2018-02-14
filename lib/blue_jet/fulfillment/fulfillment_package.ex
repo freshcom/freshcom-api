@@ -10,7 +10,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Fulfillment.IdentityService
   alias BlueJet.Fulfillment.FulfillmentPackage.Proxy
   alias BlueJet.Fulfillment.FulfillmentItem
 
@@ -18,6 +17,7 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
     field :label, :string

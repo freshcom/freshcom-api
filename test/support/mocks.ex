@@ -1,6 +1,8 @@
 Mox.defmock(BlueJet.EventHandlerMock, for: BlueJet.EventHandler)
 Mox.defmock(BlueJet.AuthorizationMock, for: BlueJet.Authorization)
 
+Mox.defmock(BlueJet.FileStorage.IdentityServiceMock, for: BlueJet.FileStorage.IdentityService)
+
 Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
 Mox.defmock(BlueJet.Goods.FileStorageServiceMock, for: BlueJet.Goods.FileStorageService)
 
@@ -17,14 +19,16 @@ Mox.defmock(BlueJet.Catalogue.GoodsServiceMock, for: BlueJet.Catalogue.GoodsServ
 Mox.defmock(BlueJet.Catalogue.IdentityServiceMock, for: BlueJet.Catalogue.IdentityService)
 Mox.defmock(BlueJet.Catalogue.FileStorageServiceMock, for: BlueJet.Catalogue.FileStorageService)
 
-Mox.defmock(BlueJet.Distribution.IdentityServiceMock, for: BlueJet.Distribution.IdentityService)
-
 Mox.defmock(BlueJet.DataTrading.GoodsServiceMock, for: BlueJet.DataTrading.GoodsService)
 Mox.defmock(BlueJet.DataTrading.CrmServiceMock, for: BlueJet.DataTrading.CrmService)
 Mox.defmock(BlueJet.DataTrading.CatalogueServiceMock, for: BlueJet.DataTrading.CatalogueService)
 
+Mox.defmock(BlueJet.Fulfillment.IdentityServiceMock, for: BlueJet.Fulfillment.IdentityService)
+Mox.defmock(BlueJet.Fulfillment.CrmServiceMock, for: BlueJet.Fulfillment.CrmService)
+Mox.defmock(BlueJet.Fulfillment.GoodsServiceMock, for: BlueJet.Fulfillment.GoodsService)
+
 Mox.defmock(BlueJet.Storefront.BalanceServiceMock, for: BlueJet.Storefront.BalanceService)
-Mox.defmock(BlueJet.Storefront.DistributionServiceMock, for: BlueJet.Storefront.DistributionService)
+Mox.defmock(BlueJet.Storefront.FulfillmentServiceMock, for: BlueJet.Storefront.FulfillmentService)
 Mox.defmock(BlueJet.Storefront.CatalogueServiceMock, for: BlueJet.Storefront.CatalogueService)
 Mox.defmock(BlueJet.Storefront.IdentityServiceMock, for: BlueJet.Storefront.IdentityService)
 Mox.defmock(BlueJet.Storefront.GoodsServiceMock, for: BlueJet.Storefront.GoodsService)

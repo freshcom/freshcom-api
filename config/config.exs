@@ -80,19 +80,20 @@ config :blue_jet, :email_regex, ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]
 
 config :blue_jet, :s3, prefix: "uploads"
 
+
 config :blue_jet, :authorization, BlueJet.Identity.Authorization
 
 config :blue_jet, :identity, %{
   listeners: [BlueJet.Balance.EventHandler, BlueJet.Notification.EventHandler]
 }
 
+config :blue_jet, :file_storage, %{
+  identity_service: BlueJet.Identity.Service,
+}
+
 config :blue_jet, :goods, %{
   identity_service: BlueJet.Identity.Service,
   file_storage_service: BlueJet.FileStorage.Service
-}
-
-config :blue_jet, :file_storage, %{
-  identity_service: BlueJet.Identity.Service,
 }
 
 config :blue_jet, :balance, %{
@@ -123,6 +124,13 @@ config :blue_jet, :data_trading, %{
   catalogue_service: BlueJet.Catalogue.Service
 }
 
+config :blue_jet, :fulfillment, %{
+  identity_service: BlueJet.Identity.Service,
+  crm_service: BlueJet.Crm.Service,
+  goods_service: BlueJet.Goods.Service,
+  listeners: [BlueJet.Storefront.EventHandler]
+}
+
 config :blue_jet, :storefront, %{
   balance_service: BlueJet.Balance.Service,
   fulfillment_service: BlueJet.Fulfillment.Service,
@@ -130,13 +138,6 @@ config :blue_jet, :storefront, %{
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
   crm_service: BlueJet.Crm.Service
-}
-
-config :blue_jet, :fulfillment, %{
-  identity_service: BlueJet.Identity.Service,
-  crm_service: BlueJet.Crm.Service,
-  goods_service: BlueJet.Goods.Service,
-  listeners: [BlueJet.Storefront.EventHandler]
 }
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")

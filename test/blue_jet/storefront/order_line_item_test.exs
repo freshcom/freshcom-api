@@ -9,10 +9,10 @@ defmodule BlueJet.OrderLineItemTest do
   alias BlueJet.Catalogue.{Product, Price}
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
-  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem}
 
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
-  alias BlueJet.Storefront.{CatalogueServiceMock, GoodsServiceMock, CrmServiceMock, DistributionServiceMock}
+  alias BlueJet.Storefront.{CatalogueServiceMock, GoodsServiceMock, CrmServiceMock, FulfillmentServiceMock}
 
   describe "schema" do
     test "when order is deleted line item should be deleted automatically" do
@@ -103,8 +103,8 @@ defmodule BlueJet.OrderLineItemTest do
       :description,
       :custom_data,
       :translations,
-      :source_id,
-      :source_type,
+      :target_id,
+      :target_type,
       :product_id,
       :price_id,
       :parent_id,
@@ -359,8 +359,8 @@ defmodule BlueJet.OrderLineItemTest do
       child = Repo.get_by(OrderLineItem, parent_id: oli.id)
       assert child.is_leaf == true
       assert child.name == stockable.name
-      assert child.source_id == stockable.id
-      assert child.source_type == "Stockable"
+      assert child.target_id == stockable.id
+      assert child.target_type == "Stockable"
       assert child.order_id == oli.order_id
       assert child.sub_total_cents == oli.sub_total_cents
       assert child.tax_one_cents == oli.tax_one_cents
@@ -379,7 +379,7 @@ defmodule BlueJet.OrderLineItemTest do
   end
 
   describe "auto_fulfill/1" do
-    test "when source is an unlockable" do
+    test "when target is an unlockable" do
       account = Repo.insert!(%Account{})
 
       unlockable = Repo.insert!(%Unlockable{
@@ -392,10 +392,10 @@ defmodule BlueJet.OrderLineItemTest do
         name: Faker.String.base64(5)
       })
 
-      fulfillment = %Fulfillment{}
-      fli = %FulfillmentLineItem{}
-      DistributionServiceMock
-      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
+      fulfillment_package = %FulfillmentPackage{}
+      fulfillment_item = %FulfillmentItem{}
+      FulfillmentServiceMock
+      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
       order = Repo.insert!(%Order{
         account_id: account.id,
@@ -404,14 +404,14 @@ defmodule BlueJet.OrderLineItemTest do
       OrderLineItem.auto_fulfill(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
-        source_id: unlockable.id,
-        source_type: "Unlockable"
-      }, fulfillment)
+        target_id: unlockable.id,
+        target_type: "Unlockable"
+      }, fulfillment_package)
 
       assert Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
     end
 
-    test "when source is an depositable" do
+    test "when target is an depositable" do
       account = %Account{}
       depositable = %Depositable{
         id: Ecto.UUID.generate(),
@@ -428,35 +428,35 @@ defmodule BlueJet.OrderLineItemTest do
       |> expect(:get_point_account, fn(_, _) -> point_account end)
       |> expect(:create_point_transaction, fn(_, _) -> {:ok, point_transaction} end)
 
-      fulfillment = %Fulfillment{}
-      fli = %FulfillmentLineItem{}
-      DistributionServiceMock
-      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
+      fulfillment_package = %FulfillmentPackage{}
+      fulfillment_item = %FulfillmentItem{}
+      FulfillmentServiceMock
+      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
       order = %Order{ customer_id: Ecto.UUID.generate() }
       OrderLineItem.auto_fulfill(%OrderLineItem{
         account: account,
         order: order,
-        source_id: depositable.id,
-        source_type: "Depositable"
-      }, fulfillment)
+        target_id: depositable.id,
+        target_type: "Depositable"
+      }, fulfillment_package)
 
       verify!()
     end
 
-    test "when source is a point transaction" do
+    test "when target is a point transaction" do
       CrmServiceMock
       |> expect(:update_point_transaction, fn(_, _, _) -> {:ok, %PointTransaction{}} end)
 
-      fulfillment = %Fulfillment{}
-      fli = %FulfillmentLineItem{}
-      DistributionServiceMock
-      |> expect(:create_fulfillment_line_item, fn(_, _) -> fli end)
+      fulfillment_package = %FulfillmentPackage{}
+      fulfillment_item = %FulfillmentItem{}
+      FulfillmentServiceMock
+      |> expect(:create_fulfillment_item, fn(_, _) -> fulfillment_item end)
 
       OrderLineItem.auto_fulfill(%OrderLineItem{
-        source_id: Ecto.UUID.generate(),
-        source_type: "PointTransaction"
-      }, fulfillment)
+        target_id: Ecto.UUID.generate(),
+        target_type: "PointTransaction"
+      }, fulfillment_package)
 
       verify!()
     end
@@ -468,10 +468,10 @@ defmodule BlueJet.OrderLineItemTest do
       assert result == "fulfilled"
     end
 
-    test "when there is no fulfillment line item" do
-      flis = []
-      DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
+    test "when there is no fulfillment item" do
+      fulfillment_items = []
+      FulfillmentServiceMock
+      |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -479,13 +479,13 @@ defmodule BlueJet.OrderLineItemTest do
       assert result == "pending"
     end
 
-    test "when all corresponding fulfillment line item is returned" do
-      flis = [
-        %FulfillmentLineItem{ status: "returned", quantity: 2 },
-        %FulfillmentLineItem{ status: "returned", quantity: 3 }
+    test "when all corresponding fulfillment item is returned" do
+      fulfillment_items = [
+        %FulfillmentItem{ status: "returned", quantity: 2 },
+        %FulfillmentItem{ status: "returned", quantity: 3 }
       ]
-      DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
+      FulfillmentServiceMock
+      |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -493,13 +493,13 @@ defmodule BlueJet.OrderLineItemTest do
       assert result == "returned"
     end
 
-    test "when some of the fulfillment line item is fulfilled" do
-      flis = [
-        %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
-        %FulfillmentLineItem{ status: "pending", quantity: 1 }
+    test "when some of the fulfillment item is fulfilled" do
+      fulfillment_items = [
+        %FulfillmentItem{ status: "fulfilled", quantity: 2 },
+        %FulfillmentItem{ status: "pending", quantity: 1 }
       ]
-      DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
+      FulfillmentServiceMock
+      |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 
@@ -507,13 +507,13 @@ defmodule BlueJet.OrderLineItemTest do
       assert result == "partially_fulfilled"
     end
 
-    test "when all of fulfillment line item is fulfilled" do
-      flis = [
-        %FulfillmentLineItem{ status: "fulfilled", quantity: 2 },
-        %FulfillmentLineItem{ status: "fulfilled", quantity: 3 }
+    test "when all of fulfillment item is fulfilled" do
+      fulfillment_items = [
+        %FulfillmentItem{ status: "fulfilled", quantity: 2 },
+        %FulfillmentItem{ status: "fulfilled", quantity: 3 }
       ]
-      DistributionServiceMock
-      |> expect(:list_fulfillment_line_item, fn(_, _) -> flis end)
+      FulfillmentServiceMock
+      |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
 
       result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ order_quantity: 5 })
 

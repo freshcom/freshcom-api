@@ -10,7 +10,6 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Fulfillment.IdentityService
   alias BlueJet.Fulfillment.ReturnPackage.Proxy
   alias BlueJet.Fulfillment.ReturnItem
 
@@ -18,10 +17,12 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    field :system_label, :string
+
+    field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
     field :label, :string
-    field :system_label, :string
 
     field :caption, :string
     field :description, :string

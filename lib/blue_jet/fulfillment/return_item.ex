@@ -11,7 +11,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Fulfillment.{GoodsService, CrmService}
+  alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.{FulfillmentItem, ReturnPackage, Unlock}
   alias BlueJet.Fulfillment.ReturnItem.Proxy
 
@@ -91,10 +91,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   end
 
   defp put_target(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item } }) do
-    changeset =
-      changeset
-      |> put_change(:target_type, fulfillment_item.target_type)
-      |> put_change(:target_id, fulfillment_item.target_id)
+    changeset
+    |> put_change(:target_type, fulfillment_item.target_type)
+    |> put_change(:target_id, fulfillment_item.target_id)
   end
 
   defp put_target(changeset), do: changeset
@@ -157,13 +156,13 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     order_id = get_field(changeset, :order_id)
     case Repo.get_by(ReturnPackage, account_id: account_id, order_id: order_id, system_label: "auto") do
       nil ->
-        Repo.insert!(%ReturnPackage{ account_id: account_id, order_id: order_id, system_label: "auto" })
+        Repo.insert!(%ReturnPackage{ account_id: account_id, order_id: order_id, system_label: "auto", status: "returned" })
 
       other -> other
     end
   end
 
-  defp return_unlockable(unlock_id, opts) do
+  defp return_unlockable(unlock_id) do
     unlock =
       Repo.get!(Unlock, unlock_id)
       |> Repo.delete!()
@@ -194,7 +193,6 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   end
 
   def preprocess(changeset = %{
-      data: %{ account: account },
       changes: %{ status: "returned" }
     },
     %{
@@ -202,8 +200,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
       source_id: unlock_id
     }
   ) do
-    opts = %{ account: account }
-    {:ok, unlock} = return_unlockable(unlock_id, opts)
+    {:ok, _} = return_unlockable(unlock_id)
     package = get_or_create_auto_return_package(changeset)
     changeset = put_change(changeset, :package_id, package.id)
 
@@ -216,7 +213,6 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     },
     %{
       target_type: "Depositable",
-      target_id: depositable_id,
       source_type: "PointTransaction",
       source_id: point_transaction_id,
       quantity: fulfilled_quantity
@@ -268,7 +264,6 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   def preprocess(changeset = %{
       action: :insert,
-      data: data,
       changes: %{ status: "returned" }
     }
   ) do

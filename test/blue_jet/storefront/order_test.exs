@@ -7,8 +7,8 @@ defmodule BlueJet.OrderTest do
   alias BlueJet.Crm.Customer
 
   alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Storefront.{BalanceServiceMock, DistributionServiceMock, IdentityServiceMock}
-  alias BlueJet.Distribution.{Fulfillment, FulfillmentLineItem}
+  alias BlueJet.Storefront.{BalanceServiceMock, FulfillmentServiceMock, IdentityServiceMock}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem}
 
   describe "schema" do
     test "when account is deleted order should be automatically deleted" do
@@ -102,7 +102,7 @@ defmodule BlueJet.OrderTest do
         authorization_total_cents: 500,
         is_leaf: true,
         auto_fulfill: false,
-        source_type: "Unlockable"
+        target_type: "Unlockable"
       })
 
       changeset =
@@ -574,15 +574,21 @@ defmodule BlueJet.OrderTest do
         change(%Order{}, %{ status: "opened" })
         |> Map.put(:action, :update)
 
-      fulfillment = %Fulfillment{ id: Ecto.UUID.generate() }
-      fli = %FulfillmentLineItem{ id: Ecto.UUID.generate(), fulfillment_id: fulfillment.id }
-      DistributionServiceMock
-      |> expect(:create_fulfillment, fn(_, _) -> {:ok, fulfillment} end)
-      |> expect(:create_fulfillment_line_item, fn(_, _) -> {:ok, fli} end)
+      fulfillment_package = %FulfillmentPackage{}
+      fulfillment_item = %FulfillmentItem{
+        status: "fulfilled",
+        quantity: 1
+      }
+      FulfillmentServiceMock
+      |> expect(:create_fulfillment_package, fn(_, _) -> {:ok, fulfillment_package} end)
+      |> expect(:create_fulfillment_item, fn(_, _) -> {:ok, fulfillment_item} end)
+      |> expect(:list_fulfillment_item, fn(_, _) -> [fulfillment_item] end)
 
-      Order.process(order, changeset)
+      {:ok, order} = Order.process(order, changeset)
 
       verify!()
+
+      assert order.fulfillment_status == "partially_fulfilled"
     end
   end
 end

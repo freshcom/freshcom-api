@@ -25,10 +25,15 @@ config :blue_jet, BlueJet.GlobalMailer,
 config :blue_jet, BlueJet.AccountMailer,
   adapter: Bamboo.TestAdapter
 
+
 config :blue_jet, :authorization, BlueJet.AuthorizationMock
 
 config :blue_jet, :identity, %{
   listeners: [BlueJet.EventHandlerMock]
+}
+
+config :blue_jet, :file_storage, %{
+  identity_service: BlueJet.FileStorage.IdentityServiceMock
 }
 
 config :blue_jet, :goods, %{
@@ -64,21 +69,18 @@ config :blue_jet, :data_trading, %{
   catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
 }
 
+config :blue_jet, :fulfillment, %{
+  identity_service: BlueJet.Fulfillment.IdentityServiceMock,
+  crm_service: BlueJet.Fulfillment.CrmServiceMock,
+  goods_service: BlueJet.Fulfillment.GoodsServiceMock,
+  listeners: [BlueJet.EventHandlerMock]
+}
+
 config :blue_jet, :storefront, %{
   balance_service: BlueJet.Storefront.BalanceServiceMock,
-  distribution_service: BlueJet.Storefront.DistributionServiceMock,
+  fulfillment_service: BlueJet.Storefront.FulfillmentServiceMock,
   catalogue_service: BlueJet.Storefront.CatalogueServiceMock,
   identity_service: BlueJet.Storefront.IdentityServiceMock,
   goods_service: BlueJet.Storefront.GoodsServiceMock,
   crm_service: BlueJet.Storefront.CrmServiceMock
-}
-
-config :blue_jet, :data_trading, %{
-  goods_service: BlueJet.DataTrading.GoodsServiceMock,
-  crm_service: BlueJet.DataTrading.CrmServiceMock,
-  catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
-}
-
-config :blue_jet, :distribution, %{
-  identity_service: BlueJet.Distribution.IdentityServiceMock
 }

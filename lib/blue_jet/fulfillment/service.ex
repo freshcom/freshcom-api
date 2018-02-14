@@ -32,7 +32,7 @@ defmodule BlueJet.Fulfillment.Service do
     preloads = get_preloads(opts, account)
 
     changeset =
-      %FulfillmentPackage{ account_id: account.id, account: account }
+      %FulfillmentPackage{ account_id: account.id, account: account, system_label: opts[:system_label] }
       |> FulfillmentPackage.changeset(:insert, fields)
 
     with {:ok, fulfillment_package} <- Repo.insert(changeset) do
