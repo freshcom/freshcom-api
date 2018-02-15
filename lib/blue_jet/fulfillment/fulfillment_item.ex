@@ -60,6 +60,11 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     :id,
     :account_id,
     :order_id,
+    :returned_quantity,
+    :gross_quantity,
+    :order_id,
+    :target_id,
+    :target_type,
     :inserted_at,
     :updated_at
   ]
@@ -73,6 +78,22 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   end
 
   #
+  # MARK: Private Helper
+  #
+  defp get_package(changeset) do
+    account_id = get_field(changeset, :account_id)
+    package_id = get_field(changeset, :package_id)
+
+    package = if package_id do
+      get_field(changeset, :package) || Repo.get_by(FulfillmentPackage, account_id: account_id, id: package_id)
+    else
+      nil
+    end
+
+    package
+  end
+
+  #
   # MARK: Validation
   #
   defp validate_package_id(changeset = %{
@@ -80,8 +101,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     valid?: true,
     changes: %{ package_id: package_id }
   }) do
-    account_id = get_field(changeset, :account_id)
-    package = Repo.get_by(FulfillmentPackage, account_id: account_id, id: package_id)
+    package = get_package(changeset)
 
     if package do
       changeset
@@ -104,18 +124,32 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     |> validate_inclusion(:status, ["pending", "fulfilled"])
   end
 
-  # TODO:
-  defp put_order_id() do
-
-  end
-
   #
   # MARK: Changeset
   #
+  defp put_package(changeset) do
+    data = %{ changeset.data | package: get_package(changeset) }
+    %{ changeset | data: data }
+  end
+
+  defp put_order_id(changeset = %{ action: :insert }) do
+    package = get_package(changeset)
+
+    if package do
+      put_change(changeset, :order_id, package.order_id)
+    else
+      changeset
+    end
+  end
+
+  defp put_order_id(changeset), do: changeset
+
   def changeset(fulfillment_item, :insert, params) do
     fulfillment_item
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
+    |> put_package()
+    |> put_order_id()
     |> validate()
   end
 
@@ -126,6 +160,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
     fulfillment_item
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end

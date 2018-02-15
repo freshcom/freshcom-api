@@ -6,7 +6,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackageTest do
 
   test "writable_fields/0" do
     assert FulfillmentPackage.writable_fields() == [
-      :status,
       :code,
       :name,
       :label,
@@ -20,13 +19,23 @@ defmodule BlueJet.Fulfillment.FulfillmentPackageTest do
   end
 
   describe "validate/1" do
-    test "when missing required fields" do
+    test "when missing order_id fields" do
       changeset =
         change(%FulfillmentPackage{}, %{})
+        |> Map.put(:action, :insert)
         |> FulfillmentPackage.validate()
 
       assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:order_id]
+    end
+
+    test "when given valid fields" do
+      changeset =
+        change(%FulfillmentPackage{}, %{ order_id: Ecto.UUID.generate() })
+        |> Map.put(:action, :insert)
+        |> FulfillmentPackage.validate()
+
+      assert changeset.valid? == true
     end
   end
 
