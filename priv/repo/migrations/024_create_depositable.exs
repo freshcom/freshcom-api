@@ -14,7 +14,7 @@ defmodule BlueJet.Repo.Migrations.CreatePointDeposit do
 
       add :print_name, :string
       add :amount, :integer, null: false
-      add :target_type, :string, null: false
+      add :gateway, :string, null: false
 
       add :caption, :string
       add :description, :string

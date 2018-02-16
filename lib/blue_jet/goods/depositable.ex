@@ -22,7 +22,7 @@ defmodule BlueJet.Goods.Depositable do
 
     field :print_name, :string
     field :amount, :integer
-    field :target_type, :string
+    field :gateway, :string
 
     field :caption, :string
     field :description, :string

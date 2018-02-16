@@ -19,6 +19,7 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
 
     field :system_label, :string
 
+    # pending, in_progress, partially_fulfilled, fulfilled, partially_returned, returned, discarded
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -80,6 +81,57 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     writable_fields -- [:order_id, :customer_id]
   end
 
+  #
+  # MARK: Reader
+  #
+  def get_status(fulfillment_package) do
+    fulfillment_package = Repo.preload(fulfillment_package, :items)
+    items = fulfillment_package.items
+
+    pending_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status in ["pending", "in_progress"], do: acc + 1, else: acc
+    end)
+
+    fulfilled_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status == "fulfilled", do: acc + 1, else: acc
+    end)
+
+    partially_returned_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status == "partially_returned", do: acc + 1, else: acc
+    end)
+
+    returned_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status == "returned", do: acc + 1, else: acc
+    end)
+
+    discarded_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status == "discarded", do: acc + 1, else: acc
+    end)
+
+    cond do
+      fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
+        if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"
+
+      discarded_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
+        "discarded"
+
+      returned_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 ->
+        "returned"
+
+      pending_count > 0 ->
+        "paritally_fulfilled"
+
+      partially_returned_count > 0 || returned_count > 0 ->
+        "partially_returned"
+
+      fulfilled_count > 0 ->
+        "fulfilled"
+    end
+  end
+
+  #
+  # MARK: Changeset
+  #
   def changeset(fulfillment_package, :insert, params) do
     fulfillment_package
     |> cast(params, castable_fields(:insert))

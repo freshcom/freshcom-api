@@ -19,7 +19,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    # pending, fulfilled, partially_returned, returned
+    # pending, fulfilled, partially_returned, returned, discarded
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -112,16 +112,41 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
   defp validate_package_id(changeset), do: changeset
 
+  defp validate_status(changeset = %{
+    data: %{ status: "pending" },
+    changes: %{ status: "discarded"}
+  }) do
+    add_error(changeset, :status, "is invalid", validation: :must_be_fulfilled)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "discarded" },
+    changes: %{ status: _ }
+  }) do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "fulfilled" },
+    changes: %{ status: "pending" }
+  }) do
+    add_error(changeset, :status, "is invalid", validation: :must_be_discarded)
+  end
+
+  defp validate_status(changeset), do: changeset
+
   def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required([:status, :quantity, :order_line_item_id, :package_id])
+    |> validate_status()
     |> validate_package_id()
     |> validate_inclusion(:status, ["pending", "fulfilled"])
   end
 
   def validate(changeset = %{ action: :update }) do
     changeset
-    |> validate_inclusion(:status, ["pending", "fulfilled"])
+    |> validate_inclusion(:status, ["pending", "fulfilled", "discarded"])
+    |> validate_status()
   end
 
   #
@@ -168,11 +193,17 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   #
   # MARK: Reader
   #
-  def get_status(fulfillment_item) do
+  def get_returned_quantity(fulfillment_item) do
     returned_quantity =
       ReturnItem.Query.default()
       |> ReturnItem.Query.filter_by(%{ fulfillment_item_id: fulfillment_item.id, status: "returned" })
       |> Repo.aggregate(:sum, :quantity)
+
+    returned_quantity || 0
+  end
+
+  def get_status(fulfillment_item) do
+    returned_quantity = get_returned_quantity(fulfillment_item)
 
     cond do
       returned_quantity == 0 ->
@@ -203,30 +234,32 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
   defp fulfill_depositable(depositable_id, quantity, customer_id, opts) do
     depositable = GoodsService.get_depositable(%{ id: depositable_id }, opts)
-    point_account = CrmService.get_point_account(%{ customer_id: customer_id }, opts)
-    CrmService.create_point_transaction(%{
-      point_account_id: point_account.id,
-      status: "committed",
-      amount: quantity * depositable.amount,
-      reason_label: "deposit_by_depositable"
-    }, opts)
+
+    if depositable.gateway == "freshcom" do
+      point_account = CrmService.get_point_account(%{ customer_id: customer_id }, opts)
+      CrmService.create_point_transaction(%{
+        point_account_id: point_account.id,
+        status: "committed",
+        amount: quantity * depositable.amount,
+        reason_label: "deposit_by_depositable"
+      }, opts)
+    else
+      {:ok, nil}
+    end
   end
 
   defp fulfill_point_transaction(pt_id, opts) do
     CrmService.update_point_transaction(pt_id, %{ status: "committed" }, opts)
   end
 
-  def preprocess(changeset = %{
+  defp preprocess(changeset = %{
     data: %{
       package: %{ customer_id: customer_id },
       account: account
     },
-    changes: %{
-      status: "fulfilled",
-      target_type: "Unlockable",
-      target_id: unlockable_id
-    }
-  }) do
+    changes: %{ status: "fulfilled" }
+  }, "Unlockable") do
+    unlockable_id = get_field(changeset, :target_id)
     opts = %{ account: account }
 
     {:ok, unlock} = fulfill_unlockable(unlockable_id, customer_id, opts)
@@ -239,18 +272,16 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     {:ok, changeset}
   end
 
-  def preprocess(changeset = %{
+  defp preprocess(changeset = %{
     data: %{
       package: %{ customer_id: customer_id },
       account: account
     },
-    changes: %{
-      status: "fulfilled",
-      target_type: "Depositable",
-      target_id: depositable_id,
-      quantity: quantity
-    }
-  }) do
+    changes: %{ status: "fulfilled" }
+  }, "Depositable") do
+    depositable_id = get_field(changeset, :target_id)
+    quantity = get_field(changeset, :quantity)
+
     opts = %{ account: account }
     case fulfill_depositable(depositable_id, quantity, customer_id, opts) do
       {:ok, nil} ->
@@ -267,16 +298,11 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     end
   end
 
-  def preprocess(changeset = %{
-    data: %{
-      account: account
-    },
-    changes: %{
-      status: "fulfilled",
-      target_type: "PointTransaction",
-      target_id: point_transaction_id
-    }
-  }) do
+  defp preprocess(changeset = %{
+    data: %{ account: account },
+    changes: %{ status: "fulfilled" }
+  }, "PointTransaction") do
+    point_transaction_id = get_field(changeset, :target_id)
     opts = %{ account: account }
 
     case fulfill_point_transaction(point_transaction_id, opts) do
@@ -292,33 +318,13 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   end
 
   def preprocess(changeset = %{
-      data: data,
-      changes: %{ status: "fulfilled" }
-    }
-  ) do
+    data: data,
+    changes: %{ status: "fulfilled" }
+  }) do
     data = Repo.preload(data, :package)
     changeset = %{ changeset | data: data }
 
-    preprocess(changeset)
-  end
-
-  def preprocess(changeset = %{
-    data: %{
-      source_type: "Unlock",
-      source_id: unlock_id
-    },
-    changes: %{
-      status: "returned"
-    }
-  }) do
-    Repo.get!(Unlock, unlock_id)
-    |> Repo.delete!()
-
-    changeset =
-      changeset
-      |> put_change(:source_type, nil)
-      |> put_change(:source_id, nil)
-
-    {:ok, changeset}
+    target_type = get_field(changeset, :target_type)
+    preprocess(changeset, target_type)
   end
 end
