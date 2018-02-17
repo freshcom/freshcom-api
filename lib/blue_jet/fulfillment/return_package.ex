@@ -83,4 +83,8 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def get_status(return_package) do
+    return_package.status
+  end
 end

@@ -327,4 +327,17 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     target_type = get_field(changeset, :target_type)
     preprocess(changeset, target_type)
   end
+
+  def process(fulfillment_item, %{
+    changes: %{ status: _ }
+  }) do
+    fulfillment_item = Repo.preload(fulfillment_item, :package)
+    fulfillment_package = fulfillment_item.package
+
+    # Fulfillment Package
+    change(fulfillment_package, %{ status: FulfillmentPackage.get_status(fulfillment_package) })
+    |> Repo.update!()
+
+    {:ok, fulfillment_item}
+  end
 end

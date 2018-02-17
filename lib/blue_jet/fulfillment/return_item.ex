@@ -291,9 +291,16 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   def process(return_item, %{
     changes: %{ status: "returned" }
   }) do
-    return_item = Repo.preload(return_item, :fulfillment_item)
+    return_item = Repo.preload(return_item, [:package, fulfillment_item: :package])
+    return_package = return_item.package
     fulfillment_item = return_item.fulfillment_item
+    fulfillment_package = fulfillment_item.package
 
+    # Return Package
+    change(return_item.package, %{ status: ReturnPackage.get_status(return_package) })
+    |> Repo.update!()
+
+    # Fulfillment Item
     new_status = FulfillmentItem.get_status(fulfillment_item)
     new_returned_quantity = fulfillment_item.returned_quantity + return_item.quantity
     new_gross_quantity = fulfillment_item.quantity - new_returned_quantity
@@ -303,6 +310,10 @@ defmodule BlueJet.Fulfillment.ReturnItem do
       returned_quantity: new_returned_quantity,
       gross_quantity: new_gross_quantity
     })
+    |> Repo.update!()
+
+    # Fulfillment Package
+    change(fulfillment_package, %{ status: FulfillmentPackage.get_status(fulfillment_package) })
     |> Repo.update!()
 
     {:ok, return_item}

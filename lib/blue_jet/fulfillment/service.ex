@@ -144,6 +144,9 @@ defmodule BlueJet.Fulfillment.Service do
       |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset}) ->
           Repo.insert(changeset)
          end)
+      |> Multi.run(:processed_fulfillment_item, fn(%{ fulfillment_item: fulfillment_item, changeset: changeset }) ->
+          FulfillmentItem.process(fulfillment_item, changeset)
+         end)
       |> Multi.run(:after_create, fn(%{ fulfillment_item: fulfillment_item }) ->
           emit_event("fulfillment.fulfillment_item.after_create", %{ fulfillment_item: fulfillment_item })
          end)
