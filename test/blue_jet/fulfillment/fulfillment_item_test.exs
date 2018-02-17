@@ -96,13 +96,11 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
     test "when there is no return item" do
       fulfillment_item1 = %FulfillmentItem{ status: "pending" }
       fulfillment_item2 = %FulfillmentItem{ status: "fulfilled" }
-      fulfillment_item3 = %FulfillmentItem{ status: "partially_returned" }
-      fulfillment_item4 = %FulfillmentItem{ status: "returned" }
+      fulfillment_item3 = %FulfillmentItem{ status: "discarded" }
 
       assert FulfillmentItem.get_status(fulfillment_item1) == "pending"
       assert FulfillmentItem.get_status(fulfillment_item2) == "fulfilled"
-      assert FulfillmentItem.get_status(fulfillment_item3) == "partially_returned"
-      assert FulfillmentItem.get_status(fulfillment_item4) == "returned"
+      assert FulfillmentItem.get_status(fulfillment_item3) == "discarded"
     end
 
     test "when returned quantity is smaller than fulfilled quantity" do

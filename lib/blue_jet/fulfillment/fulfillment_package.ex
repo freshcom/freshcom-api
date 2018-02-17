@@ -109,17 +109,17 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     end)
 
     cond do
-      fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
-        if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"
-
       discarded_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
         "discarded"
+
+      fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
+        if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"
 
       returned_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 ->
         "returned"
 
       pending_count > 0 ->
-        "paritally_fulfilled"
+        "partially_fulfilled"
 
       partially_returned_count > 0 || returned_count > 0 ->
         "partially_returned"

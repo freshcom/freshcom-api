@@ -19,7 +19,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    # pending, fulfilled, partially_returned, returned, discarded
+    # pending, in_progress, fulfilled, partially_returned, returned, discarded
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
