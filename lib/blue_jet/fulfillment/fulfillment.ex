@@ -4,7 +4,6 @@ defmodule BlueJet.Fulfillment do
 
   alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.Service
-  alias BlueJet.Fulfillment.FulfillmentItem
 
   #
   # MARK: Fulfillment Package

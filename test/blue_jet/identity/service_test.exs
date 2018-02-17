@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Service
-  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
+  alias BlueJet.Identity.{User, Account}
 
   describe "create_email_confirmation/2" do
     test "when token is nil" do
@@ -98,7 +98,6 @@ defmodule BlueJet.Identity.ServiceTest do
     end
 
     test "when account is nil and email does not exist" do
-      account = Repo.insert!(%Account{})
       assert Service.create_email_confirmation(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
     end
 

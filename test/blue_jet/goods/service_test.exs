@@ -354,19 +354,19 @@ defmodule BlueJet.Goods.ServiceTest do
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: other_account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -379,31 +379,31 @@ defmodule BlueJet.Goods.ServiceTest do
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
       Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -430,7 +430,7 @@ defmodule BlueJet.Goods.ServiceTest do
 
       fields = %{
         "name" => Faker.Commerce.product_name(),
-        "target_type" => "PointAccount",
+        "gateway" => "freshcom",
         "amount" => 500
       }
 
@@ -446,7 +446,7 @@ defmodule BlueJet.Goods.ServiceTest do
       depositable = Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -459,7 +459,7 @@ defmodule BlueJet.Goods.ServiceTest do
       depositable = Repo.insert!(%Depositable{
         account_id: other_account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -494,7 +494,7 @@ defmodule BlueJet.Goods.ServiceTest do
       depositable = Repo.insert!(%Depositable{
         account_id: other_account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -508,7 +508,7 @@ defmodule BlueJet.Goods.ServiceTest do
       depositable = Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 
@@ -528,7 +528,7 @@ defmodule BlueJet.Goods.ServiceTest do
       depositable = Repo.insert!(%Depositable{
         account_id: account.id,
         name: Faker.Commerce.product_name(),
-        target_type: "PointAccount",
+        gateway: "freshcom",
         amount: 500
       })
 

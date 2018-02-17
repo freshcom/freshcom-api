@@ -86,7 +86,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   end
 
   def get_status(return_package) do
-    return_package = Repo.preload(return_package)
+    return_package = Repo.preload(return_package, :items)
     items = return_package.items
 
     pending_count = Enum.reduce(items, 0, fn(item, acc) ->

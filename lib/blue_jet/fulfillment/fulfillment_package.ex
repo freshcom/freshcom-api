@@ -150,4 +150,9 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
+
+  def changeset(fulfillment_package, :delete) do
+    change(fulfillment_package)
+    |> Map.put(:action, :delete)
+  end
 end

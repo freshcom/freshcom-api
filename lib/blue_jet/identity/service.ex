@@ -1,4 +1,5 @@
 defmodule BlueJet.Identity.Service do
+  use BlueJet, :service
   use BlueJet.EventEmitter, namespace: :identity
 
   alias BlueJet.Repo
@@ -15,7 +16,7 @@ defmodule BlueJet.Identity.Service do
 
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
   @callback delete_user(String.t, map) :: {:ok, User.t} | {:error, any}
-  @callback get_user_by_email(String.t, map) :: User.t | nil
+  @callback get_user(map, map) :: User.t | nil
 
   @callback create_email_confirmation_token(User.t) :: {:ok, User.t} | {:error, any}
   @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
@@ -33,6 +34,14 @@ defmodule BlueJet.Identity.Service do
   def get_account(%{ account_id: account_id }), do: get_account(account_id)
   def get_account(%{ account: account }), do: account
   def get_account(id), do: Repo.get!(Account, id)
+
+  defp get_account_id(opts) do
+    cond do
+      opts[:account_id] -> opts[:account_id]
+      opts[:account] -> opts[:account].id
+      true -> nil
+    end
+  end
 
   defp put_account(opts) do
     %{ opts | account: get_account(opts) }
@@ -252,7 +261,7 @@ defmodule BlueJet.Identity.Service do
   def create_email_confirmation_token(%{ "email" => nil }, _), do: {:error, :not_found}
 
   def create_email_confirmation_token(%{ "email" => email }, opts) do
-    user = get_user_by_email(email, opts)
+    user = get_user(%{ email: email }, opts)
 
     if user do
       %{ user | account: opts[:account] }
@@ -269,7 +278,7 @@ defmodule BlueJet.Identity.Service do
       |> Changeset.validate_format(:email, Application.get_env(:blue_jet, :email_regex))
 
     with true <- changeset.valid?,
-         user = %User{} <- get_user_by_email(email, opts)
+         user = %User{} <- get_user(%{ email: email }, opts)
     do
       user = User.refresh_password_reset_token(user)
       event_data = Map.merge(opts, %{ user: user })
@@ -333,21 +342,34 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  defp get_user_by_email(email, opts = %{ account: nil }) when map_size(opts) == 1 do
-    get_user_by_email(email, %{})
-  end
-
-  defp get_user_by_email(email, opts) when map_size(opts) == 0 do
-    User.Query.default()
-    |> User.Query.global()
-    |> Repo.get_by(email: email)
-  end
-
-  defp get_user_by_email(email, opts) do
-    account_id = opts[:account_id] || opts[:account].id
+  def get_user(fields, opts) do
+    account_id = get_account_id(opts)
 
     User.Query.default()
     |> User.Query.for_account(account_id)
-    |> Repo.get_by(email: email)
+    |> Repo.get_by(fields)
+  end
+
+  def delete_user(nil, _), do: {:error, :not_found}
+
+  def delete_user(user = %User{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      user
+      |> User.changeset(:delete)
+
+    with {:ok, user} <- Repo.delete(changeset) do
+      {:ok, user}
+    else
+      other -> other
+    end
+  end
+
+  def delete_user(id, opts) do
+    account_id = get_account_id(opts)
+
+    Repo.get_by(User, account_id: account_id, id: id)
+    |> delete_user(opts)
   end
 end

@@ -25,7 +25,7 @@ defmodule BlueJet.Fulfillment.Service do
   end
 
   #
-  # MARK: FulfillmentPackage
+  # MARK: Fulfillment Package
   #
   def create_fulfillment_package(fields, opts) do
     account = get_account(opts)

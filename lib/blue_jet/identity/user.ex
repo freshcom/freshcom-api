@@ -6,6 +6,7 @@ defmodule BlueJet.Identity.User do
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.RefreshToken
   alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.User.Query
 
   schema "users" do
     field :status, :string, default: "active"
@@ -77,8 +78,8 @@ defmodule BlueJet.Identity.User do
 
   defp username_valid?(username, account_id) do
     existing_user =
-      __MODULE__.Query.default()
-      |> __MODULE__.Query.member_of_account(account_id)
+      Query.default()
+      |> Query.member_of_account(account_id)
       |> Repo.get_by(username: username)
 
     !existing_user
@@ -210,29 +211,5 @@ defmodule BlueJet.Identity.User do
     user
     |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))
     |> Repo.update!()
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Identity.User
-
-    def default() do
-      from(u in User, order_by: [desc: :inserted_at])
-    end
-
-    def global(query) do
-      from u in query, where: is_nil(u.account_id)
-    end
-
-    def for_account(query, account_id) do
-      from(u in query, where: u.account_id == ^account_id)
-    end
-
-    def member_of_account(query, account_id) do
-      from u in query,
-        join: ac in AccountMembership, on: ac.user_id == u.id,
-        where: ac.account_id == ^account_id
-    end
   end
 end

@@ -56,7 +56,7 @@ defmodule BlueJet.Goods.Depositable do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:status, :name, :amount, :target_type])
+    |> validate_required([:status, :name, :amount, :gateway])
   end
 
   def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset

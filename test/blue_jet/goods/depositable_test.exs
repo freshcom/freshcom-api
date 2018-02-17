@@ -14,7 +14,7 @@ defmodule BlueJet.Goods.DepositableTest do
         account_id: account.id,
         name: Faker.String.base64(5),
         amount: 500,
-        target_type: "PointAccount"
+        gateway: "freshcom"
       })
       Repo.delete!(account)
 
@@ -30,7 +30,7 @@ defmodule BlueJet.Goods.DepositableTest do
       :label,
       :print_name,
       :amount,
-      :target_type,
+      :gateway,
       :caption,
       :description,
       :custom_data,
@@ -46,7 +46,7 @@ defmodule BlueJet.Goods.DepositableTest do
         |> Depositable.validate()
 
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :amount, :target_type]
+      assert Keyword.keys(changeset.errors) == [:name, :amount, :gateway]
     end
   end
 
@@ -61,11 +61,11 @@ defmodule BlueJet.Goods.DepositableTest do
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         amount: 500,
-        target_type: "PointAccount"
+        gateway: "freshcom"
       })
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:amount, :name, :print_name, :target_type]
+      assert Map.keys(changeset.changes) == [:amount, :gateway, :name, :print_name]
     end
 
     test "when given valid fields with locale" do
@@ -78,11 +78,11 @@ defmodule BlueJet.Goods.DepositableTest do
       changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
         name: Faker.String.base64(5),
         amount: 500,
-        target_type: "PointAccount"
+        gateway: "freshcom"
       }, "en", "zh-CN")
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:amount, :target_type, :translations]
+      assert Map.keys(changeset.changes) == [:amount, :gateway, :translations]
     end
 
     test "when given invalid fields" do

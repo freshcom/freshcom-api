@@ -4,7 +4,6 @@ defmodule BlueJet.Storefront.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Goods.Unlockable
 
   alias BlueJet.Storefront.{CrmServiceMock, CatalogueServiceMock, BalanceServiceMock}
   alias BlueJet.Storefront.Service

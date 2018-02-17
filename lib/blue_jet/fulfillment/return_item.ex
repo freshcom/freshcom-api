@@ -12,7 +12,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   ], container: :translations
 
   alias BlueJet.Fulfillment.CrmService
-  alias BlueJet.Fulfillment.{FulfillmentItem, ReturnPackage, Unlock}
+  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, Unlock}
   alias BlueJet.Fulfillment.ReturnItem.Proxy
 
   schema "return_items" do
