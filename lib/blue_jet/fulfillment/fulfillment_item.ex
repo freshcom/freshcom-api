@@ -63,8 +63,6 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     :returned_quantity,
     :gross_quantity,
     :order_id,
-    :target_id,
-    :target_type,
     :inserted_at,
     :updated_at
   ]
@@ -122,10 +120,15 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled", "discarded"])
   end
 
+  defp validate_status(changeset = %{ data: %{ status: "fulfilled" } }) do
+    changeset
+    |> validate_inclusion(:status, ["fulfilled", "discarded"])
+  end
+
   defp validate_status(changeset = %{
     data: %{ status: status },
     changes: %{ status: _ }
-  }) when status in ["fulfilled", "partially_returned", "returned", "discarded"] do
+  }) do
     add_error(changeset, :status, "is not changeable", validation: :unchangeable)
   end
 

@@ -129,7 +129,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
         "status" => "active",
         "name" => "充值$50",
         "code" => "DEP50",
-        "target_type" => "PointAccount",
+        "gateway" => "freshcom",
         "amount" => 5000
       }
     })
