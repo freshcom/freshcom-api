@@ -19,6 +19,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
 
     field :system_label, :string
 
+    # pending, in_progress, partially_returned, returned
     field :status, :string, default: "pending"
     field :code, :string
     field :name, :string
@@ -85,6 +86,26 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   end
 
   def get_status(return_package) do
-    return_package.status
+    return_package = Repo.preload(return_package)
+    items = return_package.items
+
+    pending_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status in ["pending", "in_progress"], do: acc + 1, else: acc
+    end)
+
+    returned_count = Enum.reduce(items, 0, fn(item, acc) ->
+      if item.status == "returned", do: acc + 1, else: acc
+    end)
+
+    cond do
+      returned_count == 0 ->
+        if return_package.status in ["pending", "in_progress"], do: return_package.status, else: "pending"
+
+      returned_count > 0 && pending_count == 0 ->
+        "returned"
+
+      pending_count > 0 ->
+        "partially_returned"
+    end
   end
 end
