@@ -60,10 +60,46 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     __MODULE__.__trans__(:fields)
   end
 
-  def validate(changeset) do
+  def validate_status(changeset = %{
+    data: %{ status: "pending" },
+    changes: %{ status: status }
+  }) when status != "in_progress" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
+  end
+
+  def validate_status(changeset = %{
+    data: %{ status: "in_progress" },
+    changes: %{ status: status }
+  }) when status != "pending" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
+  end
+
+  def validate_status(changeset = %{
+    data: %{ status: status },
+    changes: %{ status: _ }
+  }) when status not in ["pending", "in_progress"] do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  def validate_status(changeset), do: changeset
+
+  def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required([:order_id])
+    |> validate_inclusion(:status, ["pending", "in_progress"])
   end
+
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_status()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress"])
+  end
+
+  def validate(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
@@ -71,18 +107,26 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   def changeset(return_package, :insert, params) do
     return_package
     |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(return_package, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(return_package, :update, params, locale \\ nil, default_locale \\ nil) do
     return_package = Proxy.put_account(return_package)
     default_locale = default_locale || return_package.account.default_locale
     locale = locale || default_locale
 
     return_package
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(return_package, :delete) do
+    return_package
+    |> Map.put(:action, :delete)
+    |> validate()
   end
 
   def get_status(return_package) do

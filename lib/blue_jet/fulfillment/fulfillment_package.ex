@@ -62,15 +62,43 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     __MODULE__.__trans__(:fields)
   end
 
+  def validate_status(changeset = %{
+    data: %{ status: "pending" },
+    changes: %{ status: status }
+  }) when status != "in_progress" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
+  end
+
+  def validate_status(changeset = %{
+    data: %{ status: "in_progress" },
+    changes: %{ status: status }
+  }) when status != "pending" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
+  end
+
+  def validate_status(changeset = %{
+    data: %{ status: status },
+    changes: %{ status: _ }
+  }) when status not in ["pending", "in_progress"] do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  def validate_status(changeset), do: changeset
+
   def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required([:order_id])
-    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled"])
+    |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
   def validate(changeset = %{ action: :update }) do
     changeset
-    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled"])
+    |> validate_status()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
   end
 
   defp castable_fields(:insert) do
@@ -154,5 +182,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   def changeset(fulfillment_package, :delete) do
     change(fulfillment_package)
     |> Map.put(:action, :delete)
+    |> validate()
   end
 end

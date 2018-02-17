@@ -75,9 +75,39 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     __MODULE__.__trans__(:fields)
   end
 
-  def validate(changeset) do
+  defp validate_status(changeset = %{ data: %{ status: "pending" } }) do
     changeset
-    |> validate_required([:fulfillment_item_id])
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  end
+
+  defp validate_status(changeset = %{ data: %{ status: "in_progress" } }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "returned" },
+    changes: %{ status: _ }
+  }) do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  defp validate_status(changeset), do: changeset
+
+  def validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:fulfillment_item_id, :status])
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  end
+
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_status()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
   #

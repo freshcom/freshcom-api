@@ -102,7 +102,7 @@ defmodule BlueJet.Fulfillment.Service do
   end
 
   #
-  # MARK: Fulfillment Line Item
+  # MARK: Fulfillment Item
   #
   def list_fulfillment_item(fields \\ %{}, opts) do
     account = get_account(opts)
@@ -200,6 +200,31 @@ defmodule BlueJet.Fulfillment.Service do
     FulfillmentItem
     |> Repo.get_by(id: id, account_id: account.id)
     |> update_fulfillment_item(fields, opts)
+  end
+
+  def delete_fulfillment_item(nil, _), do: {:error, :not_found}
+
+  def delete_fulfillment_item(fulfillment_item = %FulfillmentItem{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ fulfillment_item | account: account }
+      |> FulfillmentItem.changeset(:delete)
+
+    with {:ok, fulfillment_item} <- Repo.delete(changeset) do
+      {:ok, fulfillment_item}
+    else
+      other -> other
+    end
+  end
+
+  def delete_fulfillment_item(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    FulfillmentItem
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_fulfillment_item(opts)
   end
 
   #

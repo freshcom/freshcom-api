@@ -112,25 +112,21 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
   defp validate_package_id(changeset), do: changeset
 
-  defp validate_status(changeset = %{
-    data: %{ status: "pending" },
-    changes: %{ status: "discarded"}
-  }) do
-    add_error(changeset, :status, "is invalid", validation: :must_be_fulfilled)
+  defp validate_status(changeset = %{ data: %{ status: "pending" } }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled", "discarded"])
+  end
+
+  defp validate_status(changeset = %{ data: %{ status: "in_progress" } }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "fulfilled", "discarded"])
   end
 
   defp validate_status(changeset = %{
-    data: %{ status: "discarded" },
+    data: %{ status: status },
     changes: %{ status: _ }
-  }) do
+  }) when status in ["fulfilled", "partially_returned", "returned", "discarded"] do
     add_error(changeset, :status, "is not changeable", validation: :unchangeable)
-  end
-
-  defp validate_status(changeset = %{
-    data: %{ status: "fulfilled" },
-    changes: %{ status: "pending" }
-  }) do
-    add_error(changeset, :status, "is invalid", validation: :must_be_discarded)
   end
 
   defp validate_status(changeset), do: changeset
@@ -138,15 +134,18 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   def validate(changeset = %{ action: :insert }) do
     changeset
     |> validate_required([:status, :quantity, :order_line_item_id, :package_id])
-    |> validate_status()
-    |> validate_package_id()
     |> validate_inclusion(:status, ["pending", "fulfilled"])
+    |> validate_package_id()
   end
 
   def validate(changeset = %{ action: :update }) do
     changeset
-    |> validate_inclusion(:status, ["pending", "fulfilled", "discarded"])
     |> validate_status()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
   end
 
   #
@@ -188,6 +187,12 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(fulfillment_item, :delete) do
+    change(fulfillment_item)
+    |> Map.put(:action, :delete)
+    |> validate()
   end
 
   #

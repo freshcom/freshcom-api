@@ -92,9 +92,9 @@ defmodule BlueJetWeb.Router do
     resources "/order_line_items", OrderLineItemController, only: [:index, :update, :delete]
     resources "/unlocks", UnlockController, only: [:index, :create, :show, :delete]
 
-    #####
-    # Balance
-    #####
+    #
+    # MARK: Balance
+    #
     resources "/cards", CardController, only: [:index, :create, :update, :delete]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
@@ -110,14 +110,13 @@ defmodule BlueJetWeb.Router do
       resources "/items", RefundController, only: [:create]
     end
     resources "/fulfillment_items", FulfillmentItemController, only: [:update, :delete]
-    resources "/return_packages", ReturnPackageController, only: [:index]
-    resources "/return_items", ReturnItemController, only: [:create, :update, :delete]
+    resources "/return_packages", ReturnPackageController, only: [:index, :delete]
+    resources "/return_items", ReturnItemController, only: [:create, :delete]
 
     ####
     # Data Trading
     ####
     resources "/data_imports", DataImportController, only: [:index, :create, :show, :delete]
-
 
     #
     # Notification
