@@ -23,6 +23,8 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
       :custom_data,
       :translations,
       :order_line_item_id,
+      :target_id,
+      :target_type,
       :source_id,
       :source_type,
       :package_id

@@ -24,6 +24,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :name, :string
     field :label, :string
 
+    # pending, partially_fulfilled, partially_returned, returned, discarded
     field :fulfillment_status, :string, default: "pending"
 
     field :print_name, :string
@@ -697,62 +698,104 @@ defmodule BlueJet.Storefront.OrderLineItem do
   It will always return the correct fulfillment status where as the `fulfillment_status`
   field of the order line item may not be up to date yet.
   """
-  def get_fulfillment_status(%{ grand_total_cents: grand_total_cents }) when grand_total_cents < 0 do
-    "fulfilled"
-  end
-
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
     fulfillment_items = FulfillmentService.list_fulfillment_item(%{ filter: %{ order_line_item_id: oli.id } }, %{ account_id: oli.account_id })
 
     fulfillable_quantity = oli.order_quantity
+
     fulfilled_quantity =
       fulfillment_items
-      |> Enum.filter(fn(fli) -> fli.status == "fulfilled" end)
-      |> Enum.map(fn(fli) -> fli.quantity end)
+      |> Enum.filter(fn(fulfillment_item) -> fulfillment_item.status in ["fulfilled", "partially_returned"] end)
+      |> Enum.map(fn(fulfillment_item) -> fulfillment_item.gross_quantity end)
       |> Enum.sum()
 
     returned_quantity =
       fulfillment_items
-      |> Enum.filter(fn(fli) -> fli.status == "returned" end)
-      |> Enum.map(fn(fli) -> fli.quantity end)
+      |> Enum.filter(fn(fulfillment_item) -> fulfillment_item.status in ["returned", "partially_returned"] end)
+      |> Enum.map(fn(fulfillment_item) -> fulfillment_item.returned_quantity end)
+      |> Enum.sum()
+
+    discarded_quantity =
+      fulfillment_items
+      |> Enum.filter(fn(fulfillment_item) -> fulfillment_item.status == "discarded" end)
+      |> Enum.map(fn(fulfillment_item) -> fulfillment_item.quantity end)
       |> Enum.sum()
 
     cond do
-      returned_quantity >= fulfillable_quantity -> "returned"
+      (fulfilled_quantity == 0) && (returned_quantity == 0) ->
+        "pending"
 
-      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+      (returned_quantity == 0) && (fulfilled_quantity < fulfillable_quantity) ->
+        "partially_fulfilled"
 
-      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+      (returned_quantity == 0) && (fulfilled_quantity >= fulfillable_quantity) ->
+        "fulfilled"
 
-      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) ->
+        "partially_returned"
 
-      true -> "pending"
+      (returned_quantity > 0) && (returned_quantity >= fulfillable_quantity) ->
+        "returned"
+
+      discarded_quantity >= fulfillable_quantity ->
+        "discarded"
     end
   end
 
   def get_fulfillment_status(oli) do
     children = assoc(oli, :children) |> Repo.all()
 
-    fulfillable_quantity = length(children)
-    fulfilled_quantity =
+    fulfillable_count = length(children)
+
+    partially_fulfilled_count =
+      children
+      |> Enum.filter(fn(child) -> child.fulfillment_status == "partially_fulfilled" end)
+      |> length()
+
+    fulfilled_count =
       children
       |> Enum.filter(fn(child) -> child.fulfillment_status == "fulfilled" end)
       |> length()
-    returned_quantity =
+
+    partially_returned_count =
+      children
+      |> Enum.filter(fn(child) -> child.fulfillment_status == "partially_returned" end)
+      |> length()
+
+    returned_count =
       children
       |> Enum.filter(fn(child) -> child.fulfillment_status == "returned" end)
       |> length()
 
+    discarded_count =
+      children
+      |> Enum.filter(fn(child) -> child.fulfillment_status == "discarded" end)
+      |> length()
+
     cond do
-      returned_quantity >= fulfillable_quantity -> "returned"
+      (fulfilled_count == 0) && (returned_count == 0) ->
+        "pending"
 
-      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+      (returned_count == 0) && (partially_fulfilled_count > 0) ->
+        "partially_fulfilled"
 
-      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+      (returned_count == 0) && (fulfilled_count < fulfillable_count) ->
+        "partially_fulfilled"
 
-      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+      (returned_count == 0) && (fulfilled_count >= fulfillable_count) ->
+        "fulfilled"
 
-      true -> "pending"
+      partially_returned_count > 0 ->
+        "partially_returned"
+
+      returned_count < fulfillable_count ->
+        "partially_returned"
+
+      returned_count >= fulfillable_count ->
+        "returned"
+
+      discarded_count >= fulfillable_count ->
+        "discarded"
     end
   end
 end

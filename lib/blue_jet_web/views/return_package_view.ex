@@ -3,6 +3,7 @@ defmodule BlueJetWeb.ReturnPackageView do
   use JaSerializer.PhoenixView
 
   attributes [
+    :status,
     :code,
     :name,
     :label,
