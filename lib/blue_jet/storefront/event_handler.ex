@@ -60,7 +60,33 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
+  def handle_event("fulfillment.fulfillment_package.after_delete", %{
+    fulfillment_package: fulfillment_package
+  }) do
+    leaf_line_items =
+      OrderLineItem.Query.default()
+      |> OrderLineItem.Query.for_order(fulfillment_package.order_id)
+      |> OrderLineItem.Query.leaf()
+      |> Repo.all()
+
+    Enum.each(leaf_line_items, fn(item) ->
+      OrderLineItem.refresh_fulfillment_status(item)
+    end)
+
+    {:ok, nil}
+  end
+
   def handle_event("fulfillment.return_item.after_create", %{
+    return_item: return_item,
+    changeset: %{ changes: %{ status: "returned" } }
+  }) do
+    oli = Repo.get!(OrderLineItem, return_item.order_line_item_id)
+    OrderLineItem.refresh_fulfillment_status(oli)
+
+    {:ok, nil}
+  end
+
+  def handle_event("fulfillment.return_item.after_update", %{
     return_item: return_item,
     changeset: %{ changes: %{ status: "returned" } }
   }) do

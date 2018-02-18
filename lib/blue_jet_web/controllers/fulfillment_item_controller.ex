@@ -63,7 +63,7 @@ defmodule BlueJetWeb.FulfillmentItemController do
   #   end
   # end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "FulfillmentLineItem" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "FulfillmentItem" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },

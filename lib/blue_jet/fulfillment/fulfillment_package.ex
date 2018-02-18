@@ -116,6 +116,8 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     fulfillment_package = Repo.preload(fulfillment_package, :items)
     items = fulfillment_package.items
 
+    fulfillable_count = length(items)
+
     pending_count = Enum.reduce(items, 0, fn(item, acc) ->
       if item.status in ["pending", "in_progress"], do: acc + 1, else: acc
     end)
@@ -136,24 +138,32 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
       if item.status == "discarded", do: acc + 1, else: acc
     end)
 
+    IO.inspect partially_returned_count
+    IO.inspect returned_count
     cond do
-      discarded_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
-        "discarded"
-
-      fulfilled_count == 0 && partially_returned_count == 0 && returned_count == 0 ->
+      fulfillable_count == 0 ->
         if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"
 
-      returned_count > 0 && pending_count == 0 && fulfilled_count == 0 && partially_returned_count == 0 ->
-        "returned"
+      (pending_count > 0) && (fulfilled_count == 0) && (partially_returned_count == 0) && (returned_count == 0) ->
+        if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"
 
-      pending_count > 0 ->
+      (returned_count == 0) && (partially_returned_count == 0) && (fulfilled_count > 0) && (pending_count > 0) ->
         "partially_fulfilled"
 
-      partially_returned_count > 0 || returned_count > 0 ->
+      (returned_count == 0) && (partially_returned_count == 0) && (pending_count == 0) && (fulfilled_count > 0) ->
+        "fulfilled"
+
+      partially_returned_count > 0 ->
         "partially_returned"
 
-      fulfilled_count > 0 ->
-        "fulfilled"
+      (returned_count > 0) && (returned_count < fulfillable_count - discarded_count) ->
+        "partially_returned"
+
+      (returned_count > 0) && (returned_count >= fulfillable_count - discarded_count) ->
+        "returned"
+
+      discarded_count >= fulfilled_count ->
+        "discarded"
     end
   end
 

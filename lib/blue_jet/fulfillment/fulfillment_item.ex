@@ -171,12 +171,19 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
   defp put_order_id(changeset), do: changeset
 
+  defp put_gross_quantity(changeset = %{ action: :insert }) do
+    put_change(changeset, :gross_quantity, get_field(changeset, :quantity))
+  end
+
+  defp put_gross_quantity(changeset), do: changeset
+
   def changeset(fulfillment_item, :insert, params) do
     fulfillment_item
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
     |> put_package()
     |> put_order_id()
+    |> put_gross_quantity()
     |> validate()
   end
 
@@ -335,6 +342,8 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     target_type = get_field(changeset, :target_type)
     preprocess(changeset, target_type)
   end
+
+  def preprocess(changeset), do: {:ok, changeset}
 
   def process(fulfillment_item, %{
     changes: %{ status: _ }

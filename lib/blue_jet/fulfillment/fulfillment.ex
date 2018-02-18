@@ -44,7 +44,7 @@ defmodule BlueJet.Fulfillment do
   end
 
   def delete_fulfillment_package(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.delete_fulfillment_package") do
+    with {:ok, request} <- preprocess_request(request, "fulfillment.delete_fulfillment_package") do
       request
       |> do_delete_fulfillment_package()
     else

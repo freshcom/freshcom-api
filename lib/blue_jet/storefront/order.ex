@@ -397,26 +397,57 @@ defmodule BlueJet.Storefront.Order do
       |> OrderLineItem.Query.root()
       |> Repo.all()
 
-    fulfillable_quantity = length(root_line_items)
-    fulfilled_quantity =
+    fulfillable_count = length(root_line_items)
+
+    partially_fulfilled_count =
+      root_line_items
+      |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "partially_fulfilled" end)
+      |> length()
+
+    fulfilled_count =
       root_line_items
       |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "fulfilled" end)
       |> length()
-    returned_quantity =
+
+    partially_returned_count =
+      root_line_items
+      |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "partially_returned" end)
+      |> length()
+
+    returned_count =
       root_line_items
       |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "returned" end)
       |> length()
 
+    discarded_count =
+      root_line_items
+      |> Enum.filter(fn(line_item) -> line_item.fulfillment_status == "discarded" end)
+      |> length()
+
     cond do
-      returned_quantity >= fulfillable_quantity -> "returned"
+      (fulfilled_count == 0) && (returned_count == 0) && (discarded_count == 0) ->
+        "pending"
 
-      (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) -> "partially_returned"
+      (returned_count == 0) && (partially_fulfilled_count > 0) ->
+        "partially_fulfilled"
 
-      fulfilled_quantity >= fulfillable_quantity -> "fulfilled"
+      (returned_count == 0) && (fulfilled_count > 0) && (fulfilled_count < fulfillable_count) ->
+        "partially_fulfilled"
 
-      (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) -> "partially_fulfilled"
+      (returned_count == 0) && (fulfilled_count > 0) && (fulfilled_count >= fulfillable_count) ->
+        "fulfilled"
 
-      true -> "pending"
+      partially_returned_count > 0 ->
+        "partially_returned"
+
+      (returned_count > 0) && (returned_count < fulfillable_count) ->
+        "partially_returned"
+
+      (returned_count > 0 ) && (returned_count >= fulfillable_count) ->
+        "returned"
+
+      discarded_count >= fulfillable_count ->
+        "discarded"
     end
   end
 

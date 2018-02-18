@@ -145,7 +145,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
       returned_count == 0 ->
         if return_package.status in ["pending", "in_progress"], do: return_package.status, else: "pending"
 
-      returned_count > 0 && pending_count == 0 ->
+      (returned_count > 0) && (pending_count == 0) ->
         "returned"
 
       pending_count > 0 ->

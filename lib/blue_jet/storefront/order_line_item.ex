@@ -24,7 +24,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :name, :string
     field :label, :string
 
-    # pending, partially_fulfilled, partially_returned, returned, discarded
+    # pending, partially_fulfilled, fulfilled, partially_returned, returned, discarded
     field :fulfillment_status, :string, default: "pending"
 
     field :print_name, :string
@@ -597,47 +597,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     oli
   end
 
-  # def auto_fulfill(%{ auto_fulfill: false }, _), do: nil
-
-  # def auto_fulfill(line_item = %{ target_type: nil }, fulfillment) do
-  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  # end
-
-  # def auto_fulfill(line_item = %{ target_type: "Unlockable", target_id: target_id }, fulfillment) do
-  #   line_item = Repo.preload(line_item, :order)
-
-  #   %Unlock{ account_id: line_item.account_id }
-  #   |> change(%{
-  #       unlockable_id: target_id,
-  #       customer_id: line_item.order.customer_id,
-  #       target_id: line_item.id,
-  #       target_type: "OrderLineItem"
-  #      })
-  #   |> Repo.insert!()
-
-  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  # end
-
-  # def auto_fulfill(line_item = %{ target_type: "Depositable" }, fulfillment) do
-  #   line_item = Repo.preload(line_item, :order)
-  #   depositable = Proxy.get_depositable(line_item)
-
-  #   if depositable.target_type == "PointAccount" do
-  #     Proxy.create_point_transaction(%{
-  #       status: "committed",
-  #       amount: line_item.order_quantity * depositable.amount,
-  #       reason_label: "deposit_by_depositable"
-  #     }, line_item)
-  #   end
-
-  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  # end
-
-  # def auto_fulfill(line_item = %{ target_type: "PointTransaction", target_id: target_id }, fulfillment) do
-  #   Proxy.commit_point_transaction(target_id, line_item)
-  #   Proxy.create_fulfillment_line_item(line_item, fulfillment)
-  # end
-
   @doc """
   Process the given order line item so that other related retarget can be created/updated.
 
@@ -679,6 +638,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> change(fulfillment_status: get_fulfillment_status(oli))
     |> Repo.update!()
 
+    IO.inspect oli.fulfillment_status
     if oli.parent_id do
       assoc(oli, :parent)
       |> Repo.one()
@@ -700,6 +660,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   """
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
     fulfillment_items = FulfillmentService.list_fulfillment_item(%{ filter: %{ order_line_item_id: oli.id } }, %{ account_id: oli.account_id })
+    IO.inspect fulfillment_items
 
     fulfillable_quantity = oli.order_quantity
 
@@ -722,13 +683,13 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> Enum.sum()
 
     cond do
-      (fulfilled_quantity == 0) && (returned_quantity == 0) ->
+      (fulfilled_quantity == 0) && (returned_quantity == 0) && (discarded_quantity == 0) ->
         "pending"
 
-      (returned_quantity == 0) && (fulfilled_quantity < fulfillable_quantity) ->
+      (returned_quantity == 0) && (fulfilled_quantity > 0) && (fulfilled_quantity < fulfillable_quantity) ->
         "partially_fulfilled"
 
-      (returned_quantity == 0) && (fulfilled_quantity >= fulfillable_quantity) ->
+      (returned_quantity == 0) && (fulfilled_quantity > 0) && (fulfilled_quantity >= fulfillable_quantity) ->
         "fulfilled"
 
       (returned_quantity > 0) && (returned_quantity < fulfillable_quantity) ->
@@ -773,25 +734,25 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> length()
 
     cond do
-      (fulfilled_count == 0) && (returned_count == 0) ->
+      (fulfilled_count == 0) && (returned_count == 0) && (discarded_count == 0) ->
         "pending"
 
       (returned_count == 0) && (partially_fulfilled_count > 0) ->
         "partially_fulfilled"
 
-      (returned_count == 0) && (fulfilled_count < fulfillable_count) ->
+      (returned_count == 0) && (fulfilled_count > 0) && (fulfilled_count < fulfillable_count) ->
         "partially_fulfilled"
 
-      (returned_count == 0) && (fulfilled_count >= fulfillable_count) ->
+      (returned_count == 0) && (fulfilled_count > 0) && (fulfilled_count >= fulfillable_count) ->
         "fulfilled"
 
       partially_returned_count > 0 ->
         "partially_returned"
 
-      returned_count < fulfillable_count ->
+      (returned_count > 0) && (returned_count < fulfillable_count) ->
         "partially_returned"
 
-      returned_count >= fulfillable_count ->
+      (returned_count > 0 ) && (returned_count >= fulfillable_count) ->
         "returned"
 
       discarded_count >= fulfillable_count ->

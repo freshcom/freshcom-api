@@ -80,7 +80,7 @@ defmodule BlueJet.Fulfillment.Service do
       Multi.new()
       |> Multi.delete(:fulfillment_package, changeset)
       |> Multi.run(:after_delete, fn(%{ fulfillment_package: fulfillment_package}) ->
-          emit_event("fulfillment.fulfillment_package.after_delete", %{ fulfillment_package: fulfillment_package })
+          emit_event("fulfillment.fulfillment_package.after_delete", %{ fulfillment_package: fulfillment_package, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do
@@ -178,6 +178,9 @@ defmodule BlueJet.Fulfillment.Service do
          end)
       |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset }) ->
           Repo.update(changeset)
+         end)
+      |> Multi.run(:processed_fulfillment_item, fn(%{ fulfillment_item: fulfillment_item, changeset: changeset }) ->
+          FulfillmentItem.process(fulfillment_item, changeset)
          end)
       |> Multi.run(:after_update, fn(%{ fulfillment_item: fulfillment_item }) ->
           emit_event("fulfillment.fulfillment_item.after_update", %{ fulfillment_item: fulfillment_item, changeset: changeset })
