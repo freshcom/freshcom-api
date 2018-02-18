@@ -577,7 +577,8 @@ defmodule BlueJet.OrderTest do
       fulfillment_package = %FulfillmentPackage{}
       fulfillment_item = %FulfillmentItem{
         status: "fulfilled",
-        quantity: 1
+        quantity: 1,
+        gross_quantity: 1
       }
       FulfillmentServiceMock
       |> expect(:create_fulfillment_package, fn(_, _) -> {:ok, fulfillment_package} end)

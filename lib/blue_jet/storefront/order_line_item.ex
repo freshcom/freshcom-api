@@ -638,7 +638,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
     |> change(fulfillment_status: get_fulfillment_status(oli))
     |> Repo.update!()
 
-    IO.inspect oli.fulfillment_status
     if oli.parent_id do
       assoc(oli, :parent)
       |> Repo.one()
@@ -660,7 +659,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   """
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
     fulfillment_items = FulfillmentService.list_fulfillment_item(%{ filter: %{ order_line_item_id: oli.id } }, %{ account_id: oli.account_id })
-    IO.inspect fulfillment_items
 
     fulfillable_quantity = oli.order_quantity
 

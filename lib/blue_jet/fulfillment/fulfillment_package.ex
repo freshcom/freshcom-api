@@ -106,7 +106,7 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   end
 
   defp castable_fields(:update) do
-    writable_fields -- [:order_id, :customer_id]
+    writable_fields() -- [:order_id, :customer_id]
   end
 
   #
@@ -138,8 +138,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
       if item.status == "discarded", do: acc + 1, else: acc
     end)
 
-    IO.inspect partially_returned_count
-    IO.inspect returned_count
     cond do
       fulfillable_count == 0 ->
         if fulfillment_package.status in ["pending", "in_progress"], do: fulfillment_package.status, else: "pending"

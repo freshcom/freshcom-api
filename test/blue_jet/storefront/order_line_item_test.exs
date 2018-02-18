@@ -378,11 +378,6 @@ defmodule BlueJet.OrderLineItemTest do
   end
 
   describe "get_fulfillment_status/1" do
-    test "when grand total cents is less than 0" do
-      result = OrderLineItem.get_fulfillment_status(%OrderLineItem{ grand_total_cents: -100 })
-      assert result == "fulfilled"
-    end
-
     test "when there is no fulfillment item" do
       fulfillment_items = []
       FulfillmentServiceMock
@@ -396,8 +391,8 @@ defmodule BlueJet.OrderLineItemTest do
 
     test "when all corresponding fulfillment item is returned" do
       fulfillment_items = [
-        %FulfillmentItem{ status: "returned", quantity: 2 },
-        %FulfillmentItem{ status: "returned", quantity: 3 }
+        %FulfillmentItem{ status: "returned", quantity: 2, returned_quantity: 2, gross_quantity: 0 },
+        %FulfillmentItem{ status: "returned", quantity: 3, returned_quantity: 3, gross_quantity: 0 }
       ]
       FulfillmentServiceMock
       |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
@@ -410,8 +405,8 @@ defmodule BlueJet.OrderLineItemTest do
 
     test "when some of the fulfillment item is fulfilled" do
       fulfillment_items = [
-        %FulfillmentItem{ status: "fulfilled", quantity: 2 },
-        %FulfillmentItem{ status: "pending", quantity: 1 }
+        %FulfillmentItem{ status: "fulfilled", quantity: 2, gross_quantity: 2 },
+        %FulfillmentItem{ status: "pending", quantity: 1, gross_quantity: 1 }
       ]
       FulfillmentServiceMock
       |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
@@ -424,8 +419,8 @@ defmodule BlueJet.OrderLineItemTest do
 
     test "when all of fulfillment item is fulfilled" do
       fulfillment_items = [
-        %FulfillmentItem{ status: "fulfilled", quantity: 2 },
-        %FulfillmentItem{ status: "fulfilled", quantity: 3 }
+        %FulfillmentItem{ status: "fulfilled", quantity: 2, gross_quantity: 2 },
+        %FulfillmentItem{ status: "fulfilled", quantity: 3, gross_quantity: 3 }
       ]
       FulfillmentServiceMock
       |> expect(:list_fulfillment_item, fn(_, _) -> fulfillment_items end)
