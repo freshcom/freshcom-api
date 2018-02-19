@@ -1,28 +1,4 @@
 defmodule BlueJet.Storefront.Order do
-  @moduledoc """
-
-  ## Status
-  - cart
-  - opened
-  - closed
-  - cancelled
-
-  ## Fulfillment
-  - pending
-  - fulfilled
-  - returned
-  - discarded
-
-  ## Payment
-  - pending
-  - authorized
-  - partially_authorized
-  - partially_paid
-  - paid
-  - over_paid
-  - partially_refunded
-  - refunded
-  """
   use BlueJet, :data
 
   use Trans, translates: [
@@ -40,12 +16,15 @@ defmodule BlueJet.Storefront.Order do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
+    # cart, opened, closed, cancelled
     field :status, :string, default: "cart"
     field :code, :string
     field :name, :string
     field :label, :string
 
+    # pending, authorized, partially_authorized, partially_authorized, partially_paid, paid, over_paid, partially_refunded, refunded
     field :payment_status, :string, default: "pending"
+    # pending, partially_fulfilled, fulfilled, partially_returned, returned, discarded
     field :fulfillment_status, :string, default: "pending"
     field :fulfillment_method, :string
     field :system_tag, :string
@@ -333,12 +312,12 @@ defmodule BlueJet.Storefront.Order do
 
     total_paid_amount_cents =
       payments
-      |> Enum.filter(fn(payment) -> payment.status == "paid" || payment.status == "partially_refunded" || payment.status == "refunded" end)
+      |> Enum.filter(fn(payment) -> payment.status in ["paid", "partially_refunded", "refunded"] end)
       |> Enum.reduce(0, fn(payment, acc) -> acc + payment.amount_cents end)
 
     total_gross_amount_cents =
       payments
-      |> Enum.filter(fn(payment) -> payment.status == "paid" || payment.status == "partially_refunded" || payment.status == "refunded" end)
+      |> Enum.filter(fn(payment) -> payment.status in ["paid", "partially_refunded"] end)
       |> Enum.reduce(0, fn(payment, acc) -> acc + payment.gross_amount_cents end)
 
     total_authorized_amount_cents =
@@ -346,43 +325,56 @@ defmodule BlueJet.Storefront.Order do
       |> Enum.filter(fn(payment) -> payment.status == "authorized" end)
       |> Enum.reduce(0, fn(payment, acc) -> acc + payment.amount_cents end)
 
+    total_refunded_amount_cents =
+      payments
+      |> Enum.filter(fn(payment) -> payment.status in ["partially_refunded", "refunded"] end)
+      |> Enum.reduce(0, fn(payment, acc) -> acc + payment.refunded_amount_cents end)
+
     cond do
-      order.grand_total_cents == 0 -> "paid"
-      total_authorized_amount_cents == 0 && total_paid_amount_cents == 0 -> "pending"
+      (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) ->
+        "pending"
 
-      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
-      total_authorized_amount_cents == 0 && total_gross_amount_cents == 0 -> "refunded"
+      (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) && (total_authorized_amount_cents > 0) && (total_authorized_amount_cents < order.authorization_total_cents) ->
+        "partially_authorized"
 
-      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
-      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
-      total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
-      total_paid_amount_cents > 0 -> "partially_paid"
-      total_authorized_amount_cents >= order.authorization_total_cents -> "authorized"
-      total_authorized_amount_cents > 0 -> "partially_authorized"
-      true -> "pending"
+      (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) && (total_authorized_amount_cents > 0) && (total_authorized_amount_cents >= order.authorization_total_cents) ->
+        "authorized"
+
+      (order.grand_total_cents > 0) && (total_paid_amount_cents < order.grand_total_cents) && (total_gross_amount_cents > 0) && (total_gross_amount_cents < order.grand_total_cents) ->
+        "partially_paid"
+
+      (order.grand_total_cents > 0) && (total_gross_amount_cents > 0) && (total_gross_amount_cents == order.grand_total_cents) ->
+        "paid"
+
+      (order.grand_total_cents == 0) ->
+        "paid"
+
+      (order.grand_total_cents > 0) && (total_gross_amount_cents > 0) && (total_gross_amount_cents > order.grand_total_cents) ->
+        "over_paid"
+
+      (order.grand_total_cents > 0) && (total_paid_amount_cents >= order.grand_total_cents) && (total_gross_amount_cents > 0) && (total_refunded_amount_cents > 0) ->
+        "partially_refunded"
+
+      (order.grand_total_cents > 0) && (total_paid_amount_cents >= order.grand_total_cents) && (total_gross_amount_cents == 0) && (total_refunded_amount_cents > 0) ->
+        "refunded"
     end
+
+    # cond do
+    #   order.grand_total_cents == 0 -> "paid"
+    #   total_authorized_amount_cents == 0 && total_paid_amount_cents == 0 -> "pending"
+
+    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
+    #   total_authorized_amount_cents == 0 && total_gross_amount_cents == 0 -> "refunded"
+
+    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
+    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
+    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
+    #   total_paid_amount_cents > 0 -> "partially_paid"
+    #   total_authorized_amount_cents >= order.authorization_total_cents -> "authorized"
+    #   total_authorized_amount_cents > 0 -> "partially_authorized"
+    #   true -> "pending"
+    # end
   end
-
-  def leaf_line_items(struct) do
-    Ecto.assoc(struct, :line_items)
-    |> OrderLineItem.Query.leaf()
-    |> Repo.all()
-  end
-
-  def lock_stock(_) do
-    {:ok, nil}
-  end
-
-  def lock_shipping_date(_) do
-    {:ok, nil}
-  end
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Order"
-
-  def put_external_resources(order, _, _), do: order
 
   def refresh_fulfillment_status(order) do
     order
@@ -451,7 +443,7 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  def auto_fulfill(order) do
+  defp process_auto_fulfill(order) do
     af_line_items =
       OrderLineItem
       |> OrderLineItem.Query.for_order(order.id)
@@ -475,15 +467,12 @@ defmodule BlueJet.Storefront.Order do
 
   This function may change the order in database.
   """
-  def process(order), do: {:ok, order}
-
   def process(order, %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     order =
       order
       |> Proxy.put_account()
       |> Proxy.put_customer()
-      |> auto_fulfill()
-      |> refresh_fulfillment_status()
+      |> process_auto_fulfill()
 
     {:ok, order}
   end

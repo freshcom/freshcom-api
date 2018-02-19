@@ -120,6 +120,7 @@ defmodule BlueJet.Balance.Refund do
   def changeset(refund, :insert, params) do
     refund
     |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
     |> validate()
   end
 
@@ -130,6 +131,7 @@ defmodule BlueJet.Balance.Refund do
 
     refund
     |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -164,6 +166,15 @@ defmodule BlueJet.Balance.Refund do
       {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
     end
   end
+
+  def process(refund, %{ action: :insert }) do
+    refund = Repo.preload(refund, :payment)
+    payment = refund.payment
+    Payment.sync_with_refund(payment, refund)
+
+    {:ok, refund}
+  end
+
   def process(refund, _), do: {:ok, refund}
 
   @spec sync_with_stripe_refund_and_transfer_reversal(__MODULE__.t, map, map) :: {:ok, __MODULE__.t}

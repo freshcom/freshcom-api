@@ -16,20 +16,6 @@ defmodule BlueJet.Storefront.OrderLineItem.Query do
     from oli in query, where: oli.auto_fulfill == true
   end
 
-  def with_positive_amount(query) do
-    from oli in query, where: oli.grand_total_cents >= 0
-  end
-
-  def id_only(query) do
-    from oli in query, select: oli.id
-  end
-
-  def fulfillable(query) do
-    query
-    |> leaf()
-    |> with_positive_amount()
-  end
-
   def for_account(query, account_id) do
     from(oli in query, where: oli.account_id == ^account_id)
   end

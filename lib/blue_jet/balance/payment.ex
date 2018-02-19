@@ -22,7 +22,7 @@ defmodule BlueJet.Balance.Payment do
     field :code, :string
     field :label, :string
 
-    field :gateway, :string # online, offline,
+    field :gateway, :string # freshcom, custom
     field :processor, :string
     field :method, :string
 
@@ -111,6 +111,9 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
+  #
+  # MARK: Validate
+  #
   defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
     authorized_amount_cents = get_field(changeset, :amount_cents)
     case capture_amount_cents > authorized_amount_cents do
@@ -136,6 +139,9 @@ defmodule BlueJet.Balance.Payment do
     |> validate_capture_amount_cents()
   end
 
+  #
+  # MARK: Changeset
+  #
   defp put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
     refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
     put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
@@ -183,20 +189,9 @@ defmodule BlueJet.Balance.Payment do
     |> validate()
   end
 
-  ######
-  # External Resources
-  #####
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Payment"
-
-  def put_external_resources(payment, _, _), do: payment
-
-  #####
-  # Business Logic
-  #####
-
+  #
+  # MARK: Reader
+  #
   def get_destination_amount_cents(payment, balance_settings) do
     payment.amount_cents - get_processor_fee_cents(payment, balance_settings) - get_freshcom_fee_cents(payment, balance_settings)
   end
@@ -212,6 +207,9 @@ defmodule BlueJet.Balance.Payment do
     D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
   end
 
+  #
+  # MARK: Writer
+  #
   def sync_with_refund(payment, refund) do
     refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
     refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
