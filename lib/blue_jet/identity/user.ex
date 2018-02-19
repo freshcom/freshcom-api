@@ -18,6 +18,8 @@ defmodule BlueJet.Identity.User do
     field :first_name, :string
     field :last_name, :string
 
+    field :auth_method, :string, default: "simple" # 2fa_email, 2fa_sms
+
     field :email_confirmation_token, :string
     field :email_confirmed, :boolean, default: false
     field :email_confirmed_at, :utc_datetime
