@@ -30,31 +30,29 @@ defmodule BlueJet.Translation do
     Changeset.put_change(changeset, :translations, new_translations)
   end
 
-  @spec translate(map | list, String.t, String.t) :: map | list
-  def translate(struct_or_structs, locale, default_locale \\ nil)
+  @spec translate(any, String.t, String.t) :: map | list
+  def translate(value, locale, default_locale \\ nil)
   def translate(nil, _, _), do: nil
   def translate([], _, _), do: []
-  def translate(struct_or_structs, _, nil), do: struct_or_structs
-  def translate(struct_or_structs, locale, default_locale) when locale == default_locale, do: struct_or_structs
-  def translate(struct_or_structs, locale, default_locale) do
-    translate_fields(struct_or_structs, locale, default_locale)
+  def translate(value, _, nil), do: value
+  def translate(value, locale, default_locale) when locale == default_locale, do: value
+  def translate(value, locale, default_locale) do
+    translate_fields(value, locale, default_locale)
   end
 
-  defp translate_fields(struct, locale, default_locale) when is_map(struct) do
-    # Translate each loaded association (recursively)
-    assoc_fnames = struct.__struct__.__schema__(:associations)
-    struct = Enum.reduce(assoc_fnames, struct, fn(field_name, acc) ->
-      assoc = Map.get(struct, field_name)
-      case assoc do
-        %Ecto.Association.NotLoaded{} -> acc
-        nil -> acc
-        _ -> Map.put(acc, field_name, translate(assoc, locale, default_locale))
-      end
+  defp translate_fields(struct = %{ translations: %{} }, locale, default_locale) do
+    # Translate each field recursively
+    fnames = Map.keys(struct) -- [:__meta__, :__struct__]
+    struct = Enum.reduce(fnames, struct, fn(field_name, acc) ->
+      value = Map.get(struct, field_name)
+      Map.put(acc, field_name, translate(value, locale, default_locale))
     end)
 
     # Translate each attributes
     case Map.get(struct, :translations) do
-      nil -> struct
+      nil ->
+        struct
+
       translations ->
         t_attributes = Map.new(Map.get(translations, locale, %{}), fn({k, v}) -> { String.to_atom(k), v } end)
         Map.merge(struct, t_attributes)
@@ -64,6 +62,8 @@ defmodule BlueJet.Translation do
   defp translate_fields(list, locale, default_locale) when is_list(list) do
     Enum.map(list, fn(item) -> translate(item, locale, default_locale) end)
   end
+
+  defp translate_fields(value, _, _), do: value
 
   @spec merge_translations(map, map, list, String.t) :: map
   def merge_translations(dst_translations, src_translations, fields, prefix \\ "") do
