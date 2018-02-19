@@ -19,7 +19,9 @@ defmodule BlueJet.Identity.User do
     field :first_name, :string
     field :last_name, :string
 
-    field :auth_method, :string, default: "simple" # 2fa_email, 2fa_sms
+    field :auth_method, :string, default: "simple" # tfa_email, tfa_sms
+    field :tfa_code, :string
+    field :tfa_code_expires_at, :utc_datetime
 
     field :email_confirmation_token, :string
     field :email_confirmed, :boolean, default: false

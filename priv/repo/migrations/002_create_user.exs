@@ -17,6 +17,8 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       add :last_name, :string
 
       add :auth_method, :string, null: false
+      add :tfa_code, :string
+      add :tfa_code_expires_at, :utc_datetime
 
       add :email_confirmation_token, :string
       add :email_confirmed, :boolean, null: false
