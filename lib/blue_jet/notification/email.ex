@@ -2,6 +2,7 @@ defmodule BlueJet.Notification.Email do
   use BlueJet, :data
 
   alias BlueJet.Identity.User
+  alias BlueJet.Notification.Trigger
 
   schema "emails" do
     field :account_id, Ecto.UUID
@@ -20,7 +21,7 @@ defmodule BlueJet.Notification.Email do
     timestamps()
 
     belongs_to :recipient, User
-    belongs_to :trigger, NotificationTrigger
+    belongs_to :trigger, Trigger
     belongs_to :template, EmailTemplate
   end
 

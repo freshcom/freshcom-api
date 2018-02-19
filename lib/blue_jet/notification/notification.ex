@@ -3,7 +3,7 @@ defmodule BlueJet.Notification do
 
   alias BlueJet.GlobalMailer
 
-  alias BlueJet.Notification.NotificationTrigger
+  alias BlueJet.Notification.Trigger
   alias BlueJet.Notification.Email
   alias BlueJet.Notification.EmailTemplate
 
@@ -19,7 +19,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.password_reset()
         |> Repo.insert!()
       account
-      |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
+      |> Trigger.AccountDefault.send_password_reset_email(template)
       |> Repo.insert!()
 
       template =
@@ -27,7 +27,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.password_reset_not_registered()
         |> Repo.insert!()
       account
-      |> NotificationTrigger.AccountDefault.send_password_reset_not_registered_email(template)
+      |> Trigger.AccountDefault.send_password_reset_not_registered_email(template)
       |> Repo.insert!()
 
       template =
@@ -35,7 +35,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.email_confirmation()
         |> Repo.insert!()
       account
-      |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
+      |> Trigger.AccountDefault.send_email_confirmation_email(template)
       |> Repo.insert!()
 
       # Test account
@@ -44,7 +44,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.password_reset()
         |> Repo.insert!()
       test_account
-      |> NotificationTrigger.AccountDefault.send_password_reset_email(template)
+      |> Trigger.AccountDefault.send_password_reset_email(template)
       |> Repo.insert!()
 
       template =
@@ -52,7 +52,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.password_reset_not_registered()
         |> Repo.insert!()
       test_account
-      |> NotificationTrigger.AccountDefault.send_password_reset_not_registered_email(template)
+      |> Trigger.AccountDefault.send_password_reset_not_registered_email(template)
       |> Repo.insert!()
 
       template =
@@ -60,7 +60,7 @@ defmodule BlueJet.Notification do
         |> EmailTemplate.AccountDefault.email_confirmation()
         |> Repo.insert!()
       test_account
-      |> NotificationTrigger.AccountDefault.send_email_confirmation_email(template)
+      |> Trigger.AccountDefault.send_email_confirmation_email(template)
       |> Repo.insert!()
 
       {:ok, nil}
@@ -86,13 +86,13 @@ defmodule BlueJet.Notification do
 
     def handle_event(event, data = %{ account_id: account_id }) when not is_nil(account_id) do
       triggers =
-        NotificationTrigger.Query.default()
-        |> NotificationTrigger.Query.for_account(account_id)
-        |> NotificationTrigger.Query.for_event(event)
+        Trigger.Query.default()
+        |> Trigger.Query.for_account(account_id)
+        |> Trigger.Query.filter_by(%{ event: event })
         |> Repo.all()
 
       Enum.each(triggers, fn(trigger) ->
-        NotificationTrigger.process(trigger, data)
+        Trigger.process(trigger, data)
       end)
 
       {:ok, nil}
@@ -315,19 +315,19 @@ defmodule BlueJet.Notification do
 
   def do_list_notification_trigger(request = %{ account: account, filter: filter, pagination: pagination }) do
     data_query =
-      NotificationTrigger.Query.default()
+      Trigger.Query.default()
       |> search([:name], request.search)
       |> filter_by(status: filter[:status])
-      |> NotificationTrigger.Query.for_account(account.id)
+      |> Trigger.Query.for_account(account.id)
 
     total_count = Repo.aggregate(data_query, :count, :id)
     all_count =
-      NotificationTrigger.Query.default()
+      Trigger.Query.default()
       |> filter_by(status: filter[:status])
-      |> NotificationTrigger.Query.for_account(account.id)
+      |> Trigger.Query.for_account(account.id)
       |> Repo.aggregate(:count, :id)
 
-    preloads = NotificationTrigger.Query.preloads(request.preloads, role: request.role)
+    preloads = Trigger.Query.preloads(request.preloads, role: request.role)
     notification_triggers =
       data_query
       |> paginate(size: pagination[:size], number: pagination[:number])
@@ -349,7 +349,7 @@ defmodule BlueJet.Notification do
   defp notification_trigger_response(nil, _), do: {:error, :not_found}
 
   defp notification_trigger_response(notification_trigger, request) do
-    preloads = NotificationTrigger.Query.preloads(request.preloads, role: request.role)
+    preloads = Trigger.Query.preloads(request.preloads, role: request.role)
 
     notification_trigger =
       notification_trigger
@@ -368,7 +368,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_create_notification_trigger(request = %{ account: account }) do
-    changeset = NotificationTrigger.changeset(%NotificationTrigger{ account_id: account.id }, request.fields)
+    changeset = Trigger.changeset(%Trigger{ account_id: account.id }, request.fields)
 
     with {:ok, notification_trigger} <- Repo.insert(changeset) do
       notification_trigger_response(notification_trigger, request)
@@ -391,8 +391,8 @@ defmodule BlueJet.Notification do
 
   def do_get_notification_trigger(request = %{ account: account, params: %{ "id" => id } }) do
     notification_trigger =
-      NotificationTrigger.Query.default()
-      |> NotificationTrigger.Query.for_account(account.id)
+      Trigger.Query.default()
+      |> Trigger.Query.for_account(account.id)
       |> Repo.get(id)
 
     notification_trigger_response(notification_trigger, request)
@@ -409,8 +409,8 @@ defmodule BlueJet.Notification do
 
   def do_delete_notification_trigger(%{ account: account, params: %{ "id" => id } }) do
     notification_trigger =
-      NotificationTrigger.Query.default()
-      |> NotificationTrigger.Query.for_account(account.id)
+      Trigger.Query.default()
+      |> Trigger.Query.for_account(account.id)
       |> Repo.get(id)
 
     if notification_trigger do

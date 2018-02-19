@@ -1,4 +1,4 @@
-defmodule BlueJet.Notification.NotificationTrigger do
+defmodule BlueJet.Notification.Trigger do
   use BlueJet, :data
 
   alias Bamboo.Email, as: E
@@ -6,6 +6,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
 
   alias BlueJet.Notification.IdentityService
   alias BlueJet.Notification.EmailTemplate
+  alias BlueJet.Notification.Trigger.Proxy
 
   schema "notification_triggers" do
     field :account_id, Ecto.UUID
@@ -40,10 +41,10 @@ defmodule BlueJet.Notification.NotificationTrigger do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:name, :event, :action_target, :action_type])
+    |> validate_required([:name, :status, :event, :action_target, :action_type])
   end
 
-  def changeset(struct, params) do
+  def changeset(struct, :insert, params) do
     struct
     |> cast(params, writable_fields())
     |> validate()
@@ -57,8 +58,8 @@ defmodule BlueJet.Notification.NotificationTrigger do
     trigger = %{ event: event, action_type: "send_email", action_target: template_id },
     data
   ) do
-    account = data[:account] || get_account(trigger)
-    data = Map.put(data, :account, account)
+    trigger = Proxy.put_account(trigger)
+    data = Map.put(data, :account, trigger.account)
 
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
     template_variables = EmailTemplate.extract_variables(event, data)
@@ -82,10 +83,10 @@ defmodule BlueJet.Notification.NotificationTrigger do
   end
 
   defmodule AccountDefault do
-    alias BlueJet.Notification.NotificationTrigger
+    alias BlueJet.Notification.Trigger
 
     def send_password_reset_email(account, email_template) do
-      %NotificationTrigger{
+      %Trigger{
         account_id: account.id,
         system_label: "default",
         name: "Send password reset email",
@@ -96,7 +97,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
     end
 
     def send_password_reset_not_registered_email(account, email_template) do
-      %NotificationTrigger{
+      %Trigger{
         account_id: account.id,
         system_label: "default",
         name: "Send password reset not registered email",
@@ -107,7 +108,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
     end
 
     def send_email_confirmation_email(account, email_template) do
-      %NotificationTrigger{
+      %Trigger{
         account_id: account.id,
         system_label: "default",
         name: "Send email confirmation email",
@@ -115,28 +116,6 @@ defmodule BlueJet.Notification.NotificationTrigger do
         action_type: "send_email",
         action_target: email_template.id
       }
-    end
-  end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Notification.NotificationTrigger
-
-    def default() do
-      from(nt in NotificationTrigger, order_by: [desc: :updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(nt in query, where: nt.account_id == ^account_id)
-    end
-
-    def for_event(query, event) do
-      from(nt in query, where: nt.event == ^event)
-    end
-
-    def preloads(_, _) do
-      []
     end
   end
 end
