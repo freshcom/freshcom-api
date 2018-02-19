@@ -285,8 +285,8 @@ defmodule BlueJet.OrderTest do
 
     test "when given order's payment gross amount is 0" do
       payments = [
-        %{ status: "refunded", amount_cents: 200, gross_amount_cents: 0 },
-        %{ status: "refunded", amount_cents: 700, gross_amount_cents: 0 }
+        %{ status: "refunded", amount_cents: 200, refunded_amount_cents: 200, gross_amount_cents: 0 },
+        %{ status: "refunded", amount_cents: 700, refunded_amount_cents: 700, gross_amount_cents: 0 }
       ]
       BalanceServiceMock
       |> expect(:list_payment, fn(_, _) -> payments end)
@@ -313,8 +313,8 @@ defmodule BlueJet.OrderTest do
 
     test "when given order was never fully paid and some of the order's payment is partially refunded" do
       payments = [
-        %{ status: "partially_refunded", amount_cents: 200, gross_amount_cents: 100 },
-        %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
+        %{ status: "partially_refunded", amount_cents: 200, refunded_amount_cents: 100, gross_amount_cents: 100 },
+        %{ status: "paid", amount_cents: 700, refunded_amount_cents: 0, gross_amount_cents: 700 }
       ]
       BalanceServiceMock
       |> expect(:list_payment, fn(_, _) -> payments end)
@@ -327,7 +327,7 @@ defmodule BlueJet.OrderTest do
 
     test "when given order was fully paid but some of the order's payment is partially refunded" do
       payments = [
-        %{ status: "partially_refunded", amount_cents: 300, gross_amount_cents: 100 },
+        %{ status: "partially_refunded", amount_cents: 300, refunded_amount_cents: 200, gross_amount_cents: 100 },
         %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
       ]
       BalanceServiceMock
@@ -341,8 +341,8 @@ defmodule BlueJet.OrderTest do
 
     test "when given order was fully paid but some of the order's payment is refunded" do
       payments = [
-        %{ status: "refunded", amount_cents: 300, gross_amount_cents: 300 },
-        %{ status: "paid", amount_cents: 700, gross_amount_cents: 0 }
+        %{ status: "refunded", amount_cents: 300, refunded_amount_cents: 300, gross_amount_cents: 0 },
+        %{ status: "paid", amount_cents: 700, gross_amount_cents: 700 }
       ]
       BalanceServiceMock
       |> expect(:list_payment, fn(_, _) -> payments end)
@@ -585,11 +585,7 @@ defmodule BlueJet.OrderTest do
       |> expect(:create_fulfillment_item, fn(_, _) -> {:ok, fulfillment_item} end)
       |> expect(:list_fulfillment_item, fn(_, _) -> [fulfillment_item] end)
 
-      {:ok, order} = Order.process(order, changeset)
-
-      verify!()
-
-      assert order.fulfillment_status == "partially_fulfilled"
+      {:ok, _} = Order.process(order, changeset)
     end
   end
 end

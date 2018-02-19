@@ -331,7 +331,7 @@ defmodule BlueJet.Storefront.Order do
       |> Enum.reduce(0, fn(payment, acc) -> acc + payment.refunded_amount_cents end)
 
     cond do
-      (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) ->
+      (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) && (total_authorized_amount_cents == 0) ->
         "pending"
 
       (order.grand_total_cents > 0) && (total_paid_amount_cents == 0) && (total_authorized_amount_cents > 0) && (total_authorized_amount_cents < order.authorization_total_cents) ->
@@ -355,7 +355,7 @@ defmodule BlueJet.Storefront.Order do
       (order.grand_total_cents > 0) && (total_paid_amount_cents >= order.grand_total_cents) && (total_gross_amount_cents > 0) && (total_refunded_amount_cents > 0) ->
         "partially_refunded"
 
-      (order.grand_total_cents > 0) && (total_paid_amount_cents >= order.grand_total_cents) && (total_gross_amount_cents == 0) && (total_refunded_amount_cents > 0) ->
+      (order.grand_total_cents > 0) && (total_gross_amount_cents == 0) && (total_refunded_amount_cents > 0) ->
         "refunded"
     end
 
@@ -455,7 +455,6 @@ defmodule BlueJet.Storefront.Order do
     if length(af_line_items) > 0 do
       Enum.each(af_line_items, fn(af_line_item) ->
         OrderLineItem.Proxy.create_fulfillment_item(af_line_item, package)
-        OrderLineItem.refresh_fulfillment_status(af_line_item)
       end)
     end
 

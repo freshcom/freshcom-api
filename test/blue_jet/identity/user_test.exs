@@ -10,9 +10,11 @@ defmodule BlueJet.Identity.UserTest do
       :status,
       :username,
       :email,
+      :phone_number,
       :name,
       :first_name,
       :last_name,
+      :auth_method,
       :password,
       :current_password
     ]

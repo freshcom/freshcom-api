@@ -52,6 +52,9 @@ defmodule BlueJet.Identity.User do
     :account_id,
     :encrypted_password,
 
+    :tfa_code,
+    :tfa_code_expires_at,
+
     :email_confirmation_token,
     :email_confirmed,
     :email_confirmed_at,
