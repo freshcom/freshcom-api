@@ -13,6 +13,7 @@ defmodule BlueJet.Identity.User do
 
     field :username, :string
     field :email, :string
+    field :phone_number, :string
     field :encrypted_password, :string
     field :name, :string
     field :first_name, :string
