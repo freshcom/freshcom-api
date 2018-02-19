@@ -298,7 +298,7 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.before_create"
+          assert name == "balance.payment.create.before"
           {:ok, nil}
          end)
 
@@ -333,11 +333,11 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.before_create"
+          assert name == "balance.payment.create.before"
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.after_create"
+          assert name == "balance.payment.create.success"
           {:ok, nil}
          end)
 
@@ -431,7 +431,7 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.after_update"
+          assert name == "balance.payment.update.success"
           {:ok, nil}
          end)
 
@@ -503,7 +503,7 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.refund.after_create"
+          assert name == "balance.refund.create.success"
           {:ok, nil}
          end)
 

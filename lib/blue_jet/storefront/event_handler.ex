@@ -6,7 +6,7 @@ defmodule BlueJet.Storefront.EventHandler do
 
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
-  def handle_event("balance.payment.after_create", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.create.success", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order = Repo.get!(Order, order_id)
 
     case order.status do
@@ -25,7 +25,7 @@ defmodule BlueJet.Storefront.EventHandler do
     end
   end
 
-  def handle_event("balance.payment.after_update", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.update.success", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Order.refresh_payment_status()
@@ -33,7 +33,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, order}
   end
 
-  def handle_event("balance.refund.after_create", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.refund.create.success", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Order.refresh_payment_status()
@@ -41,7 +41,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, order}
   end
 
-  def handle_event("fulfillment.fulfillment_item.after_create", %{
+  def handle_event("fulfillment.fulfillment_item.create.success", %{
     fulfillment_item: fulfillment_item = %{ status: "fulfilled" }
   }) do
     oli = Repo.get!(OrderLineItem, fulfillment_item.order_line_item_id)
@@ -50,7 +50,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("fulfillment.fulfillment_item.after_update", %{
+  def handle_event("fulfillment.fulfillment_item.update.success", %{
     fulfillment_item: fulfillment_item,
     changeset: %{ changes: %{ status: _ } }
   }) do
@@ -60,7 +60,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("fulfillment.fulfillment_package.after_delete", %{
+  def handle_event("fulfillment.fulfillment_package.delete.success", %{
     fulfillment_package: fulfillment_package
   }) do
     leaf_line_items =
@@ -76,7 +76,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("fulfillment.return_item.after_create", %{
+  def handle_event("fulfillment.return_item.create.success", %{
     return_item: return_item,
     changeset: %{ changes: %{ status: "returned" } }
   }) do
@@ -86,7 +86,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("fulfillment.return_item.after_update", %{
+  def handle_event("fulfillment.return_item.update.success", %{
     return_item: return_item,
     changeset: %{ changes: %{ status: "returned" } }
   }) do

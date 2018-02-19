@@ -123,7 +123,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.not_created"
+          assert name == "identity.password_reset_token.create.error.email_not_found"
           {:ok, nil}
          end)
 
@@ -154,7 +154,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.after_create"
+          assert name == "identity.password_reset_token.create.success"
           {:ok, nil}
          end)
 
@@ -183,7 +183,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.after_create"
+          assert name == "identity.password_reset_token.create.success"
           {:ok, nil}
          end)
 
@@ -213,7 +213,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.password_reset_token.not_created"
+          assert name == "identity.password_reset_token.create.error.email_not_found"
           {:ok, nil}
          end)
 
@@ -322,15 +322,15 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.account.after_create"
+          assert name == "identity.account.create.success"
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.user.after_create"
+          assert name == "identity.user.create.success"
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.after_create"
+          assert name == "identity.email_confirmation_token.create.success"
           {:ok, nil}
          end)
 
@@ -363,11 +363,11 @@ defmodule BlueJet.Identity.IdentityTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.user.after_create"
+          assert name == "identity.user.create.success"
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.after_create"
+          assert name == "identity.email_confirmation_token.create.success"
           {:ok, nil}
          end)
 

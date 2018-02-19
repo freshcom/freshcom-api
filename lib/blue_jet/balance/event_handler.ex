@@ -4,7 +4,7 @@ defmodule BlueJet.Balance.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity.account.after_create", %{ account: account, test_account: test_account }) do
+  def handle_event("identity.account.create.success", %{ account: account, test_account: test_account }) do
     %Settings{ account_id: account.id }
     |> Repo.insert!()
 

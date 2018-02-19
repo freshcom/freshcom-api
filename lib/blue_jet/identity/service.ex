@@ -68,7 +68,7 @@ defmodule BlueJet.Identity.Service do
           {:ok, prt_test}
          end)
       |> Multi.run(:after_account_create, fn(%{ account: account, test_account: test_account }) ->
-          emit_event("identity.account.after_create", %{ account: account, test_account: test_account })
+          emit_event("identity.account.create.success", %{ account: account, test_account: test_account })
          end)
 
     case Repo.transaction(statements) do
@@ -117,8 +117,8 @@ defmodule BlueJet.Identity.Service do
           {:ok, refresh_token}
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.user.after_create", %{ user: user, account: nil })
-          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: nil })
+          emit_event("identity.user.create.success", %{ user: user, account: nil })
+          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: nil })
          end)
 
     case Repo.transaction(statements) do
@@ -175,8 +175,8 @@ defmodule BlueJet.Identity.Service do
           end
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.user.after_create", %{ user: user, account_id: account_id })
-          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account_id: account_id })
+          emit_event("identity.user.create.success", %{ user: user, account_id: account_id })
+          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account_id: account_id })
           # {:ok, nil}
          end)
 
@@ -248,7 +248,7 @@ defmodule BlueJet.Identity.Service do
           {:ok, user}
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.email_confirmation_token.after_create", %{ user: user, account: account })
+          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
          end)
 
     case Repo.transaction(statements) do
@@ -282,7 +282,7 @@ defmodule BlueJet.Identity.Service do
     do
       user = User.refresh_password_reset_token(user)
       event_data = Map.merge(opts, %{ user: user })
-      emit_event("identity.password_reset_token.after_create", event_data)
+      emit_event("identity.password_reset_token.create.success", event_data)
 
       {:ok, user}
     else
@@ -291,7 +291,7 @@ defmodule BlueJet.Identity.Service do
 
       nil ->
         event_data = Map.merge(opts, %{ email: email })
-        emit_event("identity.password_reset_token.not_created", event_data)
+        emit_event("identity.password_reset_token.create.error.email_not_found", event_data)
         {:error, :not_found}
     end
   end
@@ -348,28 +348,5 @@ defmodule BlueJet.Identity.Service do
     User.Query.default()
     |> User.Query.for_account(account_id)
     |> Repo.get_by(fields)
-  end
-
-  def delete_user(nil, _), do: {:error, :not_found}
-
-  def delete_user(user = %User{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      user
-      |> User.changeset(:delete)
-
-    with {:ok, user} <- Repo.delete(changeset) do
-      {:ok, user}
-    else
-      other -> other
-    end
-  end
-
-  def delete_user(id, opts) do
-    account_id = get_account_id(opts)
-
-    Repo.get_by(User, account_id: account_id, id: id)
-    |> delete_user(opts)
   end
 end

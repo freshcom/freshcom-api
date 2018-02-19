@@ -80,7 +80,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
         account: account,
         fields: %{
           "name" => "Send password reset email",
-          "event" => "identity.password_reset_token.after_create",
+          "event" => "identity.password_reset_token.create.success",
           "action_type" => "send_email",
           "action_target" => Ecto.UUID.generate()
         }
@@ -154,7 +154,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
         account: account,
         fields: %{
           "name" => "Send password reset email",
-          "event" => "identity.password_reset_token.after_create",
+          "event" => "identity.password_reset_token.create.success",
           "action_type" => "send_email",
           "action_target" => Ecto.UUID.generate()
         }

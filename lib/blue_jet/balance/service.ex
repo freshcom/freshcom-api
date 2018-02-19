@@ -179,7 +179,7 @@ defmodule BlueJet.Balance.Service do
   end
 
   defp run_before_create_payment(fields) do
-    with {:ok, results} <- emit_event("balance.payment.before_create", %{ fields: fields }) do
+    with {:ok, results} <- emit_event("balance.payment.create.before", %{ fields: fields }) do
       values = [fields] ++ Keyword.values(results)
       fields = Enum.reduce(values, %{}, fn(fields, acc) ->
         if fields do
@@ -217,7 +217,7 @@ defmodule BlueJet.Balance.Service do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.after_create", %{ payment: payment })
+          emit_event("balance.payment.create.success", %{ payment: payment })
          end)
 
     case Repo.transaction(statements) do
@@ -257,7 +257,7 @@ defmodule BlueJet.Balance.Service do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_update, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.after_update", %{ payment: payment })
+          emit_event("balance.payment.update.success", %{ payment: payment })
          end)
 
     case Repo.transaction(statements) do
@@ -319,7 +319,7 @@ defmodule BlueJet.Balance.Service do
           Refund.process(refund, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-          emit_event("balance.refund.after_create", %{ refund: refund })
+          emit_event("balance.refund.create.success", %{ refund: refund })
           {:ok, refund}
          end)
 

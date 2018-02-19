@@ -89,7 +89,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
         account_id: account.id,
         system_label: "default",
         name: "Send password reset email",
-        event: "identity.password_reset_token.after_create",
+        event: "identity.password_reset_token.create.success",
         action_type: "send_email",
         action_target: email_template.id
       }
@@ -100,7 +100,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
         account_id: account.id,
         system_label: "default",
         name: "Send password reset not registered email",
-        event: "identity.password_reset_token.not_created",
+        event: "identity.password_reset_token.create.error.email_not_found",
         action_type: "send_email",
         action_target: email_template.id
       }
@@ -111,7 +111,7 @@ defmodule BlueJet.Notification.NotificationTrigger do
         account_id: account.id,
         system_label: "default",
         name: "Send email confirmation email",
-        event: "identity.email_confirmation_token.after_create",
+        event: "identity.email_confirmation_token.create.success",
         action_type: "send_email",
         action_target: email_template.id
       }

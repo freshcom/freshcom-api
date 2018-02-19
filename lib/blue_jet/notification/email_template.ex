@@ -72,7 +72,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     email_template.account || IdentityService.get_account(email_template)
   end
 
-  def extract_variables("identity.password_reset_token.not_created", %{ account: account, email: email }) do
+  def extract_variables("identity.password_reset_token.create.error.email_not_found", %{ account: account, email: email }) do
     %{
       email: email,
       account: Map.take(account, [:name]),
@@ -80,7 +80,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.password_reset_token.after_create", %{ account: account, user: user }) do
+  def extract_variables("identity.password_reset_token.create.success", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :name, :email]),
       account: Map.take(account, [:name]),
@@ -88,7 +88,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.email_confirmation_token.after_create", %{ account: account, user: user }) do
+  def extract_variables("identity.email_confirmation_token.create.success", %{ account: account, user: user }) do
     %{
       user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),

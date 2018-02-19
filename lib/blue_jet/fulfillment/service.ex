@@ -80,7 +80,7 @@ defmodule BlueJet.Fulfillment.Service do
       Multi.new()
       |> Multi.delete(:fulfillment_package, changeset)
       |> Multi.run(:after_delete, fn(%{ fulfillment_package: fulfillment_package}) ->
-          emit_event("fulfillment.fulfillment_package.after_delete", %{ fulfillment_package: fulfillment_package, changeset: changeset })
+          emit_event("fulfillment.fulfillment_package.delete.success", %{ fulfillment_package: fulfillment_package, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do
@@ -148,7 +148,7 @@ defmodule BlueJet.Fulfillment.Service do
           FulfillmentItem.process(fulfillment_item, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ fulfillment_item: fulfillment_item }) ->
-          emit_event("fulfillment.fulfillment_item.after_create", %{ fulfillment_item: fulfillment_item })
+          emit_event("fulfillment.fulfillment_item.create.success", %{ fulfillment_item: fulfillment_item })
          end)
 
     case Repo.transaction(statements) do
@@ -183,7 +183,7 @@ defmodule BlueJet.Fulfillment.Service do
           FulfillmentItem.process(fulfillment_item, changeset)
          end)
       |> Multi.run(:after_update, fn(%{ fulfillment_item: fulfillment_item }) ->
-          emit_event("fulfillment.fulfillment_item.after_update", %{ fulfillment_item: fulfillment_item, changeset: changeset })
+          emit_event("fulfillment.fulfillment_item.update.success", %{ fulfillment_item: fulfillment_item, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do
@@ -280,7 +280,7 @@ defmodule BlueJet.Fulfillment.Service do
           ReturnItem.process(return_item, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ return_item: return_item }) ->
-          emit_event("fulfillment.return_item.after_create", %{ return_item: return_item, changeset: changeset })
+          emit_event("fulfillment.return_item.create.success", %{ return_item: return_item, changeset: changeset })
          end)
 
     case Repo.transaction(statements) do

@@ -314,7 +314,7 @@ defmodule BlueJet.Balance do
     #       {:ok, payment}
     #      end)
     #   |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-    #       emit_event("balance.refund.after_create", %{ refund: refund })
+    #       emit_event("balance.refund.create.success", %{ refund: refund })
     #       {:ok, refund}
     #      end)
 
