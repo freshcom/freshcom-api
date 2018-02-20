@@ -82,22 +82,4 @@ defmodule BlueJet.Notification.Email do
       {System.get_env("GLOBAL_MAIL_SENDER_NAME"), System.get_env("GLOBAL_MAIL_SENDER")}
     end
   end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Notification.Email
-
-    def default() do
-      from(e in Email, order_by: [desc: :updated_at])
-    end
-
-    def for_account(query, account_id) do
-      from(e in query, where: e.account_id == ^account_id)
-    end
-
-    def preloads(_, _) do
-      []
-    end
-  end
 end

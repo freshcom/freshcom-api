@@ -2,10 +2,16 @@ defmodule BlueJet.Notification.Service do
 
   use BlueJet, :service
 
+  alias Ecto.Multi
   alias BlueJet.Notification.IdentityService
+  alias BlueJet.Notification.{Trigger, Email, EmailTemplate}
 
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
+  end
+
+  defp put_account(opts) do
+    Map.put(opts, :account, get_account(opts))
   end
 
   #
@@ -18,7 +24,7 @@ defmodule BlueJet.Notification.Service do
     filter = get_filter(fields)
 
     Trigger.Query.default()
-    |> Trigger.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Trigger.Query.search(fields[:search])
     |> Trigger.Query.filter_by(filter)
     |> Trigger.Query.for_account(account.id)
     |> Trigger.Query.paginate(size: pagination[:size], number: pagination[:number])
@@ -31,7 +37,7 @@ defmodule BlueJet.Notification.Service do
     filter = get_filter(fields)
 
     Trigger.Query.default()
-    |> Trigger.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> Trigger.Query.search(fields[:search])
     |> Trigger.Query.filter_by(filter)
     |> Trigger.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
@@ -86,5 +92,142 @@ defmodule BlueJet.Notification.Service do
     Trigger
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_trigger(opts)
+  end
+
+  #
+  # MARK: List Email
+  #
+  def list_email(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Email.Query.default()
+    |> Email.Query.search(fields[:search])
+    |> Email.Query.filter_by(filter)
+    |> Email.Query.for_account(account.id)
+    |> Email.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_email(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    Email.Query.default()
+    |> Email.Query.search(fields[:search])
+    |> Email.Query.filter_by(filter)
+    |> Email.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  #
+  # MARK: Email Template
+  #
+  def list_email_template(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> EmailTemplate.Query.for_account(account.id)
+    |> EmailTemplate.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_email_template(fields \\ %{}, opts) do
+    account = get_account(opts)
+
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> EmailTemplate.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_email_template(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %EmailTemplate{ account_id: account.id, account: account }
+      |> EmailTemplate.changeset(:insert, fields)
+
+    with {:ok, email_template} <- Repo.insert(changeset) do
+      email_template = preload(email_template, preloads[:path], preloads[:opts])
+      {:ok, email_template}
+    else
+      other -> other
+    end
+  end
+
+  def get_email_template(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def update_email_template(nil, _, _), do: {:error, :not_found}
+
+  def update_email_template(email_template = %EmailTemplate{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ email_template | account: account }
+      |> EmailTemplate.changeset(:update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.update(:email_template, changeset)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ email_template: email_template }} ->
+        email_template = preload(email_template, preloads[:path], preloads[:opts])
+        {:ok, email_template}
+
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def update_email_template(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    EmailTemplate
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_email_template(fields, opts)
+  end
+
+  def delete_email_template(nil, _), do: {:error, :not_found}
+
+  def delete_email_template(email_template = %EmailTemplate{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ email_template | account: account }
+      |> EmailTemplate.changeset(:delete)
+
+    with {:ok, email_template} <- Repo.delete(changeset) do
+      {:ok, email_template}
+    else
+      other -> other
+    end
+  end
+
+  def delete_email_template(id, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    EmailTemplate
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> delete_email_template(opts)
   end
 end

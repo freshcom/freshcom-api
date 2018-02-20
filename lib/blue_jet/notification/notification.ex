@@ -1,112 +1,7 @@
 defmodule BlueJet.Notification do
   use BlueJet, :context
 
-  alias BlueJet.GlobalMailer
-
-  alias BlueJet.Notification.Trigger
-  alias BlueJet.Notification.Email
-  alias BlueJet.Notification.EmailTemplate
-
-  defmodule EventHandler do
-    @behaviour BlueJet.EventHandler
-
-    # Creates the default email template and notification trigger for account when
-    # an account is first created.
-    def handle_event("identity.account.create.success", %{ account: account, test_account: test_account }) do
-      # Live account
-      template =
-        account
-        |> EmailTemplate.AccountDefault.password_reset()
-        |> Repo.insert!()
-      account
-      |> Trigger.AccountDefault.send_password_reset_email(template)
-      |> Repo.insert!()
-
-      template =
-        account
-        |> EmailTemplate.AccountDefault.password_reset_not_registered()
-        |> Repo.insert!()
-      account
-      |> Trigger.AccountDefault.send_password_reset_not_registered_email(template)
-      |> Repo.insert!()
-
-      template =
-        account
-        |> EmailTemplate.AccountDefault.email_confirmation()
-        |> Repo.insert!()
-      account
-      |> Trigger.AccountDefault.send_email_confirmation_email(template)
-      |> Repo.insert!()
-
-      # Test account
-      template =
-        test_account
-        |> EmailTemplate.AccountDefault.password_reset()
-        |> Repo.insert!()
-      test_account
-      |> Trigger.AccountDefault.send_password_reset_email(template)
-      |> Repo.insert!()
-
-      template =
-        test_account
-        |> EmailTemplate.AccountDefault.password_reset_not_registered()
-        |> Repo.insert!()
-      test_account
-      |> Trigger.AccountDefault.send_password_reset_not_registered_email(template)
-      |> Repo.insert!()
-
-      template =
-        test_account
-        |> EmailTemplate.AccountDefault.email_confirmation()
-        |> Repo.insert!()
-      test_account
-      |> Trigger.AccountDefault.send_email_confirmation_email(template)
-      |> Repo.insert!()
-
-      {:ok, nil}
-    end
-
-    def handle_event("identity.email_confirmation_token.create.success", %{ user: %{ account_id: nil } }) do
-      {:ok, nil}
-    end
-
-    def handle_event("identity.password_reset_token.create.success", %{ user: user = %{ account_id: nil } }) do
-      Email.Factory.password_reset_email(user)
-      |> GlobalMailer.deliver_later()
-
-      {:ok, nil}
-    end
-
-    def handle_event("identity.password_reset_token.create.error.email_not_found", %{ email: email }) do
-      Email.Factory.password_reset_not_registered_email(email)
-      |> GlobalMailer.deliver_later()
-
-      {:ok, nil}
-    end
-
-    def handle_event(event, data = %{ account_id: account_id }) when not is_nil(account_id) do
-      triggers =
-        Trigger.Query.default()
-        |> Trigger.Query.for_account(account_id)
-        |> Trigger.Query.filter_by(%{ event: event })
-        |> Repo.all()
-
-      Enum.each(triggers, fn(trigger) ->
-        Trigger.process(trigger, data)
-      end)
-
-      {:ok, nil}
-    end
-
-    def handle_event(event, data = %{ account: account }) when not is_nil(account) do
-      data = Map.put(data, :account_id, account.id)
-      handle_event(event, data)
-    end
-
-    def handle_event(_, _) do
-      {:ok, nil}
-    end
-  end
+  alias BlueJet.Notification.Service
 
   def list_email(request) do
     with {:ok, request} <- preprocess_request(request, "notification.list_email") do
@@ -117,26 +12,17 @@ defmodule BlueJet.Notification do
     end
   end
 
-  def do_list_email(request = %{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      Email.Query.default()
-      |> search([:to, :subject], request.search)
-      |> filter_by(status: filter[:status])
-      |> Email.Query.for_account(account.id)
+  def do_list_email(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_email(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
-    all_count =
-      Email.Query.default()
-      |> filter_by(status: filter[:status])
-      |> Email.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+    all_count = Service.count_email(%{ account: account })
 
-    preloads = Email.Query.preloads(request.preloads, role: request.role)
     emails =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
+      %{ filter: filter, search: request.search }
+      |> Service.list_email(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
       meta: %{
@@ -162,26 +48,16 @@ defmodule BlueJet.Notification do
     end
   end
 
-  def do_list_email_template(request = %{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      EmailTemplate.Query.default()
-      |> search([:name], request.search, request.locale, account.default_locale)
-      |> filter_by(status: filter[:status])
-      |> EmailTemplate.Query.for_account(account.id)
+  def do_list_email_template(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_email_template(%{ account: account })
 
-    total_count = Repo.aggregate(data_query, :count, :id)
-    all_count =
-      EmailTemplate.Query.default()
-      |> filter_by(status: filter[:status])
-      |> EmailTemplate.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
+    all_count = Service.count_email_template(%{ account: account })
 
-    preloads = EmailTemplate.Query.preloads(request.preloads, role: request.role)
     email_templates =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
+      %{ filter: filter, search: request.search }
+      |> Service.list_email_template(get_sopts(request))
       |> Translation.translate(request.locale, account.default_locale)
 
     response = %AccessResponse{
@@ -196,19 +72,6 @@ defmodule BlueJet.Notification do
     {:ok, response}
   end
 
-  defp email_template_response(nil, _), do: {:error, :not_found}
-
-  defp email_template_response(email_template, request = %{ account: account }) do
-    preloads = EmailTemplate.Query.preloads(request.preloads, role: request.role)
-
-    email_template =
-      email_template
-      |> Repo.preload(preloads)
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: email_template }}
-  end
-
   def create_email_template(request) do
     with {:ok, request} <- preprocess_request(request, "notification.create_email_template") do
       request
@@ -219,10 +82,9 @@ defmodule BlueJet.Notification do
   end
 
   def do_create_email_template(request = %{ account: account }) do
-    changeset = EmailTemplate.changeset(%EmailTemplate{ account_id: account.id}, request.fields, request.locale, account.default_locale)
-
-    with {:ok, email_template} <- Repo.insert(changeset) do
-      email_template_response(email_template, request)
+    with {:ok, email_template} <- Service.create_email_template(request.fields, get_sopts(request)) do
+      email_template = Translation.translate(email_template, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: email_template }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -242,11 +104,15 @@ defmodule BlueJet.Notification do
 
   def do_get_email_template(request = %{ account: account, params: %{ "id" => id } }) do
     email_template =
-      EmailTemplate.Query.default()
-      |> EmailTemplate.Query.for_account(account.id)
-      |> Repo.get(id)
+      %{ id: id }
+      |> Service.get_email_template(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
 
-    email_template_response(email_template, request)
+    if email_template do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: email_template }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def update_email_template(request) do
@@ -259,22 +125,14 @@ defmodule BlueJet.Notification do
   end
 
   def do_update_email_template(request = %{ account: account, params: %{ "id" => id } }) do
-    email_template =
-      EmailTemplate.Query.default()
-      |> EmailTemplate.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    with %EmailTemplate{} <- email_template,
-         changeset <- EmailTemplate.changeset(email_template, request.fields, request.locale, account.default_locale),
-         {:ok, email_template} <- Repo.update(changeset)
-    do
-      email_template_response(email_template, request)
+    with {:ok, email_template} <- Service.update_email_template(id, request.fields, get_sopts(request)) do
+      email_template = Translation.translate(email_template, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: email_template }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
-      nil ->
-        {:error, :not_found}
+      other -> other
     end
   end
 
@@ -288,90 +146,8 @@ defmodule BlueJet.Notification do
   end
 
   def do_delete_email_template(%{ account: account, params: %{ "id" => id } }) do
-    email_template =
-      EmailTemplate.Query.default()
-      |> EmailTemplate.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if email_template do
-      Repo.delete!(email_template)
+    with {:ok, _} <- Service.delete_email_template(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
-    else
-      {:error, :not_found}
-    end
-  end
-
-  #
-  # MARK: Trigger
-  #
-  def list_notification_trigger(request) do
-    with {:ok, request} <- preprocess_request(request, "notification.list_notification_trigger") do
-      request
-      |> do_list_notification_trigger()
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_list_notification_trigger(request = %{ account: account, filter: filter, pagination: pagination }) do
-    data_query =
-      Trigger.Query.default()
-      |> search([:name], request.search)
-      |> filter_by(status: filter[:status])
-      |> Trigger.Query.for_account(account.id)
-
-    total_count = Repo.aggregate(data_query, :count, :id)
-    all_count =
-      Trigger.Query.default()
-      |> filter_by(status: filter[:status])
-      |> Trigger.Query.for_account(account.id)
-      |> Repo.aggregate(:count, :id)
-
-    preloads = Trigger.Query.preloads(request.preloads, role: request.role)
-    notification_triggers =
-      data_query
-      |> paginate(size: pagination[:size], number: pagination[:number])
-      |> Repo.all()
-      |> Repo.preload(preloads)
-
-    response = %AccessResponse{
-      meta: %{
-        locale: request.locale,
-        all_count: all_count,
-        total_count: total_count
-      },
-      data: notification_triggers
-    }
-
-    {:ok, response}
-  end
-
-  defp notification_trigger_response(nil, _), do: {:error, :not_found}
-
-  defp notification_trigger_response(notification_trigger, request) do
-    preloads = Trigger.Query.preloads(request.preloads, role: request.role)
-
-    notification_trigger =
-      notification_trigger
-      |> Repo.preload(preloads)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: notification_trigger }}
-  end
-
-  def create_notification_trigger(request) do
-    with {:ok, request} <- preprocess_request(request, "notification.create_notification_trigger") do
-      request
-      |> do_create_notification_trigger()
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_create_notification_trigger(request = %{ account: account }) do
-    changeset = Trigger.changeset(%Trigger{ account_id: account.id }, request.fields)
-
-    with {:ok, notification_trigger} <- Repo.insert(changeset) do
-      notification_trigger_response(notification_trigger, request)
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -380,44 +156,102 @@ defmodule BlueJet.Notification do
     end
   end
 
-  def get_notification_trigger(request) do
-    with {:ok, request} <- preprocess_request(request, "notification.get_notification_trigger") do
+  #
+  # MARK: Trigger
+  #
+  def list_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.list_trigger") do
       request
-      |> do_get_notification_trigger()
+      |> do_list_trigger()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_get_notification_trigger(request = %{ account: account, params: %{ "id" => id } }) do
-    notification_trigger =
-      Trigger.Query.default()
-      |> Trigger.Query.for_account(account.id)
-      |> Repo.get(id)
+  def do_list_trigger(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_trigger(%{ account: account })
 
-    notification_trigger_response(notification_trigger, request)
+    all_count = Service.count_trigger(%{ account: account })
+
+    triggers =
+      %{ filter: filter, search: request.search }
+      |> Service.list_trigger(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: triggers
+    }
+
+    {:ok, response}
   end
 
-  def delete_notification_trigger(request) do
-    with {:ok, request} <- preprocess_request(request, "notification.delete_notification_trigger") do
+  def create_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.create_trigger") do
       request
-      |> do_delete_notification_trigger()
+      |> do_create_trigger()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_delete_notification_trigger(%{ account: account, params: %{ "id" => id } }) do
-    notification_trigger =
-      Trigger.Query.default()
-      |> Trigger.Query.for_account(account.id)
-      |> Repo.get(id)
+  def do_create_trigger(request = %{ account: account }) do
+    with {:ok, trigger} <- Service.create_trigger(request.fields, get_sopts(request)) do
+      trigger = Translation.translate(trigger, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: trigger }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
 
-    if notification_trigger do
-      Repo.delete!(notification_trigger)
-      {:ok, %AccessResponse{}}
+      other -> other
+    end
+  end
+
+  def get_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.get_trigger") do
+      request
+      |> do_get_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_get_trigger(request = %{ account: account, params: %{ "id" => id } }) do
+    trigger =
+      %{ id: id }
+      |> Service.get_trigger(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    if trigger do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: trigger }}
     else
       {:error, :not_found}
+    end
+  end
+
+  def delete_trigger(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.delete_trigger") do
+      request
+      |> do_delete_trigger()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_delete_trigger(%{ account: account, params: %{ "id" => id } }) do
+    with {:ok, _} <- Service.delete_trigger(id, %{ account: account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 end

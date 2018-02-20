@@ -1,25 +1,25 @@
-defmodule BlueJet.Notification.Trigger.Query do
+defmodule BlueJet.Notification.Email.Query do
   use BlueJet, :query
 
-  alias BlueJet.Notification.Trigger
+  alias BlueJet.Notification.Email
 
   @searchable_fields [
-    :event
+    :to,
+    :from,
+    :subject,
+    :reply_to
   ]
 
   @filterable_fields [
-    :status,
-    :event,
-    :action_target,
-    :action_type
+    :status
   ]
 
   def default() do
-    from t in Trigger, order_by: [desc: :updated_at]
+    from e in Email, order_by: [desc: :updated_at]
   end
 
   def for_account(query, account_id) do
-    from t in query, where: t.account_id == ^account_id
+    from e in query, where: e.account_id == ^account_id
   end
 
   def search(query, keyword) do

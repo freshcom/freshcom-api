@@ -17,7 +17,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       preloads: assigns[:preloads]
     }
 
-    case Notification.list_notification_trigger(request) do
+    case Notification.list_trigger(request) do
       {:ok, %{ data: notification_triggers, meta: meta }} ->
         render(conn, "index.json-api", data: notification_triggers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -36,7 +36,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       preloads: assigns[:preloads]
     }
 
-    case Notification.create_notification_trigger(request) do
+    case Notification.create_trigger(request) do
       {:ok, %{ data: notification_triggers, meta: meta }} ->
         conn
         |> put_status(:created)
@@ -59,7 +59,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       locale: assigns[:locale]
     }
 
-    case Notification.get_notification_trigger(request) do
+    case Notification.get_trigger(request) do
       {:ok, %{ data: notification_trigger, meta: meta }} ->
         render(conn, "show.json-api", data: notification_trigger, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -80,7 +80,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       locale: assigns[:locale]
     }
 
-    case Notification.update_notification_trigger(request) do
+    case Notification.update_trigger(request) do
       {:ok, %{ data: notification_trigger, meta: meta }} ->
         render(conn, "show.json-api", data: notification_trigger, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
@@ -99,7 +99,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       params: %{ "id" => id }
     }
 
-    case Notification.delete_notification_trigger(request) do
+    case Notification.delete_trigger(request) do
       {:ok, _} -> send_resp(conn, :no_content, "")
 
       other -> other

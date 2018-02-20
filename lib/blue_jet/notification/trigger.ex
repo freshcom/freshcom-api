@@ -4,7 +4,6 @@ defmodule BlueJet.Notification.Trigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
-  alias BlueJet.Notification.IdentityService
   alias BlueJet.Notification.EmailTemplate
   alias BlueJet.Notification.Trigger.Proxy
 
@@ -44,22 +43,23 @@ defmodule BlueJet.Notification.Trigger do
     |> validate_required([:name, :status, :event, :action_target, :action_type])
   end
 
-  def changeset(struct, :insert, params) do
-    struct
+  def changeset(trigger, :insert, params) do
+    trigger
     |> cast(params, writable_fields())
     |> validate()
   end
 
-  def get_account(trigger) do
-    trigger.account || IdentityService.get_account(trigger)
+  def changeset(trigger, :delete) do
+    change(trigger)
+    |> Map.put(:action, :delete)
   end
 
-  def process(
+  def fire_action(
     trigger = %{ event: event, action_type: "send_email", action_target: template_id },
     data
   ) do
-    trigger = Proxy.put_account(trigger)
-    data = Map.put(data, :account, trigger.account)
+    account = Proxy.get_account(trigger)
+    data = Map.put(data, :account, account)
 
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
     template_variables = EmailTemplate.extract_variables(event, data)
@@ -78,7 +78,7 @@ defmodule BlueJet.Notification.Trigger do
     |> AccountMailer.deliver_later()
   end
 
-  def process(trigger, _) do
+  def fire_action(trigger, _) do
     {:ok, trigger}
   end
 

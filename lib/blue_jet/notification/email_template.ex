@@ -57,7 +57,13 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> validate_required([:name, :to, :subject, :content_html])
   end
 
-  def changeset(email_template, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(email_template, :insert, params) do
+    email_template
+    |> cast(params, writable_fields())
+    |> validate()
+  end
+
+  def changeset(email_template, :update, params, locale \\ nil, default_locale \\ nil) do
     email_template = %{ email_template | account: get_account(email_template) }
     default_locale = default_locale || email_template.account.default_locale
     locale = locale || default_locale
@@ -66,6 +72,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(email_template, :delete) do
+    change(email_template)
+    |> Map.put(:action, :delete)
   end
 
   def get_account(email_template) do

@@ -113,10 +113,10 @@ defmodule BlueJet.Identity.Authorization do
     "notification.get_email_template",
     "notification.update_email_template",
     "notification.delete_email_template",
-    "notification.list_notification_trigger",
-    "notification.create_notification_trigger",
-    "notification.get_notification_trigger",
-    "notification.delete_notification_trigger",
+    "notification.list_trigger",
+    "notification.create_trigger",
+    "notification.get_trigger",
+    "notification.delete_trigger",
 
     "data_trading.create_data_import"
   ]
@@ -471,10 +471,10 @@ defmodule BlueJet.Identity.Authorization do
       "notification.get_email_template",
       "notification.update_email_template",
       "notification.delete_email_template",
-      "notification.list_notification_trigger",
-      "notification.create_notification_trigger",
-      "notification.get_notification_trigger",
-      "notification.delete_notification_trigger"
+      "notification.list_trigger",
+      "notification.create_trigger",
+      "notification.get_trigger",
+      "notification.delete_trigger"
     ],
 
     "administrator" => [
@@ -591,10 +591,10 @@ defmodule BlueJet.Identity.Authorization do
       "notification.get_email_template",
       "notification.update_email_template",
       "notification.delete_email_template",
-      "notification.list_notification_trigger",
-      "notification.create_notification_trigger",
-      "notification.get_notification_trigger",
-      "notification.delete_notification_trigger",
+      "notification.list_trigger",
+      "notification.create_trigger",
+      "notification.get_trigger",
+      "notification.delete_trigger",
 
       "data_trading.create_data_import"
     ]
