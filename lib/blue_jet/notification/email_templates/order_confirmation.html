@@ -4,8 +4,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Receipt for your order</title>
-
-
   </head>
   <body style="-webkit-text-size-adjust: none; box-sizing: border-box; color: #74787E; font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; height: 100%; line-height: 1.4; margin: 0; width: 100% !important;" bgcolor="#F2F4F6"><style type="text/css">
 body {
@@ -85,7 +83,7 @@ width: 100% !important; height: 100%; margin: 0; line-height: 1.4; background-co
                               {{#line_items}}
                               <tr>
                                 <td width="80%" class="purchase_item" style="box-sizing: border-box; color: #74787E; font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 15px; line-height: 18px; padding: 10px 0; word-break: break-word;">
-                                  {{name}}
+                                  {{name}} x {{order_quantity}}
                                 </td>
                                 <td class="align-right" width="20%" style="box-sizing: border-box; font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; word-break: break-word;" align="right">
                                   ${{sub_total}}

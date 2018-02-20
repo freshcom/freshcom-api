@@ -358,22 +358,6 @@ defmodule BlueJet.Storefront.Order do
       (order.grand_total_cents > 0) && (total_gross_amount_cents == 0) && (total_refunded_amount_cents > 0) ->
         "refunded"
     end
-
-    # cond do
-    #   order.grand_total_cents == 0 -> "paid"
-    #   total_authorized_amount_cents == 0 && total_paid_amount_cents == 0 -> "pending"
-
-    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents <= 0 -> "refunded"
-    #   total_authorized_amount_cents == 0 && total_gross_amount_cents == 0 -> "refunded"
-
-    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents < order.grand_total_cents -> "partially_refunded"
-    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents == order.grand_total_cents -> "paid"
-    #   total_paid_amount_cents >= order.grand_total_cents && total_gross_amount_cents > order.grand_total_cents -> "over_paid"
-    #   total_paid_amount_cents > 0 -> "partially_paid"
-    #   total_authorized_amount_cents >= order.authorization_total_cents -> "authorized"
-    #   total_authorized_amount_cents > 0 -> "partially_authorized"
-    #   true -> "pending"
-    # end
   end
 
   def refresh_fulfillment_status(order) do

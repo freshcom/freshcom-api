@@ -67,7 +67,7 @@ config :blue_jet, BlueJet.GlobalMailer,
 
 config :blue_jet, BlueJet.AccountMailer,
   adapter: Bamboo.SMTPAdapter,
-  server: "email-smtp.us-west-2.amazonaws.com",
+  server: System.get_env("SMTP_SERVER"),
   port: System.get_env("SMTP_PORT"),
   username: System.get_env("SMTP_USERNAME"), # or {:system, "SMTP_USERNAME"}
   password: System.get_env("SMTP_PASSWORD"), # or {:system, "SMTP_PASSWORD"}
@@ -137,7 +137,8 @@ config :blue_jet, :storefront, %{
   catalogue_service: BlueJet.Catalogue.Service,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
-  crm_service: BlueJet.Crm.Service
+  crm_service: BlueJet.Crm.Service,
+  listeners: [BlueJet.Notification.EventHandler]
 }
 
 # config :stripe, secret_key: System.get_env("STRIPE_SECRET_KEY")

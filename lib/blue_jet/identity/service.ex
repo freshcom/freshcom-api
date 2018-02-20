@@ -80,10 +80,7 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_user(fields, %{ account: nil }), do: create_user(fields, %{ account_id: nil })
-  def create_user(fields, %{ account: account }), do: create_user(fields, %{ account_id: account.id })
-
-  def create_user(fields, opts = %{ account_id: nil }) when map_size(opts) == 1 do
+  def create_user(fields, opts = %{ account: nil }) do
     account_fields =
       fields
       |> Map.take(["default_locale"])
@@ -130,22 +127,22 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_user(fields, opts = %{ account_id: account_id }) when map_size(opts) == 1 do
-    test_account = Repo.get_by(Account, mode: "test", live_account_id: account_id)
+  def create_user(fields, opts = %{ account: account }) do
+    test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
 
     live_account_id = if test_account do
-      account_id
+      account.id
     else
       nil
     end
     test_account_id = if test_account do
       test_account.id
     else
-      account_id
+      account.id
     end
 
     changeset =
-      %User{ default_account_id: account_id, account_id: account_id, email_confirmation_token: User.generate_email_confirmation_token() }
+      %User{ default_account_id: account.id, account_id: account.id, email_confirmation_token: User.generate_email_confirmation_token() }
       |> User.changeset(fields)
 
     statements =
@@ -153,7 +150,7 @@ defmodule BlueJet.Identity.Service do
       |> Multi.insert(:user, changeset)
       |> Multi.run(:account_membership, fn(%{ user: user }) ->
           Repo.insert(%AccountMembership{
-            account_id: account_id,
+            account_id: account.id,
             user_id: user.id,
             role: Map.get(fields, "role")
           })
@@ -175,15 +172,19 @@ defmodule BlueJet.Identity.Service do
           end
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.user.create.success", %{ user: user, account_id: account_id })
-          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account_id: account_id })
-          # {:ok, nil}
+          emit_event("identity.user.create.success", %{ user: user, account: account })
+          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
          end)
 
     case Repo.transaction(statements) do
       {:ok, %{ user: user }} -> {:ok, user}
       {:error, _, changeset, _} -> {:error, changeset}
     end
+  end
+
+  def create_user(fields, opts) do
+    opts = put_account(opts)
+    create_user(fields, opts)
   end
 
   def delete_user(nil, _), do: {:error, :not_found}

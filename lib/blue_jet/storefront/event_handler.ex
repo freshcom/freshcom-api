@@ -1,13 +1,16 @@
 defmodule BlueJet.Storefront.EventHandler do
-  @behaviour BlueJet.EventHandler
+  use BlueJet.EventEmitter, namespace: :storefront
 
   alias BlueJet.Repo
   alias Ecto.Changeset
-
   alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
 
-  def handle_event("balance.payment.create.success", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
-    order = Repo.get!(Order, order_id)
+  @behaviour BlueJet.EventHandler
+
+  def handle_event("balance.payment.create.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
+    order =
+      Repo.get!(Order, order_id)
+      |> Map.put(:account, account)
 
     case order.status do
       "cart" ->
@@ -17,17 +20,29 @@ defmodule BlueJet.Storefront.EventHandler do
           |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
           |> Map.put(:action, :update)
 
-        changeset
-        |> Repo.update!()
-        |> Order.process(changeset)
+        {:ok, order} =
+          changeset
+          |> Repo.update!()
+          |> Order.process(changeset)
+
+        root_line_items =
+          OrderLineItem.Query.default()
+          |> OrderLineItem.Query.for_order(order.id)
+          |> OrderLineItem.Query.root()
+          |> Repo.all()
+
+        order = %{ order | root_line_items: root_line_items }
+        emit_event("storefront.order.opened.success", %{ order: order, account: account })
+
       _ ->
         {:ok, Order.refresh_payment_status(order)}
     end
   end
 
-  def handle_event("balance.payment.update.success", %{ payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance.payment.update.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
+      |> Map.put(:account, account)
       |> Order.refresh_payment_status()
 
     {:ok, order}

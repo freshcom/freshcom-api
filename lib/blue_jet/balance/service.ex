@@ -217,7 +217,7 @@ defmodule BlueJet.Balance.Service do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.create.success", %{ payment: payment })
+          emit_event("balance.payment.create.success", %{ payment: payment, account: account })
          end)
 
     case Repo.transaction(statements) do
@@ -257,7 +257,7 @@ defmodule BlueJet.Balance.Service do
           Payment.process(payment, changeset)
          end)
       |> Multi.run(:after_update, fn(%{ processed_payment: payment }) ->
-          emit_event("balance.payment.update.success", %{ payment: payment })
+          emit_event("balance.payment.update.success", %{ payment: payment, account: account })
          end)
 
     case Repo.transaction(statements) do

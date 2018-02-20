@@ -1,10 +1,12 @@
 defmodule BlueJet.Storefront.Service do
   use BlueJet, :service
+  use BlueJet.EventEmitter, namespace: :storefront
 
   alias BlueJet.Storefront.IdentityService
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
   alias Ecto.Multi
+  alias Ecto.Changeset
 
   @callback list_order(map, map) :: list
   @callback count_order(map, map) :: integer
@@ -95,6 +97,21 @@ defmodule BlueJet.Storefront.Service do
       |> Multi.update(:order, changeset)
       |> Multi.run(:processed_order, fn(%{ order: order}) ->
           Order.process(order, changeset)
+         end)
+      |> Multi.run(:after_update, fn(%{ processed_order: order }) ->
+          emit_event("storefront.order.update.success", %{ order: order, changeset: changeset, account: account })
+          if Changeset.get_change(changeset, :status) == "opened" do
+            root_line_items =
+              OrderLineItem.Query.default()
+              |> OrderLineItem.Query.for_order(order.id)
+              |> OrderLineItem.Query.root()
+              |> Repo.all()
+
+            order = %{ order | root_line_items: root_line_items }
+            emit_event("storefront.order.opened.success", %{ order: order, account: account })
+          end
+
+          {:ok, order}
          end)
 
     case Repo.transaction(statements) do

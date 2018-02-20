@@ -97,7 +97,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   defp validate_package_id(changeset = %{
     action: :insert,
     valid?: true,
-    changes: %{ package_id: package_id }
+    changes: %{ package_id: _ }
   }) do
     package = get_package(changeset)
 
@@ -126,7 +126,6 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   end
 
   defp validate_status(changeset = %{
-    data: %{ status: status },
     changes: %{ status: _ }
   }) do
     add_error(changeset, :status, "is not changeable", validation: :unchangeable)

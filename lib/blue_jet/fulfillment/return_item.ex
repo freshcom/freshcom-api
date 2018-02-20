@@ -298,7 +298,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   def preprocess(changeset = %{ changes: %{ package_id: _ } }, _), do: changeset
 
-  def preprocess(changeset, fulfillment_item) do
+  def preprocess(changeset, _) do
     package = get_or_create_auto_return_package(changeset)
     changeset =
       changeset

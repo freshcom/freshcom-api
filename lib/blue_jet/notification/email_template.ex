@@ -12,7 +12,7 @@ defmodule BlueJet.Notification.EmailTemplate do
   ], container: :translations
 
   alias BlueJet.Notification.Email
-  alias BlueJet.Notification.IdentityService
+  alias BlueJet.Notification.EmailTemplate.Proxy
 
   schema "email_templates" do
     field :account_id, Ecto.UUID
@@ -64,7 +64,7 @@ defmodule BlueJet.Notification.EmailTemplate do
   end
 
   def changeset(email_template, :update, params, locale \\ nil, default_locale \\ nil) do
-    email_template = %{ email_template | account: get_account(email_template) }
+    email_template = Proxy.put_account(email_template)
     default_locale = default_locale || email_template.account.default_locale
     locale = locale || default_locale
 
@@ -79,8 +79,14 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> Map.put(:action, :delete)
   end
 
-  def get_account(email_template) do
-    email_template.account || IdentityService.get_account(email_template)
+  defp id_last_part(id) do
+    String.split(id, "-")
+    |> List.last()
+    |> String.upcase()
+  end
+
+  defp dollar_string(cents) do
+    :erlang.float_to_binary(cents / 100, [decimals: 2])
   end
 
   def extract_variables("identity.password_reset_token.create.error.email_not_found", %{ account: account, email: email }) do
@@ -104,6 +110,27 @@ defmodule BlueJet.Notification.EmailTemplate do
       user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),
       freshcom_confirm_email_url: System.get_env("CONFIRM_EMAIL_URL")
+    }
+  end
+
+  def extract_variables("storefront.order.opened.success", %{ account: account, order: order }) do
+    line_items = Enum.map(order.root_line_items, fn(line_item) ->
+      %{
+        name: line_item.name,
+        sub_total: dollar_string(line_item.sub_total_cents)
+      }
+    end)
+
+    order =
+      order
+      |> Map.put(:tax_total, dollar_string(order.tax_one_cents + order.tax_two_cents + order.tax_three_cents))
+      |> Map.put(:grand_total, dollar_string(order.grand_total_cents))
+
+    %{
+      account: account,
+      order: order,
+      order_number: order.code || id_last_part(order.id),
+      line_items: line_items
     }
   end
 
@@ -172,6 +199,21 @@ defmodule BlueJet.Notification.EmailTemplate do
         to: "{{user.email}}",
         body_html: email_confirmation_html,
         body_text: email_confirmation_text
+      }
+    end
+
+    def order_confirmation(account) do
+      order_confirmation_html = File.read!("lib/blue_jet/notification/email_templates/order_confirmation.html")
+      order_confirmation_text = File.read!("lib/blue_jet/notification/email_templates/order_confirmation.txt")
+
+      %EmailTemplate{
+        account_id: account.id,
+        system_label: "default",
+        name: "Order Confirmation",
+        subject: "Your order is confirmed",
+        to: "{{order.email}}",
+        body_html: order_confirmation_html,
+        body_text: order_confirmation_text
       }
     end
   end

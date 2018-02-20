@@ -231,10 +231,10 @@ defmodule BlueJet.Balance.Card do
 
   def process(card = %{ primary: true }, %{ action: :delete }) do
     last_inserted_card =
-      __MODULE__.Query.default()
-      |> __MODULE__.Query.for_account(card.account_id)
-      |> __MODULE__.Query.with_owner(card.owner_type, card.owner_id)
-      |> __MODULE__.Query.not_primary()
+      Query.default()
+      |> Query.for_account(card.account_id)
+      |> Query.with_owner(card.owner_type, card.owner_id)
+      |> Query.not_primary()
       |> first()
       |> Repo.one()
 

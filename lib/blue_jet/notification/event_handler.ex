@@ -33,6 +33,14 @@ defmodule BlueJet.Notification.EventHandler do
     |> Trigger.AccountDefault.send_email_confirmation_email(template)
     |> Repo.insert!()
 
+    template =
+      account
+      |> EmailTemplate.AccountDefault.order_confirmation()
+      |> Repo.insert!()
+    account
+    |> Trigger.AccountDefault.send_order_confirmation_email(template)
+    |> Repo.insert!()
+
     # Test account
     template =
       test_account
@@ -58,6 +66,14 @@ defmodule BlueJet.Notification.EventHandler do
     |> Trigger.AccountDefault.send_email_confirmation_email(template)
     |> Repo.insert!()
 
+    template =
+      test_account
+      |> EmailTemplate.AccountDefault.order_confirmation()
+      |> Repo.insert!()
+    test_account
+    |> Trigger.AccountDefault.send_order_confirmation_email(template)
+    |> Repo.insert!()
+
     {:ok, nil}
   end
 
@@ -79,10 +95,10 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event(event, data = %{ account_id: account_id }) when not is_nil(account_id) do
+  def handle_event(event, data = %{ account: account }) when not is_nil(account) do
     triggers =
       Trigger.Query.default()
-      |> Trigger.Query.for_account(account_id)
+      |> Trigger.Query.for_account(account.id)
       |> Trigger.Query.filter_by(%{ event: event })
       |> Repo.all()
 
@@ -91,11 +107,6 @@ defmodule BlueJet.Notification.EventHandler do
     end)
 
     {:ok, nil}
-  end
-
-  def handle_event(event, data = %{ account: account }) when not is_nil(account) do
-    data = Map.put(data, :account_id, account.id)
-    handle_event(event, data)
   end
 
   def handle_event(_, _) do

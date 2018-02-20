@@ -58,8 +58,7 @@ defmodule BlueJet.Notification.Trigger do
     trigger = %{ event: event, action_type: "send_email", action_target: template_id },
     data
   ) do
-    account = Proxy.get_account(trigger)
-    data = Map.put(data, :account, account)
+    account = data[:account]
 
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
     template_variables = EmailTemplate.extract_variables(event, data)
@@ -127,6 +126,17 @@ defmodule BlueJet.Notification.Trigger do
         system_label: "default",
         name: "Send email confirmation email",
         event: "identity.email_confirmation_token.create.success",
+        action_type: "send_email",
+        action_target: email_template.id
+      }
+    end
+
+    def send_order_confirmation_email(account, email_template) do
+      %Trigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send order confirmation email",
+        event: "storefront.order.opened.success",
         action_type: "send_email",
         action_target: email_template.id
       }
