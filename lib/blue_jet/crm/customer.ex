@@ -240,17 +240,6 @@ defmodule BlueJet.Crm.Customer do
 
   def process(customer, _), do: {:ok, customer}
 
-  ######
-  # External Resources
-  #####
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Customer"
-
-  def put_external_resources(customer, _, _), do: customer
-
-
   @doc """
   Preprocess the customer to be ready for its first payment
   """
