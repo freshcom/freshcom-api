@@ -70,7 +70,7 @@ defmodule BlueJet.Notification.Trigger do
 
     bamboo_email =
       E.new_email()
-      |> E.to("roy@freshcom.io")
+      |> E.to(to)
       |> E.from({account.name, "support@freshcom.io"})
       |> E.html_body(html_body)
       |> E.text_body(text_body)

@@ -54,7 +54,7 @@ defmodule BlueJet.Notification.Email do
           company_name: System.get_env("COMPANY_NAME"),
           company_address: System.get_env("COMPANY_ADDRESS")
          })
-      |> E.to("roy@freshcom.io")
+      |> E.to(email)
       |> E.from(sender())
     end
 
@@ -69,7 +69,7 @@ defmodule BlueJet.Notification.Email do
           company_name: System.get_env("COMPANY_NAME"),
           company_address: System.get_env("COMPANY_ADDRESS")
          })
-      |> E.to("roy@freshcom.io")
+      |> E.to(user.email)
       |> E.from(sender())
     end
 
