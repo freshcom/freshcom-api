@@ -12,8 +12,8 @@ defmodule BlueJet.Repo.Migrations.CreateEmailTemplate do
       add :to, :string
       add :reply_to, :string
       add :from, :string
-      add :content_html, :text
-      add :content_text, :text
+      add :body_html, :text
+      add :body_text, :text
       add :description, :text
 
       add :translations, :map, null: false, default: "{}"

@@ -332,6 +332,8 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     end
   end
 
+  defp preprocess(changeset, nil), do: {:ok, changeset}
+
   def preprocess(changeset = %{
     data: data,
     changes: %{ status: "fulfilled" }

@@ -4,7 +4,7 @@ defmodule BlueJet.Notification.Trigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
-  alias BlueJet.Notification.EmailTemplate
+  alias BlueJet.Notification.{Email, EmailTemplate}
   alias BlueJet.Notification.Trigger.Proxy
 
   schema "notification_triggers" do
@@ -69,13 +69,27 @@ defmodule BlueJet.Notification.Trigger do
     subject = EmailTemplate.render_subject(template, template_variables)
     to = EmailTemplate.render_to(template, template_variables)
 
-    E.new_email()
-    |> E.to("roy@freshcom.io")
-    |> E.from({account.name, "support@freshcom.io"})
-    |> E.html_body(html_body)
-    |> E.text_body(text_body)
-    |> E.subject(subject)
-    |> AccountMailer.deliver_later()
+    bamboo_email =
+      E.new_email()
+      |> E.to("roy@freshcom.io")
+      |> E.from({account.name, "support@freshcom.io"})
+      |> E.html_body(html_body)
+      |> E.text_body(text_body)
+      |> E.subject(subject)
+      |> AccountMailer.deliver_later()
+
+    Repo.insert!(%Email{
+      account_id: account.id,
+      trigger_id: trigger.id,
+      template_id: template.id,
+      status: "sent",
+      subject: bamboo_email.subject,
+      from: E.get_address(bamboo_email.from),
+      to: E.get_address(Enum.at(bamboo_email.to, 0)),
+      body_html: bamboo_email.html_body,
+      body_text: bamboo_email.text_body,
+      locale: account.default_locale
+    })
   end
 
   def fire_action(trigger, _) do

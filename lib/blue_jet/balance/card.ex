@@ -4,7 +4,7 @@ defmodule BlueJet.Balance.Card do
   use Trans, translates: [:custom_data], container: :translations
 
   alias Ecto.Changeset
-  alias BlueJet.Balance.Card.Proxy
+  alias BlueJet.Balance.Card.{Query, Proxy}
   alias BlueJet.Balance.IdentityService
 
   schema "cards" do
@@ -124,15 +124,7 @@ defmodule BlueJet.Balance.Card do
 
     case existing_card do
       nil ->
-        existing_card_count_for_owner =
-          __MODULE__
-          |> __MODULE__.Query.for_account(account.id)
-          |> __MODULE__.Query.with_owner(fields[:owner_type], fields[:owner_id])
-          |> __MODULE__.Query.with_status("saved_by_owner")
-          |> Repo.aggregate(:count, :id)
-
-        primary = if existing_card_count_for_owner == 0 && status == "saved_by_owner", do: true, else: false
-        card = Repo.insert!(%__MODULE__{
+        change(%__MODULE__{}, %{
           account_id: account.id,
           account: account,
           status: status,
@@ -140,9 +132,10 @@ defmodule BlueJet.Balance.Card do
           stripe_customer_id: stripe_customer_id,
           owner_id: fields[:owner_id],
           owner_type: fields[:owner_type],
-          primary: primary
         })
-        process(card)
+        |> put_primary()
+        |> Repo.insert!()
+        |> process()
 
       %{ status: ^status } ->
         {:ok, existing_card}
@@ -151,6 +144,7 @@ defmodule BlueJet.Balance.Card do
         card =
           existing_card
           |> change(%{ status: status, account: account })
+          |> put_primary()
           |> Repo.update!()
 
         Proxy.update_stripe_card(card, %{ metadata: %{ fc_status: status, fc_account_id: account.id } })

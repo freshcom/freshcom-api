@@ -6,9 +6,9 @@ defmodule BlueJet.Repo.Migrations.CreateEmail do
       add :id, :binary_id, primary_key: true
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
-      add :recipient_id, references(:users, type: :binary_id, on_delete: :nilify_all), null: false
-      add :trigger_id, references(:notification_triggers, type: :binary_id, on_delete: :nilify_all), null: false
-      add :template_id, references(:email_templates, type: :binary_id, on_delete: :nilify_all), null: false
+      add :recipient_id, references(:users, type: :binary_id, on_delete: :nilify_all)
+      add :trigger_id, references(:notification_triggers, type: :binary_id, on_delete: :nilify_all)
+      add :template_id, references(:email_templates, type: :binary_id, on_delete: :nilify_all)
 
       add :status, :string, null: false
 
@@ -16,8 +16,8 @@ defmodule BlueJet.Repo.Migrations.CreateEmail do
       add :to, :string
       add :from, :string
       add :reply_to, :string
-      add :content_html, :text
-      add :content_text, :text
+      add :body_html, :text
+      add :body_text, :text
       add :locale, :string
 
       timestamps()

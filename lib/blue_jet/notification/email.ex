@@ -14,8 +14,8 @@ defmodule BlueJet.Notification.Email do
     field :to, :string
     field :from, :string
     field :reply_to, :string
-    field :content_html, :string
-    field :content_text, :string
+    field :body_html, :string
+    field :body_text, :string
     field :locale, :string
 
     timestamps()

@@ -6,8 +6,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     :subject,
     :to,
     :reply_to,
-    :content_html,
-    :content_text,
+    :body_html,
+    :body_text,
     :description
   ], container: :translations
 
@@ -23,8 +23,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     field :subject, :string
     field :to, :string
     field :reply_to, :string
-    field :content_html, :string
-    field :content_text, :string
+    field :body_html, :string
+    field :body_text, :string
     field :description, :string
 
     field :translations, :map, default: %{}
@@ -54,7 +54,7 @@ defmodule BlueJet.Notification.EmailTemplate do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:name, :to, :subject, :content_html])
+    |> validate_required([:name, :to, :subject, :body_html])
   end
 
   def changeset(email_template, :insert, params) do
@@ -107,16 +107,16 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def render_html(%{ content_html: content_html }, variables) do
-    :bbmustache.render(content_html, variables, key_type: :atom)
+  def render_html(%{ body_html: body_html }, variables) do
+    :bbmustache.render(body_html, variables, key_type: :atom)
   end
 
-  def render_text(%{ content_text: nil }, _) do
+  def render_text(%{ body_text: nil }, _) do
     nil
   end
 
-  def render_text(%{ content_text: content_text }, variables) do
-    :bbmustache.render(content_text, variables, key_type: :atom)
+  def render_text(%{ body_text: body_text }, variables) do
+    :bbmustache.render(body_text, variables, key_type: :atom)
   end
 
   def render_subject(%{ subject: subject }, variables) do
@@ -140,8 +140,8 @@ defmodule BlueJet.Notification.EmailTemplate do
         name: "Password Reset",
         subject: "Reset your password for {{account.name}}",
         to: "{{user.email}}",
-        content_html: password_reset_html,
-        content_text: password_reset_text
+        body_html: password_reset_html,
+        body_text: password_reset_text
       }
     end
 
@@ -155,8 +155,8 @@ defmodule BlueJet.Notification.EmailTemplate do
         name: "Password Reset Not Registered",
         subject: "Reset password attempt for {{account.name}}",
         to: "{{email}}",
-        content_html: password_reset_not_registered_html,
-        content_text: password_reset_not_registered_text
+        body_html: password_reset_not_registered_html,
+        body_text: password_reset_not_registered_text
       }
     end
 
@@ -170,8 +170,8 @@ defmodule BlueJet.Notification.EmailTemplate do
         name: "Email Confirmation",
         subject: "Confirm your email for {{account.name}}",
         to: "{{user.email}}",
-        content_html: email_confirmation_html,
-        content_text: email_confirmation_text
+        body_html: email_confirmation_html,
+        body_text: email_confirmation_text
       }
     end
   end

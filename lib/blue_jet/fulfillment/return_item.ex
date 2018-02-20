@@ -296,6 +296,17 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     end
   end
 
+  def preprocess(changeset = %{ changes: %{ package_id: _ } }, _), do: changeset
+
+  def preprocess(changeset, fulfillment_item) do
+    package = get_or_create_auto_return_package(changeset)
+    changeset =
+      changeset
+      |> put_change(:package_id, package.id)
+
+    {:ok, changeset}
+  end
+
   def preprocess(changeset = %{
       action: :insert,
       changes: %{ status: "returned" }
