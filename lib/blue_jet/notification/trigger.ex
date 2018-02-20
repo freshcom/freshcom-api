@@ -5,7 +5,6 @@ defmodule BlueJet.Notification.Trigger do
   alias BlueJet.AccountMailer
 
   alias BlueJet.Notification.{Email, EmailTemplate}
-  alias BlueJet.Notification.Trigger.Proxy
 
   schema "notification_triggers" do
     field :account_id, Ecto.UUID

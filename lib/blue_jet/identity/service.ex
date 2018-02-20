@@ -80,7 +80,7 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_user(fields, opts = %{ account: nil }) do
+  def create_user(fields, %{ account: nil }) do
     account_fields =
       fields
       |> Map.take(["default_locale"])
@@ -127,7 +127,7 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_user(fields, opts = %{ account: account }) do
+  def create_user(fields, %{ account: account }) do
     test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
 
     live_account_id = if test_account do

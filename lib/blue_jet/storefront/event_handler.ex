@@ -3,7 +3,7 @@ defmodule BlueJet.Storefront.EventHandler do
 
   alias BlueJet.Repo
   alias Ecto.Changeset
-  alias BlueJet.Storefront.{Order, OrderLineItem, Unlock}
+  alias BlueJet.Storefront.{Order, OrderLineItem}
 
   @behaviour BlueJet.EventHandler
 

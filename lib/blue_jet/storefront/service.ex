@@ -100,6 +100,7 @@ defmodule BlueJet.Storefront.Service do
          end)
       |> Multi.run(:after_update, fn(%{ processed_order: order }) ->
           emit_event("storefront.order.update.success", %{ order: order, changeset: changeset, account: account })
+
           if Changeset.get_change(changeset, :status) == "opened" do
             root_line_items =
               OrderLineItem.Query.default()
@@ -109,9 +110,9 @@ defmodule BlueJet.Storefront.Service do
 
             order = %{ order | root_line_items: root_line_items }
             emit_event("storefront.order.opened.success", %{ order: order, account: account })
+          else
+            {:ok, order}
           end
-
-          {:ok, order}
          end)
 
     case Repo.transaction(statements) do
