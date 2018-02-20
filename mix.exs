@@ -46,6 +46,7 @@ defmodule BlueJet.Mixfile do
       {:trans, "~> 2.0"},
       {:ex_aws, "~> 2.0"},
       {:ex_aws_s3, "~> 2.0"},
+      {:ex_aws_sns, "~> 2.0"},
       {:hackney, "~> 1.8"},
       {:sweet_xml, "~> 0.6"},
       {:comeonin, "~> 3.0"},
