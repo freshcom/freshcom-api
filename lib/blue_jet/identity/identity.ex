@@ -117,6 +117,29 @@ defmodule BlueJet.Identity do
   end
 
   #
+  # MARK: Phone Verification Code
+  #
+  def create_phone_verification_code(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.create_phone_verification_code") do
+      request
+      |> do_create_phone_verification_code()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_phone_verification_code(request) do
+    with {:ok, _} <- Service.create_phone_verification_code(request.fields, %{ account: request.account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  #
   # MARK: Email Confirmation Token
   #
   def create_email_confirmation_token(request) do

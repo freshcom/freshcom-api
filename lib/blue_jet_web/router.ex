@@ -23,11 +23,12 @@ defmodule BlueJetWeb.Router do
 
     options "/*path", WelcomeController, :options
 
+
+    #
+    # MARK: Identity
+    #
     resources "/token", TokenController, only: [:create]
 
-    ####
-    # Identity
-    ####
     resources "/accounts", AccountController, except: [:new, :edit]
     get "/account", AccountController, :show
     patch "/account", AccountController, :update
@@ -44,6 +45,7 @@ defmodule BlueJetWeb.Router do
     post "/passwords", PasswordController, :create
     post "/email_confirmation_tokens", EmailConfirmationTokenController, :create
     post "/email_confirmations", EmailConfirmationController, :create
+    post "/phone_verification_codes", PhoneVerificationCodeController, :create
 
     ####
     # File Storage

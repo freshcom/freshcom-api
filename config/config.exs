@@ -48,6 +48,11 @@ config :ja_serializer,
 
 config :ex_aws, region: System.get_env("AWS_REGION")
 
+config :ex_aws, :retries,
+  max_attempts: 3,
+  base_backoff_in_ms: 10,
+  max_backoff_in_ms: 10_000
+
 config :sentry,
   dsn: "https://4409d5822eb148cd8b2d7883c4e14a59:f8772da31a684c3684e573e2f6644049@sentry.io/286411",
   environment_name: Mix.env,
@@ -81,7 +86,6 @@ config :blue_jet, :email_regex, ~r/^[A-Za-z0-9._%+-+']+@[A-Za-z0-9.-]+\.[A-Za-z]
 config :blue_jet, :phone_regex, ~r/\+(9[976]\d|8[987530]\d|6[987]\d|5[90]\d|42\d|3[875]\d| 2[98654321]\d|9[8543210]|8[6421]|6[6543210]|5[87654321]| 4[987654310]|3[9643210]|2[70]|7|1)\d{1,14}$/
 
 config :blue_jet, :s3, prefix: "uploads"
-
 
 config :blue_jet, :authorization, BlueJet.Identity.Authorization
 

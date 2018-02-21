@@ -12,6 +12,7 @@ defmodule BlueJet.Identity.Authorization do
     "identity.get_refresh_token",
     "identity.create_password_reset_token",
     "identity.create_password",
+    "identity.create_phone_verification_code",
     "identity.create_email_confirmation_token",
     "identity.create_email_confirmation",
 
@@ -128,7 +129,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_password_reset_token",
       "identity.create_password",
       "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_confirmation"
     ],
 
     "guest" => [
@@ -138,6 +139,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_password",
       "identity.create_email_confirmation_token",
       "identity.create_email_confirmation",
+      "identity.create_phone_verification_code",
 
       "file_storage.get_file",
       "file_storage.get_file_collection",
