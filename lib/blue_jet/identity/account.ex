@@ -24,6 +24,7 @@ defmodule BlueJet.Identity.Account do
     field :name, :string
     field :company_name, :string
     field :default_locale, :string, default: "en"
+    field :default_auth_method, :string, default: "simple"
     field :website_url, :string
     field :support_email, :string
     field :tech_email, :string
@@ -68,14 +69,23 @@ defmodule BlueJet.Identity.Account do
     writable_fields() -- [:default_locale]
   end
 
-  def changeset(account, params, locale \\ nil) do
+  def changeset(account, :insert, params) do
+    account
+    |> cast(params, castable_fields(account))
+    |> Map.put(:action, :insert)
+    |> validate_required([:name])
+  end
+
+  def changeset(account, :update, params, locale \\ nil) do
     changeset =
       account
       |> cast(params, castable_fields(account))
+      |> Map.put(:action, :update)
       |> validate_required([:name])
 
     locale = locale || get_field(changeset, :default_locale)
     default_locale = get_field(changeset, :default_locale)
+
     Translation.put_change(changeset, translatable_fields(), locale, default_locale)
   end
 

@@ -50,14 +50,15 @@ defmodule BlueJet.Identity.Service do
   def create_account(fields) do
     changeset =
       %Account{ mode: "live" }
-      |> Account.changeset(fields)
+      |> Account.changeset(:insert, fields)
 
     statements =
       Multi.new()
       |> Multi.insert(:account, changeset)
       |> Multi.run(:test_account, fn(%{ account: account }) ->
-          changeset = Account.changeset(%Account{ live_account_id: account.id, mode: "test" }, fields)
-          Repo.insert(changeset)
+          %Account{ live_account_id: account.id, mode: "test" }
+          |> Account.changeset(:insert, fields)
+          |> Repo.insert()
          end)
       |> Multi.run(:prt_live, fn(%{ account: account }) ->
           prt_live = Repo.insert!(%RefreshToken{ account_id: account.id })
@@ -74,6 +75,21 @@ defmodule BlueJet.Identity.Service do
     case Repo.transaction(statements) do
       {:ok, %{ account: account, test_account: test_account }} ->
         account = %{ account | test_account_id: test_account.id }
+        {:ok, account}
+
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def update_account(account = %Account{}, fields, opts \\ %{}) do
+    changeset = Account.changeset(account, :update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.update(:account, changeset)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ account: account }} ->
         {:ok, account}
 
       {:error, _, changeset, _} -> {:error, changeset}
@@ -142,7 +158,7 @@ defmodule BlueJet.Identity.Service do
     end
 
     changeset =
-      %User{ default_account_id: account.id, account_id: account.id, email_confirmation_token: User.generate_email_confirmation_token() }
+      %User{ default_account_id: account.id, account_id: account.id, account: account, email_confirmation_token: User.generate_email_confirmation_token() }
       |> User.changeset(fields)
 
     statements =

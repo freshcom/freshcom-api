@@ -36,6 +36,18 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     account = Repo.get_by(Account, id: user.default_account_id)
     test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
 
+    {:ok, _} = Identity.update_account(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: account.id },
+      account: account,
+      fields: %{ default_auth_method: "tfa_sms" }
+    })
+
+    {:ok, _} = Identity.update_account(%AccessRequest{
+      vas: %{ user_id: user.id, account_id: test_account.id },
+      account: test_account,
+      fields: %{ default_auth_method: "tfa_sms" }
+    })
+
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{

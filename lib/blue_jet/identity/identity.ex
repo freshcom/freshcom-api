@@ -82,18 +82,14 @@ defmodule BlueJet.Identity do
   end
 
   def do_update_account(request = %{ account: account, fields: fields }) do
-    live_changeset = Account.changeset(account, fields, request.locale)
-
-    test_account = Repo.get_by(Account, live_account_id: account.id)
-    test_changeset = Account.changeset(test_account, fields, request.locale)
-
-    with {:ok, account} <- Repo.update(live_changeset),
-         {:ok, _} <- Repo.update(test_changeset)
-    do
+    with {:ok, account} <- Service.update_account(account, fields, get_sopts(request)) do
       account = Translation.translate(account, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: account }}
     else
-      {:error, changeset} -> {:error, %AccessResponse{ errors: changeset.errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 

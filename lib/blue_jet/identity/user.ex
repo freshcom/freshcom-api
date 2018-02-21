@@ -82,9 +82,9 @@ defmodule BlueJet.Identity.User do
 
   defp required_fields(%{ data: %{ __meta__: %{ state: :loaded } } }), do: required_fields()
 
-  defp username_valid?(_, nil), do: true
+  defp username_unique?(_, nil), do: true
 
-  defp username_valid?(username, account_id) do
+  defp username_unique?(username, account_id) do
     existing_user =
       Query.default()
       |> Query.member_of_account(account_id)
@@ -93,17 +93,31 @@ defmodule BlueJet.Identity.User do
     !existing_user
   end
 
-  defp validate_username(changeset = %{ valid?: true, changes: %{ username: username } }) do
+  defp validate_username_unique(changeset = %{ valid?: true, changes: %{ username: username } }) do
     account_id = get_field(changeset, :account_id)
 
-    if username_valid?(username, account_id) do
+    if username_unique?(username, account_id) do
       changeset
     else
       add_error(changeset, :username, "Username already taken.", [validation: :unique])
     end
   end
 
+  defp validate_username(changeset = %{ valid?: true, changes: %{ username: _ } }) do
+    changeset
+    |> validate_length(:username, min: 5)
+    |> validate_username_unique()
+    |> unique_constraint(:username)
+    |> unique_constraint(:username, name: :users_account_id_username_index)
+  end
+
   defp validate_username(changeset), do: changeset
+
+  defp validate_email(changeset) do
+    changeset
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
+    |> unique_constraint(:email)
+  end
 
   defp validate_current_password(changeset = %{
     valid?: true,
@@ -122,6 +136,18 @@ defmodule BlueJet.Identity.User do
 
   defp validate_current_password(changeset), do: changeset
 
+  defp validate_phone_number(changeset) do
+    auth_method = get_field(changeset, :auth_method)
+
+    if auth_method == "tfa_sms" do
+      changeset
+      |> validate_required([:phone_number])
+      |> validate_format(:phone_number, Application.get_env(:blue_jet, :phone_regex))
+    else
+      changeset
+    end
+  end
+
   defp checkpw(nil, _), do: false
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
@@ -131,13 +157,10 @@ defmodule BlueJet.Identity.User do
 
     changeset
     |> validate_required(required_fields)
-    |> validate_length(:username, min: 5)
     |> validate_username()
-    |> unique_constraint(:username)
-    |> unique_constraint(:username, name: :users_account_id_username_index)
+    |> validate_email()
 
-    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
-    |> unique_constraint(:email)
+    |> validate_phone_number()
 
     |> validate_current_password()
     |> validate_length(:password, min: 8)
@@ -152,9 +175,9 @@ defmodule BlueJet.Identity.User do
 
   defp put_encrypted_password(changeset), do: changeset
 
-  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
-  def put_name(changeset) do
+  defp put_name(changeset) do
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
 
@@ -164,6 +187,14 @@ defmodule BlueJet.Identity.User do
       changeset
     end
   end
+
+  defp put_auth_method(changeset = %{ changes: %{ auth_method: _ } }), do: changeset
+
+  defp put_auth_method(changeset = %{ data: %{ account: %{ default_auth_method: default_auth_method } } }) do
+    put_change(changeset, :auth_method, default_auth_method)
+  end
+
+  defp put_auth_method(changeset), do: changeset
 
   def changeset(user, :delete) do
     change(user)
@@ -175,6 +206,7 @@ defmodule BlueJet.Identity.User do
     |> cast(params, writable_fields())
     |> put_name()
     |> Utils.put_clean_email()
+    |> put_auth_method()
     |> validate()
     |> put_encrypted_password()
   end
