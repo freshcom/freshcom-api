@@ -2,9 +2,8 @@ defmodule BlueJet.Identity.AuthenticationTest do
   use BlueJet.DataCase
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity.Account
+  alias BlueJet.Identity.{Account, User, RefreshToken, AccountMembership}
   alias BlueJet.Identity.Authentication
-  alias BlueJet.Identity.RefreshToken
 
   describe "deserialize_scope/1" do
     test "with valid scope" do
@@ -137,6 +136,32 @@ defmodule BlueJet.Identity.AuthenticationTest do
       assert response.access_token
       assert response.refresh_token == RefreshToken.get_prefixed_id(test_refresh_token)
       assert response.token_type
+    end
+
+    test "when user auth method is tfa_sms but otp is not provided in the header" do
+      account = Repo.insert!(%Account{})
+      user =
+        change(%User{ default_account_id: account.id, username: Faker.Internet.email(), auth_method: "tfa_sms" }, password: "test1234")
+        |> User.put_encrypted_password()
+        |> Repo.insert!()
+      Repo.insert!(%AccountMembership{
+        user_id: user.id,
+        account_id: account.id,
+        role: "administrator"
+      })
+      Repo.insert!(%RefreshToken{
+        user_id: user.id,
+        account_id: account.id
+      })
+
+      {:error, response} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234"
+      })
+
+      assert response.error == :invalid_otp
+      assert response.error_description
     end
   end
 end

@@ -102,6 +102,8 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  defp validate_username_unique(changeset), do: changeset
+
   defp validate_username(changeset = %{ valid?: true, changes: %{ username: _ } }) do
     changeset
     |> validate_length(:username, min: 5)
@@ -193,11 +195,11 @@ defmodule BlueJet.Identity.User do
     |> foreign_key_constraint(:account_id)
   end
 
-  defp put_encrypted_password(changeset = %{ valid?: true, changes: %{ password: password } })  do
+  def put_encrypted_password(changeset = %{ valid?: true, changes: %{ password: password } })  do
     put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
   end
 
-  defp put_encrypted_password(changeset), do: changeset
+  def put_encrypted_password(changeset), do: changeset
 
   defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
@@ -238,6 +240,27 @@ defmodule BlueJet.Identity.User do
   def confirm_email(user) do
     user
     |> change(email_confirmation_token: nil, email_confirmed: true, email_confirmed_at: Ecto.DateTime.utc())
+    |> Repo.update!()
+  end
+
+  def get_tfa_code(user) do
+    if user.tfa_code && Timex.before?(Timex.now, user.tfa_code_expires_at) do
+      user.tfa_code
+    else
+      nil
+    end
+  end
+
+  def generate_value(n) do
+    Enum.reduce(1..n, "", fn(_, acc) ->
+      char = Enum.random(0..9)
+      acc <> Integer.to_string(char)
+    end)
+  end
+
+  def refresh_tfa_code(user) do
+    user
+    |> change(%{ tfa_code: generate_value(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
     |> Repo.update!()
   end
 

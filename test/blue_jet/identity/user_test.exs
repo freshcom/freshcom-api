@@ -16,7 +16,8 @@ defmodule BlueJet.Identity.UserTest do
       :last_name,
       :auth_method,
       :password,
-      :current_password
+      :current_password,
+      :phone_verification_code
     ]
   end
 

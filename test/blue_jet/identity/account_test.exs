@@ -8,6 +8,7 @@ defmodule BlueJet.Identity.AccountTest do
       :name,
       :company_name,
       :default_locale,
+      :default_auth_method,
       :website_url,
       :support_email,
       :tech_email,
@@ -36,7 +37,7 @@ defmodule BlueJet.Identity.AccountTest do
 
   describe "changeset/3" do
     test "when given params is invalid" do
-      changeset = Account.changeset(%Account{}, %{
+      changeset = Account.changeset(%Account{}, :insert, %{
         name: Faker.Company.name(),
         default_locale: "test"
       })
@@ -47,7 +48,7 @@ defmodule BlueJet.Identity.AccountTest do
     end
 
     test "when given params is valid" do
-      changeset = Account.changeset(%Account{}, %{})
+      changeset = Account.changeset(%Account{}, :insert, %{})
 
       refute changeset.valid?
     end
@@ -57,7 +58,7 @@ defmodule BlueJet.Identity.AccountTest do
       changeset =
         account
         |> Ecto.put_meta(state: :loaded)
-        |> Account.changeset(%{ default_locale: "test" })
+        |> Account.changeset(:insert, %{ default_locale: "test" })
 
       refute changeset.changes[:default_locale]
     end

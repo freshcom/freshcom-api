@@ -29,12 +29,12 @@ defmodule BlueJet.Identity.Authentication do
   alias BlueJet.Identity.Jwt
   alias BlueJet.Identity.RefreshToken
 
-  def create_token(%{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
-    create_token(%{ grant_type: "password", username: username, password: password, scope: deserialize_scope(scope) })
+  def create_token(fields = %{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
+    create_token(%{ grant_type: "password", username: username, password: password, otp: fields["otp"], scope: deserialize_scope(scope) })
   end
 
-  def create_token(%{ "grant_type" => "password", "username" => username, "password" => password }) do
-    create_token(%{ grant_type: "password", username: username, password: password })
+  def create_token(fields = %{ "grant_type" => "password", "username" => username, "password" => password }) do
+    create_token(%{ grant_type: "password", username: username, password: password, otp: fields["otp"] })
   end
 
   def create_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token, "scope" => scope }) do
@@ -45,14 +45,14 @@ defmodule BlueJet.Identity.Authentication do
     create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token })
   end
 
-  def create_token(%{ grant_type: "password", username: username, password: password, scope: %{ account_id: account_id } }) do
+  def create_token(fields = %{ grant_type: "password", username: username, password: password, scope: %{ account_id: account_id } }) do
     user = User |> User.Query.member_of_account(account_id) |> Repo.get_by(username: username)
-    create_token_by_password(user, password, account_id)
+    create_token_by_password(user, password, fields[:otp], account_id)
   end
 
-  def create_token(%{ grant_type: "password", username: username, password: password }) do
+  def create_token(fields = %{ grant_type: "password", username: username, password: password }) do
     user = User |> User.Query.global() |> Repo.get_by(username: username)
-    create_token_by_password(user, password)
+    create_token_by_password(user, password, fields[:otp])
   end
 
   def create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token_id, scope: %{ account_id: account_id } }) do
@@ -73,33 +73,65 @@ defmodule BlueJet.Identity.Authentication do
   end
 
   # No scope
-  defp create_token_by_password(nil, _) do
-    {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
-  end
-
-  defp create_token_by_password(%User{ id: user_id, default_account_id: account_id, encrypted_password: encrypted_password }, password) do
-    if Comeonin.Bcrypt.checkpw(password, encrypted_password) do
-      refresh_token = RefreshToken.Query.for_user(user_id) |> Repo.get_by!(account_id: account_id)
-
-      token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
-      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
-    else
-      {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
-    end
-  end
-
   defp create_token_by_password(nil, _, _) do
     {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
   end
 
-  defp create_token_by_password(%User{ id: user_id, encrypted_password: encrypted_password }, password, account_id) do
-    if Comeonin.Bcrypt.checkpw(password, encrypted_password) do
-      refresh_token = RefreshToken.Query.for_user(user_id) |> Repo.get_by!(account_id: account_id)
+  defp create_token_by_password(user, password, otp) do
+    password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
+    otp_provided = !!otp
+    otp_valid = (user.auth_method == "simple") || (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
 
-      token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user_id, typ: "user" })
-      {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
-    else
-      {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+    cond do
+      password_valid && otp_valid ->
+        refresh_token =
+          user.id
+          |> RefreshToken.Query.for_user()
+          |> Repo.get_by!(account_id: user.default_account_id)
+
+        token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: user.default_account_id, prn: user.id, typ: "user" })
+        {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
+
+      !password_valid ->
+        {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+
+      !otp_provided ->
+        User.refresh_tfa_code(user)
+        {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
+
+      !otp_valid ->
+        {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
+    end
+  end
+
+  defp create_token_by_password(nil, _, _, _) do
+    {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+  end
+
+  defp create_token_by_password(user, password, otp, account_id) do
+    password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
+    otp_provided = !!otp
+    otp_valid = (user.auth_method == "simple") || (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
+
+    cond do
+      password_valid && otp_valid ->
+        refresh_token =
+          user.id
+          |> RefreshToken.Query.for_user()
+          |> Repo.get_by!(account_id: account_id)
+
+        token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user.id, typ: "user" })
+        {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
+
+      !password_valid ->
+        {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
+
+      !otp_provided ->
+        User.refresh_tfa_code(user)
+        {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
+
+      !otp_valid ->
+        {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
     end
   end
 
