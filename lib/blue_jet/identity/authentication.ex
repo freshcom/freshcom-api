@@ -1,4 +1,5 @@
 defmodule BlueJet.Identity.Authentication do
+  use BlueJet.EventEmitter, namespace: :identity
 
   @moduledoc """
   Publishable Refresh Token
@@ -79,7 +80,7 @@ defmodule BlueJet.Identity.Authentication do
 
   defp create_token_by_password(user, password, otp) do
     password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
-    otp_provided = !!otp
+    otp_provided = otp != "" && otp
     otp_valid = (user.auth_method == "simple") || (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
 
     cond do
@@ -96,7 +97,8 @@ defmodule BlueJet.Identity.Authentication do
         {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
 
       !otp_provided ->
-        User.refresh_tfa_code(user)
+        user = User.refresh_tfa_code(user)
+        emit_event("identity.user.tfa_code.create.success", %{ user: user })
         {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
 
       !otp_valid ->
@@ -110,7 +112,7 @@ defmodule BlueJet.Identity.Authentication do
 
   defp create_token_by_password(user, password, otp, account_id) do
     password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
-    otp_provided = !!otp
+    otp_provided = otp != "" && otp
     otp_valid = (user.auth_method == "simple") || (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
 
     cond do
@@ -127,7 +129,8 @@ defmodule BlueJet.Identity.Authentication do
         {:error, %{ error: :invalid_grant, error_description: "Username and password does not match." }}
 
       !otp_provided ->
-        User.refresh_tfa_code(user)
+        user = User.refresh_tfa_code(user)
+        emit_event("identity.user.tfa_code.create.success", %{ user: user })
         {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
 
       !otp_valid ->

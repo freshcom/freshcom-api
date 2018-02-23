@@ -102,6 +102,13 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
+  def handle_event("identity.user.tfa_code.create.success", %{ user: user }) do
+    ExAws.SNS.publish("Your verification code is: #{user.tfa_code}", phone_number: user.phone_number)
+    |> ExAws.request()
+
+    {:ok, nil}
+  end
+
   def handle_event(event, data = %{ account: account }) when not is_nil(account) do
     triggers =
       Trigger.Query.default()

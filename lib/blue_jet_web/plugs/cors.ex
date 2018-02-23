@@ -9,7 +9,7 @@ defmodule BlueJet.Plugs.CORS do
       headers:     ["Authorization", "Content-Type", "Accept", "Origin",
                     "User-Agent", "DNT","Cache-Control", "X-Mx-ReqToken",
                     "Keep-Alive", "X-Requested-With", "If-Modified-Since",
-                    "X-CSRF-Token"],
+                    "X-CSRF-Token", "X-Freshcom-OTP"],
       expose:      [],
       methods:     ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     ]
