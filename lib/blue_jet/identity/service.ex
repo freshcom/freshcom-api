@@ -194,9 +194,17 @@ defmodule BlueJet.Identity.Service do
             {:ok, nil}
           end
          end)
+      |> Multi.run(:processed_user, fn(%{ user: user }) ->
+          User.process(user, changeset)
+         end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.user.create.success", %{ user: user, account: account })
-          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
+
+          if user.email do
+            emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
+          end
+
+          {:ok, nil}
          end)
 
     case Repo.transaction(statements) do

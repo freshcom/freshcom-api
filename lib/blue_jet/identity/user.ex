@@ -3,9 +3,7 @@ defmodule BlueJet.Identity.User do
 
   alias BlueJet.Utils
 
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.RefreshToken
-  alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.{Account, RefreshToken, AccountMembership, PhoneVerificationCode}
   alias BlueJet.Identity.User.Query
 
   schema "users" do
@@ -31,6 +29,7 @@ defmodule BlueJet.Identity.User do
     field :password_reset_token_expires_at, :utc_datetime
     field :password_updated_at, :utc_datetime
 
+    field :phone_verification_code, :string, virtual: true
     field :password, :string, virtual: true
     field :current_password, :string, virtual: true
 
@@ -68,7 +67,7 @@ defmodule BlueJet.Identity.User do
   ]
 
   def writable_fields do
-    (__MODULE__.__schema__(:fields) -- @system_fields()) ++ [:password, :current_password]
+    (__MODULE__.__schema__(:fields) -- @system_fields()) ++ [:password, :current_password, :phone_verification_code]
   end
 
   defp required_fields, do: [:username]
@@ -148,6 +147,30 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  defp validate_phone_verification_code_exists(changeset = %{ valid?: true }) do
+    pvc = get_field(changeset, :phone_verification_code)
+    phone_number = get_field(changeset, :phone_number)
+
+    if PhoneVerificationCode.exists?(pvc, phone_number) do
+      changeset
+    else
+      add_error(changeset, :phone_verification_code, "is invalid.", validation: :must_exist)
+    end
+  end
+
+  defp validate_phone_verification_code_exists(changeset), do: changeset
+
+  defp validate_phone_verification_code(changeset) do
+    auth_method = get_field(changeset, :auth_method)
+    if auth_method == "tfa_sms" do
+      changeset
+      |> validate_required([:phone_verification_code])
+      |> validate_phone_verification_code_exists()
+    else
+      changeset
+    end
+  end
+
   defp checkpw(nil, _), do: false
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
@@ -161,6 +184,7 @@ defmodule BlueJet.Identity.User do
     |> validate_email()
 
     |> validate_phone_number()
+    |> validate_phone_verification_code()
 
     |> validate_current_password()
     |> validate_length(:password, min: 8)
@@ -251,5 +275,15 @@ defmodule BlueJet.Identity.User do
     user
     |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))
     |> Repo.update!()
+  end
+
+  def process(user, changeset) do
+    if user.phone_verification_code do
+      PhoneVerificationCode.Query.default()
+      |> PhoneVerificationCode.Query.filter_by(%{ phone_number: user.phone_number })
+      |> Repo.delete_all()
+    end
+
+    {:ok, user}
   end
 end

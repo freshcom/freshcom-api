@@ -2,6 +2,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   use BlueJet, :data
 
   alias BlueJet.Identity.Account
+  alias BlueJet.Identity.PhoneVerificationCode.Query
 
   schema "phone_verification_codes" do
     field :phone_number, :string
@@ -29,6 +30,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   def validate(changeset) do
     changeset
     |> validate_required([:phone_number])
+    |> validate_length(:phone_number, min: 9)
     |> validate_format(:phone_number, Application.get_env(:blue_jet, :phone_regex))
   end
 
@@ -53,5 +55,14 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     |> validate()
     |> put_value()
     |> put_expires_at()
+  end
+
+  def exists?(value, phone_number) do
+    count =
+      Query.default()
+      |> Query.filter_by(%{ value: value, phone_number: phone_number })
+      |> Repo.aggregate(:count, :id)
+
+    count > 0
   end
 end
