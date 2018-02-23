@@ -4,7 +4,7 @@ defmodule BlueJet.Notification.Trigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
-  alias BlueJet.Notification.{Email, EmailTemplate}
+  alias BlueJet.Notification.{Email, EmailTemplate, SmsTemplate}
 
   schema "notification_triggers" do
     field :account_id, Ecto.UUID
@@ -90,6 +90,22 @@ defmodule BlueJet.Notification.Trigger do
     })
   end
 
+  def fire_action(
+    trigger = %{ event: event, action_type: "send_sms", action_target: template_id },
+    data
+  ) do
+    account = data[:account]
+
+    template = Repo.get_by(SmsTemplate, account_id: account.id, id: template_id)
+    template_variables = SmsTemplate.extract_variables(event, data)
+
+    to = SmsTemplate.render_to(template, template_variables)
+    body = SmsTemplate.render_body(template, template_variables)
+
+    ExAws.SNS.publish(body, phone_number: to)
+    |> ExAws.request()
+  end
+
   def fire_action(trigger, _) do
     {:ok, trigger}
   end
@@ -138,6 +154,28 @@ defmodule BlueJet.Notification.Trigger do
         event: "storefront.order.opened.success",
         action_type: "send_email",
         action_target: email_template.id
+      }
+    end
+
+    def send_phone_verification_code_sms(account, sms_template) do
+      %Trigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send phone verification code sms",
+        event: "identity.phone_verification_code.create.success",
+        action_type: "send_sms",
+        action_target: sms_template.id
+      }
+    end
+
+    def send_tfa_code_sms(account, sms_template) do
+      %Trigger{
+        account_id: account.id,
+        system_label: "default",
+        name: "Send TFA code sms",
+        event: "identity.user.tfa_code.create.success",
+        action_type: "send_sms",
+        action_target: sms_template.id
       }
     end
   end

@@ -98,7 +98,7 @@ defmodule BlueJet.Identity.Authentication do
 
       !otp_provided ->
         user = User.refresh_tfa_code(user)
-        emit_event("identity.user.tfa_code.create.success", %{ user: user })
+        emit_event("identity.user.tfa_code.create.success", %{ account: nil, user: user })
         {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
 
       !otp_valid ->
@@ -130,7 +130,8 @@ defmodule BlueJet.Identity.Authentication do
 
       !otp_provided ->
         user = User.refresh_tfa_code(user)
-        emit_event("identity.user.tfa_code.create.success", %{ user: user })
+        account = Repo.get!(Account, account_id)
+        emit_event("identity.user.tfa_code.create.success", %{ account: account, user: user })
         {:error, %{ error: :invalid_otp, error_description: "OTP is invalid." }}
 
       !otp_valid ->

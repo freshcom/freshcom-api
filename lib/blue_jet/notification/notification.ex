@@ -157,6 +157,78 @@ defmodule BlueJet.Notification do
   end
 
   #
+  # MARK: SMS
+  #
+  def list_sms(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.list_sms") do
+      request
+      |> do_list_sms()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_sms(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_sms(%{ account: account })
+
+    all_count = Service.count_sms(%{ account: account })
+
+    smses =
+      %{ filter: filter, search: request.search }
+      |> Service.list_sms(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: smses
+    }
+
+    {:ok, response}
+  end
+
+  #
+  # MARK: SMS Template
+  #
+  def list_sms_template(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.list_sms_template") do
+      request
+      |> do_list_sms_template()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_list_sms_template(request = %{ account: account, filter: filter }) do
+    total_count =
+      %{ filter: filter, search: request.search }
+      |> Service.count_sms_template(%{ account: account })
+
+    all_count = Service.count_sms_template(%{ account: account })
+
+    sms_templates =
+      %{ filter: filter, search: request.search }
+      |> Service.list_sms_template(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    response = %AccessResponse{
+      meta: %{
+        locale: request.locale,
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: sms_templates
+    }
+
+    {:ok, response}
+  end
+
+  #
   # MARK: Trigger
   #
   def list_trigger(request) do

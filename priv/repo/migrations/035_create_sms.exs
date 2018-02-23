@@ -14,6 +14,7 @@ defmodule BlueJet.Repo.Migrations.CreateSms do
 
       add :to, :string
       add :body, :text
+      add :locale, :string
 
       timestamps()
     end

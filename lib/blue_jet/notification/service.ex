@@ -4,7 +4,7 @@ defmodule BlueJet.Notification.Service do
 
   alias Ecto.Multi
   alias BlueJet.Notification.IdentityService
-  alias BlueJet.Notification.{Trigger, Email, EmailTemplate}
+  alias BlueJet.Notification.{Trigger, Email, EmailTemplate, Sms, SmsTemplate}
 
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
@@ -229,5 +229,59 @@ defmodule BlueJet.Notification.Service do
     EmailTemplate
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_email_template(opts)
+  end
+
+  #
+  # MARK: List SMS
+  #
+  def list_sms(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
+
+    Sms.Query.default()
+    |> Sms.Query.search(fields[:search])
+    |> Sms.Query.filter_by(filter)
+    |> Sms.Query.for_account(account.id)
+    |> Sms.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_sms(fields \\ %{}, opts) do
+    account = get_account(opts)
+    filter = get_filter(fields)
+
+    Sms.Query.default()
+    |> Sms.Query.search(fields[:search])
+    |> Sms.Query.filter_by(filter)
+    |> Sms.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  #
+  # MARK: SMS Template
+  #
+  def list_sms_template(fields \\ %{}, opts) do
+    account = get_account(opts)
+    pagination = get_pagination(opts)
+    preloads = get_preloads(opts, account)
+
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> SmsTemplate.Query.for_account(account.id)
+    |> SmsTemplate.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_sms_template(fields \\ %{}, opts) do
+    account = get_account(opts)
+
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> SmsTemplate.Query.for_account(account.id)
+    |> Repo.aggregate(:count, :id)
   end
 end

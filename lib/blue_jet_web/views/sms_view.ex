@@ -1,16 +1,12 @@
-defmodule BlueJetWeb.EmailView do
+defmodule BlueJetWeb.SmsView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
   attributes [
     :status,
 
-    :subject,
     :to,
-    :from,
-    :reply_to,
-    :body_html,
-    :body_text,
+    :body,
     :locale,
 
     :inserted_at,
@@ -18,10 +14,10 @@ defmodule BlueJetWeb.EmailView do
   ]
 
   has_one :trigger, serializer: BlueJetWeb.NotificationTriggerView, identifiers: :always
-  has_one :template, serializer: BlueJetWeb.EmailTemplateView, identifiers: :always
+  has_one :template, serializer: BlueJetWeb.SmsTemplateView, identifiers: :always
 
   def type do
-    "Email"
+    "Sms"
   end
 
   def trigger(%{ trigger_id: nil }, _), do: nil
@@ -29,6 +25,6 @@ defmodule BlueJetWeb.EmailView do
   def trigger(%{ trigger: trigger }, _), do: trigger
 
   def template(%{ template_id: nil }, _), do: nil
-  def template(%{ template_id: template_id, template: %Ecto.Association.NotLoaded{} }, _), do: %{ id: template_id, type: "EmailTemplate" }
+  def template(%{ template_id: template_id, template: %Ecto.Association.NotLoaded{} }, _), do: %{ id: template_id, type: "SmsTemplate" }
   def template(%{ template: template }, _), do: template
 end
