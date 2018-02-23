@@ -80,7 +80,7 @@ defmodule BlueJet.Crm.Service do
     Customer.Query.default()
     |> Customer.Query.for_account(account.id)
     |> Repo.get_by(filter)
-    |> Customer.match_by(fields) # TODO: impl this
+    |> Customer.match_by(fields)
     |> preload(preloads[:path], preloads[:opts])
   end
 
