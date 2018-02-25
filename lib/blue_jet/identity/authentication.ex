@@ -89,6 +89,7 @@ defmodule BlueJet.Identity.Authentication do
           user.id
           |> RefreshToken.Query.for_user()
           |> Repo.get_by!(account_id: user.default_account_id)
+        User.clear_tfa_code(user)
 
         token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: user.default_account_id, prn: user.id, typ: "user" })
         {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
@@ -121,6 +122,7 @@ defmodule BlueJet.Identity.Authentication do
           user.id
           |> RefreshToken.Query.for_user()
           |> Repo.get_by!(account_id: account_id)
+        User.clear_tfa_code(user)
 
         token = Jwt.sign_token(%{ exp: System.system_time(:second) + 3600, aud: account_id, prn: user.id, typ: "user" })
         {:ok, %{ access_token: token, token_type: "bearer", expires_in: 3600, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}

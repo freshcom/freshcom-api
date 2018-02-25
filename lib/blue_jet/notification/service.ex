@@ -284,4 +284,46 @@ defmodule BlueJet.Notification.Service do
     |> SmsTemplate.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
+
+  def get_sms_template(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.for_account(account.id)
+    |> Repo.get_by(fields)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def update_sms_template(nil, _, _), do: {:error, :not_found}
+
+  def update_sms_template(sms_template = %SmsTemplate{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ sms_template | account: account }
+      |> SmsTemplate.changeset(:update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.update(:sms_template, changeset)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ sms_template: sms_template }} ->
+        sms_template = preload(sms_template, preloads[:path], preloads[:opts])
+        {:ok, sms_template}
+
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def update_sms_template(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    SmsTemplate
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_sms_template(fields, opts)
+  end
 end

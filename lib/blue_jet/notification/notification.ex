@@ -228,6 +228,49 @@ defmodule BlueJet.Notification do
     {:ok, response}
   end
 
+  def get_sms_template(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.get_sms_template") do
+      request
+      |> do_get_sms_template()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_get_sms_template(request = %{ account: account, params: %{ "id" => id } }) do
+    sms_template =
+      %{ id: id }
+      |> Service.get_sms_template(get_sopts(request))
+      |> Translation.translate(request.locale, account.default_locale)
+
+    if sms_template do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: sms_template }}
+    else
+      {:error, :not_found}
+    end
+  end
+
+  def update_sms_template(request) do
+    with {:ok, request} <- preprocess_request(request, "notification.update_sms_template") do
+      request
+      |> do_update_sms_template()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_update_sms_template(request = %{ account: account, params: %{ "id" => id } }) do
+    with {:ok, sms_template} <- Service.update_sms_template(id, request.fields, get_sopts(request)) do
+      sms_template = Translation.translate(sms_template, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: sms_template }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
   #
   # MARK: Trigger
   #

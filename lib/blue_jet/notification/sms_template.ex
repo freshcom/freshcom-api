@@ -84,6 +84,7 @@ defmodule BlueJet.Notification.SmsTemplate do
   def extract_variables("identity.user.tfa_code.create.success", %{ account: account, user: user }) do
     %{
       user: user,
+      code: user.tfa_code,
       account: Map.take(account, [:name])
     }
   end

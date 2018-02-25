@@ -222,17 +222,26 @@ defmodule BlueJet.Identity.User do
 
   defp put_auth_method(changeset), do: changeset
 
+  defp put_tfa_code(changeset = %{ action: :insert }) do
+    pvc = get_field(changeset, :phone_verification_code)
+    changeset
+    |> put_change(:tfa_code, pvc)
+    |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
+  end
+
   def changeset(user, :delete) do
     change(user)
     |> Map.put(:action, :delete)
   end
 
-  def changeset(struct, params) do
+  def changeset(struct, :insert, params) do
     struct
     |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
     |> put_name()
     |> Utils.put_clean_email()
     |> put_auth_method()
+    |> put_tfa_code()
     |> validate()
     |> put_encrypted_password()
   end
@@ -261,6 +270,12 @@ defmodule BlueJet.Identity.User do
   def refresh_tfa_code(user) do
     user
     |> change(%{ tfa_code: generate_value(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
+    |> Repo.update!()
+  end
+
+  def clear_tfa_code(user) do
+    user
+    |> change(%{ tfa_code: nil, tfa_code_expires_at: nil })
     |> Repo.update!()
   end
 

@@ -116,7 +116,7 @@ defmodule BlueJet.Identity.Service do
          end)
       |> Multi.run(:user, fn(%{ account: account }) ->
           %User{ default_account_id: account.id, email_confirmation_token: User.generate_email_confirmation_token() }
-          |> User.changeset(fields)
+          |> User.changeset(:insert, fields)
           |> Repo.insert()
          end)
       |> Multi.run(:account_membership, fn(%{ account: account, user: user }) ->
@@ -166,7 +166,7 @@ defmodule BlueJet.Identity.Service do
 
     changeset =
       %User{ default_account_id: account.id, account_id: account.id, account: account, email_confirmation_token: User.generate_email_confirmation_token() }
-      |> User.changeset(fields)
+      |> User.changeset(:insert, fields)
 
     statements =
       Multi.new()
