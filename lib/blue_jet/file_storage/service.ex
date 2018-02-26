@@ -123,7 +123,6 @@ defmodule BlueJet.FileStorage.Service do
 
     case Repo.transaction(statements) do
       {:ok, %{ processed_file: file }} ->
-        file = File.put_url(file)
         {:ok, file}
 
       {:error, _, changeset, _} ->

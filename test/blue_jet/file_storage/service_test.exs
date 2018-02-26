@@ -4,6 +4,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
   alias BlueJet.FileStorage.Service
+  alias BlueJet.FileStorage.S3ClientMock
+
+  setup :verify_on_exit!
 
   describe "list_file/2" do
     test "file for different account is not returned" do
@@ -27,6 +30,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
         content_type: "image/png",
         size_bytes: 19890
       })
+
+      S3ClientMock
+      |> expect(:get_presigned_url, 2, fn(_, _) -> nil end)
 
       files = Service.list_file(%{ account: account })
       assert length(files) == 2
@@ -64,6 +70,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
         content_type: "image/png",
         size_bytes: 19890
       })
+
+      S3ClientMock
+      |> expect(:get_presigned_url, 5, fn(_, _) -> nil end)
 
       files = Service.list_file(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(files) == 3
@@ -130,6 +139,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given valid fields" do
       account = Repo.insert!(%Account{})
 
+      S3ClientMock
+      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+
       fields = %{
         "name" => Faker.String.base64(5),
         "content_type" => "image/png",
@@ -151,6 +163,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
         content_type: "image/png",
         size_bytes: 19890
       })
+
+      S3ClientMock
+      |> expect(:get_presigned_url, fn(_, _) -> nil end)
 
       assert Service.get_file(%{ id: file.id }, %{ account: account })
     end
@@ -224,6 +239,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
+      S3ClientMock
+      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+
       fields = %{
         "status" => "uploaded"
       }
@@ -254,6 +272,9 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
+      S3ClientMock
+      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+
       fields = %{
         "status" => "uploaded"
       }
@@ -273,7 +294,11 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
+      S3ClientMock
+      |> expect(:delete_object, fn(_) -> nil end)
+
       {:ok, file} = Service.delete_file(file, %{ account: account })
+
       assert file
       refute Repo.get(File, file.id)
     end
@@ -287,7 +312,11 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
+      S3ClientMock
+      |> expect(:delete_object, fn(_) -> nil end)
+
       {:ok, file} = Service.delete_file(file.id, %{ account: account })
+
       assert file
       refute Repo.get(File, file.id)
     end

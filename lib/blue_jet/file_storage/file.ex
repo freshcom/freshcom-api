@@ -8,6 +8,7 @@ defmodule BlueJet.FileStorage.File do
     :custom_data
   ], container: :translations
 
+  alias BlueJet.FileStorage.S3Client
   alias BlueJet.FileStorage.FileCollectionMembership
   alias BlueJet.FileStorage.File.Proxy
 
@@ -100,12 +101,12 @@ defmodule BlueJet.FileStorage.File do
   end
 
   def process(file, %{ action: :delete }) do
-    delete_object(file)
+    Proxy.delete_s3_object(file)
 
     {:ok, file}
   end
 
-  def key(struct) do
+  def get_s3_key(struct) do
     prefix = Application.get_env(:blue_jet, :s3)[:prefix]
     id = struct.id
     name = struct.name
@@ -113,32 +114,21 @@ defmodule BlueJet.FileStorage.File do
     "#{prefix}/File/#{id}/#{name}"
   end
 
-  def put_url(structs, opts \\ [])
-  def put_url(structs, opts) when is_list(structs) do
+  def put_url(structs) when is_list(structs) do
     Enum.map(structs, fn(ef) ->
-      put_url(ef, opts)
+      put_url(ef)
     end)
   end
-  def put_url(struct = %__MODULE__{}, opts), do: %{ struct | url: url(struct, opts) }
-  def put_url(struct, _), do: struct
+  def put_url(struct = %__MODULE__{}), do: %{ struct | url: get_url(struct) }
+  def put_url(struct), do: struct
 
-  def url(struct, opts \\ []) do
-    s3_key = key(struct)
-    config = ExAws.Config.new(:s3)
-
-    method = case struct.status do
-      "pending" -> :put
-      _ -> :get
-    end
-
-    {:ok, url} = ExAws.S3.presigned_url(config, method, System.get_env("AWS_S3_BUCKET_NAME"), s3_key, opts)
-
-    url
+  def get_url(file = %{ status: "pending" }) do
+    get_s3_key(file)
+    |> S3Client.get_presigned_url(:put)
   end
 
-  def delete_object(file) do
-    ExAws.S3.delete_object(System.get_env("AWS_S3_BUCKET_NAME"), key(file))
-
-    file
+  def get_url(file) do
+    get_s3_key(file)
+    |> S3Client.get_presigned_url(:get)
   end
 end

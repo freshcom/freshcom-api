@@ -33,7 +33,8 @@ config :blue_jet, :identity, %{
 }
 
 config :blue_jet, :file_storage, %{
-  identity_service: BlueJet.FileStorage.IdentityServiceMock
+  identity_service: BlueJet.FileStorage.IdentityServiceMock,
+  s3_client: BlueJet.FileStorage.S3ClientMock
 }
 
 config :blue_jet, :goods, %{
