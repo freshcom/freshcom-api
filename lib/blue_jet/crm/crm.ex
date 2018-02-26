@@ -67,7 +67,7 @@ defmodule BlueJet.Crm do
     %{ request | params: %{ "user_id" => vas[:user_id] } }
   end
 
-  defp filter_customer_by_role(request = %{ role: "guest", vas: vas }) do
+  defp filter_customer_by_role(request = %{ role: "guest" }) do
     params = Map.put(request.params, "status", "guest")
     %{ request | params: params }
   end

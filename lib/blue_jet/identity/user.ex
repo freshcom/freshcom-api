@@ -66,21 +66,17 @@ defmodule BlueJet.Identity.User do
     :updated_at
   ]
 
+  @required_fields [
+    :username
+  ]
+
   def writable_fields do
     (__MODULE__.__schema__(:fields) -- @system_fields()) ++ [:password, :current_password, :phone_verification_code]
   end
 
-  defp required_fields, do: [:username]
-
-  defp required_fields(%{ data: %{ __meta__: %{ state: :built } } }), do: required_fields() ++ [:password]
-
-  # If changing password, current password is required
-  defp required_fields(%{ data: %{ __meta__: %{ state: :loaded } }, changes: %{ password: _ } }) do
-    required_fields() ++ [:current_password]
-  end
-
-  defp required_fields(%{ data: %{ __meta__: %{ state: :loaded } } }), do: required_fields()
-
+  #
+  # MARK: Validate
+  #
   defp username_unique?(_, nil), do: true
 
   defp username_unique?(username, account_id) do
@@ -120,18 +116,21 @@ defmodule BlueJet.Identity.User do
     |> unique_constraint(:email)
   end
 
-  defp validate_current_password(changeset = %{
-    valid?: true,
-    data: %{ __meta__: %{ state: :loaded } },
-    changes: %{ password: _ }
-  }) do
+  defp validate_current_password(changeset = %{ changes: %{ password: _ } }) do
     encrypted_password = get_field(changeset, :encrypted_password)
     current_password = get_field(changeset, :current_password)
 
-    if checkpw(current_password, encrypted_password) do
-      changeset
-    else
-      add_error(changeset, :current_password, "is incorrect")
+    changeset = validate_required(changeset, [:current_password])
+
+    cond do
+      changeset.valid? && checkpw(current_password, encrypted_password) ->
+        changeset
+
+      changeset.valid? ->
+        add_error(changeset, :current_password, "is invalid", validation: :must_match)
+
+      !changeset.valid? ->
+        changeset
     end
   end
 
@@ -173,15 +172,40 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  defp validate_password(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:password])
+    |> validate_length(:password, min: 8)
+  end
+
+  defp validate_password(changeset = %{ action: :update, changes: %{ password: _ } }) do
+    changeset
+    |> validate_length(:password, min: 8)
+  end
+
+  defp validate_password(changeset), do: changeset
+
   defp checkpw(nil, _), do: false
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  def validate(changeset) do
-    required_fields = required_fields(changeset)
-
+  def validate(changeset = %{ action: :insert }) do
     changeset
-    |> validate_required(required_fields)
+    |> validate_required(@required_fields)
+
+    |> validate_username()
+    |> validate_email()
+
+    |> validate_phone_number()
+    |> validate_phone_verification_code()
+
+    |> validate_password()
+  end
+
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_required(@required_fields)
+
     |> validate_username()
     |> validate_email()
 
@@ -189,14 +213,18 @@ defmodule BlueJet.Identity.User do
     |> validate_phone_verification_code()
 
     |> validate_current_password()
-    |> validate_length(:password, min: 8)
+    |> validate_password()
+  end
 
-    |> foreign_key_constraint(:default_account_id)
-    |> foreign_key_constraint(:account_id)
+  #
+  # MARK: Changeset
+  #
+  def encrypt_password(password) do
+    Comeonin.Bcrypt.hashpwsalt(password)
   end
 
   def put_encrypted_password(changeset = %{ valid?: true, changes: %{ password: password } })  do
-    put_change(changeset, :encrypted_password, Comeonin.Bcrypt.hashpwsalt(password))
+    put_change(changeset, :encrypted_password, encrypt_password(password))
   end
 
   def put_encrypted_password(changeset), do: changeset
@@ -234,8 +262,20 @@ defmodule BlueJet.Identity.User do
     |> Map.put(:action, :delete)
   end
 
-  def changeset(struct, :insert, params) do
-    struct
+  def changeset(user, :update, params) do
+    user
+    |> Repo.preload(:account)
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
+    |> put_name()
+    |> Utils.put_clean_email()
+    |> validate()
+    |> put_encrypted_password()
+  end
+
+  def changeset(user, :insert, params) do
+    user
+    |> Repo.preload(:account)
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
     |> put_name()
@@ -246,37 +286,35 @@ defmodule BlueJet.Identity.User do
     |> put_encrypted_password()
   end
 
-  def confirm_email(user) do
-    user
-    |> change(email_confirmation_token: nil, email_confirmed: true, email_confirmed_at: Ecto.DateTime.utc())
-    |> Repo.update!()
+  #
+  # MARK: Process
+  #
+  def process(user, _) do
+    if user.phone_verification_code do
+      PhoneVerificationCode.Query.default()
+      |> PhoneVerificationCode.Query.filter_by(%{ phone_number: user.phone_number })
+      |> Repo.delete_all()
+    end
+
+    {:ok, user}
   end
 
+  #
+  # MARK: Pure
+  #
+  def put_role(user, account) do
+    %{ user | role: get_role(user, account) }
+  end
+
+  #
+  # MARK: Reader
+  #
   def get_tfa_code(user) do
     if user.tfa_code && Timex.before?(Timex.now, user.tfa_code_expires_at) do
       user.tfa_code
     else
       nil
     end
-  end
-
-  def generate_value(n) do
-    Enum.reduce(1..n, "", fn(_, acc) ->
-      char = Enum.random(0..9)
-      acc <> Integer.to_string(char)
-    end)
-  end
-
-  def refresh_tfa_code(user) do
-    user
-    |> change(%{ tfa_code: generate_value(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
-    |> Repo.update!()
-  end
-
-  def clear_tfa_code(user) do
-    user
-    |> change(%{ tfa_code: nil, tfa_code_expires_at: nil })
-    |> Repo.update!()
   end
 
   def get_role(user, account) do
@@ -289,6 +327,34 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  #
+  # MARK: Writer
+  #
+  def confirm_email(user) do
+    user
+    |> change(email_confirmation_token: nil, email_confirmed: true, email_confirmed_at: Ecto.DateTime.utc())
+    |> Repo.update!()
+  end
+
+  defp generate_tfa_code(n) do
+    Enum.reduce(1..n, "", fn(_, acc) ->
+      char = Enum.random(0..9)
+      acc <> Integer.to_string(char)
+    end)
+  end
+
+  def refresh_tfa_code(user) do
+    user
+    |> change(%{ tfa_code: generate_tfa_code(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
+    |> Repo.update!()
+  end
+
+  def clear_tfa_code(user) do
+    user
+    |> change(%{ tfa_code: nil, tfa_code_expires_at: nil })
+    |> Repo.update!()
+  end
+
   def generate_email_confirmation_token() do
     Ecto.UUID.generate()
   end
@@ -297,10 +363,6 @@ defmodule BlueJet.Identity.User do
     user
     |> change(email_confirmation_token: generate_email_confirmation_token(), email_confirmed: false)
     |> Repo.update!()
-  end
-
-  def put_role(user, account) do
-    %{ user | role: get_role(user, account) }
   end
 
   def refresh_password_reset_token(user) do
@@ -313,15 +375,5 @@ defmodule BlueJet.Identity.User do
     user
     |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))
     |> Repo.update!()
-  end
-
-  def process(user, changeset) do
-    if user.phone_verification_code do
-      PhoneVerificationCode.Query.default()
-      |> PhoneVerificationCode.Query.filter_by(%{ phone_number: user.phone_number })
-      |> Repo.delete_all()
-    end
-
-    {:ok, user}
   end
 end

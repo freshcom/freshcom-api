@@ -4,7 +4,7 @@ defmodule BlueJet.Notification.Trigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
-  alias BlueJet.Notification.{Email, EmailTemplate, SmsTemplate}
+  alias BlueJet.Notification.{Email, EmailTemplate, Sms, SmsTemplate}
 
   schema "notification_triggers" do
     field :account_id, Ecto.UUID
@@ -104,6 +104,16 @@ defmodule BlueJet.Notification.Trigger do
 
     ExAws.SNS.publish(body, phone_number: to)
     |> ExAws.request()
+
+    Repo.insert!(%Sms{
+      account_id: account.id,
+      trigger_id: trigger.id,
+      template_id: template.id,
+      status: "sent",
+      to: to,
+      body: body,
+      locale: account.default_locale
+    })
   end
 
   def fire_action(trigger, _) do

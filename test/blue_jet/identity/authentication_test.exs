@@ -1,5 +1,5 @@
 defmodule BlueJet.Identity.AuthenticationTest do
-  use BlueJet.DataCase
+  use BlueJet.ContextCase
   import BlueJet.Identity.TestHelper
 
   alias BlueJet.Identity.{Account, User, RefreshToken, AccountMembership}
@@ -141,7 +141,12 @@ defmodule BlueJet.Identity.AuthenticationTest do
     test "when user auth method is tfa_sms but otp is not provided in the header" do
       account = Repo.insert!(%Account{})
       user =
-        change(%User{ default_account_id: account.id, username: Faker.Internet.email(), auth_method: "tfa_sms" }, password: "test1234")
+        %User{
+          default_account_id: account.id,
+          username: Faker.Internet.email(),
+          auth_method: "tfa_sms",
+          encrypted_password: User.encrypt_password("test1234")
+        }
         |> User.put_encrypted_password()
         |> Repo.insert!()
       Repo.insert!(%AccountMembership{
@@ -154,12 +159,19 @@ defmodule BlueJet.Identity.AuthenticationTest do
         account_id: account.id
       })
 
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.user.tfa_code.create.success"
+          {:ok, nil}
+         end)
+
       {:error, response} = Authentication.create_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234"
       })
 
+      verify!()
       assert response.error == :invalid_otp
       assert response.error_description
     end

@@ -25,15 +25,17 @@ defmodule BlueJet.Identity.UserTest do
     test "when missing required fields" do
       changeset =
         change(%User{}, %{})
+        |> Map.put(:action, :insert)
         |> User.validate()
 
       refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:username, :password]
+      assert Keyword.keys(changeset.errors) == [:password, :username]
     end
 
     test "when given username less than 5 characters" do
       changeset =
         change(%User{}, %{ username: "abcd", password: "test1234" })
+        |> Map.put(:action, :insert)
         |> User.validate()
 
       refute changeset.valid?
@@ -62,6 +64,7 @@ defmodule BlueJet.Identity.UserTest do
           account_id: account2.id,
           default_account_id: account2.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -73,6 +76,7 @@ defmodule BlueJet.Identity.UserTest do
           account_id: account1.id,
           default_account_id: account1.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -83,6 +87,7 @@ defmodule BlueJet.Identity.UserTest do
           password: "test1234",
           default_account_id: account2.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -109,6 +114,7 @@ defmodule BlueJet.Identity.UserTest do
           password: "test1234",
           default_account_id: account2.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -120,6 +126,7 @@ defmodule BlueJet.Identity.UserTest do
           account_id: account2.id,
           default_account_id: account2.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -131,6 +138,7 @@ defmodule BlueJet.Identity.UserTest do
           account_id: account1.id,
           default_account_id: account1.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -141,6 +149,7 @@ defmodule BlueJet.Identity.UserTest do
     test "when given invalid email" do
       changeset =
         change(%User{}, %{ username: Faker.String.base64(5), email: "invalid", password: "test1234" })
+        |> Map.put(:action, :insert)
         |> User.validate()
 
       refute changeset.valid?
@@ -166,6 +175,7 @@ defmodule BlueJet.Identity.UserTest do
           account_id: account1.id,
           default_account_id: account1.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -177,6 +187,7 @@ defmodule BlueJet.Identity.UserTest do
           email: user.email,
           default_account_id: account2.id
         })
+        |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
@@ -189,8 +200,8 @@ defmodule BlueJet.Identity.UserTest do
 
       changeset =
         user
-        |> Ecto.put_meta(state: :loaded)
         |> change(%{ password: "newpassword" })
+        |> Map.put(:action, :update)
         |> User.validate()
 
       refute changeset.valid?
@@ -200,6 +211,7 @@ defmodule BlueJet.Identity.UserTest do
     test "when given password less than 8 characters" do
       changeset =
         change(%User{}, %{ username: "username", password: "abc" })
+        |> Map.put(:action, :insert)
         |> User.validate()
 
       refute changeset.valid?
@@ -211,8 +223,8 @@ defmodule BlueJet.Identity.UserTest do
 
       changeset =
         user
-        |> Ecto.put_meta(state: :loaded)
         |> change(%{ password: "newpassword", current_password: "wrongpassword" })
+        |> Map.put(:action, :update)
         |> User.validate()
 
       refute changeset.valid?
@@ -224,8 +236,8 @@ defmodule BlueJet.Identity.UserTest do
 
       changeset =
         user
-        |> Ecto.put_meta(state: :loaded)
         |> change(%{})
+        |> Map.put(:action, :update)
         |> User.validate()
 
       assert changeset.valid?
@@ -234,7 +246,7 @@ defmodule BlueJet.Identity.UserTest do
 
   describe "changeset/1" do
     test "when username and password is given" do
-      changeset = User.changeset(%User{}, %{
+      changeset = User.changeset(%User{}, :insert, %{
         username: Faker.String.base64(5),
         password: "test1234"
       })
@@ -244,7 +256,7 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when missing required fields" do
-      changeset = User.changeset(%User{}, %{})
+      changeset = User.changeset(%User{}, :insert, %{})
 
       refute changeset.valid?
     end

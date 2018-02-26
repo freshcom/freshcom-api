@@ -32,7 +32,7 @@ defmodule BlueJet.DataTrading do
   end
 
   def do_create_data_import(request = %{ account: account }) do
-    with {:ok, data_import} <- Service.create_data_import(request.fields, %{ account: account }) do
+    with {:ok, _} <- Service.create_data_import(request.fields, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

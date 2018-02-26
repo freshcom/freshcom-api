@@ -286,19 +286,13 @@ defmodule BlueJet.Identity do
   end
 
   def do_update_user(request = %{ role: role, vas: vas }) when role not in ["administrator"] do
-    user = Repo.get(User, vas[:user_id])
-
-    with %User{} <- user,
-         changeset <- User.changeset(user, request.fields),
-         {:ok, user} <- Repo.update(changeset)
-    do
-      user_response(user, request)
+    with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request)) do
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
-      nil ->
-        {:error, :not_found}
+      other -> other
     end
   end
 

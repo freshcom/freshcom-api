@@ -218,6 +218,41 @@ defmodule BlueJet.Identity.Service do
     create_user(fields, opts)
   end
 
+  def update_user(nil, _, _), do: {:error, :not_found}
+
+  def update_user(user = %User{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ user | account: account }
+      |> User.changeset(:update, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.update(:user, changeset)
+      |> Multi.run(:processed_user, fn(%{ user: user}) ->
+          User.process(user, changeset)
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ processed_user: user }} ->
+        user = preload(user, preloads[:path], preloads[:opts])
+        {:ok, user}
+
+      {:error, _, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  def update_user(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    User
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_user(fields, opts)
+  end
+
   def get_user(fields, opts) do
     account_id = get_account_id(opts)
 
