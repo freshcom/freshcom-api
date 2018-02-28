@@ -99,7 +99,6 @@ defmodule BlueJet.Storefront do
     end
   end
 
-  # TODO: Check if customer already have unlock
   def update_order(request) do
     with {:ok, request} <- preprocess_request(request, "storefront.update_order") do
       request

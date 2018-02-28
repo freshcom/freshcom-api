@@ -129,7 +129,6 @@ defmodule BlueJet.Storefront.Order do
 
   defp required_fields, do: [:name, :status, :email, :fulfillment_method]
 
-  # TODO:
   defp validate_inventory(changeset) do
     changeset
   end

@@ -328,7 +328,7 @@ defmodule BlueJet.Identity do
   end
 
   #
-  # RefreshToken
+  # MARK: Refresh Token
   #
   def get_refresh_token(request) do
     with {:ok, request} <- preprocess_request(request, "identity.get_refresh_token") do

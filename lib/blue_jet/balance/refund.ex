@@ -104,7 +104,6 @@ defmodule BlueJet.Balance.Refund do
 
   defp validate_amount_cents(changeset), do: changeset
 
-  # TODO:
   defp validate_payment_id(changeset) do
     changeset
   end

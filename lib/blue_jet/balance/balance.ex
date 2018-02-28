@@ -140,7 +140,6 @@ defmodule BlueJet.Balance do
     end
   end
 
-  # TODO: Customer can only view its own payment
   def do_list_payment(request = %AccessRequest{ account: account, filter: filter }) do
     total_count =
       %{ filter: filter, search: request.search }
