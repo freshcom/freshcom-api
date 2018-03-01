@@ -69,18 +69,4 @@ defmodule BlueJet.Identity.AccountMembership do
     |> Map.put(:action, :update)
     |> validate()
   end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Identity.AccountMembership
-
-    def default() do
-      from(a in AccountMembership, order_by: [desc: :inserted_at])
-    end
-
-    def preloads(:account) do
-      [account: Account.Query.default()]
-    end
-  end
 end
