@@ -1,9 +1,7 @@
 defmodule BlueJet.Identity.AccountMembershipTest do
   use BlueJet.DataCase
 
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.{Account, AccountMembership, User}
 
   describe "schema" do
     test "when account is deleted membership should be automatically deleted" do
@@ -53,59 +51,66 @@ defmodule BlueJet.Identity.AccountMembershipTest do
   end
 
   describe "validate/1" do
-    test "when missing required fields should make changeset invalid" do
+    test "when missing required fields" do
       changeset =
-        change(%AccountMembership{}, %{})
-        |> AccountMembership.validate()
+        change(%AccountMembership{})
+        |> Map.put(:action, :insert)
 
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:user_id, :role]
+      changeset = AccountMembership.validate(changeset)
+
+      assert changeset.valid? == false
+      assert changeset.errors[:user_id]
+      assert changeset.errors[:role]
     end
 
-    test "when user_id does not exist insert should fail" do
-      account = Repo.insert!(%Account{})
-      {:error, changeset} =
-        change(%AccountMembership{ account_id: account.id }, %{ user_id: Ecto.UUID.generate(), role: "developer" })
-        |> AccountMembership.validate()
-        |> Repo.insert()
+    test "when role is not valid" do
+      changeset =
+        change(%AccountMembership{}, %{ role: "invalid" })
+        |> Map.put(:action, :insert)
 
-      assert Keyword.keys(changeset.errors) == [:user_id]
+      changeset = AccountMembership.validate(changeset)
+
+      assert changeset.valid? == false
+      assert changeset.errors[:role]
+    end
+
+    test "when changeset is valid" do
+      changeset =
+        change(%AccountMembership{}, %{ id: Ecto.UUID.generate(), role: "invalid" })
+        |> Map.put(:action, :insert)
+
+      assert changeset.valid?
     end
   end
 
   describe "changeset/2" do
-    test "when struct in :built state" do
-      changeset = AccountMembership.changeset(%AccountMembership{}, %{
+    test "when action is insert" do
+      params = %{
         role: "developer",
-        user_id: Ecto.UUID.generate(),
-        account_id: Ecto.UUID.generate()
-      })
+        user_id: Ecto.UUID.generate()
+      }
+      changeset =
+        %AccountMembership{}
+        |> AccountMembership.changeset(:insert, params)
 
       assert changeset.valid?
       assert changeset.changes[:role]
       assert changeset.changes[:user_id]
-      refute changeset.changes[:account_id]
     end
 
-    test "when struct in :loaded state" do
-      struct = %AccountMembership{
-        user_id: Ecto.UUID.generate(),
-        account_id: Ecto.UUID.generate()
+    test "when action is update" do
+      params = %{
+        role: "developer",
+        user_id: Ecto.UUID.generate()
       }
 
       changeset =
-        struct
-        |> Ecto.put_meta(state: :loaded)
-        |> AccountMembership.changeset(%{
-            role: "developer",
-            user_id: Ecto.UUID.generate(),
-            account_id: Ecto.UUID.generate()
-           })
+        %AccountMembership{}
+        |> AccountMembership.changeset(:update, params)
 
       assert changeset.valid?
       assert changeset.changes[:role]
       refute changeset.changes[:user_id]
-      refute changeset.changes[:account_id]
     end
   end
 end

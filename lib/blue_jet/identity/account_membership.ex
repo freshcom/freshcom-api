@@ -1,8 +1,7 @@
 defmodule BlueJet.Identity.AccountMembership do
   use BlueJet, :data
 
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
+  alias BlueJet.Identity.{Account, User}
 
   schema "account_memberships" do
     field :role, :string
@@ -22,34 +21,52 @@ defmodule BlueJet.Identity.AccountMembership do
     :updated_at
   ]
 
+  @roles [
+    "customer",
+    "business_analyst",
+    "support_specialist",
+    "marketing_specialist",
+    "goods_specialist",
+    "developer",
+    "administrator"
+  ]
+
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
+  defp castable_fields(:insert), do: writable_fields()
+  defp castable_fields(:update), do: writable_fields() -- [:user_id]
 
-  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:user_id]
-  end
-
-  defp required_fields() do
-    [:user_id, :role]
-  end
-
-  def validate(changeset) do
+  #
+  # MARK: Validate
+  #
+  def validate(changeset = %{ action: :insert }) do
     changeset
-    |> validate_required(required_fields())
-    |> foreign_key_constraint(:user_id)
+    |> validate_required([:user_id, :role])
+    |> validate_inclusion(:role, @roles)
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(struct, params) do
-    struct
-    |> cast(params, castable_fields(struct))
+  def validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_required(:role)
+    |> validate_inclusion(:role, @roles)
+  end
+
+  #
+  # MARK: Changeset
+  #
+  def changeset(membership, :insert, params) do
+    membership
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  def changeset(membership, :update, params) do
+    membership
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
     |> validate()
   end
 
