@@ -29,7 +29,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:phone_number])
+    |> validate_required(:phone_number)
     |> validate_length(:phone_number, min: 9)
     |> validate_format(:phone_number, Application.get_env(:blue_jet, :phone_regex))
   end
