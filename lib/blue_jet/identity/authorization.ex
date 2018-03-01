@@ -1,8 +1,7 @@
 defmodule BlueJet.Identity.Authorization do
 
-  alias BlueJet.Identity.AccountMembership
-  alias BlueJet.Identity.Account
   alias BlueJet.Repo
+  alias BlueJet.Identity.{Account, AccountMembership}
 
   @testable_endpoints [
     "identity.get_account",
@@ -618,30 +617,7 @@ defmodule BlueJet.Identity.Authorization do
     ]
   }
 
-  def authorize_request(request = %{ vas: vas }, endpoint) do
-    with {:ok, %{ role: role, account: account }} <- authorize(vas, endpoint) do
-      {:ok, %{ request | role: role, account: account }}
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def authorize(vas, endpoint) when map_size(vas) == 0 do
-    case authorize("anonymous", endpoint) do
-      {:ok, role} -> {:ok, %{ role: role, account: nil }}
-      other -> other
-    end
-  end
-
-  def authorize(vas = %{ account_id: account_id }, endpoint) do
-    account = Repo.get!(Account, account_id)
-    case authorize(vas, account, endpoint) do
-      {:ok, role} -> {:ok, %{ role: role, account: account }}
-      other -> other
-    end
-  end
-
-  def authorize(role, target_endpoint) when is_bitstring(role) do
+  def authorize_role(role, target_endpoint) when is_bitstring(role) do
     endpoints = Map.get(@role_endpoints, role)
     found = Enum.any?(endpoints, fn(endpoint) -> endpoint == target_endpoint end)
 
@@ -652,40 +628,76 @@ defmodule BlueJet.Identity.Authorization do
     end
   end
 
-  def authorize(%{ user_id: user_id }, %{ id: account_id, mode: "live" }, endpoint) do
-    with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
-         {:ok, role} <- authorize(role, endpoint)
-    do
-      {:ok, role}
-    else
-      nil -> {:error, :no_membership}
-      {:error, _} -> {:error, :role_not_allowed}
-    end
-  end
-
-  def authorize(vas = %{ user_id: _ }, account = %{ mode: "test" }, endpoint) do
-    # Check if the endpoint is testable
-    case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
-      nil -> {:error, :test_account_not_allowed}
-      _ -> authorize_test_account(vas, account, endpoint)
-    end
-  end
-
-  def authorize(%{ account_id: _ }, _, endpoint) do
-    authorize("guest", endpoint)
-  end
-
   defp authorize_test_account(vas = %{ user_id: user_id }, %{ id: test_account_id, live_account_id: live_account_id }, endpoint) do
     with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: test_account_id, user_id: user_id),
-         {:ok, role} <- authorize(role, endpoint)
+         {:ok, role} <- authorize_role(role, endpoint)
     do
       {:ok, role}
     else
       nil ->
-        authorize(vas, %{ id: live_account_id, mode: "live" }, endpoint)
+        authorize_vas(vas, %{ id: live_account_id, mode: "live" }, endpoint)
 
       {:error, _} ->
         {:error, :role_not_allowed}
+    end
+  end
+
+  def authorize_vas(vas, endpoint) when map_size(vas) == 0 do
+    case authorize_role("anonymous", endpoint) do
+      {:ok, role} ->
+        {:ok, %{ role: role, account: nil }}
+
+      other ->
+        other
+    end
+  end
+
+  def authorize_vas(vas = %{ account_id: account_id }, endpoint) do
+    account = Repo.get!(Account, account_id)
+
+    case authorize_vas(vas, account, endpoint) do
+      {:ok, role} ->
+        {:ok, %{ role: role, account: account }}
+
+      other ->
+        other
+    end
+  end
+
+  def authorize_vas(%{ user_id: user_id }, %{ id: account_id, mode: "live" }, endpoint) do
+    with %AccountMembership{ role: role } <- Repo.get_by(AccountMembership, account_id: account_id, user_id: user_id),
+         {:ok, role} <- authorize_role(role, endpoint)
+    do
+      {:ok, role}
+    else
+      nil ->
+        {:error, :no_membership}
+
+      {:error, _} ->
+        {:error, :role_not_allowed}
+    end
+  end
+
+  def authorize_vas(vas = %{ user_id: _ }, account = %{ mode: "test" }, endpoint) do
+    # Check if the endpoint is testable
+    case Enum.find(@testable_endpoints, fn(testable_endpoint) -> endpoint == testable_endpoint end) do
+      nil ->
+        {:error, :test_account_not_allowed}
+
+      _ ->
+        authorize_test_account(vas, account, endpoint)
+    end
+  end
+
+  def authorize_vas(%{ account_id: _ }, _, endpoint) do
+    authorize_role("guest", endpoint)
+  end
+
+  def authorize_request(request = %{ vas: vas }, endpoint) do
+    with {:ok, %{ role: role, account: account }} <- authorize_vas(vas, endpoint) do
+      {:ok, %{ request | role: role, account: account }}
+    else
+      {:error, _} -> {:error, :access_denied}
     end
   end
 end

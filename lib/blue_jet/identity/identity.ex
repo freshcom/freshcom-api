@@ -9,20 +9,6 @@ defmodule BlueJet.Identity do
   alias BlueJet.Identity.Account
   alias BlueJet.Identity.Service
 
-  #### TODO: TOBE REMOVED
-  def authorize(vas = %{}, endpoint) do
-    Authorization.authorize(vas, endpoint)
-  end
-
-  def authorize_request(request = %{ vas: vas }, endpoint) do
-    with {:ok, %{ role: role, account: account }} <- authorize(vas, endpoint) do
-      {:ok, %{ request | role: role, account: account }}
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-  #####
-
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
       {:ok, %AccessResponse{ data: token }}
