@@ -89,6 +89,7 @@ defmodule BlueJet.Identity.AccountMembershipTest do
         role: "developer",
         user_id: Ecto.UUID.generate()
       }
+
       changeset =
         %AccountMembership{}
         |> AccountMembership.changeset(:insert, params)

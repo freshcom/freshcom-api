@@ -36,20 +36,20 @@ defmodule BlueJet.Identity.AccountTest do
   end
 
   describe "changeset/3" do
-    test "when name is missing" do
+    test "when require fields is missing" do
+      params = %{}
+
       changeset =
         %Account{}
-        |> Account.changeset(:insert, %{})
+        |> Account.changeset(:insert, params)
 
       assert changeset.valid? == false
       assert changeset.errors[:name]
     end
 
-    test "when default_locale is missing" do
-      params = %{
-        name: Faker.Company.name(),
-        default_locale: nil
-      }
+    test "when default_locale is set to nil" do
+      params = %{ default_locale: nil }
+
       changeset =
         %Account{}
         |> Account.changeset(:insert, params)
@@ -59,9 +59,11 @@ defmodule BlueJet.Identity.AccountTest do
     end
 
     test "when given params is valid" do
-      changeset = Account.changeset(%Account{}, :insert, %{
-        name: Faker.Company.name()
-      })
+      params = %{ name: Faker.Company.name() }
+
+      changeset =
+        %Account{}
+        |> Account.changeset(:insert, params)
 
       assert changeset.valid?
       assert changeset.changes[:name]
@@ -70,19 +72,22 @@ defmodule BlueJet.Identity.AccountTest do
 
   describe "changeset/4" do
     test "when name is set to nil" do
+      params = %{ name: nil }
+
       changeset =
         %Account{}
-        |> Account.changeset(:update, %{ name: nil })
+        |> Account.changeset(:update, params)
 
       assert changeset.valid? == false
       assert changeset.errors[:name]
     end
 
     test "when updating default locale should not be changeable" do
-      account = %Account{}
+      params = %{ default_locale: "test" }
+
       changeset =
-        account
-        |> Account.changeset(:update, %{ default_locale: "test" })
+        %Account{}
+        |> Account.changeset(:update, params)
 
       refute changeset.changes[:default_locale]
     end
