@@ -102,22 +102,4 @@ defmodule BlueJet.Identity.RefreshTokenTest do
     assert RefreshToken.unprefix_id("urt-test-theid") == "theid"
     assert RefreshToken.unprefix_id("urt-live-theid") == "theid"
   end
-
-  describe "sign_token/1" do
-    test "with valid claims" do
-      signed_token = RefreshToken.sign_token(%{ "c1" => "c1" })
-
-      assert signed_token
-    end
-  end
-
-  describe "verify_token/1" do
-    test "with valid signed token" do
-      signed_token = RefreshToken.sign_token(%{ "c1" => "c1" })
-      {true, verified_token} = RefreshToken.verify_token(signed_token)
-
-      assert verified_token
-      assert verified_token["c1"] == "c1"
-    end
-  end
 end

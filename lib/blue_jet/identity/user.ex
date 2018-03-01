@@ -103,7 +103,7 @@ defmodule BlueJet.Identity.User do
   defp validate_username(changeset = %{ valid?: true, changes: %{ username: _ } }) do
     changeset
     |> validate_length(:username, min: 5)
-    |> validate_username_unique()
+    |> validate_username_unique() # TODO: maybe we don't need this
     |> unique_constraint(:username)
     |> unique_constraint(:username, name: :users_account_id_username_index)
   end

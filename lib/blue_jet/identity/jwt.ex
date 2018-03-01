@@ -1,5 +1,4 @@
 defmodule BlueJet.Identity.Jwt do
-
   def sign_token(claims) do
     {_, signed} = System.get_env("JWT_PRIVATE_KEY")
                  |> JOSE.JWK.from_pem

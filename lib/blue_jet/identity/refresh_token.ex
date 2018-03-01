@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.RefreshToken do
   @moduledoc """
   Provides function related to Refresh Token.
 
-  Refresh Token are long lived token that the client use to get a new Access Token.
+  Refresh Token is long lived token that the client use to get a new Access Token.
   Refresh Token can be revoked easily in case it is compromised. Refresh Token
   can be obtained using Resource Owner's credential or from the Freshcom Dashboard.
 
@@ -18,15 +18,14 @@ defmodule BlueJet.Identity.RefreshToken do
   """
   use BlueJet, :data
 
-  alias BlueJet.Repo
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.Account
+  alias BlueJet.Identity.{Account, User}
 
   schema "refresh_tokens" do
     field :email, :string, virtual: true
     field :password, :string, virtual: true
 
     field :prefixed_id, :string, virtual: true
+
     timestamps()
 
     belongs_to :account, Account
@@ -51,21 +50,6 @@ defmodule BlueJet.Identity.RefreshToken do
     |> String.replace_prefix("prt-live-", "")
     |> String.replace_prefix("urt-test-", "")
     |> String.replace_prefix("urt-live-", "")
-  end
-
-  def sign_token(claims) do
-    {_, signed} = System.get_env("JWT_PRIVATE_KEY")
-                 |> JOSE.JWK.from_pem
-                 |> JOSE.JWT.sign(%{ "alg" => "RS256" }, claims)
-                 |> JOSE.JWS.compact
-    signed
-  end
-
-  def verify_token(signed_token) do
-    {true, %JOSE.JWT{ fields: claims }, _} = System.get_env("JWT_PUBLIC_KEY")
-                                          |> JOSE.JWK.from_pem
-                                          |> JOSE.JWT.verify_strict(["RS256"], signed_token)
-    {true, claims}
   end
 
   defmodule Query do
