@@ -2,12 +2,7 @@ defmodule BlueJet.Identity do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias BlueJet.Identity.Authorization
-  alias BlueJet.Identity.Authentication
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.RefreshToken
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.Service
+  alias BlueJet.Identity.{Authentication, User, RefreshToken, Account, Service}
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
