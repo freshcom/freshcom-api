@@ -36,29 +36,53 @@ defmodule BlueJet.Identity.AccountTest do
   end
 
   describe "changeset/3" do
-    test "when given params is invalid" do
-      changeset = Account.changeset(%Account{}, :insert, %{
+    test "when name is missing" do
+      changeset =
+        %Account{}
+        |> Account.changeset(:insert, %{})
+
+      assert changeset.valid? == false
+      assert changeset.errors[:name]
+    end
+
+    test "when default_locale is missing" do
+      params = %{
         name: Faker.Company.name(),
-        default_locale: "test"
+        default_locale: nil
+      }
+      changeset =
+        %Account{}
+        |> Account.changeset(:insert, params)
+
+      assert changeset.valid? == false
+      assert changeset.errors[:default_locale]
+    end
+
+    test "when given params is valid" do
+      changeset = Account.changeset(%Account{}, :insert, %{
+        name: Faker.Company.name()
       })
 
       assert changeset.valid?
       assert changeset.changes[:name]
-      assert changeset.changes[:default_locale]
     end
+  end
 
-    test "when given params is valid" do
-      changeset = Account.changeset(%Account{}, :insert, %{})
+  describe "changeset/4" do
+    test "when name is set to nil" do
+      changeset =
+        %Account{}
+        |> Account.changeset(:update, %{ name: nil })
 
-      refute changeset.valid?
+      assert changeset.valid? == false
+      assert changeset.errors[:name]
     end
 
     test "when updating default locale should not be changeable" do
       account = %Account{}
       changeset =
         account
-        |> Ecto.put_meta(state: :loaded)
-        |> Account.changeset(:insert, %{ default_locale: "test" })
+        |> Account.changeset(:update, %{ default_locale: "test" })
 
       refute changeset.changes[:default_locale]
     end

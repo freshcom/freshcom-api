@@ -14,8 +14,7 @@ defmodule BlueJet.Identity.Account do
 
   alias BlueJet.Repo
 
-  alias BlueJet.Identity.AccountMembership
-  alias BlueJet.Identity.RefreshToken
+  alias BlueJet.Identity.{AccountMembership, RefreshToken}
 
   schema "accounts" do
     field :mode, :string
@@ -24,6 +23,7 @@ defmodule BlueJet.Identity.Account do
     field :name, :string
     field :company_name, :string
     field :default_locale, :string, default: "en"
+    # simple, tfa_sms
     field :default_auth_method, :string, default: "simple"
     field :website_url, :string
     field :support_email, :string
@@ -43,6 +43,7 @@ defmodule BlueJet.Identity.Account do
   end
 
   @type t :: Ecto.Schema.t
+
   @system_fields [
     :id,
     :mode,
@@ -61,27 +62,22 @@ defmodule BlueJet.Identity.Account do
     __MODULE__.__trans__(:fields)
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-
-  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:default_locale]
-  end
+  defp castable_fields(:insert), do: writable_fields()
+  defp castable_fields(:update), do: writable_fields() -- [:default_locale]
 
   def changeset(account, :insert, params) do
     account
-    |> cast(params, castable_fields(account))
+    |> cast(params, castable_fields(:insert))
     |> Map.put(:action, :insert)
-    |> validate_required([:name])
+    |> validate_required([:name, :default_locale])
   end
 
   def changeset(account, :update, params, locale \\ nil) do
     changeset =
       account
-      |> cast(params, castable_fields(account))
+      |> cast(params, castable_fields(:update))
       |> Map.put(:action, :update)
-      |> validate_required([:name])
+      |> validate_required(:name)
 
     locale = locale || get_field(changeset, :default_locale)
     default_locale = get_field(changeset, :default_locale)
@@ -104,24 +100,4 @@ defmodule BlueJet.Identity.Account do
   end
 
   def put_test_account_id(account), do: account
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.Identity.Account
-
-    def default() do
-      from(a in Account, order_by: [desc: :inserted_at])
-    end
-
-    def has_member(query, user_id) do
-      from a in query,
-        join: ac in AccountMembership, on: ac.account_id == a.id,
-        where: ac.user_id == ^user_id
-    end
-
-    def live(query) do
-      from a in query, where: a.mode == "live"
-    end
-  end
 end
