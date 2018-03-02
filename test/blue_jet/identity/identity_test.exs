@@ -432,7 +432,7 @@ defmodule BlueJet.Identity.IdentityTest do
         username: Faker.String.base64(5)
       })
 
-      new_username = Faker.String.base64(5)
+      new_username = "username2"
       request = %AccessRequest{
         role: "customer",
         account: account,

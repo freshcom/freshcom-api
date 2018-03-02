@@ -77,9 +77,9 @@ defmodule BlueJet.Identity.User do
   #
   # MARK: Validate
   #
-  defp username_unique?(_, nil), do: true
+  defp username_unique_within_account?(_, nil), do: true
 
-  defp username_unique?(username, account_id) do
+  defp username_unique_within_account?(username, account_id) do
     existing_user =
       Query.default()
       |> Query.member_of_account(account_id)
@@ -88,22 +88,26 @@ defmodule BlueJet.Identity.User do
     !existing_user
   end
 
-  defp validate_username_unique(changeset = %{ valid?: true, changes: %{ username: username } }) do
+  # This function is needed in additional to the constraint. The constraints
+  # only checks account user and global user seperately. In addition to that
+  # we also need to check them together. Username must be unique within an
+  # account regardless of whether they are global user or account user.
+  defp validate_username_unique_within_account(changeset = %{ valid?: true, changes: %{ username: username } }) do
     account_id = get_field(changeset, :account_id)
 
-    if username_unique?(username, account_id) do
+    if username_unique_within_account?(username, account_id) do
       changeset
     else
       add_error(changeset, :username, "Username already taken.", [validation: :unique])
     end
   end
 
-  defp validate_username_unique(changeset), do: changeset
+  defp validate_username_unique_within_account(changeset), do: changeset
 
   defp validate_username(changeset = %{ valid?: true, changes: %{ username: _ } }) do
     changeset
     |> validate_length(:username, min: 5)
-    |> validate_username_unique() # TODO: maybe we don't need this
+    |> validate_username_unique_within_account()
     |> unique_constraint(:username)
     |> unique_constraint(:username, name: :users_account_id_username_index)
   end
@@ -223,7 +227,7 @@ defmodule BlueJet.Identity.User do
     Comeonin.Bcrypt.hashpwsalt(password)
   end
 
-  def put_encrypted_password(changeset = %{ valid?: true, changes: %{ password: password } })  do
+  def put_encrypted_password(changeset = %{ changes: %{ password: password } })  do
     put_change(changeset, :encrypted_password, encrypt_password(password))
   end
 
@@ -257,9 +261,17 @@ defmodule BlueJet.Identity.User do
     |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
   end
 
-  def changeset(user, :delete) do
-    change(user)
-    |> Map.put(:action, :delete)
+  def changeset(user, :insert, params) do
+    user
+    |> Repo.preload(:account)
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> put_name()
+    |> Utils.put_parameterized([:email, :username])
+    |> put_auth_method()
+    |> put_tfa_code()
+    |> put_encrypted_password()
+    |> validate()
   end
 
   def changeset(user, :update, params) do
@@ -268,22 +280,14 @@ defmodule BlueJet.Identity.User do
     |> cast(params, writable_fields())
     |> Map.put(:action, :update)
     |> put_name()
-    |> Utils.put_clean_email()
-    |> validate()
+    |> Utils.put_parameterized([:email, :username])
     |> put_encrypted_password()
+    |> validate()
   end
 
-  def changeset(user, :insert, params) do
-    user
-    |> Repo.preload(:account)
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :insert)
-    |> put_name()
-    |> Utils.put_clean_email()
-    |> put_auth_method()
-    |> put_tfa_code()
-    |> validate()
-    |> put_encrypted_password()
+  def changeset(user, :delete) do
+    change(user)
+    |> Map.put(:action, :delete)
   end
 
   #
@@ -336,6 +340,16 @@ defmodule BlueJet.Identity.User do
     |> Repo.update!()
   end
 
+  def generate_email_confirmation_token() do
+    Ecto.UUID.generate()
+  end
+
+  def refresh_email_confirmation_token(user) do
+    user
+    |> change(email_confirmation_token: generate_email_confirmation_token(), email_confirmed: false)
+    |> Repo.update!()
+  end
+
   defp generate_tfa_code(n) do
     Enum.reduce(1..n, "", fn(_, acc) ->
       char = Enum.random(0..9)
@@ -352,16 +366,6 @@ defmodule BlueJet.Identity.User do
   def clear_tfa_code(user) do
     user
     |> change(%{ tfa_code: nil, tfa_code_expires_at: nil })
-    |> Repo.update!()
-  end
-
-  def generate_email_confirmation_token() do
-    Ecto.UUID.generate()
-  end
-
-  def refresh_email_confirmation_token(user) do
-    user
-    |> change(email_confirmation_token: generate_email_confirmation_token(), email_confirmed: false)
     |> Repo.update!()
   end
 

@@ -1,9 +1,7 @@
 defmodule BlueJet.Identity.UserTest do
   use BlueJet.DataCase
 
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.{Account, User, AccountMembership, PhoneVerificationCode}
 
   test "writable_fields/0" do
     assert User.writable_fields == [
@@ -21,8 +19,25 @@ defmodule BlueJet.Identity.UserTest do
     ]
   end
 
+  describe "schema" do
+    test "when account is deleted account user should be automatically deleted" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
+      Repo.delete!(account)
+
+      refute Repo.get(User, user.id)
+    end
+  end
+
   describe "validate/1" do
-    test "when missing required fields" do
+    test "when action is insert and missing required fields" do
       changeset =
         change(%User{}, %{})
         |> Map.put(:action, :insert)
@@ -32,7 +47,7 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:password, :username]
     end
 
-    test "when given username less than 5 characters" do
+    test "when action is insert and  given username less than 5 characters" do
       changeset =
         change(%User{}, %{ username: "abcd", password: "test1234" })
         |> Map.put(:action, :insert)
@@ -42,7 +57,7 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:username]
     end
 
-    test "when given global username already exist" do
+    test "when action is inert and given global username already exist" do
       account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
       account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
       user = Repo.insert!(%User{
@@ -97,7 +112,7 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(gu_changeset.errors) == [:username]
     end
 
-    test "when given account username already exist" do
+    test "when action is insert and given account username already exist" do
       account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
       account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
       user = Repo.insert!(%User{
@@ -195,7 +210,17 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:email]
     end
 
-    test "when updating user password but did not provide current password" do
+    test "when action is insert and given password less than 8 characters" do
+      changeset =
+        change(%User{}, %{ username: "username", password: "abc" })
+        |> Map.put(:action, :insert)
+        |> User.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:password]
+    end
+
+    test "when action is update but missing required fields" do
       user = %User{ username: "username" }
 
       changeset =
@@ -208,17 +233,7 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:current_password]
     end
 
-    test "when given password less than 8 characters" do
-      changeset =
-        change(%User{}, %{ username: "username", password: "abc" })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:password]
-    end
-
-    test "when updating user password but provided wrong current password" do
+    test "when action is update and password is changed but provided wrong current password" do
       user = %User{ username: "username" }
 
       changeset =
@@ -231,7 +246,7 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:current_password]
     end
 
-    test "when user is alreay persisted and updating" do
+    test "when action is update" do
       user = %User{ username: Faker.String.base64(5) }
 
       changeset =
@@ -244,21 +259,65 @@ defmodule BlueJet.Identity.UserTest do
     end
   end
 
-  describe "changeset/1" do
-    test "when username and password is given" do
-      changeset = User.changeset(%User{}, :insert, %{
-        username: Faker.String.base64(5),
-        password: "test1234"
-      })
+  describe "changeset/3" do
+    test "when action is insert" do
+      account = Repo.insert!(%Account{ default_auth_method: "tfa_sms" })
+      params = %{
+        username: " Tes t ",
+        email: " te s t@example.com  ",
+        password: "test1234",
+        phone_verification_code: "123456",
+        first_name: "Roy",
+        last_name: "Bao"
+      }
 
-      assert changeset.valid?
+      changeset =
+        %User{ account_id: account.id, account: account }
+        |> User.changeset(:insert, params)
+
       assert changeset.changes[:encrypted_password]
+      assert changeset.changes[:username] == "test"
+      assert changeset.changes[:email] == "test@example.com"
+      assert changeset.changes[:auth_method] == "tfa_sms"
+      assert changeset.changes[:tfa_code] == "123456"
+      assert changeset.changes[:name] == "Roy Bao"
     end
 
-    test "when missing required fields" do
-      changeset = User.changeset(%User{}, :insert, %{})
+    test "when action is update" do
+      params = %{
+        username: " Tes t ",
+        email: " te s t@example.com  ",
+        password: "test1234",
+        phone_verification_code: "123456",
+        first_name: "Roy",
+        last_name: "Bao"
+      }
 
-      refute changeset.valid?
+      changeset =
+        %User{ }
+        |> User.changeset(:update, params)
+
+      assert changeset.changes[:encrypted_password]
+      assert changeset.changes[:username] == "test"
+      assert changeset.changes[:email] == "test@example.com"
+      assert changeset.changes[:name] == "Roy Bao"
+    end
+  end
+
+  describe "process/2" do
+    test "when user has phone verification code" do
+      account = Repo.insert!(%Account{})
+      pvc = Repo.insert!(%PhoneVerificationCode{
+        account_id: account.id,
+        phone_number: Faker.Phone.EnUs.phone(),
+        value: "123456",
+        expires_at: Timex.now()
+      })
+      user = %User{ phone_number: pvc.phone_number, phone_verification_code: pvc.value }
+
+      User.process(user, nil)
+
+      refute Repo.get(PhoneVerificationCode, pvc.id)
     end
   end
 
@@ -288,6 +347,52 @@ defmodule BlueJet.Identity.UserTest do
     end
   end
 
+  describe "get_tfa_code/1" do
+    test "when tfa code expired" do
+      user = %User{ tfa_code: "123456", tfa_code_expires_at: Timex.now() }
+
+      assert User.get_tfa_code(user) == nil
+    end
+
+    test "when tfa code is valid" do
+      user = %User{ tfa_code: "123456", tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 1) }
+
+      assert User.get_tfa_code(user) == "123456"
+    end
+  end
+
+  test "refresh_tfa_code/1" do
+    account = Repo.insert!(%Account{
+      name: Faker.Company.name()
+    })
+    user = Repo.insert!(%User{
+      username: Faker.String.base64(5),
+      default_account_id: account.id
+    })
+
+    user = User.refresh_tfa_code(user)
+
+    assert user.tfa_code
+    assert user.tfa_code_expires_at
+  end
+
+  test "clear_tfa_code/1" do
+    account = Repo.insert!(%Account{
+      name: Faker.Company.name()
+    })
+    user = Repo.insert!(%User{
+      username: Faker.String.base64(5),
+      default_account_id: account.id,
+      tfa_code: "123456",
+      tfa_code_expires_at: Timex.now()
+    })
+
+    user = User.clear_tfa_code(user)
+
+    assert user.tfa_code == nil
+    assert user.tfa_code_expires_at == nil
+  end
+
   test "refresh_password_reset_token/1" do
     account = Repo.insert!(%Account{
       name: Faker.Company.name()
@@ -299,5 +404,19 @@ defmodule BlueJet.Identity.UserTest do
 
     user = User.refresh_password_reset_token(user)
     assert user.password_reset_token
+  end
+
+  test "update_password/2" do
+    account = Repo.insert!(%Account{
+      name: Faker.Company.name()
+    })
+    user = Repo.insert!(%User{
+      username: Faker.String.base64(5),
+      default_account_id: account.id
+    })
+
+    user = User.update_password(user, "test1234")
+
+    assert user.encrypted_password
   end
 end

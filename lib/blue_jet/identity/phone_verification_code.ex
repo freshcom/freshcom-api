@@ -14,7 +14,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     belongs_to :account, Account
   end
 
-  def generate_value(n, account_id) do
+  defp generate_value(n, account_id) do
     value = Enum.reduce(1..n, "", fn(_, acc) ->
       char = Enum.random(0..9)
       acc <> Integer.to_string(char)
