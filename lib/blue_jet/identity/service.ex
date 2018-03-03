@@ -2,15 +2,10 @@ defmodule BlueJet.Identity.Service do
   use BlueJet, :service
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias BlueJet.Repo
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.AccountMembership
-  alias BlueJet.Identity.RefreshToken
-  alias BlueJet.Identity.PhoneVerificationCode
-
   alias Ecto.Multi
   alias Ecto.Changeset
+
+  alias BlueJet.Identity.{Account, User, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   @callback get_account(map | String.t) :: Account.t | nil
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
