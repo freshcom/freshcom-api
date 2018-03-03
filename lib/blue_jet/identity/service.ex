@@ -72,7 +72,7 @@ defmodule BlueJet.Identity.Service do
 
     case Repo.transaction(statements) do
       {:ok, %{ account: account, test_account: test_account }} ->
-        account = %{ account | test_account_id: test_account.id }
+        account = %{ account | test_account_id: test_account.id, test_account: test_account }
         {:ok, account}
 
       {:error, _, changeset, _} -> {:error, changeset}

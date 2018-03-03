@@ -2,7 +2,9 @@ defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Service
-  alias BlueJet.Identity.{User, Account}
+  alias BlueJet.Identity.{User, Account, RefreshToken}
+
+  setup :verify_on_exit!
 
   describe "get_account/1" do
     test "when only account_id is given" do
@@ -37,6 +39,33 @@ defmodule BlueJet.Identity.ServiceTest do
       })
 
       assert Service.get_account(%{ account_id: account.id, account: account }) == account
+    end
+  end
+
+  describe "create_account/1" do
+    test "when given params invalid" do
+      {:error, changeset} = Service.create_account(%{})
+
+      assert changeset.valid? == false
+    end
+
+    test "when params is valid" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.account.create.success"
+          assert data[:account]
+          assert data[:test_account]
+
+          {:ok, nil}
+         end)
+
+      {:ok, account} = Service.create_account(%{ name: Faker.Company.name() })
+      test_account = account.test_account
+
+      assert account.mode == "live"
+      assert test_account.mode == "test"
+      assert Repo.get_by(RefreshToken, account_id: account.id)
+      assert Repo.get_by(RefreshToken, account_id: test_account.id)
     end
   end
 
