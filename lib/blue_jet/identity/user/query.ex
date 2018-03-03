@@ -1,8 +1,7 @@
 defmodule BlueJet.Identity.User.Query do
   use BlueJet, :query
 
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.AccountMembership
+  alias BlueJet.Identity.{User, AccountMembership}
 
   @filterable_fields [
     :code,
@@ -10,7 +9,7 @@ defmodule BlueJet.Identity.User.Query do
   ]
 
   def default() do
-    from(u in User, order_by: [desc: :inserted_at])
+    from u in User
   end
 
   def filter_by(query, filter) do

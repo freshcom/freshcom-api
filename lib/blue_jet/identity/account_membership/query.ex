@@ -4,7 +4,7 @@ defmodule BlueJet.Identity.AccountMembership.Query do
   alias BlueJet.Identity.{Account, AccountMembership}
 
   def default() do
-    from am in AccountMembership, order_by: [desc: :inserted_at]
+    from am in AccountMembership
   end
 
   def preloads(:account) do

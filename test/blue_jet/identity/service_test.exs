@@ -4,6 +4,42 @@ defmodule BlueJet.Identity.ServiceTest do
   alias BlueJet.Identity.Service
   alias BlueJet.Identity.{User, Account}
 
+  describe "get_account/1" do
+    test "when only account_id is given" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+
+      assert Service.get_account(%{ account_id: nil }) == nil
+      assert Service.get_account(%{ account_id: account.id }).id == account.id
+    end
+
+    test "when only account is given" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+
+      assert Service.get_account(%{ account: nil }) == nil
+      assert Service.get_account(%{ account: account }) == account
+    end
+
+    test "when both account and account_id is given but account is nil" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+
+      assert Service.get_account(%{ account_id: account.id, account: nil }).id == account.id
+    end
+
+    test "when both account and account_id is given and account is not nil" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+
+      assert Service.get_account(%{ account_id: account.id, account: account }) == account
+    end
+  end
+
   describe "create_email_confirmation/2" do
     test "when token is nil" do
       assert Service.create_email_confirmation(%{ "token" => nil }, %{}) == {:error, :not_found}

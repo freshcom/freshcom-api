@@ -2,9 +2,7 @@ defmodule BlueJet.Identity.Service do
   use BlueJet, :service
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias Ecto.Multi
-  alias Ecto.Changeset
-
+  alias Ecto.{Multi, Changeset}
   alias BlueJet.Identity.{Account, User, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   @callback get_account(map | String.t) :: Account.t | nil
@@ -30,8 +28,9 @@ defmodule BlueJet.Identity.Service do
   #
   def get_account(%{ account_id: nil }), do: nil
   def get_account(%{ account_id: account_id, account: nil }), do: get_account(account_id)
+  def get_account(%{ account: account }) when not is_nil(account), do: account
   def get_account(%{ account_id: account_id }), do: get_account(account_id)
-  def get_account(%{ account: account }), do: account
+  def get_account(map) when is_map(map), do: nil
   def get_account(id), do: Repo.get!(Account, id)
 
   defp get_account_id(opts) do

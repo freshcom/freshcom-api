@@ -12,7 +12,6 @@ defmodule BlueJet.Identity.Account do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Repo
   alias BlueJet.Identity.{AccountMembership, RefreshToken}
 
   schema "accounts" do

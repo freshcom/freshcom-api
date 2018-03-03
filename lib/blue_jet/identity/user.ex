@@ -4,7 +4,7 @@ defmodule BlueJet.Identity.User do
   alias BlueJet.Utils
 
   alias BlueJet.Identity.{Account, RefreshToken, AccountMembership, PhoneVerificationCode}
-  alias BlueJet.Identity.User.Query
+  alias __MODULE__.Query
 
   schema "users" do
     field :status, :string, default: "active"

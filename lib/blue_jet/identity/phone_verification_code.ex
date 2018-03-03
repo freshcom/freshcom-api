@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   use BlueJet, :data
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Identity.PhoneVerificationCode.Query
+  alias __MODULE__.Query
 
   schema "phone_verification_codes" do
     field :phone_number, :string

@@ -25,10 +25,7 @@ defmodule BlueJet.Identity.Authentication do
   """
 
   alias BlueJet.Repo
-  alias BlueJet.Identity.User
-  alias BlueJet.Identity.Account
-  alias BlueJet.Identity.Jwt
-  alias BlueJet.Identity.RefreshToken
+  alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}
 
   def create_token(fields = %{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
     create_token(%{ grant_type: "password", username: username, password: password, otp: fields["otp"], scope: deserialize_scope(scope) })
