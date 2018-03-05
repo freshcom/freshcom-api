@@ -83,6 +83,18 @@ defmodule BlueJet.Identity.Account do
     Translation.put_change(changeset, translatable_fields(), locale, default_locale)
   end
 
+  def process(account, changeset = %{ action: :update }) do
+    account = Repo.preload(account, :test_account)
+
+    test_account =
+      change(account.test_account, changeset.changes)
+      |> Repo.update!()
+
+    account = %{ account | test_account: test_account }
+
+    {:ok, account}
+  end
+
   @doc """
   Return the account with `test_account_id` fields added. If given account does not
   have a test account then the original account is returned.

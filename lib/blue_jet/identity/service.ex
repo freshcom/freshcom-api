@@ -85,9 +85,12 @@ defmodule BlueJet.Identity.Service do
     statements =
       Multi.new()
       |> Multi.update(:account, changeset)
+      |> Multi.run(:processed_account, fn(%{ account: account }) ->
+          Account.process(account, changeset)
+         end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ account: account }} ->
+      {:ok, %{ processed_account: account }} ->
         {:ok, account}
 
       {:error, _, changeset, _} -> {:error, changeset}

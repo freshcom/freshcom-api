@@ -43,13 +43,13 @@ defmodule BlueJet.Identity.ServiceTest do
   end
 
   describe "create_account/1" do
-    test "when given params invalid" do
+    test "when given fields are invalid" do
       {:error, changeset} = Service.create_account(%{})
 
       assert changeset.valid? == false
     end
 
-    test "when params is valid" do
+    test "when fields are valid" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
           assert event_name == "identity.account.create.success"
@@ -66,6 +66,65 @@ defmodule BlueJet.Identity.ServiceTest do
       assert test_account.mode == "test"
       assert Repo.get_by(RefreshToken, account_id: account.id)
       assert Repo.get_by(RefreshToken, account_id: test_account.id)
+    end
+  end
+
+  describe "update_account/2" do
+    test "when given fields are invalid" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      test_account = Repo.insert!(%Account{
+        name: Faker.Company.name(),
+        live_account_id: account.id,
+        mode: "test"
+      })
+
+      {:error, changeset} = Service.update_account(account, %{ name: nil })
+
+      assert changeset.valid? == false
+    end
+
+    test "when given fields are valid" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      test_account = Repo.insert!(%Account{
+        name: Faker.Company.name(),
+        live_account_id: account.id,
+        mode: "test"
+      })
+      fields = %{
+        name: Faker.Company.name(),
+        company_name: Faker.Company.name(),
+        default_auth_method: "tfa_sms",
+        website_url: Faker.Internet.url(),
+        support_email: Faker.Internet.email(),
+        tech_email: Faker.Internet.email(),
+        caption: Faker.Lorem.sentence(5),
+        description: Faker.Lorem.sentence(20)
+      }
+
+      {:ok, account} = Service.update_account(account, fields)
+      test_account = account.test_account
+
+      assert account.name == fields.name
+      assert account.company_name == fields.company_name
+      assert account.default_auth_method == fields.default_auth_method
+      assert account.website_url == fields.website_url
+      assert account.support_email == fields.support_email
+      assert account.tech_email == fields.tech_email
+      assert account.caption == fields.caption
+      assert account.description == fields.description
+
+      assert test_account.name == fields.name
+      assert test_account.company_name == fields.company_name
+      assert test_account.default_auth_method == fields.default_auth_method
+      assert test_account.website_url == fields.website_url
+      assert test_account.support_email == fields.support_email
+      assert test_account.tech_email == fields.tech_email
+      assert test_account.caption == fields.caption
+      assert test_account.description == fields.description
     end
   end
 
