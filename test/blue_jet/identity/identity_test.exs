@@ -330,7 +330,7 @@ defmodule BlueJet.Identity.IdentityTest do
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.create.success"
+          assert name == "identity.email_verification_token.create.success"
           {:ok, nil}
          end)
 
@@ -367,7 +367,7 @@ defmodule BlueJet.Identity.IdentityTest do
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.create.success"
+          assert name == "identity.email_verification_token.create.success"
           {:ok, nil}
          end)
 

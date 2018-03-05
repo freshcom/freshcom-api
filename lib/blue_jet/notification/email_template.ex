@@ -105,9 +105,9 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.email_confirmation_token.create.success", %{ account: account, user: user }) do
+  def extract_variables("identity.email_verification_token.create.success", %{ account: account, user: user }) do
     %{
-      user: Map.take(user, [:id, :email_confirmation_token, :first_name, :last_name, :email]),
+      user: Map.take(user, [:id, :email_verification_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),
       freshcom_confirm_email_url: System.get_env("CONFIRM_EMAIL_URL")
     }
@@ -187,9 +187,9 @@ defmodule BlueJet.Notification.EmailTemplate do
       }
     end
 
-    def email_confirmation(account) do
-      email_confirmation_html = File.read!("lib/blue_jet/notification/email_templates/email_confirmation.html")
-      email_confirmation_text = File.read!("lib/blue_jet/notification/email_templates/email_confirmation.txt")
+    def email_verification(account) do
+      email_verification_html = File.read!("lib/blue_jet/notification/email_templates/email_verification.html")
+      email_verification_text = File.read!("lib/blue_jet/notification/email_templates/email_verification.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -197,8 +197,8 @@ defmodule BlueJet.Notification.EmailTemplate do
         name: "Email Confirmation",
         subject: "Confirm your email for {{account.name}}",
         to: "{{user.email}}",
-        body_html: email_confirmation_html,
-        body_text: email_confirmation_text
+        body_html: email_verification_html,
+        body_text: email_verification_text
       }
     end
 

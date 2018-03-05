@@ -12,11 +12,11 @@ defmodule BlueJet.Identity.Service do
   @callback delete_user(String.t, map) :: {:ok, User.t} | {:error, any}
   @callback get_user(map, map) :: User.t | nil
 
-  @callback create_email_confirmation_token(User.t) :: {:ok, User.t} | {:error, any}
-  @callback create_email_confirmation_token(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification_token(User.t) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification_token(map, map) :: {:ok, User.t} | {:error, any}
 
-  @callback create_email_confirmation(User.t) :: {:ok, User.t} | {:error, any}
-  @callback create_email_confirmation(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification(User.t) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification(map, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
 
@@ -112,7 +112,7 @@ defmodule BlueJet.Identity.Service do
           create_account(account_fields)
          end)
       |> Multi.run(:user, fn(%{ account: account }) ->
-          %User{ default_account_id: account.id, email_confirmation_token: User.generate_email_confirmation_token() }
+          %User{ default_account_id: account.id, email_verification_token: User.generate_email_verification_token() }
           |> User.changeset(:insert, fields)
           |> Repo.insert()
          end)
@@ -135,7 +135,7 @@ defmodule BlueJet.Identity.Service do
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.user.create.success", %{ user: user, account: nil })
-          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: nil })
+          emit_event("identity.email_verification_token.create.success", %{ user: user, account: nil })
          end)
 
     case Repo.transaction(statements) do
@@ -166,7 +166,7 @@ defmodule BlueJet.Identity.Service do
       account: account,
       default_account_id: account.id,
       default_account: account,
-      email_confirmation_token: User.generate_email_confirmation_token()
+      email_verification_token: User.generate_email_verification_token()
     }
     changeset =
       user
@@ -205,7 +205,7 @@ defmodule BlueJet.Identity.Service do
           emit_event("identity.user.create.success", %{ user: user, account: account })
 
           if user.email do
-            emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
+            emit_event("identity.email_verification_token.create.success", %{ user: user, account: account })
           end
 
           {:ok, nil}
@@ -318,44 +318,44 @@ defmodule BlueJet.Identity.Service do
   #
   # MARK: Email Verification
   #
-  def create_email_confirmation(nil), do: {:error, :not_found}
+  def create_email_verification(nil), do: {:error, :not_found}
 
-  def create_email_confirmation(user = %{}) do
+  def create_email_verification(user = %{}) do
     User.confirm_email(user)
     {:ok, user}
   end
 
-  def create_email_confirmation(%{ "token" => nil }, _), do: {:error, :not_found}
+  def create_email_verification(%{ "token" => nil }, _), do: {:error, :not_found}
 
-  def create_email_confirmation(%{ "token" => token }, opts = %{ account: nil }) when map_size(opts) == 1 do
+  def create_email_verification(%{ "token" => token }, opts = %{ account: nil }) when map_size(opts) == 1 do
     User.Query.default()
     |> User.Query.global()
-    |> Repo.get_by(email_confirmation_token: token)
-    |> create_email_confirmation()
+    |> Repo.get_by(email_verification_token: token)
+    |> create_email_verification()
   end
 
-  def create_email_confirmation(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
+  def create_email_verification(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
     User.Query.default()
     |> User.Query.for_account(account.id)
-    |> Repo.get_by(email_confirmation_token: token)
-    |> create_email_confirmation()
+    |> Repo.get_by(email_verification_token: token)
+    |> create_email_verification()
   end
 
-  def create_email_confirmation(_, _), do: {:error, :not_found}
+  def create_email_verification(_, _), do: {:error, :not_found}
 
-  def create_email_confirmation_token(nil), do: {:error, :not_found}
+  def create_email_verification_token(nil), do: {:error, :not_found}
 
-  def create_email_confirmation_token(user = %User{}) do
+  def create_email_verification_token(user = %User{}) do
     account = user.account || get_account(user)
 
     statements =
       Multi.new()
       |> Multi.run(:user, fn(_) ->
-          user = User.refresh_email_confirmation_token(user)
+          user = User.refresh_email_verification_token(user)
           {:ok, user}
          end)
       |> Multi.run(:after_create, fn(%{ user: user }) ->
-          emit_event("identity.email_confirmation_token.create.success", %{ user: user, account: account })
+          emit_event("identity.email_verification_token.create.success", %{ user: user, account: account })
          end)
 
     case Repo.transaction(statements) do
@@ -365,14 +365,14 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_email_confirmation_token(%{ "email" => nil }, _), do: {:error, :not_found}
+  def create_email_verification_token(%{ "email" => nil }, _), do: {:error, :not_found}
 
-  def create_email_confirmation_token(%{ "email" => email }, opts) do
+  def create_email_verification_token(%{ "email" => email }, opts) do
     user = get_user(%{ email: email }, opts)
 
     if user do
       %{ user | account: opts[:account] }
-      |> create_email_confirmation_token()
+      |> create_email_verification_token()
     else
       {:error, :not_found}
     end

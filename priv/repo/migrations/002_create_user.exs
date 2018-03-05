@@ -20,9 +20,9 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       add :tfa_code, :string
       add :tfa_code_expires_at, :utc_datetime
 
-      add :email_confirmation_token, :string
-      add :email_confirmed, :boolean, null: false
-      add :email_confirmed_at, :utc_datetime
+      add :email_verification_token, :string
+      add :email_verified, :boolean, null: false
+      add :email_verified_at, :utc_datetime
 
       add :password_reset_token, :string
       add :password_reset_token_expires_at, :utc_datetime
@@ -34,7 +34,7 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
     create unique_index(:users, [:email], where: "account_id IS NULL")
     create unique_index(:users, [:username], where: "account_id IS NULL")
     create unique_index(:users, [:password_reset_token])
-    create unique_index(:users, [:email_confirmation_token])
+    create unique_index(:users, [:email_verification_token])
 
     create unique_index(:users, [:account_id, :username])
 

@@ -74,7 +74,7 @@ defmodule BlueJet.Identity.ServiceTest do
       account = Repo.insert!(%Account{
         name: Faker.Company.name()
       })
-      test_account = Repo.insert!(%Account{
+      Repo.insert!(%Account{
         name: Faker.Company.name(),
         live_account_id: account.id,
         mode: "test"
@@ -89,7 +89,7 @@ defmodule BlueJet.Identity.ServiceTest do
       account = Repo.insert!(%Account{
         name: Faker.Company.name()
       })
-      test_account = Repo.insert!(%Account{
+      Repo.insert!(%Account{
         name: Faker.Company.name(),
         live_account_id: account.id,
         mode: "test"
@@ -145,7 +145,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
     test "when fields given is valid and account is nil" do
       EventHandlerMock
-      |> expect(:handle_event, fn(event_name, data) ->
+      |> expect(:handle_event, fn(event_name, _) ->
           assert event_name == "identity.account.create.success"
           {:ok, nil}
          end)
@@ -157,7 +157,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.email_confirmation_token.create.success"
+          assert event_name == "identity.email_verification_token.create.success"
           assert data[:user]
           assert data[:account] == nil
 
@@ -192,7 +192,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.email_confirmation_token.create.success"
+          assert event_name == "identity.email_verification_token.create.success"
           assert data[:user]
           assert data[:account]
 
@@ -215,18 +215,18 @@ defmodule BlueJet.Identity.ServiceTest do
     end
   end
 
-  describe "create_email_confirmation/2" do
+  describe "create_email_verification/2" do
     test "when token is nil" do
-      assert Service.create_email_confirmation(%{ "token" => nil }, %{}) == {:error, :not_found}
+      assert Service.create_email_verification(%{ "token" => nil }, %{}) == {:error, :not_found}
     end
 
     test "when account is given and token does not exist" do
       account = Repo.insert!(%Account{})
-      assert Service.create_email_confirmation(%{ "token" => Ecto.UUID.generate() }, %{ account: account }) == {:error, :not_found}
+      assert Service.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: account }) == {:error, :not_found}
     end
 
     test "when account is nil and token does not exist" do
-      assert Service.create_email_confirmation(%{ "token" => Ecto.UUID.generate() }, %{ account: nil }) == {:error, :not_found}
+      assert Service.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: nil }) == {:error, :not_found}
     end
 
     test "when account is given and token is valid" do
@@ -235,10 +235,10 @@ defmodule BlueJet.Identity.ServiceTest do
         account_id: account.id,
         default_account_id: account.id,
         username: Faker.String.base64(5),
-        email_confirmation_token: Ecto.UUID.generate()
+        email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_confirmation(%{ "token" => target_user.email_confirmation_token }, %{ account: account })
+      {:ok, user} = Service.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: account })
       assert target_user.id == user.id
     end
 
@@ -247,17 +247,17 @@ defmodule BlueJet.Identity.ServiceTest do
       target_user = Repo.insert!(%User{
         default_account_id: account.id,
         username: Faker.String.base64(5),
-        email_confirmation_token: Ecto.UUID.generate()
+        email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_confirmation(%{ "token" => target_user.email_confirmation_token }, %{ account: nil })
+      {:ok, user} = Service.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: nil })
       assert target_user.id == user.id
     end
   end
 
-  describe "create_email_confirmation/1" do
+  describe "create_email_verification/1" do
     test "when user is nil" do
-      assert Service.create_email_confirmation(nil) == {:error, :not_found}
+      assert Service.create_email_verification(nil) == {:error, :not_found}
     end
 
     test "when user is valid" do
@@ -265,17 +265,17 @@ defmodule BlueJet.Identity.ServiceTest do
       target_user = Repo.insert!(%User{
         default_account_id: account.id,
         username: Faker.String.base64(5),
-        email_confirmation_token: Ecto.UUID.generate()
+        email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_confirmation(target_user)
+      {:ok, user} = Service.create_email_verification(target_user)
       assert target_user.id == user.id
     end
   end
 
-  describe "create_email_confirmation_token/1" do
+  describe "create_email_verification_token/1" do
     test "when user is nil" do
-      assert Service.create_email_confirmation_token(nil) == {:error, :not_found}
+      assert Service.create_email_verification_token(nil) == {:error, :not_found}
     end
 
     test "when user is valid" do
@@ -287,29 +287,29 @@ defmodule BlueJet.Identity.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.create.success"
+          assert name == "identity.email_verification_token.create.success"
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_confirmation_token(target_user)
+      {:ok, user} = Service.create_email_verification_token(target_user)
 
-      assert user.email_confirmation_token
+      assert user.email_verification_token
       assert user.id == target_user.id
     end
   end
 
-  describe "create_email_confirmation_token/2" do
+  describe "create_email_verification_token/2" do
     test "when email is nil" do
-      assert Service.create_email_confirmation_token(%{ "email" => nil }, %{}) == {:error, :not_found}
+      assert Service.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
     end
 
     test "when account is given and email does not exist" do
       account = Repo.insert!(%Account{})
-      assert Service.create_email_confirmation(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
     end
 
     test "when account is nil and email does not exist" do
-      assert Service.create_email_confirmation(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
+      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
     end
 
     test "when account is given and email is valid" do
@@ -323,13 +323,13 @@ defmodule BlueJet.Identity.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.create.success"
+          assert name == "identity.email_verification_token.create.success"
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_confirmation_token(%{ "email" => target_user.email }, %{ account: account })
+      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
       assert user.id == target_user.id
-      assert user.email_confirmation_token
+      assert user.email_verification_token
     end
 
     test "when account is nil and email is valid" do
@@ -342,13 +342,13 @@ defmodule BlueJet.Identity.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_confirmation_token.create.success"
+          assert name == "identity.email_verification_token.create.success"
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_confirmation_token(%{ "email" => target_user.email }, %{ account: nil })
+      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
       assert user.id == target_user.id
-      assert user.email_confirmation_token
+      assert user.email_verification_token
     end
   end
 end

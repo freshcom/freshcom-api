@@ -12,8 +12,8 @@ defmodule BlueJet.Identity.Authorization do
     "identity.create_password_reset_token",
     "identity.create_password",
     "identity.create_phone_verification_code",
-    "identity.create_email_confirmation_token",
-    "identity.create_email_confirmation",
+    "identity.create_email_verification_token",
+    "identity.create_email_verification",
 
     "file_storage.list_file",
     "file_storage.create_file",
@@ -132,8 +132,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_user",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation"
+      "identity.create_email_verification_token",
+      "identity.create_email_verification"
     ],
 
     "guest" => [
@@ -141,8 +141,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_account",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
       "identity.create_phone_verification_code",
 
       "file_storage.get_file",
@@ -181,8 +181,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.delete_user",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
 
       "file_storage.get_file",
       "file_storage.get_file_collection",
@@ -232,8 +232,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
 
       "file_storage.list_file",
       "file_storage.create_file",
@@ -306,8 +306,8 @@ defmodule BlueJet.Identity.Authorization do
     "marketing_specialist" => [
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation"
+      "identity.create_email_verification_token",
+      "identity.create_email_verification"
     ],
 
     "goods_specialist" => [
@@ -317,8 +317,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
 
       "file_storage.list_file",
       "file_storage.create_file",
@@ -377,8 +377,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
 
       "file_storage.list_file",
       "file_storage.create_file",
@@ -500,8 +500,8 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
       "identity.create_password",
-      "identity.create_email_confirmation_token",
-      "identity.create_email_confirmation",
+      "identity.create_email_verification_token",
+      "identity.create_email_verification",
 
       "file_storage.list_file",
       "file_storage.create_file",

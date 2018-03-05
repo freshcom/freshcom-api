@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.EmailConfirmationController do
+defmodule BlueJetWeb.EmailVerificationTokenController do
   use BlueJetWeb, :controller
 
   alias JaSerializer.Params
@@ -8,14 +8,14 @@ defmodule BlueJetWeb.EmailConfirmationController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "EmailConfirmation" } }) do
+  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "EmailVerificationToken" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Identity.create_email_confirmation(request) do
+    case Identity.create_email_verification_token(request) do
       {:ok, _} ->
         send_resp(conn, :no_content, "")
 

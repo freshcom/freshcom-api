@@ -27,10 +27,10 @@ defmodule BlueJet.Notification.EventHandler do
 
     email_template =
       account
-      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> EmailTemplate.AccountDefault.email_verification()
       |> Repo.insert!()
     account
-    |> Trigger.AccountDefault.send_email_confirmation_email(email_template)
+    |> Trigger.AccountDefault.send_email_verification_email(email_template)
     |> Repo.insert!()
 
     email_template =
@@ -76,10 +76,10 @@ defmodule BlueJet.Notification.EventHandler do
 
     email_template =
       test_account
-      |> EmailTemplate.AccountDefault.email_confirmation()
+      |> EmailTemplate.AccountDefault.email_verification()
       |> Repo.insert!()
     test_account
-    |> Trigger.AccountDefault.send_email_confirmation_email(email_template)
+    |> Trigger.AccountDefault.send_email_verification_email(email_template)
     |> Repo.insert!()
 
     email_template =
@@ -109,7 +109,7 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("identity.email_confirmation_token.create.success", %{ user: %{ account_id: nil } }) do
+  def handle_event("identity.email_verification_token.create.success", %{ user: %{ account_id: nil } }) do
     {:ok, nil}
   end
 

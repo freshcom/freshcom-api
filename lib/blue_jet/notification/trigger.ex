@@ -145,12 +145,12 @@ defmodule BlueJet.Notification.Trigger do
       }
     end
 
-    def send_email_confirmation_email(account, email_template) do
+    def send_email_verification_email(account, email_template) do
       %Trigger{
         account_id: account.id,
         system_label: "default",
         name: "Send email confirmation email",
-        event: "identity.email_confirmation_token.create.success",
+        event: "identity.email_verification_token.create.success",
         action_type: "send_email",
         action_target: email_template.id
       }

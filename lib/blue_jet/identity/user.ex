@@ -21,9 +21,9 @@ defmodule BlueJet.Identity.User do
     field :tfa_code, :string
     field :tfa_code_expires_at, :utc_datetime
 
-    field :email_confirmation_token, :string
-    field :email_confirmed, :boolean, default: false
-    field :email_confirmed_at, :utc_datetime
+    field :email_verification_token, :string
+    field :email_verified, :boolean, default: false
+    field :email_verified_at, :utc_datetime
 
     field :password_reset_token, :string
     field :password_reset_token_expires_at, :utc_datetime
@@ -54,9 +54,9 @@ defmodule BlueJet.Identity.User do
     :tfa_code,
     :tfa_code_expires_at,
 
-    :email_confirmation_token,
-    :email_confirmed,
-    :email_confirmed_at,
+    :email_verification_token,
+    :email_verified,
+    :email_verified_at,
 
     :password_reset_token,
     :password_reset_token_expires_at,
@@ -336,17 +336,17 @@ defmodule BlueJet.Identity.User do
   #
   def confirm_email(user) do
     user
-    |> change(email_confirmation_token: nil, email_confirmed: true, email_confirmed_at: Ecto.DateTime.utc())
+    |> change(email_verification_token: nil, email_verified: true, email_verified_at: Ecto.DateTime.utc())
     |> Repo.update!()
   end
 
-  def generate_email_confirmation_token() do
+  def generate_email_verification_token() do
     Ecto.UUID.generate()
   end
 
-  def refresh_email_confirmation_token(user) do
+  def refresh_email_verification_token(user) do
     user
-    |> change(email_confirmation_token: generate_email_confirmation_token(), email_confirmed: false)
+    |> change(email_verification_token: generate_email_verification_token(), email_verified: false)
     |> Repo.update!()
   end
 
