@@ -161,8 +161,15 @@ defmodule BlueJet.Identity.Service do
       account.id
     end
 
+    user = %User{
+      account_id: account.id,
+      account: account,
+      default_account_id: account.id,
+      default_account: account,
+      email_confirmation_token: User.generate_email_confirmation_token()
+    }
     changeset =
-      %User{ default_account_id: account.id, account_id: account.id, account: account, email_confirmation_token: User.generate_email_confirmation_token() }
+      user
       |> User.changeset(:insert, fields)
 
     statements =

@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Service
-  alias BlueJet.Identity.{User, Account, RefreshToken}
+  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
 
   setup :verify_on_exit!
 
@@ -59,7 +59,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, account} = Service.create_account(%{ name: Faker.Company.name() })
+      {:ok, account} = Service.create_account(%{ "name" => Faker.Company.name() })
       test_account = account.test_account
 
       assert account.mode == "live"
@@ -95,36 +95,123 @@ defmodule BlueJet.Identity.ServiceTest do
         mode: "test"
       })
       fields = %{
-        name: Faker.Company.name(),
-        company_name: Faker.Company.name(),
-        default_auth_method: "tfa_sms",
-        website_url: Faker.Internet.url(),
-        support_email: Faker.Internet.email(),
-        tech_email: Faker.Internet.email(),
-        caption: Faker.Lorem.sentence(5),
-        description: Faker.Lorem.sentence(20)
+        "name" => Faker.Company.name(),
+        "company_name" => Faker.Company.name(),
+        "default_auth_method" => "tfa_sms",
+        "website_url" => Faker.Internet.url(),
+        "support_email" => Faker.Internet.email(),
+        "tech_email" => Faker.Internet.email(),
+        "caption" => Faker.Lorem.sentence(5),
+        "description" => Faker.Lorem.sentence(20)
       }
 
       {:ok, account} = Service.update_account(account, fields)
       test_account = account.test_account
 
-      assert account.name == fields.name
-      assert account.company_name == fields.company_name
-      assert account.default_auth_method == fields.default_auth_method
-      assert account.website_url == fields.website_url
-      assert account.support_email == fields.support_email
-      assert account.tech_email == fields.tech_email
-      assert account.caption == fields.caption
-      assert account.description == fields.description
+      assert account.name == fields["name"]
+      assert account.company_name == fields["company_name"]
+      assert account.default_auth_method == fields["default_auth_method"]
+      assert account.website_url == fields["website_url"]
+      assert account.support_email == fields["support_email"]
+      assert account.tech_email == fields["tech_email"]
+      assert account.caption == fields["caption"]
+      assert account.description == fields["description"]
 
-      assert test_account.name == fields.name
-      assert test_account.company_name == fields.company_name
-      assert test_account.default_auth_method == fields.default_auth_method
-      assert test_account.website_url == fields.website_url
-      assert test_account.support_email == fields.support_email
-      assert test_account.tech_email == fields.tech_email
-      assert test_account.caption == fields.caption
-      assert test_account.description == fields.description
+      assert test_account.name == fields["name"]
+      assert test_account.company_name == fields["company_name"]
+      assert test_account.default_auth_method == fields["default_auth_method"]
+      assert test_account.website_url == fields["website_url"]
+      assert test_account.support_email == fields["support_email"]
+      assert test_account.tech_email == fields["tech_email"]
+      assert test_account.caption == fields["caption"]
+      assert test_account.description == fields["description"]
+    end
+  end
+
+  describe "create_user/2" do
+    test "when fields given is invalid and account is nil" do
+      {:error, changeset} = Service.create_user(%{}, %{ account: nil })
+
+      assert changeset.valid? == false
+    end
+
+    test "when fields given is invalid and account is valid" do
+      account = Repo.insert!(%Account{ name: Faker.Company.name() })
+
+      {:error, changeset} = Service.create_user(%{}, %{ account: account })
+
+      assert changeset.valid? == false
+    end
+
+    test "when fields given is valid and account is nil" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.account.create.success"
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.user.create.success"
+          assert data[:user]
+          assert data[:account] == nil
+
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.email_confirmation_token.create.success"
+          assert data[:user]
+          assert data[:account] == nil
+
+          {:ok, nil}
+         end)
+
+      fields = %{
+        "account_name" => Faker.Name.name(),
+        "username" => Faker.Internet.user_name(),
+        "password" => "test1234"
+      }
+
+      {:ok, user} = Service.create_user(fields, %{ account: nil })
+
+
+      assert user
+      assert user.account == nil
+      assert user.default_account.id
+      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "administrator")
+    end
+
+    test "when fields are valid and account is valid" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.user.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.email_confirmation_token.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+
+      fields = %{
+        "username" => Faker.Internet.user_name(),
+        "email" => Faker.Internet.safe_email(),
+        "password" => "test1234",
+        "role" => "customer"
+      }
+
+      {:ok, user} = Service.create_user(fields, %{ account: account })
+
+      assert user
+      assert user.account.id == account.id
+      assert user.default_account.id == account.id
+      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "customer")
     end
   end
 
