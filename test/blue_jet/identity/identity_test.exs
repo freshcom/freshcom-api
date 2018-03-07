@@ -2,33 +2,8 @@ defmodule BlueJet.Identity.IdentityTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity
-  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
+  alias BlueJet.Identity.{User, Account, RefreshToken}
   alias BlueJet.Identity.ServiceMock
-
-  # describe "list_account/1" do
-  #   test "when role is not authorized" do
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-  #     {:error, error} = Identity.list_account(%AccessRequest{})
-
-  #     assert error == :access_denied
-  #   end
-
-  #   test "when request is valid" do
-  #     request = %AccessRequest{
-  #       vas: %{ user_id: user.id },
-  #       role: "developer",
-  #       account: account
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
-
-  #     {:ok, response} = Identity.list_account(request)
-
-  #     assert length(response.data) == 1
-  #   end
-  # end
 
   describe "get_account/1" do
     test "when role is not authorized" do
@@ -51,9 +26,16 @@ defmodule BlueJet.Identity.IdentityTest do
           {:ok, request}
         end)
 
+      ServiceMock
+      |> expect(:get_account, fn(id) ->
+          assert id == account.id
+
+          {:ok, account}
+         end)
+
       {:ok, response} = Identity.get_account(request)
 
-      assert response.data.id == account.id
+      assert response.data == account
     end
   end
 
@@ -471,252 +453,275 @@ defmodule BlueJet.Identity.IdentityTest do
     end
   end
 
-  # describe "create_user/1" do
-  #   test "when using anonymous identity" do
-  #     request = %AccessRequest{
-  #       role: "anonymous",
-  #       fields: %{
-  #         "username" => Faker.String.base64(5),
-  #         "password" => "test1234",
-  #         "account_name" => Faker.Company.name()
-  #       }
-  #     }
+  describe "create_user/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      {:error, error} = Identity.create_user(%AccessRequest{})
 
-  #     EventHandlerMock
-  #     |> expect(:handle_event, fn(name, _) ->
-  #         assert name == "identity.account.create.success"
-  #         {:ok, nil}
-  #        end)
-  #     |> expect(:handle_event, fn(name, _) ->
-  #         assert name == "identity.user.create.success"
-  #         {:ok, nil}
-  #        end)
-  #     |> expect(:handle_event, fn(name, _) ->
-  #         assert name == "identity.email_verification_token.create.success"
-  #         {:ok, nil}
-  #        end)
+      assert error == :access_denied
+    end
 
-  #     {:ok, %{ data: user }} = Identity.create_user(request)
-  #     user =
-  #       User
-  #       |> Repo.get!(user.id)
-  #       |> Repo.preload([:refresh_tokens, :account_memberships])
+    test "when role is guest and request is valid" do
+      account = %Account{ id: Ecto.UUID.generate() }
+      user = %User{}
+      request = %AccessRequest{
+        account: account,
+        role: "guest",
+        fields: %{
+          "name" => Faker.Name.name()
+        }
+      }
 
-  #     assert user.account_id == nil
-  #     assert user.default_account_id != nil
-  #     assert length(user.refresh_tokens) == 2
-  #     assert length(user.account_memberships) == 1
-  #     assert Enum.at(user.account_memberships, 0).role == "administrator"
-  #   end
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  #   test "when using guest identity" do
-  #     account = Repo.insert!(%Account{})
-  #     request = %AccessRequest{
-  #       account: account,
-  #       role: "guest",
-  #       fields: %{
-  #         "username" => Faker.String.base64(5),
-  #         "password" => "test1234"
-  #       }
-  #     }
+      ServiceMock
+      |> expect(:create_user, fn(fields, opts) ->
+          assert fields["role"] == "customer"
+          assert fields["name"] == request.fields["name"]
+          assert opts[:account] == account
 
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+          {:ok, user}
+         end)
 
-  #     EventHandlerMock
-  #     |> expect(:handle_event, fn(name, _) ->
-  #         assert name == "identity.user.create.success"
-  #         {:ok, nil}
-  #        end)
-  #     |> expect(:handle_event, fn(name, _) ->
-  #         assert name == "identity.email_verification_token.create.success"
-  #         {:ok, nil}
-  #        end)
+      {:ok, _} = Identity.create_user(request)
+    end
 
-  #     {:ok, %{ data: user }} = Identity.create_user(request)
-  #     user =
-  #       User
-  #       |> Repo.get!(user.id)
-  #       |> Repo.preload([:refresh_tokens, :account_memberships])
+    test "when role is anonymous and request is valid" do
+      account = %Account{}
+      user = %User{ default_account: account }
+      request = %AccessRequest{
+        role: "anonymous",
+        fields: %{
+          "name" => Faker.Name.name()
+        }
+      }
 
-  #     assert user.account_id == account.id
-  #     assert user.default_account_id == account.id
-  #     assert length(user.refresh_tokens) == 1
-  #     assert length(user.account_memberships) == 1
-  #   end
-  # end
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  # describe "get_user/1" do
-  #   test "when role is not authorized" do
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      ServiceMock
+      |> expect(:create_user, fn(fields, _) ->
+          assert fields["name"] == request.fields["name"]
 
-  #     {:error, error} = Identity.get_user(%AccessRequest{})
-  #     assert error == :access_denied
-  #   end
+          {:ok, user}
+         end)
 
-  #   test "when using customer identity" do
-  #     account = Repo.insert!(%Account{})
-  #     user = Repo.insert!(%User{
-  #       account_id: account.id,
-  #       default_account_id: account.id,
-  #       username: Faker.String.base64(5)
-  #     })
+      {:ok, _} = Identity.create_user(request)
+    end
 
-  #     request = %AccessRequest{
-  #       account: account,
-  #       role: "customer",
-  #       vas: %{ user_id: user.id }
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+    test "when request is invalid" do
+      account = %Account{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        fields: %{
+          "username" => "invalid"
+        }
+      }
 
-  #     {:ok, response} = Identity.get_user(request)
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  #     assert response.data.id == user.id
-  #   end
-  # end
+      ServiceMock
+      |> expect(:create_user, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
 
-  # describe "update_user/1" do
-  #   test "when role is not authorized" do
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+          {:error, %{ errors: "errors" }}
+         end)
 
-  #     {:error, error} = Identity.update_user(%AccessRequest{})
-  #     assert error == :access_denied
-  #   end
+      {:error, response} = Identity.create_user(request)
 
-  #   test "when using customer identity" do
-  #     account = Repo.insert!(%Account{})
-  #     user = Repo.insert!(%User{
-  #       account_id: account.id,
-  #       default_account_id: account.id,
-  #       username: Faker.String.base64(5)
-  #     })
+      assert response.errors == "errors"
+    end
+  end
 
-  #     new_username = "username2"
-  #     request = %AccessRequest{
-  #       role: "customer",
-  #       account: account,
-  #       vas: %{ user_id: user.id },
-  #       fields: %{
-  #         "username" => new_username
-  #       }
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+  describe "get_user/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-  #     {:ok, response} = Identity.update_user(request)
-  #     updated_user = Repo.get!(User, user.id)
+      {:error, error} = Identity.get_user(%AccessRequest{})
+      assert error == :access_denied
+    end
 
-  #     assert updated_user.username == new_username
-  #     assert response.data.id == updated_user.id
-  #     assert response.data.username == new_username
-  #   end
-  # end
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        vas: %{ user_id: Ecto.UUID.generate() }
+      }
 
-  # describe "delete_user/1" do
-  #   test "when role is not authorized" do
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  #     {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
-  #     assert error == :access_denied
-  #   end
+      ServiceMock
+      |> expect(:get_user, fn(identifiers, opts) ->
+          assert identifiers["id"] == request.vas[:user_id]
+          assert opts[:account] == account
 
-  #   test "when using customer identity deleting self" do
-  #     account = Repo.insert!(%Account{})
-  #     user = Repo.insert!(%User{
-  #       account_id: account.id,
-  #       default_account_id: account.id,
-  #       username: Faker.String.base64(5)
-  #     })
+          {:ok, %User{}}
+         end)
 
-  #     request = %AccessRequest{
-  #       account: account,
-  #       role: "customer",
-  #       vas: %{ user_id: user.id },
-  #       params: %{ "id" => user.id }
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      {:ok, _} = Identity.get_user(request)
+    end
+  end
 
-  #     {:ok, response} = Identity.delete_user(request)
-  #     deleted_user = Repo.get(User, user.id)
+  describe "update_user/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-  #     refute deleted_user
-  #     assert response.data == %{}
-  #   end
+      {:error, error} = Identity.update_user(%AccessRequest{})
+      assert error == :access_denied
+    end
 
-  #   test "when using administrator identity deleting global user" do
-  #     account = Repo.insert!(%Account{})
-  #     user = Repo.insert!(%User{
-  #       default_account_id: account.id,
-  #       username: Faker.String.base64(5)
-  #     })
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        vas: %{ user_id: Ecto.UUID.generate() },
+        fields: %{
+          "name" => Faker.Name.name()
+        }
+      }
 
-  #     request = %AccessRequest{
-  #       account: account,
-  #       role: "administrator",
-  #       params: %{ "id" => user.id }
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  #     {:error, error} = Identity.delete_user(request)
+      ServiceMock
+      |> expect(:update_user, fn(id, fields, opts) ->
+          assert id == request.vas[:user_id]
+          assert fields == request.fields
+          assert opts[:account] == account
 
-  #     assert error == :not_found
-  #   end
+          {:ok, %User{}}
+         end)
 
-  #   test "when using administrator identity deleting account user" do
-  #     account = Repo.insert!(%Account{})
-  #     user = Repo.insert!(%User{
-  #       account_id: account.id,
-  #       default_account_id: account.id,
-  #       username: Faker.String.base64(5)
-  #     })
+      {:ok, _} = Identity.update_user(request)
+    end
 
-  #     request = %AccessRequest{
-  #       account: account,
-  #       role: "administrator",
-  #       params: %{ "id" => user.id }
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+    test "when request is invalid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        vas: %{ user_id: Ecto.UUID.generate() },
+        fields: %{
+          "name" => "invalid"
+        }
+      }
 
-  #     {:ok, _} = Identity.delete_user(request)
-  #   end
-  # end
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-  # describe "get_refresh_token/1" do
-  #   test "when role is not authorized" do
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      ServiceMock
+      |> expect(:update_user, fn(id, fields, opts) ->
+          assert id == request.vas[:user_id]
+          assert fields == request.fields
+          assert opts[:account] == account
 
-  #     {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
-  #     assert error == :access_denied
-  #   end
+          {:error, %{ errors: "errors" }}
+         end)
 
-  #   test "when using developer identity" do
-  #     account = Repo.insert!(%Account{})
-  #     prt = Repo.insert!(%RefreshToken{
-  #       account_id: account.id
-  #     })
+      {:error, response} = Identity.update_user(request)
 
-  #     request = %AccessRequest{
-  #       role: "developer",
-  #       account: account
-  #     }
-  #     AuthorizationMock
-  #     |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      assert response.errors == "errors"
+    end
+  end
 
-  #     {:ok, response} = Identity.get_refresh_token(request)
+  describe "delete_user/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
-  #     assert response.data.id == prt.id
-  #     assert response.data.prefixed_id == RefreshToken.get_prefixed_id(prt)
-  #   end
-  # end
+      {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() } })
+      assert error == :access_denied
+    end
+
+    test "when request is denied" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        role: "customer",
+        vas: %{ user_id: Ecto.UUID.generate() },
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      {:error, :access_denied} = Identity.delete_user(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        vas: %{ user_id: Ecto.UUID.generate() },
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:delete_user, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, nil}
+         end)
+
+      {:ok, _} = Identity.delete_user(request)
+    end
+  end
+
+  describe "get_refresh_token/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+
+      {:error, error} = Identity.get_refresh_token(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
+      assert error == :access_denied
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:get_refresh_token, fn(opts) ->
+          assert opts[:account] == account
+
+          %RefreshToken{}
+         end)
+
+      {:ok, _} = Identity.get_refresh_token(request)
+    end
+  end
 end

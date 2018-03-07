@@ -15,25 +15,25 @@ defmodule BlueJet.Identity do
   #
   # MARK: Account
   #
-  def list_account(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.list_account") do
-      request
-      |> do_list_account()
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
+  # def list_account(request) do
+  #   with {:ok, request} <- preprocess_request(request, "identity.list_account") do
+  #     request
+  #     |> do_list_account()
+  #   else
+  #     {:error, _} -> {:error, :access_denied}
+  #   end
+  # end
 
-  def do_list_account(request = %{ account: account, vas: %{ user_id: user_id } }) do
-    accounts =
-      Account
-      |> Account.Query.has_member(user_id)
-      |> Account.Query.live()
-      |> Repo.all()
-      |> Translation.translate(request.locale, account.default_locale)
+  # def do_list_account(request = %{ account: account, vas: %{ user_id: user_id } }) do
+  #   accounts =
+  #     Account
+  #     |> Account.Query.has_member(user_id)
+  #     |> Account.Query.live()
+  #     |> Repo.all()
+  #     |> Translation.translate(request.locale, account.default_locale)
 
-    {:ok, %AccessResponse{ data: accounts, meta: %{ locale: request.locale } }}
-  end
+  #   {:ok, %AccessResponse{ data: accounts, meta: %{ locale: request.locale } }}
+  # end
 
   def get_account(request) do
     with {:ok, request} <- preprocess_request(request, "identity.get_account") do
@@ -45,12 +45,14 @@ defmodule BlueJet.Identity do
   end
 
   def do_get_account(request = %{ account: account }) do
-    account =
-      account
-      |> Translation.translate(request.locale, account.default_locale)
-      |> Account.put_test_account_id()
+    case Service.get_account(account.id) do
+      nil ->
+        {:error, :not_found}
 
-    {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
+      acocunt ->
+        account = Translation.translate(account, request.locale, account.default_locale)
+        {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
+    end
   end
 
   def update_account(request) do
@@ -216,6 +218,15 @@ defmodule BlueJet.Identity do
     end
   end
 
+  def do_create_user(request = %{ account: nil, fields: fields }) do
+    with {:ok, user} <- Service.create_user(fields, %{ account: nil }) do
+      {:ok, %AccessResponse{ data: user }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+    end
+  end
+
   def do_create_user(request = %{ role: role, account: account, fields: fields }) do
     fields = if role == "guest" do
       Map.merge(fields, %{ "role" => "customer" })
@@ -224,10 +235,11 @@ defmodule BlueJet.Identity do
     end
 
     with {:ok, user} <- Service.create_user(fields, %{ account: account }) do
-      request = %{ request | account: request.account || user.default_account }
-      user_response(user, request)
+      user = Translation.translate(user, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ data: user }}
     else
-      {:error, %{ errors: errors }} -> {:error, %AccessResponse{ errors: errors }}
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
     end
   end
 
@@ -240,10 +252,18 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def do_get_user(request = %{ vas: %{ user_id: user_id } }) do
-    User
-    |> Repo.get(user_id)
-    |> user_response(request)
+  def do_get_user(request = %{ account: account, vas: %{ user_id: user_id } }) do
+    with {:ok, user} <- Service.get_user(%{ "id" => user_id }, %{ account: account }) do
+      user = if user.account_id do
+        Translation.translate(user, request.locale, account.default_locale)
+      else
+        user
+      end
+
+      {:ok, %AccessResponse{ data: user }}
+    else
+      other -> other
+    end
   end
 
   def update_user(request) do
@@ -255,8 +275,14 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def do_update_user(request = %{ role: role, vas: vas }) when role not in ["administrator"] do
+  def do_update_user(request = %{ account: account, role: role, vas: vas }) when role not in ["administrator"] do
     with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request)) do
+      user = if user.account_id do
+        Translation.translate(user, request.locale, account.default_locale)
+      else
+        user
+      end
+
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
     else
       {:error, %{ errors: errors }} ->
@@ -284,16 +310,10 @@ defmodule BlueJet.Identity do
   end
 
   def do_delete_user(%{ account: account, params: %{ "id" => id } }) do
-    user =
-      User.Query.default()
-      |> User.Query.for_account(account.id)
-      |> Repo.get(id)
-
-    if user do
-      Repo.delete!(user)
+    with {:ok, _} <- Service.delete_user(id, %{ account: account }) do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found}
+      other -> other
     end
   end
 
@@ -310,15 +330,12 @@ defmodule BlueJet.Identity do
   end
 
   def do_get_refresh_token(%{ account: account }) do
-    refresh_token =
-      RefreshToken.Query.publishable()
-      |> Repo.get_by(account_id: account.id)
+    case Service.get_refresh_token(%{ account: account }) do
+      nil ->
+        {:error, :not_found}
 
-    if refresh_token do
-      refresh_token = %{ refresh_token | prefixed_id: RefreshToken.get_prefixed_id(refresh_token) }
-      {:ok, %AccessResponse{ data: refresh_token }}
-    else
-      {:error, :not_found}
+      refresh_token ->
+        {:ok, %AccessResponse{ data: refresh_token }}
     end
   end
 end

@@ -507,4 +507,15 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       assert pvc.value
     end
   end
+
+  test "get_refresh_token/1" do
+    account = Repo.insert!(%Account{})
+    target_refresh_token = Repo.insert!(%RefreshToken{ account_id: account.id })
+
+    refresh_token = DefaultService.get_refresh_token(%{ account: account })
+
+    assert refresh_token
+    assert refresh_token.id == target_refresh_token.id
+    assert refresh_token.prefixed_id
+  end
 end

@@ -44,6 +44,10 @@ defmodule BlueJet.Identity.RefreshToken do
     "urt-#{mode}-#{id}"
   end
 
+  def put_prefixed_id(refresh_token) do
+    %{ refresh_token | prefixed_id: get_prefixed_id(refresh_token) }
+  end
+
   def unprefix_id(id) do
     id
     |> String.replace_prefix("prt-test-", "")

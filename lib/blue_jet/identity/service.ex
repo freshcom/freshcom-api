@@ -23,6 +23,8 @@ defmodule BlueJet.Identity.Service do
 
   @callback create_phone_verification_code(map, map) :: {:ok, PhoneVerificationCode.t} | {:error, any}
 
+  @callback get_refresh_token(map) :: {:ok, RefreshToken.t} | {:error, any}
+
   defdelegate get_account(id_or_struct), to: @service
   defdelegate create_account(fields), to: @service
   defdelegate update_account(account, fields, opts), to: @service
@@ -44,4 +46,6 @@ defmodule BlueJet.Identity.Service do
   defdelegate update_password(identifiers, new_password, opts), to: @service
 
   defdelegate create_phone_verification_code(fields, opts), to: @service
+
+  defdelegate get_refresh_token(opts), to: @service
 end

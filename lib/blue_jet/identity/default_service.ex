@@ -15,7 +15,11 @@ defmodule BlueJet.Identity.DefaultService do
   def get_account(%{ account: account }) when not is_nil(account), do: account
   def get_account(%{ account_id: account_id }), do: get_account(account_id)
   def get_account(map) when is_map(map), do: nil
-  def get_account(id), do: Repo.get!(Account, id)
+
+  def get_account(id) do
+    Repo.get(Account, id)
+    |> Account.put_test_account_id()
+  end
 
   defp get_account_id(opts) do
     cond do
@@ -444,5 +448,17 @@ defmodule BlueJet.Identity.DefaultService do
 
       {:error, _, changeset, _} -> {:error, changeset}
     end
+  end
+
+  #
+  # MARK: Refresh Token
+  #
+  def get_refresh_token(opts) do
+    account = get_account(opts)
+
+    refresh_token =
+      RefreshToken.Query.publishable()
+      |> Repo.get_by!(account_id: account.id)
+      |> RefreshToken.put_prefixed_id()
   end
 end
