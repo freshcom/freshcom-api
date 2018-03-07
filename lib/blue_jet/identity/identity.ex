@@ -180,7 +180,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_update_password(request) do
-    with {:ok, _} <- Service.update_password(request.fields["token"], request.fields["value"], %{ account: request.account }) do
+    with {:ok, _} <- Service.update_password(request.fields, request.fields["value"], %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

@@ -419,7 +419,7 @@ defmodule BlueJet.Identity.IdentityTest do
       request = %AccessRequest{
         account: account,
         fields: %{
-          "token" => "token",
+          "reset_token" => "token",
           "value" => "test1234"
         }
       }
@@ -430,8 +430,8 @@ defmodule BlueJet.Identity.IdentityTest do
          end)
 
       ServiceMock
-      |> expect(:update_password, fn(token, new_password, opts) ->
-          assert token == request.fields["token"]
+      |> expect(:update_password, fn(identifiers, new_password, opts) ->
+          assert identifiers["reset_token"] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
           assert opts[:account] == account
 
@@ -446,7 +446,7 @@ defmodule BlueJet.Identity.IdentityTest do
       request = %AccessRequest{
         account: account,
         fields: %{
-          "token" => "invalid",
+          "reset_token" => "invalid",
           "value" => "test1234"
         }
       }
@@ -457,8 +457,8 @@ defmodule BlueJet.Identity.IdentityTest do
          end)
 
       ServiceMock
-      |> expect(:update_password, fn(token, new_password, opts) ->
-          assert token == request.fields["token"]
+      |> expect(:update_password, fn(identifiers, new_password, opts) ->
+          assert identifiers["reset_token"] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
           assert opts[:account] == account
 
