@@ -43,7 +43,7 @@ defmodule BlueJet.Identity.UserTest do
         |> Map.put(:action, :insert)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:password, :username]
     end
 
@@ -53,11 +53,11 @@ defmodule BlueJet.Identity.UserTest do
         |> Map.put(:action, :insert)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:username]
     end
 
-    test "when action is inert and given global username already exist" do
+    test "when action is insert and given global username already exist" do
       account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
       account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
       user = Repo.insert!(%User{
@@ -106,8 +106,8 @@ defmodule BlueJet.Identity.UserTest do
         |> User.validate()
         |> Repo.insert()
 
-      refute au_changeset.valid?
-      refute gu_changeset.valid?
+      assert au_changeset.valid? == false
+      assert gu_changeset.valid? == false
       assert Keyword.keys(au_changeset.errors) == [:username]
       assert Keyword.keys(gu_changeset.errors) == [:username]
     end
@@ -157,21 +157,21 @@ defmodule BlueJet.Identity.UserTest do
         |> User.validate()
         |> Repo.insert()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:username]
     end
 
-    test "when given invalid email" do
+    test "when action is insert and given invalid email" do
       changeset =
         change(%User{}, %{ username: Faker.String.base64(5), email: "invalid", password: "test1234" })
         |> Map.put(:action, :insert)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:email]
     end
 
-    test "when given global email already exist" do
+    test "when action is insert and given global email already exist" do
       account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
       account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
       user = Repo.insert!(%User{
@@ -206,7 +206,7 @@ defmodule BlueJet.Identity.UserTest do
         |> User.validate()
         |> Repo.insert()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:email]
     end
 
@@ -216,8 +216,58 @@ defmodule BlueJet.Identity.UserTest do
         |> Map.put(:action, :insert)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:password]
+    end
+
+    test "when action is insert, auth_method is tfa_sms and missing required fields" do
+      changeset =
+        change(%User{}, %{ auth_method: "tfa_sms", username: Faker.Internet.user_name(), password: "test1234" })
+        |> Map.put(:action, :insert)
+        |> User.validate()
+
+      assert changeset.valid? == false
+      assert Keyword.keys(changeset.errors) == [:phone_verification_code, :phone_number]
+    end
+
+    test "when action is insert, auth_method is tfa_sms and phone_verification_code is invalid" do
+      changeset =
+        change(%User{}, %{
+          auth_method: "tfa_sms",
+          username: Faker.Internet.user_name(),
+          password: "test1234",
+          phone_number: "+11234567890",
+          phone_verification_code: "123456"
+        })
+        |> Map.put(:action, :insert)
+        |> User.validate()
+
+      assert changeset.valid? == false
+      assert Keyword.keys(changeset.errors) == [:phone_verification_code]
+    end
+
+    test "when action is insert, auth_method is tfa_sms and all changes are valid" do
+      account = Repo.insert!(%Account{
+        name: Faker.Company.name()
+      })
+      pvc = Repo.insert!(%PhoneVerificationCode{
+        account_id: account.id,
+        phone_number: "+11234567890",
+        value: "123456",
+        expires_at: Timex.shift(Timex.now(), minutes: 5)
+      })
+      changeset =
+        change(%User{}, %{
+          auth_method: "tfa_sms",
+          username: Faker.Internet.user_name(),
+          password: "test1234",
+          phone_number: pvc.phone_number,
+          phone_verification_code: pvc.value
+        })
+        |> Map.put(:action, :insert)
+        |> User.validate()
+
+      assert changeset.valid? == true
     end
 
     test "when action is update but missing required fields" do
@@ -229,7 +279,7 @@ defmodule BlueJet.Identity.UserTest do
         |> Map.put(:action, :update)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:current_password]
     end
 
@@ -242,7 +292,7 @@ defmodule BlueJet.Identity.UserTest do
         |> Map.put(:action, :update)
         |> User.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:current_password]
     end
 

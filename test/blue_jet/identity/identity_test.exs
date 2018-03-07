@@ -10,6 +10,7 @@ defmodule BlueJet.Identity.IdentityTest do
       |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
 
       {:error, error} = Identity.list_account(%AccessRequest{})
+
       assert error == :access_denied
     end
 

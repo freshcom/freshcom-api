@@ -109,7 +109,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     %{
       user: Map.take(user, [:id, :email_verification_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),
-      freshcom_confirm_email_url: System.get_env("CONFIRM_EMAIL_URL")
+      freshcom_verify_email_url: System.get_env("VERIFY_EMAIL_URL")
     }
   end
 

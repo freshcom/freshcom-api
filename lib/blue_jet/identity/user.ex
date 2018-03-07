@@ -334,7 +334,7 @@ defmodule BlueJet.Identity.User do
   #
   # MARK: Writer
   #
-  def confirm_email(user) do
+  def verify_email(user) do
     user
     |> change(email_verification_token: nil, email_verified: true, email_verified_at: Ecto.DateTime.utc())
     |> Repo.update!()

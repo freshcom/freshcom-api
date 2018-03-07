@@ -7,9 +7,11 @@ defmodule BlueJet.Identity.Service do
 
   @callback get_account(map | String.t) :: Account.t | nil
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
+  @callback update_account(Account.t, map, map) :: {:ok, Account.t} | {:error, any}
 
   @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
-  @callback delete_user(String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback update_user(String.t | User.t, map, map) :: {:ok, User.t} | {:error, any}
+  @callback delete_user(String.t | User.t, map) :: {:ok, User.t} | {:error, any}
   @callback get_user(map, map) :: User.t | nil
 
   @callback create_email_verification_token(User.t) :: {:ok, User.t} | {:error, any}
@@ -22,6 +24,8 @@ defmodule BlueJet.Identity.Service do
 
   @callback create_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
   @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
+
+  @callback create_phone_verification_code(map, map) :: {:ok, PhoneVerificationCode.t} | {:error, any}
 
   #
   # MARK: Account
@@ -291,58 +295,8 @@ defmodule BlueJet.Identity.Service do
   end
 
   #
-  # MARK: Phone Verification Code
+  # MARK: Email Verification Token
   #
-  def create_phone_verification_code(fields, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %PhoneVerificationCode{ account_id: account.id, account: account }
-      |> PhoneVerificationCode.changeset(:insert, fields)
-
-    statements =
-      Multi.new()
-      |> Multi.insert(:pvc, changeset)
-      |> Multi.run(:after_create, fn(%{ pvc: pvc }) ->
-          emit_event("identity.phone_verification_code.create.success", %{ phone_verification_code: pvc, account: account })
-         end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ pvc: pvc }} ->
-        {:ok, pvc}
-
-      {:error, _, changeset, _} -> {:error, changeset}
-    end
-  end
-
-  #
-  # MARK: Email Verification
-  #
-  def create_email_verification(nil), do: {:error, :not_found}
-
-  def create_email_verification(user = %{}) do
-    User.confirm_email(user)
-    {:ok, user}
-  end
-
-  def create_email_verification(%{ "token" => nil }, _), do: {:error, :not_found}
-
-  def create_email_verification(%{ "token" => token }, opts = %{ account: nil }) when map_size(opts) == 1 do
-    User.Query.default()
-    |> User.Query.global()
-    |> Repo.get_by(email_verification_token: token)
-    |> create_email_verification()
-  end
-
-  def create_email_verification(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
-    User.Query.default()
-    |> User.Query.for_account(account.id)
-    |> Repo.get_by(email_verification_token: token)
-    |> create_email_verification()
-  end
-
-  def create_email_verification(_, _), do: {:error, :not_found}
-
   def create_email_verification_token(nil), do: {:error, :not_found}
 
   def create_email_verification_token(user = %User{}) do
@@ -379,7 +333,35 @@ defmodule BlueJet.Identity.Service do
   end
 
   #
-  # MARK: Password
+  # MARK: Email Verification
+  #
+  def create_email_verification(nil), do: {:error, :not_found}
+
+  def create_email_verification(user = %{}) do
+    User.verify_email(user)
+    {:ok, user}
+  end
+
+  def create_email_verification(%{ "token" => nil }, _), do: {:error, :not_found}
+
+  def create_email_verification(%{ "token" => token }, opts = %{ account: nil }) when map_size(opts) == 1 do
+    User.Query.default()
+    |> User.Query.global()
+    |> Repo.get_by(email_verification_token: token)
+    |> create_email_verification()
+  end
+
+  def create_email_verification(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
+    User.Query.default()
+    |> User.Query.for_account(account.id)
+    |> Repo.get_by(email_verification_token: token)
+    |> create_email_verification()
+  end
+
+  def create_email_verification(_, _), do: {:error, :not_found}
+
+  #
+  # MARK: Password Reset Token
   #
   def create_password_reset_token(email, opts) do
     changeset =
@@ -406,7 +388,10 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  def create_password(user = %{}, new_password) do
+  #
+  # MARK: Password
+  #
+  def create_password(user = %User{}, new_password) do
     changeset =
       Changeset.change(%User{}, %{ password: new_password })
       |> Changeset.validate_required(:password)
@@ -449,6 +434,31 @@ defmodule BlueJet.Identity.Service do
       create_password(user, new_password)
     else
       {:error, :not_found}
+    end
+  end
+
+  #
+  # MARK: Phone Verification Code
+  #
+  def create_phone_verification_code(fields, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %PhoneVerificationCode{ account_id: account.id, account: account }
+      |> PhoneVerificationCode.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:pvc, changeset)
+      |> Multi.run(:after_create, fn(%{ pvc: pvc }) ->
+          emit_event("identity.phone_verification_code.create.success", %{ phone_verification_code: pvc, account: account })
+         end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{ pvc: pvc }} ->
+        {:ok, pvc}
+
+      {:error, _, changeset, _} -> {:error, changeset}
     end
   end
 end

@@ -2,41 +2,33 @@ defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Service
-  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
+  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   setup :verify_on_exit!
 
   describe "get_account/1" do
     test "when only account_id is given" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
 
       assert Service.get_account(%{ account_id: nil }) == nil
       assert Service.get_account(%{ account_id: account.id }).id == account.id
     end
 
     test "when only account is given" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
 
       assert Service.get_account(%{ account: nil }) == nil
       assert Service.get_account(%{ account: account }) == account
     end
 
     test "when both account and account_id is given but account is nil" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
 
       assert Service.get_account(%{ account_id: account.id, account: nil }).id == account.id
     end
 
     test "when both account and account_id is given and account is not nil" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
 
       assert Service.get_account(%{ account_id: account.id, account: account }) == account
     end
@@ -71,9 +63,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "update_account/2" do
     test "when given fields are invalid" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
       Repo.insert!(%Account{
         name: Faker.Company.name(),
         live_account_id: account.id,
@@ -86,9 +76,7 @@ defmodule BlueJet.Identity.ServiceTest do
     end
 
     test "when given fields are valid" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
       Repo.insert!(%Account{
         name: Faker.Company.name(),
         live_account_id: account.id,
@@ -180,9 +168,7 @@ defmodule BlueJet.Identity.ServiceTest do
     end
 
     test "when fields are valid and account is valid" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+      account = Repo.insert!(%Account{})
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
           assert event_name == "identity.user.create.success"
@@ -212,6 +198,151 @@ defmodule BlueJet.Identity.ServiceTest do
       assert user.account.id == account.id
       assert user.default_account.id == account.id
       assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "customer")
+    end
+  end
+
+  describe "update_user/3" do
+    test "when user is given and fields are invalid" do
+      {:error, changeset} = Service.update_user(%User{}, %{ username: nil }, %{ account: %Account{} })
+
+      assert changeset.valid? == false
+    end
+
+    test "when user is given and fields are valid" do
+      account = Repo.insert!(%Account{})
+      pvc = Repo.insert!(%PhoneVerificationCode{
+        account_id: account.id,
+        phone_number: Faker.Phone.EnUs.phone(),
+        value: "123456",
+        expires_at: Timex.shift(Timex.now(), minutes: 5)
+      })
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234"
+      })
+      fields = %{
+        phone_number: pvc.phone_number,
+        phone_verification_code: pvc.value
+      }
+
+      {:ok, user} = Service.update_user(user.id, fields, %{ account: account })
+
+      assert user.phone_number == fields.phone_number
+      refute Repo.get(PhoneVerificationCode, pvc.id)
+    end
+  end
+
+  describe "get_user/2" do
+    test "when fields are valid" do
+      account = Repo.insert!(%Account{})
+      target_user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234"
+      })
+
+      user = Service.get_user(%{ id: target_user.id }, %{ account: account })
+
+      assert user.id == target_user.id
+    end
+  end
+
+  describe "delete_user/2" do
+    test "when id is valid" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234"
+      })
+
+      {:ok, user} = Service.delete_user(user.id, %{ account: account })
+
+      refute Repo.get(User, user.id)
+    end
+  end
+
+  describe "create_email_verification_token/1" do
+    test "when user is nil" do
+      assert Service.create_email_verification_token(nil) == {:error, :not_found}
+    end
+
+    test "when user is valid" do
+      account = Repo.insert!(%Account{})
+      target_user = Repo.insert!(%User{
+        default_account_id: account.id,
+        username: Faker.String.base64(5)
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.email_verification_token.create.success"
+          {:ok, nil}
+         end)
+
+      {:ok, user} = Service.create_email_verification_token(target_user)
+
+      assert user.email_verification_token
+      assert user.email_verified == false
+      assert user.id == target_user.id
+    end
+  end
+
+  describe "create_email_verification_token/2" do
+    test "when email is nil" do
+      assert Service.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
+    end
+
+    test "when account is given and email does not exist" do
+      account = Repo.insert!(%Account{})
+      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+    end
+
+    test "when account is nil and email does not exist" do
+      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
+    end
+
+    test "when account is given and email is valid" do
+      account = Repo.insert!(%Account{})
+      target_user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.String.base64(5),
+        email: Faker.Internet.email()
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.email_verification_token.create.success"
+          {:ok, nil}
+         end)
+
+      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
+      assert user.id == target_user.id
+      assert user.email_verification_token
+    end
+
+    test "when account is nil and email is valid" do
+      account = Repo.insert!(%Account{})
+      target_user = Repo.insert!(%User{
+        default_account_id: account.id,
+        username: Faker.String.base64(5),
+        email: Faker.Internet.email()
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.email_verification_token.create.success"
+          {:ok, nil}
+         end)
+
+      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
+      assert user.id == target_user.id
+      assert user.email_verification_token
     end
   end
 
@@ -273,82 +404,92 @@ defmodule BlueJet.Identity.ServiceTest do
     end
   end
 
-  describe "create_email_verification_token/1" do
-    test "when user is nil" do
-      assert Service.create_email_verification_token(nil) == {:error, :not_found}
+  describe "create_password_reset_token/2" do
+    test "when email is not in correct format" do
+      {:error, changeset} = Service.create_password_reset_token("invalidemail", %{})
+
+      assert changeset.valid? == false
     end
 
-    test "when user is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5)
-      })
-
+    test "when email does not belong to any user" do
       EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity.password_reset_token.create.error.email_not_found"
+
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_verification_token(target_user)
+      {:error, :not_found} = Service.create_password_reset_token(Faker.Internet.safe_email(), %{})
+    end
 
-      assert user.email_verification_token
-      assert user.id == target_user.id
+    test "when email belongs to a user" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        email: Faker.Internet.safe_email()
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.password_reset_token.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+
+      {:ok, user} = Service.create_password_reset_token(user.email, %{ account: account })
+
+      assert user.password_reset_token
     end
   end
 
-  describe "create_email_verification_token/2" do
-    test "when email is nil" do
-      assert Service.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
-    end
-
-    test "when account is given and email does not exist" do
+  describe "create_password/3" do
+    test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
-      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+
+      {:error, :not_found} = Service.create_password("invalid", "test1234", %{ account: account })
     end
 
-    test "when account is nil and email does not exist" do
-      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
-    end
-
-    test "when account is given and email is valid" do
+    test "when password_reset_token is valid" do
       account = Repo.insert!(%Account{})
       target_user = Repo.insert!(%User{
         account_id: account.id,
         default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email: Faker.Internet.email()
+        username: Faker.Internet.user_name(),
+        email: Faker.Internet.safe_email(),
+        password_reset_token: "token",
+        encrypted_password: "original"
       })
 
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
-          {:ok, nil}
-         end)
+      {:ok, user} = Service.create_password("token", "test1234", %{ account: account })
+      assert user.encrypted_password != target_user.encrypted_password
+    end
+  end
 
-      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
-      assert user.id == target_user.id
-      assert user.email_verification_token
+  describe "create_phone_verification_code/2" do
+    test "when given invalid fields" do
+      {:error, changeset} = Service.create_phone_verification_code(%{}, %{ account: %Account{} })
+
+      assert changeset.valid? == false
     end
 
-    test "when account is nil and email is valid" do
+    test "when given valid fields" do
       account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email: Faker.Internet.email()
-      })
-
       EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity.phone_verification_code.create.success"
+          assert data[:phone_verification_code]
+          assert data[:account]
+
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
-      assert user.id == target_user.id
-      assert user.email_verification_token
+      {:ok, pvc} = Service.create_phone_verification_code(%{ phone_number: "+11234567890" }, %{ account: account })
+
+      assert pvc.value
     end
   end
 end

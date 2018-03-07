@@ -21,6 +21,7 @@ defmodule BlueJet.Repo.Migrations.CreateUser do
       add :tfa_code_expires_at, :utc_datetime
 
       add :email_verification_token, :string
+      add :email_verification_token_expires_at, :utc_datetime
       add :email_verified, :boolean, null: false
       add :email_verified_at, :utc_datetime
 
