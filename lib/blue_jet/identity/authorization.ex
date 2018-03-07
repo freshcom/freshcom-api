@@ -10,7 +10,7 @@ defmodule BlueJet.Identity.Authorization do
     "identity.update_user",
     "identity.get_refresh_token",
     "identity.create_password_reset_token",
-    "identity.create_password",
+    "identity.update_password",
     "identity.create_phone_verification_code",
     "identity.create_email_verification_token",
     "identity.create_email_verification",
@@ -131,7 +131,7 @@ defmodule BlueJet.Identity.Authorization do
     "anonymous" => [
       "identity.create_user",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification"
     ],
@@ -140,7 +140,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_user",
       "identity.get_account",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
       "identity.create_phone_verification_code",
@@ -180,7 +180,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.delete_user",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
 
@@ -231,7 +231,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
 
@@ -305,7 +305,7 @@ defmodule BlueJet.Identity.Authorization do
 
     "marketing_specialist" => [
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification"
     ],
@@ -316,7 +316,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.get_user",
       "identity.update_user",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
 
@@ -376,7 +376,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_user",
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
 
@@ -499,7 +499,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.delete_user",
       "identity.get_refresh_token",
       "identity.create_password_reset_token",
-      "identity.create_password",
+      "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
 

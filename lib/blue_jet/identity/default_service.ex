@@ -377,7 +377,9 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Password
   #
-  def create_password(password = %Password{}, new_password) do
+
+  # TODO: rename to update_password instead
+  def update_password(password = %Password{}, new_password) do
     changeset =
       password
       |> Password.changeset(:update, %{ value: new_password })
@@ -391,29 +393,29 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def create_password(nil, _, _), do: {:error, :not_found}
+  def update_password(nil, _, _), do: {:error, :not_found}
 
-  def create_password(password_reset_token, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
+  def update_password(password_reset_token, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
     password =
       Password.Query.default()
       |> Password.Query.global()
       |> Repo.get_by(reset_token: password_reset_token)
 
     if password do
-      create_password(password, new_password)
+      update_password(password, new_password)
     else
       {:error, :not_found}
     end
   end
 
-  def create_password(password_reset_token, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
+  def update_password(password_reset_token, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
     password =
       Password.Query.default()
       |> Password.Query.for_account(account.id)
       |> Repo.get_by(reset_token: password_reset_token)
 
     if password do
-      create_password(password, new_password)
+      update_password(password, new_password)
     else
       {:error, :not_found}
     end

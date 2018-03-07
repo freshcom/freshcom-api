@@ -18,8 +18,8 @@ defmodule BlueJet.Identity.Service do
 
   @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
 
-  @callback create_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
-  @callback create_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback update_password(User.t, String.t) :: {:ok, User.t} | {:error, any}
+  @callback update_password(String.t, String.t, map) :: {:ok, User.t} | {:error, any}
 
   @callback create_phone_verification_code(map, map) :: {:ok, PhoneVerificationCode.t} | {:error, any}
 
@@ -40,8 +40,8 @@ defmodule BlueJet.Identity.Service do
 
   defdelegate create_password_reset_token(email, opts), to: @service
 
-  defdelegate create_password(user, new_password), to: @service
-  defdelegate create_password(token, new_password, opts), to: @service
+  defdelegate update_password(user, new_password), to: @service
+  defdelegate update_password(token, new_password, opts), to: @service
 
   defdelegate create_phone_verification_code(fields, opts), to: @service
 end

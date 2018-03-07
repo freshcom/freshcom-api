@@ -8,14 +8,14 @@ defmodule BlueJetWeb.PasswordController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Password" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Password" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
-    case Identity.create_password(request) do
+    case Identity.update_password(request) do
       {:ok, _} ->
         send_resp(conn, :no_content, "")
 

@@ -170,17 +170,17 @@ defmodule BlueJet.Identity do
   #
   # MARK: Password
   #
-  def create_password(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_password") do
+  def update_password(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.update_password") do
       request
-      |> do_create_password()
+      |> do_update_password()
     else
       {:error, _} -> {:error, :access_denied}
     end
   end
 
-  def do_create_password(request) do
-    with {:ok, _} <- Service.create_password(request.fields["token"], request.fields["value"], %{ account: request.account }) do
+  def do_update_password(request) do
+    with {:ok, _} <- Service.update_password(request.fields["token"], request.fields["value"], %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
