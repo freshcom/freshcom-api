@@ -4,8 +4,6 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   alias BlueJet.Identity.DefaultService
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
 
-  setup :verify_on_exit!
-
   describe "get_account/1" do
     test "when only account_id is given" do
       account = Repo.insert!(%Account{})
@@ -406,7 +404,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "create_password_reset_token/2" do
     test "when email is not in correct format" do
-      {:error, changeset} = DefaultService.create_password_reset_token("invalidemail", %{})
+      {:error, changeset} = DefaultService.create_password_reset_token(%{ "email" => "invalidemail" }, %{})
 
       assert changeset.valid? == false
     end
@@ -419,7 +417,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:error, :not_found} = DefaultService.create_password_reset_token(Faker.Internet.safe_email(), %{})
+      {:error, :not_found} = DefaultService.create_password_reset_token(%{ "email" => Faker.Internet.safe_email() }, %{})
     end
 
     test "when email belongs to a user" do
@@ -440,7 +438,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_password_reset_token(user.email, %{ account: account })
+      {:ok, user} = DefaultService.create_password_reset_token(%{ "email" => user.email }, %{ account: account })
 
       assert user.password_reset_token
     end
@@ -464,8 +462,25 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         encrypted_password: "original"
       })
 
-      {:ok, user} = DefaultService.create_password("token", "test1234", %{ account: account })
-      assert user.encrypted_password != target_user.encrypted_password
+      {:ok, password} = DefaultService.create_password("token", "test1234", %{ account: account })
+      assert password.encrypted_value != target_user.encrypted_password
+    end
+
+    test "when password provided is invalid" do
+      account = Repo.insert!(%Account{})
+      Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        email: Faker.Internet.safe_email(),
+        password_reset_token: "token",
+        encrypted_password: "original"
+      })
+
+      {:error, changeset} = DefaultService.create_password("token", "test", %{ account: account })
+
+      assert changeset.valid? == false
+      assert changeset.changes[:value]
     end
   end
 

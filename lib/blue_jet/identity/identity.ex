@@ -75,6 +75,29 @@ defmodule BlueJet.Identity do
   end
 
   #
+  # MARK: Email Confirmation Token
+  #
+  def create_email_verification_token(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.create_email_verification_token") do
+      request
+      |> do_create_email_verification_token()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_email_verification_token(request) do
+    with {:ok, _} <- Service.create_email_verification_token(request.fields, %{ account: request.account }) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  #
   # MARK: Email Confirmation
   #
   def create_email_verification(request) do
@@ -121,29 +144,6 @@ defmodule BlueJet.Identity do
   end
 
   #
-  # MARK: Email Confirmation Token
-  #
-  def create_email_verification_token(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_email_verification_token") do
-      request
-      |> do_create_email_verification_token()
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_create_email_verification_token(request) do
-    with {:ok, _} <- Service.create_email_verification_token(request.fields, %{ account: request.account }) do
-      {:ok, %AccessResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  #
   # MARK: Password Reset Token
   #
   def create_password_reset_token(request) do
@@ -155,19 +155,8 @@ defmodule BlueJet.Identity do
     end
   end
 
-  @doc """
-  Create a password reset token. The created token will be saved to the database
-  but will not be returned in the response.
-
-  When the provided account is nil, this function will only search for global user
-  and if found will create the token then sent an corresponding email to the user.
-
-  When an account is provided, this function will only search for account
-  user and if found will create the token. An corresponding email may or may not be send
-  depending on if a trigger is set to the account.
-  """
   def do_create_password_reset_token(request) do
-    with {:ok, _} <- Service.create_password_reset_token(request.fields["email"], %{ account: request.account }) do
+    with {:ok, _} <- Service.create_password_reset_token(request.fields, %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found} ->
@@ -195,7 +184,7 @@ defmodule BlueJet.Identity do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: [value: errors[:password]] }}
+        {:error, %AccessResponse{ errors: errors }}
 
       other -> other
     end

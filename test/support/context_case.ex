@@ -9,6 +9,8 @@ defmodule BlueJet.ContextCase do
 
       import Mox
       import BlueJet.ContextCase
+
+      setup :verify_on_exit!
     end
   end
 

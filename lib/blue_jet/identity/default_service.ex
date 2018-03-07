@@ -3,7 +3,7 @@ defmodule BlueJet.Identity.DefaultService do
   use BlueJet.EventEmitter, namespace: :identity
 
   alias Ecto.{Multi, Changeset}
-  alias BlueJet.Identity.{Account, User, AccountMembership, RefreshToken, PhoneVerificationCode}
+  alias BlueJet.Identity.{Account, User, Password, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   @behaviour BlueJet.Identity.Service
 
@@ -228,7 +228,8 @@ defmodule BlueJet.Identity.DefaultService do
         user = preload(user, preloads[:path], preloads[:opts])
         {:ok, user}
 
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -343,7 +344,12 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Password Reset Token
   #
-  def create_password_reset_token(email, opts) do
+
+  @doc """
+  When an account is provided in `opts`, this function will only search for account
+  user otherwise this function will only search for global user.
+  """
+  def create_password_reset_token(%{ "email" => email }, opts) do
     changeset =
       Changeset.change(%User{}, %{ email: email })
       |> Changeset.validate_required(:email)
@@ -371,47 +377,43 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Password
   #
-  def create_password(user = %User{}, new_password) do
+  def create_password(password = %Password{}, new_password) do
     changeset =
-      Changeset.change(%User{}, %{ password: new_password })
-      |> Changeset.validate_required(:password)
-      |> Changeset.validate_length(:password, min: 8)
+      password
+      |> Password.changeset(:update, %{ value: new_password })
 
-    if changeset.valid? do
-      user =
-        user
-        |> User.refresh_password_reset_token()
-        |> User.update_password(new_password)
+    case Repo.update(changeset) do
+      {:ok, password} ->
+        {:ok, password}
 
-      {:ok, user}
-    else
-      {:error, changeset}
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 
   def create_password(nil, _, _), do: {:error, :not_found}
 
   def create_password(password_reset_token, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
-    user =
-      User.Query.default()
-      |> User.Query.global()
-      |> Repo.get_by(password_reset_token: password_reset_token)
+    password =
+      Password.Query.default()
+      |> Password.Query.global()
+      |> Repo.get_by(reset_token: password_reset_token)
 
-    if user do
-      create_password(user, new_password)
+    if password do
+      create_password(password, new_password)
     else
       {:error, :not_found}
     end
   end
 
   def create_password(password_reset_token, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
-    user =
-      User.Query.default()
-      |> User.Query.for_account(account.id)
-      |> Repo.get_by(password_reset_token: password_reset_token)
+    password =
+      Password.Query.default()
+      |> Password.Query.for_account(account.id)
+      |> Repo.get_by(reset_token: password_reset_token)
 
-    if user do
-      create_password(user, new_password)
+    if password do
+      create_password(password, new_password)
     else
       {:error, :not_found}
     end
