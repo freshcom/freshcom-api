@@ -90,6 +90,7 @@ config :blue_jet, :s3, prefix: "uploads"
 config :blue_jet, :authorization, BlueJet.Identity.Authorization
 
 config :blue_jet, :identity, %{
+  service: BlueJet.Identity.DefaultService,
   listeners: [BlueJet.Balance.EventHandler, BlueJet.Notification.EventHandler]
 }
 

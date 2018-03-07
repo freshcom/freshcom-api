@@ -1,7 +1,7 @@
-defmodule BlueJet.Identity.ServiceTest do
+defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   use BlueJet.ContextCase
 
-  alias BlueJet.Identity.Service
+  alias BlueJet.Identity.DefaultService
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   setup :verify_on_exit!
@@ -10,33 +10,33 @@ defmodule BlueJet.Identity.ServiceTest do
     test "when only account_id is given" do
       account = Repo.insert!(%Account{})
 
-      assert Service.get_account(%{ account_id: nil }) == nil
-      assert Service.get_account(%{ account_id: account.id }).id == account.id
+      assert DefaultService.get_account(%{ account_id: nil }) == nil
+      assert DefaultService.get_account(%{ account_id: account.id }).id == account.id
     end
 
     test "when only account is given" do
       account = Repo.insert!(%Account{})
 
-      assert Service.get_account(%{ account: nil }) == nil
-      assert Service.get_account(%{ account: account }) == account
+      assert DefaultService.get_account(%{ account: nil }) == nil
+      assert DefaultService.get_account(%{ account: account }) == account
     end
 
     test "when both account and account_id is given but account is nil" do
       account = Repo.insert!(%Account{})
 
-      assert Service.get_account(%{ account_id: account.id, account: nil }).id == account.id
+      assert DefaultService.get_account(%{ account_id: account.id, account: nil }).id == account.id
     end
 
     test "when both account and account_id is given and account is not nil" do
       account = Repo.insert!(%Account{})
 
-      assert Service.get_account(%{ account_id: account.id, account: account }) == account
+      assert DefaultService.get_account(%{ account_id: account.id, account: account }) == account
     end
   end
 
   describe "create_account/1" do
     test "when given fields are invalid" do
-      {:error, changeset} = Service.create_account(%{})
+      {:error, changeset} = DefaultService.create_account(%{})
 
       assert changeset.valid? == false
     end
@@ -51,7 +51,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, account} = Service.create_account(%{ "name" => Faker.Company.name() })
+      {:ok, account} = DefaultService.create_account(%{ "name" => Faker.Company.name() })
       test_account = account.test_account
 
       assert account.mode == "live"
@@ -70,7 +70,7 @@ defmodule BlueJet.Identity.ServiceTest do
         mode: "test"
       })
 
-      {:error, changeset} = Service.update_account(account, %{ name: nil })
+      {:error, changeset} = DefaultService.update_account(account, %{ name: nil })
 
       assert changeset.valid? == false
     end
@@ -93,7 +93,7 @@ defmodule BlueJet.Identity.ServiceTest do
         "description" => Faker.Lorem.sentence(20)
       }
 
-      {:ok, account} = Service.update_account(account, fields)
+      {:ok, account} = DefaultService.update_account(account, fields)
       test_account = account.test_account
 
       assert account.name == fields["name"]
@@ -118,7 +118,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "create_user/2" do
     test "when fields given is invalid and account is nil" do
-      {:error, changeset} = Service.create_user(%{}, %{ account: nil })
+      {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })
 
       assert changeset.valid? == false
     end
@@ -126,7 +126,7 @@ defmodule BlueJet.Identity.ServiceTest do
     test "when fields given is invalid and account is valid" do
       account = Repo.insert!(%Account{ name: Faker.Company.name() })
 
-      {:error, changeset} = Service.create_user(%{}, %{ account: account })
+      {:error, changeset} = DefaultService.create_user(%{}, %{ account: account })
 
       assert changeset.valid? == false
     end
@@ -158,7 +158,7 @@ defmodule BlueJet.Identity.ServiceTest do
         "password" => "test1234"
       }
 
-      {:ok, user} = Service.create_user(fields, %{ account: nil })
+      {:ok, user} = DefaultService.create_user(fields, %{ account: nil })
 
 
       assert user
@@ -192,7 +192,7 @@ defmodule BlueJet.Identity.ServiceTest do
         "role" => "customer"
       }
 
-      {:ok, user} = Service.create_user(fields, %{ account: account })
+      {:ok, user} = DefaultService.create_user(fields, %{ account: account })
 
       assert user
       assert user.account.id == account.id
@@ -203,7 +203,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "update_user/3" do
     test "when user is given and fields are invalid" do
-      {:error, changeset} = Service.update_user(%User{}, %{ username: nil }, %{ account: %Account{} })
+      {:error, changeset} = DefaultService.update_user(%User{}, %{ username: nil }, %{ account: %Account{} })
 
       assert changeset.valid? == false
     end
@@ -227,7 +227,7 @@ defmodule BlueJet.Identity.ServiceTest do
         phone_verification_code: pvc.value
       }
 
-      {:ok, user} = Service.update_user(user.id, fields, %{ account: account })
+      {:ok, user} = DefaultService.update_user(user.id, fields, %{ account: account })
 
       assert user.phone_number == fields.phone_number
       refute Repo.get(PhoneVerificationCode, pvc.id)
@@ -244,7 +244,7 @@ defmodule BlueJet.Identity.ServiceTest do
         password: "test1234"
       })
 
-      user = Service.get_user(%{ id: target_user.id }, %{ account: account })
+      user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
 
       assert user.id == target_user.id
     end
@@ -260,7 +260,7 @@ defmodule BlueJet.Identity.ServiceTest do
         password: "test1234"
       })
 
-      {:ok, user} = Service.delete_user(user.id, %{ account: account })
+      {:ok, user} = DefaultService.delete_user(user.id, %{ account: account })
 
       refute Repo.get(User, user.id)
     end
@@ -268,7 +268,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "create_email_verification_token/1" do
     test "when user is nil" do
-      assert Service.create_email_verification_token(nil) == {:error, :not_found}
+      assert DefaultService.create_email_verification_token(nil) == {:error, :not_found}
     end
 
     test "when user is valid" do
@@ -284,7 +284,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_verification_token(target_user)
+      {:ok, user} = DefaultService.create_email_verification_token(target_user)
 
       assert user.email_verification_token
       assert user.email_verified == false
@@ -294,16 +294,16 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "create_email_verification_token/2" do
     test "when email is nil" do
-      assert Service.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
+      assert DefaultService.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
     end
 
     test "when account is given and email does not exist" do
       account = Repo.insert!(%Account{})
-      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
     end
 
     test "when account is nil and email does not exist" do
-      assert Service.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
     end
 
     test "when account is given and email is valid" do
@@ -321,7 +321,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
+      {:ok, user} = DefaultService.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
       assert user.id == target_user.id
       assert user.email_verification_token
     end
@@ -340,7 +340,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
+      {:ok, user} = DefaultService.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
       assert user.id == target_user.id
       assert user.email_verification_token
     end
@@ -348,16 +348,16 @@ defmodule BlueJet.Identity.ServiceTest do
 
   describe "create_email_verification/2" do
     test "when token is nil" do
-      assert Service.create_email_verification(%{ "token" => nil }, %{}) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "token" => nil }, %{}) == {:error, :not_found}
     end
 
     test "when account is given and token does not exist" do
       account = Repo.insert!(%Account{})
-      assert Service.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: account }) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: account }) == {:error, :not_found}
     end
 
     test "when account is nil and token does not exist" do
-      assert Service.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: nil }) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: nil }) == {:error, :not_found}
     end
 
     test "when account is given and token is valid" do
@@ -369,7 +369,7 @@ defmodule BlueJet.Identity.ServiceTest do
         email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: account })
+      {:ok, user} = DefaultService.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: account })
       assert target_user.id == user.id
     end
 
@@ -381,14 +381,14 @@ defmodule BlueJet.Identity.ServiceTest do
         email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: nil })
+      {:ok, user} = DefaultService.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: nil })
       assert target_user.id == user.id
     end
   end
 
   describe "create_email_verification/1" do
     test "when user is nil" do
-      assert Service.create_email_verification(nil) == {:error, :not_found}
+      assert DefaultService.create_email_verification(nil) == {:error, :not_found}
     end
 
     test "when user is valid" do
@@ -399,14 +399,14 @@ defmodule BlueJet.Identity.ServiceTest do
         email_verification_token: Ecto.UUID.generate()
       })
 
-      {:ok, user} = Service.create_email_verification(target_user)
+      {:ok, user} = DefaultService.create_email_verification(target_user)
       assert target_user.id == user.id
     end
   end
 
   describe "create_password_reset_token/2" do
     test "when email is not in correct format" do
-      {:error, changeset} = Service.create_password_reset_token("invalidemail", %{})
+      {:error, changeset} = DefaultService.create_password_reset_token("invalidemail", %{})
 
       assert changeset.valid? == false
     end
@@ -419,7 +419,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:error, :not_found} = Service.create_password_reset_token(Faker.Internet.safe_email(), %{})
+      {:error, :not_found} = DefaultService.create_password_reset_token(Faker.Internet.safe_email(), %{})
     end
 
     test "when email belongs to a user" do
@@ -440,7 +440,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = Service.create_password_reset_token(user.email, %{ account: account })
+      {:ok, user} = DefaultService.create_password_reset_token(user.email, %{ account: account })
 
       assert user.password_reset_token
     end
@@ -450,7 +450,7 @@ defmodule BlueJet.Identity.ServiceTest do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} = Service.create_password("invalid", "test1234", %{ account: account })
+      {:error, :not_found} = DefaultService.create_password("invalid", "test1234", %{ account: account })
     end
 
     test "when password_reset_token is valid" do
@@ -464,14 +464,14 @@ defmodule BlueJet.Identity.ServiceTest do
         encrypted_password: "original"
       })
 
-      {:ok, user} = Service.create_password("token", "test1234", %{ account: account })
+      {:ok, user} = DefaultService.create_password("token", "test1234", %{ account: account })
       assert user.encrypted_password != target_user.encrypted_password
     end
   end
 
   describe "create_phone_verification_code/2" do
     test "when given invalid fields" do
-      {:error, changeset} = Service.create_phone_verification_code(%{}, %{ account: %Account{} })
+      {:error, changeset} = DefaultService.create_phone_verification_code(%{}, %{ account: %Account{} })
 
       assert changeset.valid? == false
     end
@@ -487,7 +487,7 @@ defmodule BlueJet.Identity.ServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, pvc} = Service.create_phone_verification_code(%{ phone_number: "+11234567890" }, %{ account: account })
+      {:ok, pvc} = DefaultService.create_phone_verification_code(%{ phone_number: "+11234567890" }, %{ account: account })
 
       assert pvc.value
     end
