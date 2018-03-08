@@ -6,6 +6,7 @@ defmodule BlueJet.Identity.Authorization do
   @testable_endpoints [
     "identity.get_account",
     "identity.update_account",
+    "identity.reset_account",
     "identity.get_user",
     "identity.update_user",
     "identity.get_refresh_token",
@@ -493,6 +494,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.list_account",
       "identity.get_account",
       "identity.update_account",
+      "identity.reset_account",
       "identity.create_user",
       "identity.get_user",
       "identity.update_user",

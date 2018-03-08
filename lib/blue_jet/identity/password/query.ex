@@ -1,7 +1,7 @@
 defmodule BlueJet.Identity.Password.Query do
   use BlueJet, :query
 
-  alias BlueJet.Identity.{Password, Account}
+  alias BlueJet.Identity.{Password}
 
   def default() do
     from p in Password

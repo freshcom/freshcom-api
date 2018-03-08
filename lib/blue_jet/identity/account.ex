@@ -12,7 +12,7 @@ defmodule BlueJet.Identity.Account do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Identity.{AccountMembership, RefreshToken}
+  alias BlueJet.Identity.{User, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   schema "accounts" do
     field :mode, :string
@@ -83,6 +83,11 @@ defmodule BlueJet.Identity.Account do
     Translation.put_change(changeset, translatable_fields(), locale, default_locale)
   end
 
+  def changeset(account, :reset) do
+    change(account)
+    |> Map.put(:action, :reset)
+  end
+
   def process(account, changeset = %{ action: :update }) do
     account = Repo.preload(account, :test_account)
 
@@ -93,6 +98,20 @@ defmodule BlueJet.Identity.Account do
     account = %{ account | test_account: test_account }
 
     {:ok, account}
+  end
+
+  def process(account = %{ mode: "test" }, %{ action: :reset }) do
+    AccountMembership.Query.default()
+    |> AccountMembership.Query.for_account(account.id)
+    |> Repo.delete_all()
+
+    User.Query.default()
+    |> User.Query.for_account(account.id)
+    |> Repo.delete_all()
+
+    PhoneVerificationCode.Query.default()
+    |> PhoneVerificationCode.Query.for_account(account.id)
+    |> Repo.delete_all()
   end
 
   @doc """

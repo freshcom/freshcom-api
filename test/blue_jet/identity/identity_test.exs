@@ -109,6 +109,40 @@ defmodule BlueJet.Identity.IdentityTest do
     end
   end
 
+  describe "reset_account/1" do
+    test "when role is not authorized" do
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+
+      {:error, error} = Identity.reset_account(%AccessRequest{})
+
+      assert error == :access_denied
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:reset_account, fn(account) ->
+          assert account == account
+
+          {:ok, account}
+         end)
+
+      {:ok, response} = Identity.reset_account(request)
+
+      assert response.data.id == account.id
+    end
+  end
+
   describe "create_email_verification_token/1" do
     test "when role is not authorized" do
       AuthorizationMock

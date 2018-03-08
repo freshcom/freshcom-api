@@ -12,6 +12,10 @@ defmodule BlueJet.Identity.PhoneVerificationCode.Query do
     from pvc in PhoneVerificationCode
   end
 
+  def for_account(query, account_id) do
+    from pvc in query, where: pvc.account_id == ^account_id
+  end
+
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end

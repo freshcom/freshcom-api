@@ -85,6 +85,15 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
+  def reset_account(account = %Account{ mode: "test" }) do
+    changeset = Account.changeset(account, :reset)
+    Account.process(account, changeset)
+
+    emit_event("identity.account.reset.success", %{ account: account })
+
+    {:ok, account}
+  end
+
   #
   # MARK: User
   #

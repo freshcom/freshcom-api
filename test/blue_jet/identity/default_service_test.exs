@@ -114,6 +114,25 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  test "reset_account/1" do
+    account = Repo.insert!(%Account{ mode: "test" })
+    user = Repo.insert!(%User{
+      account_id: account.id,
+      default_account_id: account.id,
+      username: Faker.Internet.user_name()
+    })
+    EventHandlerMock
+    |> expect(:handle_event, fn(event_name, _) ->
+        assert event_name == "identity.account.reset.success"
+        {:ok, nil}
+       end)
+
+    {:ok, account} = DefaultService.reset_account(account)
+
+    assert Repo.get(Account, account.id)
+    refute Repo.get(User, user.id)
+  end
+
   describe "create_user/2" do
     test "when fields given is invalid and account is nil" do
       {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })

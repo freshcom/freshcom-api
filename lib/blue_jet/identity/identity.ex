@@ -2,7 +2,7 @@ defmodule BlueJet.Identity do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias BlueJet.Identity.{Authentication, User, Service}
+  alias BlueJet.Identity.{Authentication, Service}
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
@@ -66,6 +66,27 @@ defmodule BlueJet.Identity do
 
   def do_update_account(request = %{ account: account, fields: fields }) do
     with {:ok, account} <- Service.update_account(account, fields, get_sopts(request)) do
+      account = Translation.translate(account, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: account }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  def reset_account(request) do
+    with {:ok, request} <- preprocess_request(request, "identity.reset_account") do
+      request
+      |> do_reset_account()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_reset_account(request = %{ account: account }) do
+    with {:ok, account} <- Service.reset_account(account) do
       account = Translation.translate(account, request.locale, account.default_locale)
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: account }}
     else
@@ -204,7 +225,7 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def do_create_user(request = %{ account: nil, fields: fields }) do
+  def do_create_user(%{ account: nil, fields: fields }) do
     with {:ok, user} <- Service.create_user(fields, %{ account: nil }) do
       {:ok, %AccessResponse{ data: user }}
     else

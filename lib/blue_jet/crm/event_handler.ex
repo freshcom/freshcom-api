@@ -4,6 +4,14 @@ defmodule BlueJet.Crm.EventHandler do
   alias BlueJet.Repo
   alias BlueJet.Crm.Customer
 
+  def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
+    Customer.Query.default()
+    |> Customer.Query.for_account(account.id)
+    |> Repo.delete_all()
+
+    {:ok, nil}
+  end
+
   def handle_event("balance.payment.create.before", %{ fields: fields = %{ "owner_type" => "Customer", "owner_id" => customer_id } }) do
     customer = Repo.get!(Customer, customer_id)
     customer = Customer.ensure_stripe_customer(customer, payment_processor: "stripe")

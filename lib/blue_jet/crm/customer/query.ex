@@ -17,7 +17,7 @@ defmodule BlueJet.Crm.Customer.Query do
   ]
 
   def default() do
-    from(c in Customer, order_by: [desc: :updated_at])
+    from c in Customer
   end
 
   def search(query, keyword, locale, default_locale) do

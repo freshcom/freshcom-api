@@ -59,16 +59,20 @@ defmodule BlueJet.Identity.RefreshToken do
   defmodule Query do
     alias BlueJet.Identity.RefreshToken
 
+    def default() do
+      from rt in RefreshToken
+    end
+
     def for_user(user_id) do
-      from(rt in RefreshToken, where: rt.user_id == ^user_id)
+      from rt in RefreshToken, where: rt.user_id == ^user_id
+    end
+
+    def for_account(query, account_id) do
+      from rt in query, where: rt.account_id == ^account_id
     end
 
     def publishable() do
-      from(rt in RefreshToken, where: is_nil(rt.user_id))
-    end
-
-    def default() do
-      from(rt in RefreshToken, order_by: [desc: :inserted_at])
+      from rt in RefreshToken, where: is_nil(rt.user_id)
     end
   end
 end

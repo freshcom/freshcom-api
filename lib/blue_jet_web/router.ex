@@ -23,7 +23,6 @@ defmodule BlueJetWeb.Router do
 
     options "/*path", WelcomeController, :options
 
-
     #
     # MARK: Identity
     #
@@ -32,6 +31,7 @@ defmodule BlueJetWeb.Router do
     resources "/accounts", AccountController, except: [:new, :edit]
     get "/account", AccountController, :show
     patch "/account", AccountController, :update
+    post "/account_resets", AccountResetController, :create
 
     resources "/members", AccountMemberController, except: [:new, :edit]
     resources "/users", UserController, except: [:new, :edit]
