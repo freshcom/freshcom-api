@@ -570,7 +570,7 @@ defmodule BlueJet.Identity.IdentityTest do
           assert identifiers[:id] == request.vas[:user_id]
           assert opts[:account] == account
 
-          {:ok, %User{}}
+          %User{}
          end)
 
       {:ok, _} = Identity.get_user(request)

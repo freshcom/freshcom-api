@@ -249,9 +249,15 @@ defmodule BlueJet.Identity.DefaultService do
   def get_user(fields, opts) do
     account_id = get_account_id(opts)
 
-    User.Query.default()
-    |> User.Query.for_account(account_id)
-    |> Repo.get_by(fields)
+    if account_id do
+      User.Query.default()
+      |> User.Query.member_of_account(account_id)
+      |> Repo.get_by(fields)
+    else
+      User.Query.default()
+      |> User.Query.global()
+      |> Repo.get_by(fields)
+    end
   end
 
   def delete_user(nil, _), do: {:error, :not_found}

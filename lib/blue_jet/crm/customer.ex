@@ -66,10 +66,10 @@ defmodule BlueJet.Crm.Customer do
     status = get_field(changeset, :status)
 
     case status do
-      "guest" -> [:status, :name]
-      "internal" -> [:status, :name]
+      "guest" -> [:status]
+      "internal" -> [:status]
       "registered" -> [:status, :name, :email]
-      "suspended" -> [:status, :name]
+      "suspended" -> [:status]
     end
   end
 

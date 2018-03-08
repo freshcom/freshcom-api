@@ -239,16 +239,18 @@ defmodule BlueJet.Identity do
   end
 
   def do_get_user(request = %{ account: account, vas: %{ user_id: user_id } }) do
-    with {:ok, user} <- Service.get_user(%{ id: user_id }, %{ account: account }) do
-      user = if user.account_id do
-        Translation.translate(user, request.locale, account.default_locale)
-      else
-        user
-      end
+    case Service.get_user(%{ id: user_id }, %{ account: account }) do
+      nil ->
+        {:error, :not_found}
 
-      {:ok, %AccessResponse{ data: user }}
-    else
-      other -> other
+      user ->
+        user = if user.account_id do
+          Translation.translate(user, request.locale, account.default_locale)
+        else
+          user
+        end
+
+        {:ok, %AccessResponse{ data: user }}
     end
   end
 

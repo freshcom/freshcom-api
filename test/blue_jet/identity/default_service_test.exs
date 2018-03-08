@@ -241,6 +241,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         username: Faker.Internet.user_name(),
         password: "test1234"
       })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: target_user.id,
+        role: "administrator"
+      })
 
       user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
 
@@ -274,6 +279,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       target_user = Repo.insert!(%User{
         default_account_id: account.id,
         username: Faker.String.base64(5)
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: target_user.id,
+        role: "administrator"
       })
 
       EventHandlerMock
@@ -311,6 +321,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         default_account_id: account.id,
         username: Faker.String.base64(5),
         email: Faker.Internet.email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: target_user.id,
+        role: "administrator"
       })
 
       EventHandlerMock
@@ -427,6 +442,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         default_account_id: account.id,
         username: Faker.Internet.user_name(),
         email: Faker.Internet.safe_email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
       })
 
       EventHandlerMock

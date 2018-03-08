@@ -13,7 +13,7 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
 
       add :status, :string, null: false
       add :code, :string
-      add :name, :string, null: false
+      add :name, :string
       add :label, :string
 
       add :first_name, :string
