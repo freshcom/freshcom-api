@@ -399,7 +399,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_password(nil, _, _), do: {:error, :not_found}
 
-  def update_password(%{ "reset_token" => reset_token }, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
+  def update_password(%{ reset_token: reset_token }, new_password, opts = %{ account: nil }) when map_size(opts) == 1 do
     password =
       Password.Query.default()
       |> Password.Query.global()
@@ -412,7 +412,7 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def update_password(%{ "reset_token" => reset_token }, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
+  def update_password(%{ reset_token: reset_token }, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
     password =
       Password.Query.default()
       |> Password.Query.for_account(account.id)
@@ -456,9 +456,8 @@ defmodule BlueJet.Identity.DefaultService do
   def get_refresh_token(opts) do
     account = get_account(opts)
 
-    refresh_token =
-      RefreshToken.Query.publishable()
-      |> Repo.get_by!(account_id: account.id)
-      |> RefreshToken.put_prefixed_id()
+    RefreshToken.Query.publishable()
+    |> Repo.get_by!(account_id: account.id)
+    |> RefreshToken.put_prefixed_id()
   end
 end

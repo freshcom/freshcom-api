@@ -448,7 +448,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} = DefaultService.update_password(%{ "reset_token" => "invalid" }, "test1234", %{ account: account })
+      {:error, :not_found} = DefaultService.update_password(%{ reset_token: "invalid" }, "test1234", %{ account: account })
     end
 
     test "when password_reset_token is valid" do
@@ -462,7 +462,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         encrypted_password: "original"
       })
 
-      {:ok, password} = DefaultService.update_password(%{ "reset_token" => "token" }, "test1234", %{ account: account })
+      {:ok, password} = DefaultService.update_password(%{ reset_token: "token" }, "test1234", %{ account: account })
       assert password.encrypted_value != target_user.encrypted_password
     end
 
@@ -477,7 +477,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         encrypted_password: "original"
       })
 
-      {:error, changeset} = DefaultService.update_password(%{ "reset_token" => "token" }, "test", %{ account: account })
+      {:error, changeset} = DefaultService.update_password(%{ reset_token: "token" }, "test", %{ account: account })
 
       assert changeset.valid? == false
       assert changeset.changes[:value]

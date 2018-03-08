@@ -2,7 +2,7 @@ defmodule BlueJet.Identity do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias BlueJet.Identity.{Authentication, User, RefreshToken, Account, Service}
+  alias BlueJet.Identity.{Authentication, User, Service}
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
@@ -49,7 +49,7 @@ defmodule BlueJet.Identity do
       nil ->
         {:error, :not_found}
 
-      acocunt ->
+      account ->
         account = Translation.translate(account, request.locale, account.default_locale)
         {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
     end
@@ -182,7 +182,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_update_password(request) do
-    with {:ok, _} <- Service.update_password(request.fields, request.fields["value"], %{ account: request.account }) do
+    with {:ok, _} <- Service.update_password(%{ reset_token: request.fields["reset_token"] }, request.fields["value"], %{ account: request.account }) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -195,20 +195,6 @@ defmodule BlueJet.Identity do
   #
   # MARK: User
   #
-  defp user_response(nil, _), do: {:error, :not_found}
-
-  defp user_response(user, request = %{ account: account }) do
-    preloads = User.Query.preloads(request.preloads, role: request.role)
-
-    user =
-      user
-      |> User.put_role(account)
-      |> Repo.preload(preloads)
-      |> Translation.translate(request.locale, account.default_locale)
-
-    {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
-  end
-
   def create_user(request) do
     with {:ok, request} <- preprocess_request(request, "identity.create_user") do
       request
@@ -253,7 +239,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_get_user(request = %{ account: account, vas: %{ user_id: user_id } }) do
-    with {:ok, user} <- Service.get_user(%{ "id" => user_id }, %{ account: account }) do
+    with {:ok, user} <- Service.get_user(%{ id: user_id }, %{ account: account }) do
       user = if user.account_id do
         Translation.translate(user, request.locale, account.default_locale)
       else

@@ -42,12 +42,6 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       fields: %{ default_auth_method: "tfa_sms" }
     })
 
-    {:ok, _} = Identity.update_account(%AccessRequest{
-      vas: %{ user_id: user.id, account_id: test_account.id },
-      account: test_account,
-      fields: %{ default_auth_method: "tfa_sms" }
-    })
-
     {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{

@@ -30,7 +30,7 @@ defmodule BlueJet.Identity.IdentityTest do
       |> expect(:get_account, fn(id) ->
           assert id == account.id
 
-          {:ok, account}
+          account
          end)
 
       {:ok, response} = Identity.get_account(request)
@@ -413,7 +413,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       ServiceMock
       |> expect(:update_password, fn(identifiers, new_password, opts) ->
-          assert identifiers["reset_token"] == request.fields["reset_token"]
+          assert identifiers[:reset_token] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
           assert opts[:account] == account
 
@@ -440,7 +440,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       ServiceMock
       |> expect(:update_password, fn(identifiers, new_password, opts) ->
-          assert identifiers["reset_token"] == request.fields["reset_token"]
+          assert identifiers[:reset_token] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
           assert opts[:account] == account
 
@@ -567,7 +567,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
       ServiceMock
       |> expect(:get_user, fn(identifiers, opts) ->
-          assert identifiers["id"] == request.vas[:user_id]
+          assert identifiers[:id] == request.vas[:user_id]
           assert opts[:account] == account
 
           {:ok, %User{}}
