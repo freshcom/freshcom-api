@@ -42,17 +42,16 @@ defmodule BlueJet.DataTrading do
 
   def import_data(import_data = %{ data_url: data_url, data_type: data_type }) do
     stream = RemoteCSV.stream(data_url) |> CSV.decode(headers: true)
-
-    Repo.transaction(fn ->
-      stream
-      |> Stream.chunk_every(100)
-      |> Enum.each(fn(chunk) ->
+    stream
+    |> Stream.chunk_every(1000)
+    |> Enum.each(fn(chunk) ->
+        Repo.transaction(fn ->
           Enum.each(chunk, fn({:ok, row}) ->
            row = process_csv_row(row)
            import_resource(row, import_data.account, data_type)
           end)
-         end)
-    end)
+        end)
+       end)
   end
 
   defp process_csv_row(row) do
