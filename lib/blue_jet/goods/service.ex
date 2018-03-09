@@ -225,6 +225,27 @@ defmodule BlueJet.Goods.Service do
     |> delete_unlockable(opts)
   end
 
+  def delete_all_unlockable(opts = %{ account: account = %{ mode: "test" }})  do
+    bulk_size = opts[:bulk_size] || 1000
+
+    unlockable_ids =
+      Unlockable.Query.default()
+      |> Unlockable.Query.for_account(account.id)
+      |> Unlockable.Query.paginate(size: bulk_size, number: 1)
+      |> Unlockable.Query.id_only()
+      |> Repo.all()
+
+    Unlockable.Query.default()
+    |> Unlockable.Query.filter_by(%{ id: unlockable_ids })
+    |> Repo.delete_all()
+
+    if length(unlockable_ids) === bulk_size do
+      delete_all_unlockable(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: Depositable
   #

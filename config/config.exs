@@ -92,8 +92,9 @@ config :blue_jet, :authorization, BlueJet.Identity.Authorization
 config :blue_jet, :identity, %{
   service: BlueJet.Identity.DefaultService,
   listeners: [
-    BlueJet.Crm.EventHandler,
     BlueJet.Balance.EventHandler,
+    BlueJet.Crm.EventHandler,
+    BlueJet.Goods.EventHandler,
     BlueJet.Catalogue.EventHandler,
     BlueJet.Notification.EventHandler
   ]

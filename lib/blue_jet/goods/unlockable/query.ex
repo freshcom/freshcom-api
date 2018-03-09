@@ -9,12 +9,13 @@ defmodule BlueJet.Goods.Unlockable.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label
   ]
 
   def default() do
-    from(u in Unlockable, order_by: [desc: :updated_at])
+    from u in Unlockable
   end
 
   def for_account(query, account_id) do
