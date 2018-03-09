@@ -42,7 +42,7 @@ defmodule BlueJet.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:ja_serializer, github: "rbao/ja_serializer", branch: "master"},
-      {:inflex, "~> 1.7.0"},
+      {:inflex, github: "rbao/inflex", branch: "master", override: true},
       {:faker, "~> 0.9"},
       {:trans, "~> 2.0.2"},
       {:ex_aws, "~> 2.0"},
