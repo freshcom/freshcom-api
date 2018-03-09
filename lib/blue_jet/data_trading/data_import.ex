@@ -9,7 +9,7 @@ defmodule BlueJet.DataTrading.DataImport do
     field :data_url, :string
     field :data_type, :string
     field :data_count, :integer
-    field :time_spent_sceonds, :integer
+    field :time_spent_seconds, :integer
 
     timestamps()
   end
