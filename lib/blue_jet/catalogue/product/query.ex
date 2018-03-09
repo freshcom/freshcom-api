@@ -9,6 +9,7 @@ defmodule BlueJet.Catalogue.Product.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label,
     :kind

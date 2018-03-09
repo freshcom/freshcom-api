@@ -9,12 +9,13 @@ defmodule BlueJet.Catalogue.ProductCollection.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label
   ]
 
   def default() do
-    from pc in ProductCollection, order_by: [desc: pc.sort_index]
+    from pc in ProductCollection
   end
 
   def for_account(query, account_id) do

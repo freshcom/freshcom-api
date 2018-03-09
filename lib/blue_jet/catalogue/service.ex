@@ -146,6 +146,27 @@ defmodule BlueJet.Catalogue.Service do
     |> delete_product(opts)
   end
 
+  def delete_all_product(opts = %{ account: account = %{ mode: "test" }}) do
+    bulk_size = opts[:bulk_size] || 1000
+
+    product_ids =
+      Product.Query.default()
+      |> Product.Query.for_account(account.id)
+      |> Product.Query.paginate(size: bulk_size, number: 1)
+      |> Product.Query.id_only()
+      |> Repo.all()
+
+    Product.Query.default()
+    |> Product.Query.filter_by(%{ id: product_ids })
+    |> Repo.delete_all()
+
+    if length(product_ids) === bulk_size do
+      delete_all_product(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: Product Collection
   #
@@ -262,6 +283,27 @@ defmodule BlueJet.Catalogue.Service do
     ProductCollection
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_product_collection(opts)
+  end
+
+  def delete_all_product_collection(opts = %{ account: account = %{ mode: "test" }}) do
+    bulk_size = opts[:bulk_size] || 1000
+
+    product_ids =
+      ProductCollection.Query.default()
+      |> ProductCollection.Query.for_account(account.id)
+      |> ProductCollection.Query.paginate(size: bulk_size, number: 1)
+      |> ProductCollection.Query.id_only()
+      |> Repo.all()
+
+    ProductCollection.Query.default()
+    |> ProductCollection.Query.filter_by(%{ id: product_ids })
+    |> Repo.delete_all()
+
+    if length(product_ids) === bulk_size do
+      delete_all_product_collection(opts)
+    else
+      :ok
+    end
   end
 
   #
