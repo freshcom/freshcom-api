@@ -16,7 +16,7 @@ defmodule BlueJetWeb.AccountResetController do
 
     case Identity.reset_account(request) do
       {:ok, _} ->
-        send_resp(conn, :no_content, "")
+        send_resp(conn, :accepted, "")
 
       {:error, changeset} ->
         conn

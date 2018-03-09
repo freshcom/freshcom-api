@@ -3,11 +3,10 @@ defmodule BlueJet.Crm.EventHandler do
 
   alias BlueJet.Repo
   alias BlueJet.Crm.Customer
+  alias BlueJet.Crm.Service
 
   def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
-    Customer.Query.default()
-    |> Customer.Query.for_account(account.id)
-    |> Repo.delete_all()
+    Task.start(fn -> Service.delete_all_customer(%{ account: account }) end)
 
     {:ok, nil}
   end

@@ -160,6 +160,27 @@ defmodule BlueJet.Crm.Service do
     |> delete_customer(opts)
   end
 
+  def delete_all_customer(opts = %{ account: account = %{ mode: "test" } }) do
+    bulk_size = opts[:bulk_size] || 1000
+
+    customer_ids =
+      Customer.Query.default()
+      |> Customer.Query.for_account(account.id)
+      |> Customer.Query.paginate(size: bulk_size, number: 1)
+      |> Customer.Query.id_only()
+      |> Repo.all()
+
+    Customer.Query.default()
+    |> Customer.Query.filter_by(%{ id: customer_ids })
+    |> Repo.delete_all()
+
+    if length(customer_ids) === bulk_size do
+      delete_all_customer(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: Point Account
   #

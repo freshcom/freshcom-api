@@ -12,6 +12,7 @@ defmodule BlueJet.Crm.Customer.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label
   ]

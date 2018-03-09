@@ -8,8 +8,8 @@ defmodule BlueJet.Repo.Migrations.CreateCustomer do
 
       add :stripe_customer_id, :string
       add :user_id, references(:users, type: :binary_id, on_delete: :nilify_all)
-      add :sponsor_id, references(:customers, type: :binary_id)
-      add :enroller_id, references(:customers, type: :binary_id)
+      add :sponsor_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
+      add :enroller_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
 
       add :status, :string, null: false
       add :code, :string

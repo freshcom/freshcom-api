@@ -204,6 +204,10 @@ defmodule BlueJet do
         |> offset(^offset)
       end
 
+      def id_only(query) do
+        from r in query, select: r.id
+      end
+
       defp get_preload_filter(opts, key) do
         filters = opts[:filters] || %{}
         filters[key] || %{}
