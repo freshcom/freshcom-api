@@ -3,10 +3,8 @@ defmodule BlueJet.BalanceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance
-  alias BlueJet.Balance.{Card, Payment, Settings}
-  alias BlueJet.Balance.{StripeClientMock}
-
-  setup :verify_on_exit!
+  alias BlueJet.Balance.{Card, Payment, Refund}
+  alias BlueJet.Balance.ServiceMock
 
   describe "list_card/1" do
     test "when role is not authorized" do
@@ -18,20 +16,46 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-
+      account = %Account{}
       request = %AccessRequest{
-        role: "developer",
-        account: account
+        account: account,
+        filter: %{
+          owner_id: Ecto.UUID.generate(),
+          owner_type: "Customer"
+        }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:list_card, fn(params, opts) ->
+          assert params[:filter][:status] == "saved_by_owner"
+          assert params[:filter][:owner_id] == request.filter[:owner_id]
+          assert params[:filter][:owner_type] == request.filter[:owner_type]
+          assert opts[:account] == account
+
+          [%Card{}]
+         end)
+      |> expect(:count_card, fn(params, opts) ->
+          assert params[:filter][:status] == "saved_by_owner"
+          assert params[:filter][:owner_id] == request.filter[:owner_id]
+          assert params[:filter][:owner_type] == request.filter[:owner_type]
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_card, fn(params, opts) ->
+          assert params[:filter][:status] == "saved_by_owner"
+          assert params[:filter][:owner_id] == nil
+          assert params[:filter][:owner_type] == nil
+          assert opts[:account] == account
+
+          1
+         end)
+
       {:ok, response} = Balance.list_card(request)
+
       assert length(response.data) == 1
       assert response.meta.all_count == 1
       assert response.meta.total_count == 1
@@ -48,28 +72,58 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner",
-        owner_id: Ecto.UUID.generate(),
-        owner_type: "Customer"
-      })
+      account = %Account{}
+      card = %Card{}
 
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "id" => card.id, },
+        params: %{ "id" => Ecto.UUID.generate(), },
         fields: %{ "exp_month" => 9, "exp_year" => 2025 }
       }
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-      StripeClientMock
-      |> expect(:post, fn(_, _, _) -> {:ok, nil} end)
+      ServiceMock
+      |> expect(:update_card, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, card}
+         end)
 
       {:ok, response} = Balance.update_card(request)
-      assert response.data.id == card.id
+
+      assert response.data == card
+    end
+
+    test "when request is invalid" do
+      account = %Account{}
+
+      request = %AccessRequest{
+        account: account,
+        params: %{ "id" => Ecto.UUID.generate(), },
+        fields: %{ "exp_month" => 9, "exp_year" => 2025 }
+      }
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:update_card, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:error, %{ errors: "errors" }}
+         end)
+
+      {:error, response} = Balance.update_card(request)
+
+      assert response.errors == "errors"
     end
   end
 
@@ -83,22 +137,23 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
+      account = %Account{}
+      card = %Card{}
 
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => card.id, }
       }
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      StripeClientMock
-      |> expect(:delete, fn(_, _) -> {:ok, nil} end)
+      ServiceMock
+      |> expect(:delete_card, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, card}
+         end)
 
       {:ok, _} = Balance.delete_card(request)
     end
@@ -114,22 +169,38 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
+      account = %Account{}
 
       request = %AccessRequest{
-        role: "developer",
-        account: account
+        account: account,
+        filter: %{ owner_id: Ecto.UUID.generate(), owner_type: "Customer" }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:list_payment, fn(params, opts) ->
+          assert params[:filter] == request.filter
+          assert opts[:account] == account
+
+          [%Payment{}]
+         end)
+      |> expect(:count_payment, fn(params, opts) ->
+          assert params[:filter] == request.filter
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_payment, fn(params, opts) ->
+          assert params == %{}
+          assert opts[:account] == account
+
+          1
+         end)
+
       {:ok, response} = Balance.list_payment(request)
+
       assert length(response.data) == 1
       assert response.meta.all_count == 1
       assert response.meta.total_count == 1
@@ -145,10 +216,9 @@ defmodule BlueJet.BalanceTest do
       assert error == :access_denied
     end
 
-    test "when request has errors" do
-      account = Repo.insert!(%Account{})
+    test "when request is invalid" do
+      account = %Account{}
       request = %AccessRequest{
-        role: "customer",
         account: account,
         fields: %{
           "status" => "paid",
@@ -157,28 +227,29 @@ defmodule BlueJet.BalanceTest do
           "source" => Ecto.UUID.generate()
         }
       }
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.before"
-          {:ok, nil}
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:create_payment, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:error, %{ errors: "errors" }}
          end)
 
       {:error, response} = Balance.create_payment(request)
 
-      assert Keyword.keys(response.errors) == [:amount_cents]
+      assert response.errors == "errors"
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Settings{
-        account_id: account.id
-      })
-
+      account = %Account{}
+      payment = %Payment{}
       request = %AccessRequest{
-        role: "customer",
         account: account,
         fields: %{
           "status" => "paid",
@@ -188,45 +259,23 @@ defmodule BlueJet.BalanceTest do
           "source" => "tok_" <> Faker.String.base64(12)
         }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
-
-      stripe_charge_id = Faker.String.base64(12)
-      stripe_transfer_id = Faker.String.base64(12)
-      stripe_charge = %{
-        "captured" => true,
-        "id" => stripe_charge_id,
-        "amount" => 500,
-        "balance_transaction" => %{
-          "fee" => 50
-        },
-        "transfer" => %{
-          "id" => stripe_transfer_id,
-          "amount" => 400
-        }
-      }
-      StripeClientMock
-      |> expect(:post, fn(_, _, _) -> {:ok, stripe_charge} end)
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.before"
-          {:ok, nil}
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
          end)
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.success"
-          {:ok, nil}
+
+      ServiceMock
+      |> expect(:create_payment, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, payment}
          end)
 
       {:ok, response} = Balance.create_payment(request)
 
-      assert response.data.stripe_charge_id == stripe_charge_id
-      assert response.data.stripe_transfer_id == stripe_transfer_id
-      assert response.data.amount_cents == 500
-      assert response.data.gateway == "freshcom"
-      assert response.data.processor == "stripe"
-      assert response.data.processor_fee_cents == 50
-      assert response.data.freshcom_fee_cents == 50
+      assert response.data == payment
     end
   end
 
@@ -240,24 +289,29 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-
+      account = %Account{}
+      payment = %Payment{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "id" => payment.id }
+        params: %{ "id" => Ecto.UUID.generate() }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:get_payment, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          payment
+         end)
 
       {:ok, response} = Balance.get_payment(request)
-      assert response.data.id == payment.id
+
+      assert response.data == payment
     end
   end
 
@@ -271,35 +325,60 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "authorized",
-        gateway: "freshcom",
-        processor: "stripe",
-        amount_cents: 500
-      })
-
+      account = %Account{}
+      payment = %Payment{}
       request = %AccessRequest{
         role: "developer",
         account: account,
-        params: %{ "id" => payment.id, },
+        params: %{ "id" => Ecto.UUID.generate(), },
         fields: %{ "capture" => true, "capture_amount_cents" => 300 }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
 
-      StripeClientMock
-      |> expect(:post, fn(_, _, _) -> {:ok, nil} end)
+      ServiceMock
+      |> expect(:update_payment, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
 
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.update.success"
-          {:ok, nil}
+          {:ok, payment}
          end)
 
       {:ok, response} = Balance.update_payment(request)
-      assert response.data.id == payment.id
+
+      assert response.data == payment
+    end
+
+    test "when request is invalid" do
+      account = %Account{}
+      request = %AccessRequest{
+        role: "developer",
+        account: account,
+        params: %{ "id" => Ecto.UUID.generate(), },
+        fields: %{ "capture" => true, "capture_amount_cents" => 300 }
+      }
+
+      AuthorizationMock
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:update_payment, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:error, %{ errors: "errors" }}
+         end)
+
+      {:error, response} = Balance.update_payment(request)
+
+      assert response.errors == "errors"
     end
   end
 
@@ -313,20 +392,13 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 5000,
-        gross_amount_cents: 5000
-      })
-
+      account = %Account{}
+      refund = %Refund{}
       request = %AccessRequest{
         role: "customer",
         account: account,
         params: %{
-          "payment_id" => payment.id
+          "payment_id" => Ecto.UUID.generate()
         },
         fields: %{
           "gateway" => "freshcom",
@@ -337,31 +409,17 @@ defmodule BlueJet.BalanceTest do
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      stripe_refund_id = Faker.String.base64(12)
-      stripe_refund = %{
-        "id" => stripe_refund_id,
-        "balance_transaction" => %{
-          "fee" => -500
-        }
-      }
-      stripe_transfer_reversal_id = Faker.String.base64(12)
-      stripe_transfer_reversal = %{
-        "id" => stripe_transfer_reversal_id,
-        "amount" => 4200
-      }
-      StripeClientMock
-      |> expect(:post, fn(_, _, _) -> {:ok, stripe_refund} end)
-      |> expect(:post, fn(_, _, _) -> {:ok, stripe_transfer_reversal} end)
+      ServiceMock
+      |> expect(:create_refund, fn(fields, opts) ->
+          assert fields["payment_id"] == request.params["payment_id"]
+          assert opts[:account] == account
 
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.refund.create.success"
-          {:ok, nil}
+          {:ok, refund}
          end)
 
       {:ok, response} = Balance.create_refund(request)
 
-      assert response.data
+      assert response.data == refund
     end
   end
 end

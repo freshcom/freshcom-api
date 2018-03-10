@@ -272,60 +272,6 @@ defmodule BlueJet.Balance do
 
       other -> other
     end
-
-    # request = %{ request | locale: account.default_locale }
-
-    # fields = Map.merge(request.fields, %{ "payment_id" => payment_id })
-    # refund = %Refund{ account_id: account.id, account: account }
-    # changeset = Refund.changeset(refund, fields, request.locale, account.default_locale)
-
-    # statements =
-    #   Multi.new()
-    #   |> Multi.insert(:refund, changeset)
-    #   |> Multi.run(:processed_refund, fn(%{ refund: refund }) ->
-    #       Refund.process(refund, changeset)
-    #      end)
-    #   |> Multi.run(:payment, fn(%{ processed_refund: refund }) ->
-    #       payment = Repo.get!(Payment, refund.payment_id)
-    #       refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
-    #       refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
-    #       refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
-    #       gross_amount_cents = payment.amount_cents - refunded_amount_cents
-    #       net_amount_cents = gross_amount_cents - payment.processor_fee_cents + refunded_processor_fee_cents - payment.freshcom_fee_cents + refunded_freshcom_fee_cents
-
-    #       payment_status = cond do
-    #         refunded_amount_cents >= payment.amount_cents -> "refunded"
-    #         refunded_amount_cents > 0 -> "partially_refunded"
-    #         true -> payment.status
-    #       end
-
-    #       payment
-    #       |> Changeset.change(
-    #           status: payment_status,
-    #           refunded_amount_cents: refunded_amount_cents,
-    #           refunded_processor_fee_cents: refunded_processor_fee_cents,
-    #           refunded_freshcom_fee_cents: refunded_freshcom_fee_cents,
-    #           gross_amount_cents: gross_amount_cents,
-    #           net_amount_cents: net_amount_cents
-    #          )
-    #       |> Repo.update!()
-
-    #       {:ok, payment}
-    #      end)
-    #   |> Multi.run(:after_create, fn(%{ processed_refund: refund }) ->
-    #       emit_event("balance.refund.create.success", %{ refund: refund })
-    #       {:ok, refund}
-    #      end)
-
-    # case Repo.transaction(statements) do
-    #   {:ok, %{ processed_refund: refund }} ->
-    #     refund_response(refund, request)
-
-    #   {:error, _, errors, _} ->
-    #     {:error, %AccessResponse{ errors: errors }}
-
-    #   other -> other
-    # end
   end
 
 end

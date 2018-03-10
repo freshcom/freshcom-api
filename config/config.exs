@@ -111,6 +111,7 @@ config :blue_jet, :goods, %{
 }
 
 config :blue_jet, :balance, %{
+  service: BlueJet.Balance.DefaultService,
   stripe_client: BlueJet.Stripe.Client,
   oauth_client: BlueJet.OauthClient,
   identity_service: BlueJet.Identity.Service,

@@ -1,10 +1,10 @@
-defmodule BlueJet.Balance.ServiceTest do
+defmodule BlueJet.Balance.DefaultServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Settings, Card, Payment}
-  alias BlueJet.Balance.Service
   alias BlueJet.Balance.{StripeClientMock, OauthClientMock}
+  alias BlueJet.Balance.DefaultService
 
   describe "get_settings/1" do
     test "when given id" do
@@ -13,13 +13,13 @@ defmodule BlueJet.Balance.ServiceTest do
         account_id: account.id
       })
 
-      assert Service.get_settings(%{ account: account })
+      assert DefaultService.get_settings(%{ account: account })
     end
   end
 
   describe "update_settings/2" do
     test "when given nil for settings" do
-      {:error, error} = Service.update_settings(nil, %{}, %{})
+      {:error, error} = DefaultService.update_settings(nil, %{}, %{})
       assert error == :not_found
     end
 
@@ -36,7 +36,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "stripe_auth_code" => Faker.String.base64(5)
       }
 
-      {:ok, settings} = Service.update_settings(settings, fields, %{ account: account })
+      {:ok, settings} = DefaultService.update_settings(settings, fields, %{ account: account })
 
       verify!()
       assert settings
@@ -51,7 +51,7 @@ defmodule BlueJet.Balance.ServiceTest do
       Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
       Repo.insert!(%Card{ account_id: other_account.id, status: "saved_by_owner" })
 
-      cards = Service.list_card(%{ account: account })
+      cards = DefaultService.list_card(%{ account: account })
       assert length(cards) == 2
     end
 
@@ -78,10 +78,10 @@ defmodule BlueJet.Balance.ServiceTest do
         status: "saved_by_owner"
       })
 
-      files = Service.list_card(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      files = DefaultService.list_card(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(files) == 3
 
-      files = Service.list_card(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      files = DefaultService.list_card(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(files) == 2
     end
   end
@@ -94,7 +94,7 @@ defmodule BlueJet.Balance.ServiceTest do
       Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
       Repo.insert!(%Card{ account_id: other_account.id, status: "saved_by_owner" })
 
-      assert Service.count_card(%{ account: account }) == 2
+      assert DefaultService.count_card(%{ account: account }) == 2
     end
 
     test "only card matching filter is counted" do
@@ -104,20 +104,20 @@ defmodule BlueJet.Balance.ServiceTest do
       Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
       Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner", label: "test" })
 
-      assert Service.count_card(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+      assert DefaultService.count_card(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
     end
   end
 
   describe "update_card/2" do
     test "when given nil for card" do
-      {:error, error} = Service.update_card(nil, %{}, %{})
+      {:error, error} = DefaultService.update_card(nil, %{}, %{})
       assert error == :not_found
     end
 
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_card(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_card(Ecto.UUID.generate(), %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -129,7 +129,7 @@ defmodule BlueJet.Balance.ServiceTest do
         status: "saved_by_owner"
       })
 
-      {:error, error} = Service.update_card(card.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_card(card.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -140,7 +140,7 @@ defmodule BlueJet.Balance.ServiceTest do
         status: "saved_by_owner"
       })
 
-      {:error, changeset} = Service.update_card(card.id, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_card(card.id, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -161,7 +161,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "exp_month" => 11
       }
 
-      {:ok, card} = Service.update_card(card.id, fields, %{ account: account })
+      {:ok, card} = DefaultService.update_card(card.id, fields, %{ account: account })
 
       verify!()
       assert card
@@ -174,7 +174,7 @@ defmodule BlueJet.Balance.ServiceTest do
         status: "saved_by_owner"
       })
 
-      {:error, changeset} = Service.update_card(card, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_card(card, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -195,7 +195,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "exp_month" => 11
       }
 
-      {:ok, card} = Service.update_card(card, fields, %{ account: account })
+      {:ok, card} = DefaultService.update_card(card, fields, %{ account: account })
       assert card
     end
   end
@@ -211,7 +211,7 @@ defmodule BlueJet.Balance.ServiceTest do
       StripeClientMock
       |> expect(:delete, fn(_, _) -> {:ok, nil} end)
 
-      {:ok, card} = Service.delete_card(card, %{ account: account })
+      {:ok, card} = DefaultService.delete_card(card, %{ account: account })
 
       verify!()
       assert card
@@ -242,7 +242,7 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      payments = Service.list_payment(%{ account: account })
+      payments = DefaultService.list_payment(%{ account: account })
       assert length(payments) == 2
     end
 
@@ -279,10 +279,10 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      payments = Service.list_payment(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      payments = DefaultService.list_payment(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(payments) == 3
 
-      payments = Service.list_payment(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      payments = DefaultService.list_payment(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(payments) == 2
     end
   end
@@ -302,7 +302,7 @@ defmodule BlueJet.Balance.ServiceTest do
           {:ok, nil}
          end)
 
-      {:error, changeset} = Service.create_payment(fields, %{ account: account })
+      {:error, changeset} = DefaultService.create_payment(fields, %{ account: account })
 
       verify!()
       assert changeset.valid? == false
@@ -349,7 +349,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "source" => "tok_" <> Ecto.UUID.generate()
       }
 
-      {:ok, payment} = Service.create_payment(fields, %{ account: account })
+      {:ok, payment} = DefaultService.create_payment(fields, %{ account: account })
 
       verify!()
       assert payment
@@ -366,7 +366,7 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      assert Service.get_payment(%{ id: payment.id }, %{ account: account })
+      assert DefaultService.get_payment(%{ id: payment.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -379,26 +379,26 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      refute Service.get_payment(%{ id: payment.id }, %{ account: account })
+      refute DefaultService.get_payment(%{ id: payment.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_payment(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_payment(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_payment/2" do
     test "when given nil for payment" do
-      {:error, error} = Service.update_payment(nil, %{}, %{})
+      {:error, error} = DefaultService.update_payment(nil, %{}, %{})
       assert error == :not_found
     end
 
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_payment(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_payment(Ecto.UUID.generate(), %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -412,7 +412,7 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      {:error, error} = Service.update_payment(payment.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_payment(payment.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -440,7 +440,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "capture_amount_cents" => 300
       }
 
-      {:ok, payment} = Service.update_payment(payment.id, fields, %{ account: account })
+      {:ok, payment} = DefaultService.update_payment(payment.id, fields, %{ account: account })
 
       verify!()
       assert payment
@@ -457,7 +457,7 @@ defmodule BlueJet.Balance.ServiceTest do
         amount_cents: 500
       })
 
-      {:ok, payment} = Service.delete_payment(payment, %{ account: account })
+      {:ok, payment} = DefaultService.delete_payment(payment, %{ account: account })
 
       assert payment
       refute Repo.get(Payment, payment.id)
@@ -469,7 +469,7 @@ defmodule BlueJet.Balance.ServiceTest do
       account = Repo.insert!(%Account{})
       fields = %{}
 
-      {:error, changeset} = Service.create_refund(fields, %{ account: account })
+      {:error, changeset} = DefaultService.create_refund(fields, %{ account: account })
 
       verify!()
       assert changeset.valid? == false
@@ -514,7 +514,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "amount_cents" => 500
       }
 
-      {:ok, refund} = Service.create_refund(fields, %{ account: account })
+      {:ok, refund} = DefaultService.create_refund(fields, %{ account: account })
 
       verify!()
       assert refund
