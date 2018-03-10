@@ -79,7 +79,7 @@ defmodule BlueJet.Notification.Email do
     end
 
     defp sender do
-      {System.get_env("GLOBAL_MAIL_SENDER_NAME"), System.get_env("GLOBAL_MAIL_SENDER")}
+      {System.get_env("GLOBAL_EMAIL_SENDER_NAME"), System.get_env("GLOBAL_EMAIL_SENDER")}
     end
   end
 end
