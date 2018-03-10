@@ -260,6 +260,7 @@ defmodule BlueJet.Balance.Payment do
   ) do
     send_paylink(payment)
   end
+
   def process(
     payment = %{ gateway: "freshcom", capture: false },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
@@ -271,6 +272,7 @@ defmodule BlueJet.Balance.Payment do
       other -> other
     end
   end
+
   def process(
     payment = %{ gateway: "freshcom", capture: true },
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
@@ -282,6 +284,7 @@ defmodule BlueJet.Balance.Payment do
       other -> other
     end
   end
+
   def process(
     payment = %{ gateway: "freshcom" },
     %{ data: %{ status: "authorized", capture_amount_cents: nil }, changes: %{ capture_amount_cents: _ } }
@@ -293,6 +296,7 @@ defmodule BlueJet.Balance.Payment do
       other -> other
     end
   end
+
   def process(payment, _) do
     {:ok, payment}
   end

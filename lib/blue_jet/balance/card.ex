@@ -173,7 +173,7 @@ defmodule BlueJet.Balance.Card do
   @doc """
   Save the Stripe token as a card associated with the Stripe customer object,
   a token that contains the same card fingerprint of a existing card will not be
-  created again, instead they will be updated according to `opts`.
+  created again, instead they will be updated according to `fields`.
 
   Returns `{:ok, stripe_card_id}` if successful.
   """
@@ -235,7 +235,7 @@ defmodule BlueJet.Balance.Card do
       |> Query.for_account(card.account_id)
       |> Query.with_owner(card.owner_type, card.owner_id)
       |> Query.not_primary()
-      |> first()
+      |> order_by(desc: :inserted_at)
       |> Repo.one()
 
     if last_inserted_card do
