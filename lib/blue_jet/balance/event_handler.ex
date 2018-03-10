@@ -1,15 +1,25 @@
 defmodule BlueJet.Balance.EventHandler do
-  alias BlueJet.Repo
-  alias BlueJet.Balance.Settings
+  alias BlueJet.Balance.Service
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity.account.create.success", %{ account: account, test_account: test_account }) do
-    %Settings{ account_id: account.id }
-    |> Repo.insert!()
+  def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
+    Task.start(fn ->
+      Service.delete_all_card(%{ account: account })
+      Service.delete_all_payment(%{ account: account })
+    end)
 
-    %Settings{ account_id: test_account.id }
-    |> Repo.insert!()
+    Task.start(fn ->
+      Service.delete_settings(%{ account: account })
+      Service.create_settings(%{ account: account })
+    end)
+
+    {:ok, nil}
+  end
+
+  def handle_event("identity.account.create.success", %{ account: account, test_account: test_account }) do
+    {:ok, _} = Service.create_settings(%{ account: account })
+    {:ok, _} = Service.create_settings(%{ account: test_account })
 
     {:ok, nil}
   end

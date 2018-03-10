@@ -23,6 +23,13 @@ defmodule BlueJet.Balance.DefaultService do
   #
   # MARK: Settings
   #
+  def create_settings(opts) do
+    account_id = get_account_id(opts)
+
+    %Settings{ account_id: account_id }
+    |> Repo.insert()
+  end
+
   def get_settings(opts) do
     account_id = get_account_id(opts)
 
@@ -60,6 +67,21 @@ defmodule BlueJet.Balance.DefaultService do
     Settings
     |> Repo.get_by(account_id: account.id)
     |> update_settings(fields, opts)
+  end
+
+  def delete_settings(settings = %Settings{}, opts) do
+    with {:ok, settings} <- Repo.delete(settings) do
+      {:ok, settings}
+    else
+      other -> other
+    end
+  end
+
+  def delete_settings(opts) do
+    account_id = get_account_id(opts)
+
+    settings = Repo.get_by(Settings, account_id: account_id)
+    delete_settings(settings, opts)
   end
 
   #
@@ -158,6 +180,27 @@ defmodule BlueJet.Balance.DefaultService do
     Card
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_card(opts)
+  end
+
+  def delete_all_card(opts = %{ account: account = %{ mode: "test" } }) do
+    bulk_size = opts[:bulk_size] || 1000
+
+    card_ids =
+      Card.Query.default()
+      |> Card.Query.for_account(account.id)
+      |> Card.Query.paginate(size: bulk_size, number: 1)
+      |> Card.Query.id_only()
+      |> Repo.all()
+
+    Card.Query.default()
+    |> Card.Query.filter_by(%{ id: card_ids })
+    |> Repo.delete_all()
+
+    if length(card_ids) === bulk_size do
+      delete_all_card(opts)
+    else
+      :ok
+    end
   end
 
   #
@@ -313,6 +356,27 @@ defmodule BlueJet.Balance.DefaultService do
     Payment
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_payment(opts)
+  end
+
+  def delete_all_payment(opts = %{ account: account = %{ mode: "test" } }) do
+    bulk_size = opts[:bulk_size] || 1000
+
+    payment_ids =
+      Payment.Query.default()
+      |> Payment.Query.for_account(account.id)
+      |> Payment.Query.paginate(size: bulk_size, number: 1)
+      |> Payment.Query.id_only()
+      |> Repo.all()
+
+    Payment.Query.default()
+    |> Payment.Query.filter_by(%{ id: payment_ids })
+    |> Repo.delete_all()
+
+    if length(payment_ids) === bulk_size do
+      delete_all_payment(opts)
+    else
+      :ok
+    end
   end
 
   #

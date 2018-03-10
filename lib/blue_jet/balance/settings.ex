@@ -100,6 +100,7 @@ defmodule BlueJet.Balance.Settings do
     else
       System.get_env("STRIPE_LIVE_SECRET_KEY")
     end
+
     OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_auth_code, grant_type: "authorization_code" })
   end
 end

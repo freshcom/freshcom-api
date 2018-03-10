@@ -8,6 +8,7 @@ defmodule BlueJet.Balance.Payment.Query do
   ]
 
   @filterable_fields [
+    :id,
     :target_type,
     :target_id,
     :owner_id,

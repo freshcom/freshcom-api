@@ -6,6 +6,7 @@ defmodule BlueJet.Balance.Card.Query do
   @searchable_fields []
 
   @filterable_fields [
+    :id,
     :name,
     :status,
     :label,
