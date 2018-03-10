@@ -20,11 +20,11 @@ defmodule BlueJet.Balance.Refund.Query do
   ]
 
   def default() do
-    from(r in Refund, order_by: [desc: :updated_at])
+    from r in Refund
   end
 
   def for_account(query, account_id) do
-    from(r in query, where: r.account_id == ^account_id)
+    from r in query, where: r.account_id == ^account_id
   end
 
   def search(query, keyword, locale, default_locale) do

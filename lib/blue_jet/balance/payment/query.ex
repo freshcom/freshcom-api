@@ -19,7 +19,7 @@ defmodule BlueJet.Balance.Payment.Query do
   ]
 
   def default() do
-    from(p in Payment, order_by: [desc: :updated_at])
+    from p in Payment
   end
 
   def search(query, keyword, locale, default_locale) do
@@ -31,11 +31,13 @@ defmodule BlueJet.Balance.Payment.Query do
   end
 
   def for_account(query, account_id) do
-    from(p in query, where: p.account_id == ^account_id)
+    from p in query, where: p.account_id == ^account_id
   end
 
   def for_target(query, target_type, target_id) do
-    from(p in query, where: p.target_type == ^target_type, where: p.target_id == ^target_id)
+    from p in query,
+      where: p.target_type == ^target_type,
+      where: p.target_id == ^target_id
   end
 
   def preloads({:refunds, refund_preloads}, options) do
