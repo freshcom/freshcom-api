@@ -1,8 +1,7 @@
 defmodule BlueJet.FileStorage.FileCollectionMembership do
   use BlueJet, :data
 
-  alias BlueJet.FileStorage.FileCollection
-  alias BlueJet.FileStorage.File
+  alias BlueJet.FileStorage.{File, FileCollection}
 
   schema "file_collection_memberships" do
     field :account_id, Ecto.UUID

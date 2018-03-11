@@ -9,7 +9,7 @@ defmodule BlueJet.FileStorage.FileCollection do
   ], container: :translations
 
   alias BlueJet.FileStorage.{File, FileCollectionMembership}
-  alias BlueJet.FileStorage.FileCollection.Proxy
+  alias __MODULE__.Proxy
 
   schema "file_collections" do
     field :account_id, Ecto.UUID

@@ -10,7 +10,7 @@ defmodule BlueJet.FileStorage.File do
 
   alias BlueJet.FileStorage.S3Client
   alias BlueJet.FileStorage.FileCollectionMembership
-  alias BlueJet.FileStorage.File.Proxy
+  alias __MODULE__.Proxy
 
   schema "files" do
     field :account_id, Ecto.UUID

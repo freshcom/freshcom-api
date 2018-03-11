@@ -50,7 +50,7 @@ defmodule BlueJet.Catalogue.Service do
   defdelegate count_product_collection_membership(params \\ %{}, opts), to: @service
   defdelegate create_product_collection_membership(fields, opts), to: @service
   defdelegate get_product_collection_membership(identifiers, opts), to: @service
-  defdelegate delete_product_collection_membership(id_or_product_collection_membership, opts), to: @service
+  defdelegate delete_product_collection_membership(id_or_pcm, opts), to: @service
 
   defdelegate list_price(params \\ %{}, opts), to: @service
   defdelegate count_price(params \\ %{}, opts), to: @service

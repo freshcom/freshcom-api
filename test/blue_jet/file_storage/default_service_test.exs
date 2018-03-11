@@ -3,10 +3,8 @@ defmodule BlueJet.FileStorage.ServiceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
-  alias BlueJet.FileStorage.Service
+  alias BlueJet.FileStorage.DefaultService
   alias BlueJet.FileStorage.S3ClientMock
-
-  setup :verify_on_exit!
 
   describe "list_file/2" do
     test "file for different account is not returned" do
@@ -34,7 +32,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       S3ClientMock
       |> expect(:get_presigned_url, 2, fn(_, _) -> nil end)
 
-      files = Service.list_file(%{ account: account })
+      files = DefaultService.list_file(%{ account: account })
       assert length(files) == 2
     end
 
@@ -74,10 +72,10 @@ defmodule BlueJet.FileStorage.ServiceTest do
       S3ClientMock
       |> expect(:get_presigned_url, 5, fn(_, _) -> nil end)
 
-      files = Service.list_file(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      files = DefaultService.list_file(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(files) == 3
 
-      files = Service.list_file(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      files = DefaultService.list_file(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(files) == 2
     end
   end
@@ -105,7 +103,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      assert Service.count_file(%{ account: account }) == 2
+      assert DefaultService.count_file(%{ account: account }) == 2
     end
 
     test "only file matching filter is counted" do
@@ -131,7 +129,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      assert Service.count_file(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+      assert DefaultService.count_file(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
     end
   end
 
@@ -148,7 +146,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "size_bytes" => 19203
       }
 
-      {:ok, file} = Service.create_file(fields, %{ account: account })
+      {:ok, file} = DefaultService.create_file(fields, %{ account: account })
 
       assert file
     end
@@ -167,7 +165,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       S3ClientMock
       |> expect(:get_presigned_url, fn(_, _) -> nil end)
 
-      assert Service.get_file(%{ id: file.id }, %{ account: account })
+      assert DefaultService.get_file(%{ id: file.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -180,26 +178,26 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      refute Service.get_file(%{ id: file.id }, %{ account: account })
+      refute DefaultService.get_file(%{ id: file.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_file(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_file(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_file/2" do
     test "when given nil for file" do
-      {:error, error} = Service.update_file(nil, %{}, %{})
+      {:error, error} = DefaultService.update_file(nil, %{}, %{})
       assert error == :not_found
     end
 
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_file(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_file(Ecto.UUID.generate(), %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -213,7 +211,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      {:error, error} =Service.update_file(file.id, %{}, %{ account: account })
+      {:error, error} =DefaultService.update_file(file.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -226,7 +224,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      {:error, changeset} = Service.update_file(file.id, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_file(file.id, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -246,7 +244,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "status" => "uploaded"
       }
 
-      {:ok, file} = Service.update_file(file.id, fields, %{ account: account })
+      {:ok, file} = DefaultService.update_file(file.id, fields, %{ account: account })
       assert file
     end
 
@@ -259,7 +257,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      {:error, changeset} = Service.update_file(file, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_file(file, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -279,7 +277,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "status" => "uploaded"
       }
 
-      {:ok, file} = Service.update_file(file, fields, %{ account: account })
+      {:ok, file} = DefaultService.update_file(file, fields, %{ account: account })
       assert file
     end
   end
@@ -297,7 +295,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       S3ClientMock
       |> expect(:delete_object, fn(_) -> nil end)
 
-      {:ok, file} = Service.delete_file(file, %{ account: account })
+      {:ok, file} = DefaultService.delete_file(file, %{ account: account })
 
       assert file
       refute Repo.get(File, file.id)
@@ -315,7 +313,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       S3ClientMock
       |> expect(:delete_object, fn(_) -> nil end)
 
-      {:ok, file} = Service.delete_file(file.id, %{ account: account })
+      {:ok, file} = DefaultService.delete_file(file.id, %{ account: account })
 
       assert file
       refute Repo.get(File, file.id)
@@ -339,7 +337,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      file_collections = Service.list_file_collection(%{ account: account })
+      file_collections = DefaultService.list_file_collection(%{ account: account })
       assert length(file_collections) == 2
     end
 
@@ -366,10 +364,10 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      file_collections = Service.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      file_collections = DefaultService.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(file_collections) == 3
 
-      file_collections = Service.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      file_collections = DefaultService.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(file_collections) == 2
     end
   end
@@ -391,7 +389,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      assert Service.count_file_collection(%{ account: account }) == 2
+      assert DefaultService.count_file_collection(%{ account: account }) == 2
     end
 
     test "only file collection matching filter is counted" do
@@ -411,7 +409,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      assert Service.count_file_collection(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+      assert DefaultService.count_file_collection(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
     end
   end
 
@@ -436,7 +434,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "file_ids" => [file1.id, file2.id]
       }
 
-      {:ok, file_collection} = Service.create_file_collection(fields, %{ account: account })
+      {:ok, file_collection} = DefaultService.create_file_collection(fields, %{ account: account })
 
       assert file_collection
       assert Repo.get_by(FileCollectionMembership, file_id: file1.id, collection_id: file_collection.id)
@@ -452,7 +450,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      assert Service.get_file_collection(%{ id: file_collection.id }, %{ account: account })
+      assert DefaultService.get_file_collection(%{ id: file_collection.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -463,26 +461,26 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      refute Service.get_file_collection(%{ id: file_collection.id }, %{ account: account })
+      refute DefaultService.get_file_collection(%{ id: file_collection.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_file_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_file_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_file_collection/2" do
     test "when given nil for file collection" do
-      {:error, error} = Service.update_file_collection(nil, %{}, %{})
+      {:error, error} = DefaultService.update_file_collection(nil, %{}, %{})
       assert error == :not_found
     end
 
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_file_collection(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_file_collection(Ecto.UUID.generate(), %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -494,7 +492,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      {:error, error} = Service.update_file_collection(file.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_file_collection(file.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -505,7 +503,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      {:error, changeset} = Service.update_file_collection(file.id, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_file_collection(file.id, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -520,7 +518,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "status" => "draft"
       }
 
-      {:ok, file} = Service.update_file_collection(file.id, fields, %{ account: account })
+      {:ok, file} = DefaultService.update_file_collection(file.id, fields, %{ account: account })
       assert file
     end
 
@@ -531,7 +529,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      {:error, changeset} = Service.update_file_collection(file, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_file_collection(file, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -546,7 +544,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         "status" => "draft"
       }
 
-      {:ok, file} = Service.update_file_collection(file, fields, %{ account: account })
+      {:ok, file} = DefaultService.update_file_collection(file, fields, %{ account: account })
       assert file
     end
   end
@@ -559,7 +557,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      {:ok, file_collection} = Service.delete_file_collection(file_collection, %{ account: account })
+      {:ok, file_collection} = DefaultService.delete_file_collection(file_collection, %{ account: account })
       assert file_collection
       refute Repo.get(FileCollection, file_collection.id)
     end
@@ -571,7 +569,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         name: Faker.String.base64(5)
       })
 
-      {:ok, file_collection} = Service.delete_file_collection(file_collection.id, %{ account: account })
+      {:ok, file_collection} = DefaultService.delete_file_collection(file_collection.id, %{ account: account })
       assert file_collection
       refute Repo.get(FileCollection, file_collection.id)
     end
@@ -597,7 +595,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       })
 
 
-      {:ok, fcm} = Service.delete_file_collection_membership(fcm, %{ account: account })
+      {:ok, fcm} = DefaultService.delete_file_collection_membership(fcm, %{ account: account })
 
       assert fcm
       refute Repo.get(FileCollectionMembership, fcm.id)
@@ -621,7 +619,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
         file_id: file.id
       })
 
-      {:ok, fcm} = Service.delete_file_collection_membership(fcm.id, %{ account: account })
+      {:ok, fcm} = DefaultService.delete_file_collection_membership(fcm.id, %{ account: account })
 
       assert fcm
       refute Repo.get(FileCollection, fcm.id)
