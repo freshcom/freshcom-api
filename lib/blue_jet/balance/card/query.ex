@@ -16,11 +16,11 @@ defmodule BlueJet.Balance.Card.Query do
   ]
 
   def default() do
-    from(c in Card, order_by: [desc: :inserted_at])
+    from c in Card
   end
 
   def for_account(query, account_id) do
-    from(c in query, where: c.account_id == ^account_id)
+    from c in query, where: c.account_id == ^account_id
   end
 
   def search(query, keyword, locale, default_locale) do
@@ -32,18 +32,20 @@ defmodule BlueJet.Balance.Card.Query do
   end
 
   def not_primary(query) do
-    from(c in query, where: c.primary != true)
+    from c in query, where: c.primary != true
   end
 
   def not_id(query, id) do
-    from(c in query, where: c.id != ^id)
+    from c in query, where: c.id != ^id
   end
 
   def with_owner(query, owner_type, owner_id) do
-    from(c in query, where: c.owner_type == ^owner_type, where: c.owner_id == ^owner_id)
+    from c in query,
+      where: c.owner_type == ^owner_type,
+      where: c.owner_id == ^owner_id
   end
 
   def with_status(query, status) do
-    from(c in query, where: c.status == ^status)
+    from c in query, where: c.status == ^status
   end
 end

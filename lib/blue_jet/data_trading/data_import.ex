@@ -274,18 +274,4 @@ defmodule BlueJet.DataTrading.DataImport do
         end)
        end)
   end
-
-  defmodule Query do
-    use BlueJet, :query
-
-    alias BlueJet.DataTrading.DataImport
-
-    def default() do
-      from di in DataImport
-    end
-
-    def for_account(query, account_id) do
-      from di in query, where: di.account_id == ^account_id
-    end
-  end
 end
