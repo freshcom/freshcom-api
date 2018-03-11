@@ -119,6 +119,7 @@ config :blue_jet, :balance, %{
 }
 
 config :blue_jet, :crm, %{
+  service: BlueJet.Crm.DefaultService,
   stripe_client: BlueJet.Stripe.Client,
   identity_service: BlueJet.Identity.Service
 }

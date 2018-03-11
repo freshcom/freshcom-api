@@ -1,12 +1,10 @@
 defmodule BlueJet.CrmTest do
   use BlueJet.ContextCase
 
-  alias BlueJet.Identity.{Account, User}
+  alias BlueJet.Identity.Account
   alias BlueJet.Crm
-  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
-  alias BlueJet.Crm.IdentityServiceMock
-
-  setup :verify_on_exit!
+  alias BlueJet.Crm.{Customer, PointTransaction}
+  alias BlueJet.Crm.ServiceMock
 
   describe "list_customer/1" do
     test "when role is not authorized" do
@@ -18,20 +16,36 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
+      account = %Account{}
       request = %AccessRequest{
         role: "developer",
         account: account
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:list_customer, fn(_, opts) ->
+          assert opts[:account] == account
+
+          [%Customer{}]
+         end)
+      |> expect(:count_customer, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_customer, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
 
       {:ok, response} = Crm.list_customer(request)
+
       assert length(response.data) == 1
       assert response.meta.all_count == 1
       assert response.meta.total_count == 1
@@ -48,32 +62,33 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.email()
-      })
-
-      IdentityServiceMock
-      |> expect(:create_user, fn(_, _) -> {:ok, user} end)
-
+      account = %Account{}
+      customer = %Customer{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         fields: %{
           "status" => "registered",
-          "name" => Faker.String.base64(5),
-          "email" => Faker.Internet.email()
+          "name" => Faker.Name.name(),
+          "email" => Faker.Internet.safe_email()
         }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:create_customer, fn(fields, opts) ->
+          assert fields == Map.merge(request.fields, %{ "role" => "customer" })
+          assert opts[:account] == account
+
+          {:ok, customer}
+         end)
 
       {:ok, response} = Crm.create_customer(request)
 
-      customer = Repo.get_by(Customer, user_id: user.id)
-      assert response.data.id == customer.id
+      assert response.data == customer
     end
   end
 
@@ -87,23 +102,29 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
+      account = %Account{}
+      customer = %Customer{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => customer.id }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          customer
+         end)
 
       {:ok, response} = Crm.get_customer(request)
 
-      assert response.data.id == customer.id
+      assert response.data == customer
     end
   end
 
@@ -117,33 +138,31 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.email()
-      })
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        email: Faker.Internet.email()
-      })
-
-      IdentityServiceMock
-      |> expect(:create_user, fn(_, _) -> {:ok, user} end)
-
+      account = %Account{}
+      customer = %Customer{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => customer.id },
         fields: %{ "status" => "registered" }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:update_customer, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, customer}
+         end)
 
       {:ok, response} = Crm.update_customer(request)
 
-      assert response.data.id == customer.id
+      assert response.data == customer
     end
   end
 
@@ -157,19 +176,25 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
+      account = %Account{}
+      customer = %Customer{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => customer.id }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:delete_customer, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, customer}
+         end)
 
       {:ok, _} = Crm.delete_customer(request)
     end
@@ -185,36 +210,42 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = Repo.insert!(%PointAccount{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-      Repo.insert!(%PointTransaction{
-        account_id: account.id,
-        point_account_id: point_account.id,
-        amount: 5000
-      })
-      Repo.insert!(%PointTransaction{
-        account_id: account.id,
-        point_account_id: point_account.id,
-        status: "committed",
-        amount: 5000
-      })
-
+      account = %Account{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "point_account_id" => point_account.id }
+        params: %{ "point_account_id" => Ecto.UUID.generate() }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:list_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          [%PointTransaction{}]
+         end)
+      |> expect(:count_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          1
+         end)
 
       {:ok, response} = Crm.list_point_transaction(request)
+
       assert length(response.data) == 1
     end
   end
@@ -229,27 +260,30 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = Repo.insert!(%PointAccount{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-
+      account = %Account{}
+      point_transaction = %PointTransaction{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "point_account_id" => point_account.id },
+        params: %{ "point_account_id" => Ecto.UUID.generate() },
         fields: %{ "amount" => 5000 }
       }
+
       AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      |> expect(:authorize_request, fn(_, _) ->
+          {:ok, request}
+         end)
+
+      ServiceMock
+      |> expect(:create_point_transaction, fn(fields, opts) ->
+          assert fields == Map.merge(request.fields, %{ "point_account_id" => request.params["point_account_id"] })
+          assert opts[:account] == account
+
+          {:ok, point_transaction}
+         end)
 
       {:ok, response} = Crm.create_point_transaction(request)
-      assert response.data
+
+      assert response.data == point_transaction
     end
   end
 
@@ -263,31 +297,27 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = Repo.insert!(%PointAccount{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-      point_transaction = Repo.insert!(%PointTransaction{
-        account_id: account.id,
-        point_account_id: point_account.id,
-        amount: 5000
-      })
-
+      account = %Account{}
+      point_transaction = %PointTransaction{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => point_transaction.id }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:get_point_transaction, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          point_transaction
+         end)
+
       {:ok, response} = Crm.get_point_transaction(request)
-      assert response.data.id == point_transaction.id
+
+      assert response.data == point_transaction
     end
   end
 
@@ -301,32 +331,29 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = Repo.insert!(%PointAccount{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-      point_transaction = Repo.insert!(%PointTransaction{
-        account_id: account.id,
-        point_account_id: point_account.id,
-        amount: 5000
-      })
-
+      account = %Account{}
+      point_transaction = %PointTransaction{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => point_transaction.id },
         fields: %{ "name" => Faker.String.base64(5) }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:update_point_transaction, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, point_transaction}
+         end)
+
       {:ok, response} = Crm.update_point_transaction(request)
-      assert response.data.id == point_transaction.id
+
+      assert response.data == point_transaction
     end
   end
 
@@ -340,28 +367,23 @@ defmodule BlueJet.CrmTest do
     end
 
     test "when request is valid" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      point_account = Repo.insert!(%PointAccount{
-        account_id: account.id,
-        customer_id: customer.id
-      })
-      point_transaction = Repo.insert!(%PointTransaction{
-        account_id: account.id,
-        point_account_id: point_account.id,
-        amount: 0
-      })
-
+      account = %Account{}
+      point_transaction = %PointTransaction{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
         params: %{ "id" => point_transaction.id }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+
+      ServiceMock
+      |> expect(:delete_point_transaction, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, point_transaction}
+         end)
 
       {:ok, _} = Crm.delete_point_transaction(request)
     end

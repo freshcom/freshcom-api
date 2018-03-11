@@ -156,17 +156,19 @@ defmodule BlueJet.Crm do
     filter: filter,
     params: %{ "point_account_id" => point_account_id }
   }) do
-    filter = Map.put(filter, :status, "committed")
+    filter =
+      filter
+      |> Map.put(:status, "committed")
+      |> Map.put(:point_account_id, point_account_id)
 
     total_count =
       %{ filter: filter }
       |> Service.count_point_transaction(%{ account: account })
 
     all_count =
-      %{ filter: %{ point_account_id: point_account_id } }
+      %{ filter: %{ point_account_id: point_account_id, status: "committed" } }
       |> Service.count_point_transaction(%{ account: account })
 
-    filter = Map.put(filter, :point_account_id, point_account_id)
     point_transactions =
       %{ filter: filter }
       |> Service.list_point_transaction(get_sopts(request))
