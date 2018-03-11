@@ -100,16 +100,28 @@ defmodule BlueJet.FileStorage.File do
     |> Map.put(:action, :delete)
   end
 
+  def delete_s3_object(files) when is_list(files) do
+    Proxy.delete_s3_object(files)
+
+    :ok
+  end
+
   def process(file, %{ action: :delete }) do
     Proxy.delete_s3_object(file)
 
     {:ok, file}
   end
 
-  def get_s3_key(struct) do
+  def get_s3_key(files) when is_list(files) do
+    Enum.map(files, fn(file) ->
+      get_s3_key(file)
+    end)
+  end
+
+  def get_s3_key(file) do
     prefix = Application.get_env(:blue_jet, :s3)[:prefix]
-    id = struct.id
-    name = struct.name
+    id = file.id
+    name = file.name
 
     "#{prefix}/File/#{id}/#{name}"
   end

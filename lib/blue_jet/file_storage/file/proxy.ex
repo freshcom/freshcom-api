@@ -10,8 +10,8 @@ defmodule BlueJet.FileStorage.File.Proxy do
     file.account || IdentityService.get_account(file)
   end
 
-  def delete_s3_object(file) do
-    File.get_s3_key(file)
+  def delete_s3_object(file_or_files) do
+    File.get_s3_key(file_or_files)
     |> S3Client.delete_object()
   end
 end

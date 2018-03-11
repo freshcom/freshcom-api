@@ -11,13 +11,14 @@ defmodule BlueJet.FileStorage.File.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label,
     :content_type
   ]
 
   def default() do
-    from(ef in File, order_by: [desc: ef.updated_at])
+    from f in File
   end
 
   def search(query, keyword, locale, default_locale) do
@@ -29,10 +30,10 @@ defmodule BlueJet.FileStorage.File.Query do
   end
 
   def for_account(query, account_id) do
-    from(ef in query, where: ef.account_id == ^account_id)
+    from f in query, where: f.account_id == ^account_id
   end
 
   def uploaded(query) do
-    from(ef in query, where: ef.status == "uploaded")
+    from f in query, where: f.status == "uploaded"
   end
 end

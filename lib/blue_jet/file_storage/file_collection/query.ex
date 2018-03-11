@@ -11,6 +11,7 @@ defmodule BlueJet.FileStorage.FileCollection.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label,
     :owner_id,
@@ -19,7 +20,7 @@ defmodule BlueJet.FileStorage.FileCollection.Query do
   ]
 
   def default() do
-    from(efc in FileCollection, order_by: [desc: efc.updated_at])
+    from fc in FileCollection
   end
 
   def search(query, keyword, locale, default_locale) do
@@ -31,11 +32,11 @@ defmodule BlueJet.FileStorage.FileCollection.Query do
   end
 
   def for_account(query, account_id) do
-    from(efc in query, where: efc.account_id == ^account_id)
+    from fc in query, where: fc.account_id == ^account_id
   end
 
   def for_owner_type(owner_type) do
-    from(efc in FileCollection, where: efc.owner_type == ^owner_type, order_by: [desc: efc.updated_at])
+    from fc in FileCollection, where: fc.owner_type == ^owner_type
   end
 
   def preloads({:files, ef_preloads}, options) do
