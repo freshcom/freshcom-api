@@ -1,8 +1,7 @@
 defmodule BlueJet.Catalogue.ProductCollectionMembership do
   use BlueJet, :data
 
-  alias BlueJet.Catalogue.ProductCollection
-  alias BlueJet.Catalogue.Product
+  alias BlueJet.Catalogue.{Product, ProductCollection}
 
   schema "product_collection_memberships" do
     field :account_id, Ecto.UUID
@@ -28,13 +27,9 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def castable_fields(:insert) do
-    writable_fields()
-  end
-  def castable_fields(:update) do
-    writable_fields() -- [:collection_id, :product_id]
-  end
-
+  #
+  # MARK: Validation
+  #
   defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
     account_id = get_field(changeset, :account_id)
     collection = Repo.get(ProductCollection, collection_id)
@@ -69,9 +64,17 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     |> validate_product_id()
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  #
+  # MARK: Changeset
+  #
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:collection_id, :product_id]
+  end
+
   def changeset(membership, :insert, params) do
     membership
     |> cast(params, castable_fields(:insert))

@@ -8,7 +8,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Catalogue.ProductCollection.Proxy
+  alias __MODULE__.Proxy
   alias BlueJet.Catalogue.ProductCollectionMembership
 
   schema "product_collections" do
@@ -57,9 +57,6 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> validate_required([:status, :name])
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
   def changeset(product_collection, :insert, params) do
     product_collection
     |> cast(params, writable_fields())
@@ -89,18 +86,4 @@ defmodule BlueJet.Catalogue.ProductCollection do
   end
 
   def process(product_collection, _), do: {:ok, product_collection}
-
-  #
-  # MARK: External Resources
-  #
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file,
-    field: :avatar
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "ProductCollection"
-
-  def put_external_resources(product_collection, _, _), do: product_collection
 end

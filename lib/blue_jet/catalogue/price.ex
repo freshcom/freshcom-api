@@ -12,7 +12,7 @@ defmodule BlueJet.Catalogue.Price do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.Price.Proxy
+  alias __MODULE__.Proxy
 
   schema "prices" do
     field :account_id, Ecto.UUID
@@ -69,6 +69,9 @@ defmodule BlueJet.Catalogue.Price do
     __MODULE__.__trans__(:fields)
   end
 
+  #
+  # MARK: Validation
+  #
   defp required_fields(changeset) do
     common_required = [:name, :product_id, :status, :currency_code, :charge_amount_cents, :charge_unit]
     case get_field(changeset, :estimate_by_default) do
@@ -140,6 +143,9 @@ defmodule BlueJet.Catalogue.Price do
     end
   end
 
+  #
+  # MARK: Changeset
+  #
   defp castable_fields(%{ __meta__: %{ state: :built }}) do
     writable_fields()
   end
@@ -148,9 +154,55 @@ defmodule BlueJet.Catalogue.Price do
     writable_fields() -- [:product_id]
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  defp put_status(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :status, parent.status)
+  end
+
+  defp put_status(changeset), do: changeset
+
+  defp put_label(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :label, parent.label)
+  end
+
+  defp put_label(changeset), do: changeset
+
+  defp put_charge_unit(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    changeset = put_change(changeset, :charge_unit, parent.charge_unit)
+
+    new_translations =
+      changeset
+      |> get_field(:translations)
+      |> Translation.merge_translations(parent.translations, ["charge_unit"])
+
+    put_change(changeset, :translations, new_translations)
+  end
+
+  defp put_charge_unit(changeset), do: changeset
+
+  defp put_minimum_order_quantity(changeset = %{ changes: %{ parent_id: parent_id } }) do
+    parent = Repo.get(__MODULE__, parent_id)
+    put_change(changeset, :minimum_order_quantity, parent.minimum_order_quantity)
+  end
+
+  defp put_minimum_order_quantity(changeset), do: changeset
+
+  defp put_order_unit(changeset = %{ changes: %{ charge_unit: charge_unit } }) do
+    case get_field(changeset, :estimate_by_default) do
+      false -> put_change(changeset, :order_unit, charge_unit)
+      _ -> changeset
+    end
+  end
+
+  defp put_order_unit(changeset = %{ changes: %{ estimate_by_default: false } }) do
+    charge_unit = get_field(changeset, :charge_unit)
+    put_change(changeset, :order_unit, charge_unit)
+  end
+
+  defp put_order_unit(changeset), do: changeset
+
   def changeset(price, :insert, params) do
     price
     |> cast(params, castable_fields(price))
@@ -185,55 +237,6 @@ defmodule BlueJet.Catalogue.Price do
     |> Map.put(:action, :delete)
     |> validate(:delete)
   end
-
-  def put_status(changeset = %{ changes: %{ parent_id: parent_id } }) do
-    parent = Repo.get(__MODULE__, parent_id)
-    put_change(changeset, :status, parent.status)
-  end
-
-  def put_status(changeset), do: changeset
-
-  def put_label(changeset = %{ changes: %{ parent_id: parent_id } }) do
-    parent = Repo.get(__MODULE__, parent_id)
-    put_change(changeset, :label, parent.label)
-  end
-
-  def put_label(changeset), do: changeset
-
-  def put_charge_unit(changeset = %{ changes: %{ parent_id: parent_id } }) do
-    parent = Repo.get(__MODULE__, parent_id)
-    changeset = put_change(changeset, :charge_unit, parent.charge_unit)
-
-    new_translations =
-      changeset
-      |> get_field(:translations)
-      |> Translation.merge_translations(parent.translations, ["charge_unit"])
-
-    put_change(changeset, :translations, new_translations)
-  end
-
-  def put_charge_unit(changeset), do: changeset
-
-  def put_minimum_order_quantity(changeset = %{ changes: %{ parent_id: parent_id } }) do
-    parent = Repo.get(__MODULE__, parent_id)
-    put_change(changeset, :minimum_order_quantity, parent.minimum_order_quantity)
-  end
-
-  def put_minimum_order_quantity(changeset), do: changeset
-
-  def put_order_unit(changeset = %{ changes: %{ charge_unit: charge_unit } }) do
-    case get_field(changeset, :estimate_by_default) do
-      false -> put_change(changeset, :order_unit, charge_unit)
-      _ -> changeset
-    end
-  end
-
-  def put_order_unit(changeset = %{ changes: %{ estimate_by_default: false } }) do
-    charge_unit = get_field(changeset, :charge_unit)
-    put_change(changeset, :order_unit, charge_unit)
-  end
-
-  def put_order_unit(changeset), do: changeset
 
   def get_estimate_average_rate(%{ estimate_average_percentage: nil }), do: nil
   def get_estimate_average_rate(%{ estimate_average_percentage: p }) do

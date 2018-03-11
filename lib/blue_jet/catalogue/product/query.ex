@@ -20,7 +20,7 @@ defmodule BlueJet.Catalogue.Product.Query do
   end
 
   def for_account(query, account_id) do
-    from(p in query, where: p.account_id == ^account_id)
+    from p in query, where: p.account_id == ^account_id
   end
 
   def default_order(query) do
@@ -44,11 +44,11 @@ defmodule BlueJet.Catalogue.Product.Query do
   end
 
   def variant_default() do
-    from(p in Product, where: p.kind == "variant", order_by: [desc: :updated_at])
+    from p in Product, where: p.kind == "variant", order_by: [desc: :updated_at]
   end
 
   def item_default() do
-    from(p in Product, where: p.kind == "item", order_by: [desc: :updated_at])
+    from p in Product, where: p.kind == "item", order_by: [desc: :updated_at]
   end
 
   def with_parent(query, parent_id) do
@@ -95,10 +95,10 @@ defmodule BlueJet.Catalogue.Product.Query do
   end
 
   def root(query) do
-    from(p in query, where: is_nil(p.parent_id))
+    from p in query, where: is_nil(p.parent_id)
   end
 
   def active(query) do
-    from(p in query, where: p.status == "active")
+    from p in query, where: p.status == "active"
   end
 end

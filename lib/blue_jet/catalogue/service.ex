@@ -2,7 +2,6 @@ defmodule BlueJet.Catalogue.Service do
   use BlueJet, :service
 
   alias Ecto.Multi
-  alias BlueJet.Repo
   alias BlueJet.Catalogue.IdentityService
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 

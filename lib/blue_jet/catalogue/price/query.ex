@@ -10,7 +10,7 @@ defmodule BlueJet.Catalogue.Price.Query do
   ]
 
   def default() do
-    from(p in Price, order_by: [desc: :inserted_at])
+    from p in Price
   end
 
   def filter_by(query, filter) do
@@ -18,13 +18,15 @@ defmodule BlueJet.Catalogue.Price.Query do
   end
 
   def for_product(product_id) do
-    from(p in Price, where: p.product_id == ^product_id, order_by: [asc: :minimum_order_quantity])
+    from p in Price,
+      where: p.product_id == ^product_id,
+      order_by: [asc: :minimum_order_quantity]
   end
 
   def with_order_quantity(query, nil), do: query
 
   def with_order_quantity(query, order_quantity) do
-    from(p in query, where: p.minimum_order_quantity <= ^order_quantity)
+    from p in query, where: p.minimum_order_quantity <= ^order_quantity
   end
 
   def with_status(query, status) do
@@ -32,15 +34,15 @@ defmodule BlueJet.Catalogue.Price.Query do
   end
 
   def active_by_moq() do
-    from(p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity])
+    from p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity]
   end
 
   def for_account(query, account_id) do
-    from(p in query, where: p.account_id == ^account_id)
+    from p in query, where: p.account_id == ^account_id
   end
 
   def active(query) do
-    from(p in query, where: p.status == "active")
+    from p in query, where: p.status == "active"
   end
 
   def preloads({:product, product_preloads}, options) do

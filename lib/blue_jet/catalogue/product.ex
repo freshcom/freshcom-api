@@ -18,7 +18,7 @@ defmodule BlueJet.Catalogue.Product do
   ], container: :translations
 
   alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.Product.{Query, Proxy}
+  alias __MODULE__.{Query, Proxy}
 
   schema "products" do
     field :account_id, Ecto.UUID
@@ -78,14 +78,6 @@ defmodule BlueJet.Catalogue.Product do
 
   def translatable_fields do
     __MODULE__.__trans__(:fields)
-  end
-
-  defp castable_fields(:insert) do
-    writable_fields()
-  end
-
-  defp castable_fields(:update) do
-    writable_fields() -- [:kind, :goods_id, :goods_type]
   end
 
   defp required_fields(changeset) do
@@ -253,9 +245,40 @@ defmodule BlueJet.Catalogue.Product do
 
   def validate(changeset), do: changeset
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  #
+  # MARK: Changeset
+  #
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:kind, :goods_id, :goods_type]
+  end
+
+  defp put_name(changeset = %{ action: :insert, changes: %{ name_sync: "sync_with_goods" } }) do
+    account = get_field(changeset, :account)
+    goods_id = get_field(changeset, :goods_id)
+    goods_type = get_field(changeset, :goods_type)
+    goods = get_field(changeset, :goods) || Proxy.get_goods(%{ goods_type: goods_type, goods_id: goods_id, account: account })
+
+    if goods do
+      new_translations =
+        changeset
+        |> get_field(:translations)
+        |> Translation.merge_translations(goods.translations, ["name"])
+
+      changeset
+      |> put_change(:name, goods.name)
+      |> put_change(:goods, goods)
+      |> put_change(:translations, new_translations)
+    else
+      changeset
+    end
+  end
+
+  defp put_name(changeset), do: changeset
+
   def changeset(product, :insert, params) do
     product
     |> cast(params, castable_fields(:insert))
@@ -282,29 +305,6 @@ defmodule BlueJet.Catalogue.Product do
     |> Map.put(:action, :delete)
   end
 
-  def put_name(changeset = %{ action: :insert, changes: %{ name_sync: "sync_with_goods" } }) do
-    account = get_field(changeset, :account)
-    goods_id = get_field(changeset, :goods_id)
-    goods_type = get_field(changeset, :goods_type)
-    goods = get_field(changeset, :goods) || Proxy.get_goods(%{ goods_type: goods_type, goods_id: goods_id, account: account })
-
-    if goods do
-      new_translations =
-        changeset
-        |> get_field(:translations)
-        |> Translation.merge_translations(goods.translations, ["name"])
-
-      changeset
-      |> put_change(:name, goods.name)
-      |> put_change(:goods, goods)
-      |> put_change(:translations, new_translations)
-    else
-      changeset
-    end
-  end
-
-  def put_name(changeset), do: changeset
-
   def process(product = %{ parent_id: parent_id }, %{ action: :update, changes: %{ primary: true } }) when not is_nil(parent_id) do
     Query.default()
     |> Query.with_parent(parent_id)
@@ -320,18 +320,4 @@ defmodule BlueJet.Catalogue.Product do
   end
 
   def process(product, _), do: {:ok, product}
-
-  #
-  # MARK: External Resources
-  #
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file,
-    field: :avatar
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Product"
-
-  def put_external_resources(product, _, _), do: product
 end
