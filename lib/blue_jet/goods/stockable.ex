@@ -102,18 +102,4 @@ defmodule BlueJet.Goods.Stockable do
     change(stockable)
     |> Map.put(:action, :delete)
   end
-
-  ######
-  # External Resources
-  #####
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file,
-    field: :avatar
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Stockable"
-
-  def put_external_resources(stockable, _, _), do: stockable
 end

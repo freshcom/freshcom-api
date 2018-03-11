@@ -136,18 +136,11 @@ defmodule BlueJet.Balance.Refund do
   end
 
   #
-  # MARK: External Resources
+  # MARK: Process
   #
   def get_account(refund) do
     refund.account || IdentityService.get_account(refund)
   end
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Refund"
-
-  def put_external_resources(refund, _, _), do: refund
 
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
   def process(refund = %{ gateway: "freshcom" }, %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }) do

@@ -145,14 +145,4 @@ defmodule BlueJet.Crm.PointTransaction do
   end
 
   def process(point_transaction, _), do: {:ok, point_transaction}
-
-  #
-  # File
-  #
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "PointTransaction"
-
-  def put_external_resources(point_transaction, _, _), do: point_transaction
 end

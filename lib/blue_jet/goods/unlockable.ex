@@ -90,18 +90,4 @@ defmodule BlueJet.Goods.Unlockable do
     change(unlockable)
     |> Map.put(:action, :delete)
   end
-
-  ######
-  # External Resources
-  #####
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file,
-    field: :avatar
-
-  use BlueJet.FileStorage.Macro,
-    put_external_resources: :file_collection,
-    field: :file_collections,
-    owner_type: "Unlockable"
-
-  def put_external_resources(unlockable, _, _), do: unlockable
 end

@@ -1,61 +1,7 @@
 defmodule BlueJet.FileStorage do
   use BlueJet, :context
 
-  alias BlueJet.FileStorage
   alias BlueJet.FileStorage.Service
-
-  ####
-  # Macro
-  ####
-  defmodule Macro do
-    def put_external_resources_ef(field) do
-      foreign_key = String.to_atom(Atom.to_string(field) <> "_id")
-
-      quote do
-        def put_external_resources(resource = %{ unquote(foreign_key) => nil }, {unquote(field), nil}, _), do: resource
-
-        def put_external_resources(resource = %{ unquote(foreign_key) => ef_id }, {unquote(field), nil}, %{ account: account, locale: locale }) do
-          {:ok, %{ data: ef }} = FileStorage.do_get_file(%AccessRequest{
-            account: account,
-            params: %{ "id" => ef_id },
-            locale: locale
-          })
-
-          Map.put(resource, unquote(field), ef)
-        end
-      end
-    end
-
-    def put_external_resources_efc(field, owner_type) do
-      quote do
-        def put_external_resources(resource, {unquote(field), efc_preloads}, %{ account: account, role: role, locale: locale }) do
-          request = %AccessRequest{
-            account: account,
-            filter: %{ owner_id: resource.id, owner_type: unquote(owner_type) },
-            pagination: %{ size: 5, number: 1 },
-            preloads: listify(efc_preloads),
-            role: role,
-            locale: locale
-          }
-
-          {:ok, %{ data: efcs }} =
-            request
-            |> AccessRequest.transform_by_role()
-            |> FileStorage.do_list_file_collection()
-
-          Map.put(resource, unquote(field), efcs)
-        end
-      end
-    end
-
-    defmacro __using__(put_external_resources: :file, field: field) do
-      put_external_resources_ef(field)
-    end
-
-    defmacro __using__(put_external_resources: :file_collection, field: field, owner_type: owner_type) do
-      put_external_resources_efc(field, owner_type)
-    end
-  end
 
   #
   # MARK: File
