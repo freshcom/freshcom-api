@@ -128,6 +128,7 @@ config :blue_jet, :notification, %{
 }
 
 config :blue_jet, :catalogue, %{
+  service: BlueJet.Catalogue.DefaultService,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
   file_storage_service: BlueJet.FileStorage.Service

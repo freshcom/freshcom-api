@@ -278,7 +278,7 @@ defmodule BlueJet.Catalogue do
   end
 
   #
-  # ProductCollectionMembership
+  # MARK: Product Collection Membership
   #
   defp filter_membership_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
     request = %{ request | filter: Map.put(request.filter, :product_status, "active") }

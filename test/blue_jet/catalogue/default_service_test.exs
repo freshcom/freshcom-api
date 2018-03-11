@@ -3,11 +3,9 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
-  alias BlueJet.Catalogue.Service
+  alias BlueJet.Catalogue.DefaultService
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership}
   alias BlueJet.Catalogue.GoodsServiceMock
-
-  setup :verify_on_exit!
 
   describe "list_product/2" do
     test "product for different account is not returned" do
@@ -26,7 +24,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      products = Service.list_product(%{ account: account })
+      products = DefaultService.list_product(%{ account: account })
       assert length(products) == 2
     end
 
@@ -53,10 +51,10 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      products = Service.list_product(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      products = DefaultService.list_product(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(products) == 3
 
-      products = Service.list_product(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      products = DefaultService.list_product(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(products) == 2
     end
   end
@@ -66,7 +64,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account = Repo.insert!(%Account{})
       fields = %{}
 
-      {:error, changeset} = Service.create_product(fields, %{ account: account })
+      {:error, changeset} = DefaultService.create_product(fields, %{ account: account })
 
       assert changeset.valid? == false
     end
@@ -85,7 +83,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
           %Stockable{ account_id: account.id }
          end)
 
-      {:ok, product} = Service.create_product(fields, %{ account: account })
+      {:ok, product} = DefaultService.create_product(fields, %{ account: account })
 
       assert product
     end
@@ -99,7 +97,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      assert Service.get_product(%{ id: product.id }, %{ account: account })
+      assert DefaultService.get_product(%{ id: product.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -110,19 +108,19 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      refute Service.get_product(%{ id: product.id }, %{ account: account })
+      refute DefaultService.get_product(%{ id: product.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_product(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_product(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_product/2" do
     test "when given nil for product" do
-      {:error, error} = Service.update_product(nil, %{}, %{})
+      {:error, error} = DefaultService.update_product(nil, %{}, %{})
 
       assert error == :not_found
     end
@@ -130,7 +128,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_product(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product(Ecto.UUID.generate(), %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -143,7 +141,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:error, error} = Service.update_product(product.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product(product.id, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -161,7 +159,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, product} = Service.update_product(product.id, fields, %{ account: account })
+      {:ok, product} = DefaultService.update_product(product.id, fields, %{ account: account })
 
       assert product
     end
@@ -175,7 +173,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:ok, product} = Service.delete_product(product, %{ account: account })
+      {:ok, product} = DefaultService.delete_product(product, %{ account: account })
 
       assert product
       refute Repo.get(Product, product.id)
@@ -199,7 +197,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      product_collections = Service.list_product_collection(%{ account: account })
+      product_collections = DefaultService.list_product_collection(%{ account: account })
       assert length(product_collections) == 2
     end
 
@@ -226,10 +224,10 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      product_collections = Service.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      product_collections = DefaultService.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(product_collections) == 3
 
-      product_collections = Service.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      product_collections = DefaultService.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(product_collections) == 2
     end
   end
@@ -239,7 +237,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account = Repo.insert!(%Account{})
       fields = %{}
 
-      {:error, changeset} = Service.create_product_collection(fields, %{ account: account })
+      {:error, changeset} = DefaultService.create_product_collection(fields, %{ account: account })
 
       assert changeset.valid? == false
     end
@@ -251,7 +249,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, product_collection} = Service.create_product_collection(fields, %{ account: account })
+      {:ok, product_collection} = DefaultService.create_product_collection(fields, %{ account: account })
 
       assert product_collection
     end
@@ -265,7 +263,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      assert Service.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+      assert DefaultService.get_product_collection(%{ id: product_collection.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -276,19 +274,19 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      refute Service.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+      refute DefaultService.get_product_collection(%{ id: product_collection.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_product_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_product_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_product_collection/2" do
     test "when given nil for product_collection" do
-      {:error, error} = Service.update_product_collection(nil, %{}, %{})
+      {:error, error} = DefaultService.update_product_collection(nil, %{}, %{})
 
       assert error == :not_found
     end
@@ -296,7 +294,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_product_collection(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product_collection(Ecto.UUID.generate(), %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -309,7 +307,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:error, error} = Service.update_product_collection(product_collection.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product_collection(product_collection.id, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -325,7 +323,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, product_collection} = Service.update_product_collection(product_collection.id, fields, %{ account: account })
+      {:ok, product_collection} = DefaultService.update_product_collection(product_collection.id, fields, %{ account: account })
 
       assert product_collection
     end
@@ -339,7 +337,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:ok, product_collection} = Service.delete_product_collection(product_collection, %{ account: account })
+      {:ok, product_collection} = DefaultService.delete_product_collection(product_collection, %{ account: account })
 
       assert product_collection
       refute Repo.get(ProductCollection, product_collection.id)
@@ -393,7 +391,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         collection_id: collection.id
       })
 
-      product_collection_memberships = Service.list_product_collection_membership(%{ account: account })
+      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account })
       assert length(product_collection_memberships) == 2
     end
 
@@ -469,10 +467,10 @@ defmodule BlueJet.Catalogue.ServiceTest do
         collection_id: collection.id
       })
 
-      product_collection_memberships = Service.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(product_collection_memberships) == 3
 
-      product_collection_memberships = Service.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(product_collection_memberships) == 2
     end
   end

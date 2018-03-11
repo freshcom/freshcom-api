@@ -1,7 +1,6 @@
 defmodule BlueJet.Catalogue.EventHandler do
   @behaviour BlueJet.EventHandler
 
-  alias BlueJet.Repo
   alias BlueJet.Catalogue.Service
 
   def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do

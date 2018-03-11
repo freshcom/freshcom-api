@@ -60,6 +60,7 @@ config :blue_jet, :notification, %{
 }
 
 config :blue_jet, :catalogue, %{
+  service: BlueJet.Catalogue.ServiceMock,
   identity_service: BlueJet.Catalogue.IdentityServiceMock,
   goods_service: BlueJet.Catalogue.GoodsServiceMock,
   file_storage_service: BlueJet.Catalogue.FileStorageServiceMock
