@@ -69,7 +69,7 @@ defmodule BlueJet.Balance.DefaultService do
     |> update_settings(fields, opts)
   end
 
-  def delete_settings(settings = %Settings{}, opts) do
+  def delete_settings(settings = %Settings{}, _) do
     with {:ok, settings} <- Repo.delete(settings) do
       {:ok, settings}
     else

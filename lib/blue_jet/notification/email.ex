@@ -2,7 +2,7 @@ defmodule BlueJet.Notification.Email do
   use BlueJet, :data
 
   alias BlueJet.Identity.User
-  alias BlueJet.Notification.Trigger
+  alias BlueJet.Notification.{Trigger, EmailTemplate}
 
   schema "emails" do
     field :account_id, Ecto.UUID
