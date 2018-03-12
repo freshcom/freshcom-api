@@ -1,10 +1,10 @@
-defmodule BlueJet.Fulfillment.ServiceTest do
+defmodule BlueJet.Fulfillment.DefaultServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
   alias BlueJet.Goods.Unlockable
-  alias BlueJet.Fulfillment.Service
+  alias BlueJet.Fulfillment.DefaultService
   alias BlueJet.Fulfillment.Unlock
 
   describe "list_unlock/2" do
@@ -25,7 +25,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       })
 
-      unlocks = Service.list_unlock(%{ customer_id: customer.id }, %{ account: account })
+      unlocks = DefaultService.list_unlock(%{ customer_id: customer.id }, %{ account: account })
       assert length(unlocks) == 0
     end
 
@@ -45,7 +45,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       })
 
-      unlocks = Service.list_unlock(%{ customer_id: customer.id }, %{ account: account })
+      unlocks = DefaultService.list_unlock(%{ customer_id: customer.id }, %{ account: account })
       assert length(unlocks) == 1
     end
   end
@@ -67,7 +67,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       })
 
-      count = Service.count_unlock(%{ customer_id: customer.id }, %{ account: account })
+      count = DefaultService.count_unlock(%{ customer_id: customer.id }, %{ account: account })
       assert count == 1
     end
   end
@@ -76,7 +76,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
 
-      {:error, changeset} = Service.create_unlock(%{}, %{ account: account })
+      {:error, changeset} = DefaultService.create_unlock(%{}, %{ account: account })
       assert changeset.valid? == false
       assert length(changeset.errors) > 0
     end
@@ -97,7 +97,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         "unlockable_id" => unlockable.id
       }
 
-      {:ok, unlock} = Service.create_unlock(fields, %{ account: account })
+      {:ok, unlock} = DefaultService.create_unlock(fields, %{ account: account })
 
       assert unlock
     end
@@ -107,7 +107,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_unlock(%{ customer_id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_unlock(%{ customer_id: Ecto.UUID.generate() }, %{ account: account })
     end
 
     test "when given valid fields" do
@@ -131,14 +131,14 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       }
 
-      unlock = Service.get_unlock(fields, %{ account: account })
+      unlock = DefaultService.get_unlock(fields, %{ account: account })
       assert unlock
     end
   end
 
   describe "delete_unlock/2" do
     test "when given unlock is nil" do
-      {:error, error} = Service.delete_unlock(nil, %{})
+      {:error, error} = DefaultService.delete_unlock(nil, %{})
       assert error == :not_found
     end
 
@@ -158,7 +158,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       })
 
-      {:ok, _} = Service.delete_unlock(unlock, %{ account: account })
+      {:ok, _} = DefaultService.delete_unlock(unlock, %{ account: account })
     end
 
     test "when given id is valid" do
@@ -177,7 +177,7 @@ defmodule BlueJet.Fulfillment.ServiceTest do
         unlockable_id: unlockable.id
       })
 
-      {:ok, _} = Service.delete_unlock(unlock.id, %{ account: account })
+      {:ok, _} = DefaultService.delete_unlock(unlock.id, %{ account: account })
     end
   end
 end

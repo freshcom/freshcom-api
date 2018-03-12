@@ -4,6 +4,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem.Query do
   alias BlueJet.Fulfillment.FulfillmentItem
 
   @filterable_fields [
+    :id,
     :source_type,
     :source_id,
     :order_line_item_id,
@@ -11,11 +12,11 @@ defmodule BlueJet.Fulfillment.FulfillmentItem.Query do
   ]
 
   def default() do
-    from fli in FulfillmentItem
+    from fi in FulfillmentItem
   end
 
   def for_account(query, account_id) do
-    from fli in query, where: fli.account_id == ^account_id
+    from fi in query, where: fi.account_id == ^account_id
   end
 
   def filter_by(query, filter) do

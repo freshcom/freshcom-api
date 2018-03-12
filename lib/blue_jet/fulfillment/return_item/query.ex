@@ -4,6 +4,7 @@ defmodule BlueJet.Fulfillment.ReturnItem.Query do
   alias BlueJet.Fulfillment.ReturnItem
 
   @filterable_fields [
+    :id,
     :source_type,
     :source_id,
     :order_line_item_id,

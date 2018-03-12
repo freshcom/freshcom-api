@@ -4,12 +4,13 @@ defmodule BlueJet.Fulfillment.Unlock.Query do
   alias BlueJet.Fulfillment.Unlock
 
   @filterable_fields [
+    :id,
     :customer_id,
     :unlockable_id
   ]
 
   def default() do
-    from(u in Unlock, order_by: [desc: u.inserted_at])
+    from u in Unlock
   end
 
   def filter_by(query, filter) do

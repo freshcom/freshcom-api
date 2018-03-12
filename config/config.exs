@@ -146,6 +146,7 @@ config :blue_jet, :data_trading, %{
 }
 
 config :blue_jet, :fulfillment, %{
+  service: BlueJet.Fulfillment.DefaultService,
   identity_service: BlueJet.Identity.Service,
   crm_service: BlueJet.Crm.Service,
   goods_service: BlueJet.Goods.Service,

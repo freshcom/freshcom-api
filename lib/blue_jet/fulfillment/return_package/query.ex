@@ -4,11 +4,12 @@ defmodule BlueJet.Fulfillment.ReturnPackage.Query do
   alias BlueJet.Fulfillment.{ReturnPackage, ReturnItem}
 
   @filterable_fields [
+    :id,
     :order_id
   ]
 
   def default() do
-    from fp in ReturnPackage, order_by: [desc: fp.inserted_at]
+    from fp in ReturnPackage
   end
 
   def for_account(query, account_id) do

@@ -1,6 +1,5 @@
 defmodule BlueJet.Fulfillment do
   use BlueJet, :context
-  use BlueJet.EventEmitter, namespace: :fulfillment
 
   alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.Service
