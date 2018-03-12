@@ -148,12 +148,12 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def delete_all_product(opts = %{ account: account = %{ mode: "test" }}) do
-    bulk_size = opts[:bulk_size] || 1000
+    batch_size = opts[:batch_size] || 1000
 
     product_ids =
       Product.Query.default()
       |> Product.Query.for_account(account.id)
-      |> Product.Query.paginate(size: bulk_size, number: 1)
+      |> Product.Query.paginate(size: batch_size, number: 1)
       |> Product.Query.id_only()
       |> Repo.all()
 
@@ -161,7 +161,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> Product.Query.filter_by(%{ id: product_ids })
     |> Repo.delete_all()
 
-    if length(product_ids) === bulk_size do
+    if length(product_ids) === batch_size do
       delete_all_product(opts)
     else
       :ok
@@ -286,12 +286,12 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def delete_all_product_collection(opts = %{ account: account = %{ mode: "test" }}) do
-    bulk_size = opts[:bulk_size] || 1000
+    batch_size = opts[:batch_size] || 1000
 
     product_ids =
       ProductCollection.Query.default()
       |> ProductCollection.Query.for_account(account.id)
-      |> ProductCollection.Query.paginate(size: bulk_size, number: 1)
+      |> ProductCollection.Query.paginate(size: batch_size, number: 1)
       |> ProductCollection.Query.id_only()
       |> Repo.all()
 
@@ -299,7 +299,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> ProductCollection.Query.filter_by(%{ id: product_ids })
     |> Repo.delete_all()
 
-    if length(product_ids) === bulk_size do
+    if length(product_ids) === batch_size do
       delete_all_product_collection(opts)
     else
       :ok

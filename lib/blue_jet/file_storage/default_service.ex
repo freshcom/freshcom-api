@@ -142,12 +142,12 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_all_file(opts = %{ account: account = %{ mode: "test" } }) do
-    bulk_size = opts[:bulk_size] || 500
+    batch_size = opts[:batch_size] || 500
 
     files =
       File.Query.default()
       |> File.Query.for_account(account.id)
-      |> File.Query.paginate(size: bulk_size, number: 1)
+      |> File.Query.paginate(size: batch_size, number: 1)
       |> Repo.all()
 
     file_ids = Enum.map(files, fn(file) -> file.id end)
@@ -158,7 +158,7 @@ defmodule BlueJet.FileStorage.DefaultService do
 
     File.delete_s3_object(files)
 
-    if length(file_ids) === bulk_size do
+    if length(file_ids) === batch_size do
       delete_all_file(opts)
     else
       :ok
@@ -292,12 +292,12 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_all_file_collection(opts = %{ account: account = %{ mode: "test" } }) do
-    bulk_size = opts[:bulk_size] || 1000
+    batch_size = opts[:batch_size] || 1000
 
     file_collection_ids =
       FileCollection.Query.default()
       |> FileCollection.Query.for_account(account.id)
-      |> FileCollection.Query.paginate(size: bulk_size, number: 1)
+      |> FileCollection.Query.paginate(size: batch_size, number: 1)
       |> FileCollection.Query.id_only()
       |> Repo.all()
 
@@ -305,7 +305,7 @@ defmodule BlueJet.FileStorage.DefaultService do
     |> FileCollection.Query.filter_by(%{ id: file_collection_ids })
     |> Repo.delete_all()
 
-    if length(file_collection_ids) === bulk_size do
+    if length(file_collection_ids) === batch_size do
       delete_all_file_collection(opts)
     else
       :ok

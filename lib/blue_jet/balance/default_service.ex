@@ -183,12 +183,12 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def delete_all_card(opts = %{ account: account = %{ mode: "test" } }) do
-    bulk_size = opts[:bulk_size] || 1000
+    batch_size = opts[:batch_size] || 1000
 
     card_ids =
       Card.Query.default()
       |> Card.Query.for_account(account.id)
-      |> Card.Query.paginate(size: bulk_size, number: 1)
+      |> Card.Query.paginate(size: batch_size, number: 1)
       |> Card.Query.id_only()
       |> Repo.all()
 
@@ -196,7 +196,7 @@ defmodule BlueJet.Balance.DefaultService do
     |> Card.Query.filter_by(%{ id: card_ids })
     |> Repo.delete_all()
 
-    if length(card_ids) === bulk_size do
+    if length(card_ids) === batch_size do
       delete_all_card(opts)
     else
       :ok
@@ -359,12 +359,12 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def delete_all_payment(opts = %{ account: account = %{ mode: "test" } }) do
-    bulk_size = opts[:bulk_size] || 1000
+    batch_size = opts[:batch_size] || 1000
 
     payment_ids =
       Payment.Query.default()
       |> Payment.Query.for_account(account.id)
-      |> Payment.Query.paginate(size: bulk_size, number: 1)
+      |> Payment.Query.paginate(size: batch_size, number: 1)
       |> Payment.Query.id_only()
       |> Repo.all()
 
@@ -372,7 +372,7 @@ defmodule BlueJet.Balance.DefaultService do
     |> Payment.Query.filter_by(%{ id: payment_ids })
     |> Repo.delete_all()
 
-    if length(payment_ids) === bulk_size do
+    if length(payment_ids) === batch_size do
       delete_all_payment(opts)
     else
       :ok
