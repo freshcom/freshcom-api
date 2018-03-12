@@ -5,6 +5,7 @@ defmodule BlueJet.GoodsTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Goods
   alias BlueJet.Goods.{Stockable, Unlockable}
+  alias BlueJet.Goods.ServiceMock
 
   describe "list_stockable/1" do
     test "when role is not authorized" do
@@ -15,26 +16,39 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-
+    test "when using customer identity" do
+      account = %Account{}
       request = %AccessRequest{
         account: account,
-        role: "developer"
+        role: "customer"
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:list_stockable, fn(params, opts) ->
+          assert params[:filter][:status] == "active"
+          assert opts[:account] == account
+
+          [%Stockable{}]
+         end)
+      |> expect(:count_stockable, fn(params, opts) ->
+          assert params[:filter][:status] == "active"
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_stockable, fn(params, opts) ->
+          assert params[:filter][:status] == "active"
+          assert opts[:account] == account
+
+          1
+         end)
+
       {:ok, response} = Goods.list_stockable(request)
 
-      assert length(response.data)
-      assert Enum.at(response.data, 0).id == stockable.id
-      assert response.meta.locale == account.default_locale
+      assert length(response.data) == 1
       assert response.meta.all_count == 1
       assert response.meta.total_count == 1
     end
@@ -49,14 +63,13 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-
+    test "when request is valid" do
+      account = %Account{}
+      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
         fields: %{
-          "name" => Faker.String.base64(5),
+          "name" => Faker.Commerce.product_name(),
           "unit_of_measure" => Faker.String.base64(2)
         }
       }
@@ -64,9 +77,17 @@ defmodule BlueJet.GoodsTest do
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:create_stockable, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, stockable}
+         end)
+
       {:ok, response} = Goods.create_stockable(request)
 
-      assert response.data.id
+      assert response.data == stockable
     end
   end
 
@@ -79,25 +100,28 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-
+    test "when request is valid" do
+      account = %Account{}
+      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
-        params: %{ "id" => stockable.id }
+        params: %{ "id" => Ecto.UUID.generate() }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:get_stockable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          stockable
+         end)
+
       {:ok, response} = Goods.get_stockable(request)
 
-      assert response.data.id == stockable.id
+      assert response.data == stockable
     end
   end
 
@@ -110,28 +134,30 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-
-      new_name = Faker.String.base64(5)
+    test "when request is valid" do
+      account = %Account{}
+      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
         params: %{ "id" => stockable.id },
-        fields: %{ "name" => new_name }
+        fields: %{ "name" => Faker.Commerce.product_name() }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:update_stockable, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, stockable}
+         end)
+
       {:ok, response} = Goods.update_stockable(request)
 
-      assert response.data.id == stockable.id
-      assert response.data.name == new_name
+      assert response.data == stockable
     end
   end
 
@@ -144,25 +170,26 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-
+    test "when request is valid" do
+      account = %Account{}
+      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
-        params: %{ "id" => stockable.id }
+        params: %{ "id" => Ecto.UUID.generate() }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
-      {:ok, _} = Goods.delete_stockable(request)
+      ServiceMock
+      |> expect(:delete_stockable, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
 
-      refute Repo.get(Stockable, stockable.id)
+          {:ok, stockable}
+         end)
+
+      {:ok, _} = Goods.delete_stockable(request)
     end
   end
 
@@ -175,23 +202,30 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-
+    test "when request is valid" do
+      account = %Account{}
+      unlockable = %Unlockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
         fields: %{
-          "name" => Faker.String.base64(5)
+          "name" => Faker.Commerce.product_name()
         }
       }
 
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:create_unlockable, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, unlockable}
+         end)
+
       {:ok, response} = Goods.create_unlockable(request)
 
-      assert response.data.id
+      assert response.data == unlockable
     end
   end
 
@@ -204,27 +238,31 @@ defmodule BlueJet.GoodsTest do
       assert error == :access_denied
     end
 
-    test "when using developer identity" do
-      account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
-      new_name = Faker.String.base64(5)
+    test "when request is valid" do
+      account = %Account{}
+      unlockable = %Unlockable{}
       request = %AccessRequest{
         account: account,
         role: "developer",
-        params: %{ "id" => unlockable.id },
-        fields: %{ "name" => new_name }
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{ "name" => Faker.Commerce.product_name() }
       }
+
       AuthorizationMock
       |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
+      ServiceMock
+      |> expect(:update_unlockable, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, unlockable}
+         end)
+
       {:ok, response} = Goods.update_unlockable(request)
 
-      assert response.data.id == unlockable.id
-      assert response.data.name == new_name
+      assert response.data == unlockable
     end
   end
 end

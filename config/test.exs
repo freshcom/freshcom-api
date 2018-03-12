@@ -39,6 +39,7 @@ config :blue_jet, :file_storage, %{
 }
 
 config :blue_jet, :goods, %{
+  service: BlueJet.Goods.ServiceMock,
   identity_service: BlueJet.Goods.IdentityServiceMock,
   file_storage_service: BlueJet.Goods.FileStorageServiceMock
 }
