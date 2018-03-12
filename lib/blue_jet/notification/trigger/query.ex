@@ -8,6 +8,7 @@ defmodule BlueJet.Notification.Trigger.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :event,
     :action_target,

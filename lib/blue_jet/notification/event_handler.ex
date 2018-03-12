@@ -6,6 +6,20 @@ defmodule BlueJet.Notification.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
+  def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
+    Task.start(fn ->
+      Service.delete_all_trigger(%{ account: account })
+      Service.delete_all_email_template(%{ account: account })
+      Service.delete_all_email(%{ account: account })
+      Service.delete_all_sms(%{ account: account })
+      Service.delete_all_sms_template(%{ account: account })
+
+      Service.create_system_default_trigger(%{ account: account })
+    end)
+
+    {:ok, nil}
+  end
+
   # Creates the default email template and notification trigger for account when
   # an account is first created.
   def handle_event("identity.account.create.success", %{ account: account, test_account: test_account }) do

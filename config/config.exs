@@ -130,7 +130,7 @@ config :blue_jet, :crm, %{
 }
 
 config :blue_jet, :notification, %{
-  service: BlueJet.Notification.Service,
+  service: BlueJet.Notification.DefaultService,
   identity_service: BlueJet.Identity.Service
 }
 

@@ -9,6 +9,7 @@ defmodule BlueJet.Notification.Sms.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status
   ]
 

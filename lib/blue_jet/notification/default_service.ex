@@ -5,6 +5,8 @@ defmodule BlueJet.Notification.DefaultService do
   alias BlueJet.Notification.IdentityService
   alias BlueJet.Notification.{Trigger, Email, EmailTemplate, Sms, SmsTemplate}
 
+  @behaviour BlueJet.Notification.Service
+
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
   end
@@ -150,6 +152,27 @@ defmodule BlueJet.Notification.DefaultService do
     |> delete_trigger(opts)
   end
 
+  def delete_all_trigger(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    trigger_ids =
+      Trigger.Query.default()
+      |> Trigger.Query.for_account(account.id)
+      |> Trigger.Query.paginate(size: batch_size, number: 1)
+      |> Trigger.Query.id_only()
+      |> Repo.all()
+
+    Trigger.Query.default()
+    |> Trigger.Query.filter_by(%{ id: trigger_ids })
+    |> Repo.delete_all()
+
+    if length(trigger_ids) === batch_size do
+      delete_all_trigger(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: List Email
   #
@@ -177,6 +200,27 @@ defmodule BlueJet.Notification.DefaultService do
     |> Email.Query.filter_by(filter)
     |> Email.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
+  end
+
+  def delete_all_email(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    email_ids =
+      Email.Query.default()
+      |> Email.Query.for_account(account.id)
+      |> Email.Query.paginate(size: batch_size, number: 1)
+      |> Email.Query.id_only()
+      |> Repo.all()
+
+    Email.Query.default()
+    |> Email.Query.filter_by(%{ id: email_ids })
+    |> Repo.delete_all()
+
+    if length(email_ids) === batch_size do
+      delete_all_email(opts)
+    else
+      :ok
+    end
   end
 
   #
@@ -287,6 +331,27 @@ defmodule BlueJet.Notification.DefaultService do
     |> delete_email_template(opts)
   end
 
+  def delete_all_email_template(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    email_template_ids =
+      EmailTemplate.Query.default()
+      |> EmailTemplate.Query.for_account(account.id)
+      |> EmailTemplate.Query.paginate(size: batch_size, number: 1)
+      |> EmailTemplate.Query.id_only()
+      |> Repo.all()
+
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.filter_by(%{ id: email_template_ids })
+    |> Repo.delete_all()
+
+    if length(email_template_ids) === batch_size do
+      delete_all_email_template(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: List SMS
   #
@@ -314,6 +379,27 @@ defmodule BlueJet.Notification.DefaultService do
     |> Sms.Query.filter_by(filter)
     |> Sms.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
+  end
+
+  def delete_all_sms(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    sms_ids =
+      Sms.Query.default()
+      |> Sms.Query.for_account(account.id)
+      |> Sms.Query.paginate(size: batch_size, number: 1)
+      |> Sms.Query.id_only()
+      |> Repo.all()
+
+    Sms.Query.default()
+    |> Sms.Query.filter_by(%{ id: sms_ids })
+    |> Repo.delete_all()
+
+    if length(sms_ids) === batch_size do
+      delete_all_sms(opts)
+    else
+      :ok
+    end
   end
 
   #
@@ -381,5 +467,26 @@ defmodule BlueJet.Notification.DefaultService do
     SmsTemplate
     |> Repo.get_by(id: id, account_id: account.id)
     |> update_sms_template(fields, opts)
+  end
+
+  def delete_all_sms_template(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    sms_template_ids =
+      SmsTemplate.Query.default()
+      |> SmsTemplate.Query.for_account(account.id)
+      |> SmsTemplate.Query.paginate(size: batch_size, number: 1)
+      |> SmsTemplate.Query.id_only()
+      |> Repo.all()
+
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.filter_by(%{ id: sms_template_ids })
+    |> Repo.delete_all()
+
+    if length(sms_template_ids) === batch_size do
+      delete_all_sms_template(opts)
+    else
+      :ok
+    end
   end
 end
