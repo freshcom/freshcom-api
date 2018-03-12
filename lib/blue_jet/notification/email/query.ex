@@ -11,11 +11,12 @@ defmodule BlueJet.Notification.Email.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status
   ]
 
   def default() do
-    from e in Email, order_by: [desc: :updated_at]
+    from e in Email
   end
 
   def for_account(query, account_id) do

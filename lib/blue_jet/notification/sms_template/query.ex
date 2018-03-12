@@ -9,7 +9,7 @@ defmodule BlueJet.Notification.SmsTemplate.Query do
   ]
 
   def default() do
-    from st in SmsTemplate, order_by: [desc: :updated_at]
+    from st in SmsTemplate
   end
 
   def for_account(query, account_id) do

@@ -11,7 +11,7 @@ defmodule BlueJet.Notification.EmailTemplate.Query do
   ]
 
   def default() do
-    from et in EmailTemplate, order_by: [desc: :updated_at]
+    from et in EmailTemplate
   end
 
   def for_account(query, account_id) do

@@ -9,7 +9,7 @@ defmodule BlueJet.Notification.SmsTemplate do
   ], container: :translations
 
   alias BlueJet.Notification.Sms
-  alias BlueJet.Notification.SmsTemplate.Proxy
+  alias __MODULE__.Proxy
 
   schema "sms_templates" do
     field :account_id, Ecto.UUID

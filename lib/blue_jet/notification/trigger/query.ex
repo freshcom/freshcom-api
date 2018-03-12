@@ -15,7 +15,7 @@ defmodule BlueJet.Notification.Trigger.Query do
   ]
 
   def default() do
-    from t in Trigger, order_by: [desc: :updated_at]
+    from t in Trigger
   end
 
   def for_account(query, account_id) do

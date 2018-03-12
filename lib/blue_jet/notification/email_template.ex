@@ -12,7 +12,7 @@ defmodule BlueJet.Notification.EmailTemplate do
   ], container: :translations
 
   alias BlueJet.Notification.Email
-  alias BlueJet.Notification.EmailTemplate.Proxy
+  alias __MODULE__.Proxy
 
   schema "email_templates" do
     field :account_id, Ecto.UUID
