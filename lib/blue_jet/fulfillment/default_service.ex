@@ -23,22 +23,6 @@ defmodule BlueJet.Fulfillment.DefaultService do
   #
   # MARK: Fulfillment Package
   #
-  def create_fulfillment_package(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %FulfillmentPackage{ account_id: account.id, account: account, system_label: opts[:system_label] }
-      |> FulfillmentPackage.changeset(:insert, fields)
-
-    with {:ok, fulfillment_package} <- Repo.insert(changeset) do
-      fulfillment_package = preload(fulfillment_package, preloads[:path], preloads[:opts])
-      {:ok, fulfillment_package}
-    else
-      other -> other
-    end
-  end
-
   def list_fulfillment_package(fields \\ %{}, opts) do
     account = get_account(opts)
     pagination = get_pagination(opts)
@@ -61,6 +45,22 @@ defmodule BlueJet.Fulfillment.DefaultService do
     |> FulfillmentPackage.Query.filter_by(filter)
     |> FulfillmentPackage.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
+  end
+
+  def create_fulfillment_package(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %FulfillmentPackage{ account_id: account.id, account: account, system_label: opts[:system_label] }
+      |> FulfillmentPackage.changeset(:insert, fields)
+
+    with {:ok, fulfillment_package} <- Repo.insert(changeset) do
+      fulfillment_package = preload(fulfillment_package, preloads[:path], preloads[:opts])
+      {:ok, fulfillment_package}
+    else
+      other -> other
+    end
   end
 
   def delete_fulfillment_package(nil, _), do: {:error, :not_found}
@@ -95,6 +95,27 @@ defmodule BlueJet.Fulfillment.DefaultService do
     FulfillmentPackage
     |> Repo.get_by(id: id, account_id: account.id)
     |> delete_fulfillment_package(opts)
+  end
+
+  def delete_all_fulfillment_package(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    fulfillment_package_ids =
+      FulfillmentPackage.Query.default()
+      |> FulfillmentPackage.Query.for_account(account.id)
+      |> FulfillmentPackage.Query.paginate(size: batch_size, number: 1)
+      |> FulfillmentPackage.Query.id_only()
+      |> Repo.all()
+
+    FulfillmentPackage.Query.default()
+    |> FulfillmentPackage.Query.filter_by(%{ id: fulfillment_package_ids })
+    |> Repo.delete_all()
+
+    if length(fulfillment_package_ids) === batch_size do
+      delete_all_fulfillment_package(opts)
+    else
+      :ok
+    end
   end
 
   #
@@ -253,6 +274,27 @@ defmodule BlueJet.Fulfillment.DefaultService do
     |> Repo.aggregate(:count, :id)
   end
 
+  def delete_all_return_package(opts = %{ account: account = %{ mode: "test" } }) do
+    batch_size = opts[:batch_size] || 1000
+
+    return_package_ids =
+      ReturnPackage.Query.default()
+      |> ReturnPackage.Query.for_account(account.id)
+      |> ReturnPackage.Query.paginate(size: batch_size, number: 1)
+      |> ReturnPackage.Query.id_only()
+      |> Repo.all()
+
+    ReturnPackage.Query.default()
+    |> ReturnPackage.Query.filter_by(%{ id: return_package_ids })
+    |> Repo.delete_all()
+
+    if length(return_package_ids) === batch_size do
+      delete_all_return_package(opts)
+    else
+      :ok
+    end
+  end
+
   #
   # MARK: Return Item
   #
@@ -261,7 +303,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
     preloads = get_preloads(opts, account)
 
     changeset =
-      %ReturnItem{ account_id: account.id, account: account, package: opts[:package] }
+      %ReturnItem{ account_id: account.id, account: account, package: opts[:package] || %ReturnItem{}.package  }
       |> ReturnItem.changeset(:insert, fields)
 
     statements =

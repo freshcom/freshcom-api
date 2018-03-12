@@ -13,7 +13,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, Unlock}
-  alias BlueJet.Fulfillment.ReturnItem.Proxy
+  alias __MODULE__.Proxy
 
   schema "return_items" do
     field :account_id, Ecto.UUID

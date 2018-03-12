@@ -7,7 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateReturnPackage do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :customer_id, references(:customers, type: :binary_id, on_delete: :nilify_all)
-      add :order_id, references(:orders, type: :binary_id, on_delete: :nilify_all), null: false
+      add :order_id, references(:orders, type: :binary_id, on_delete: :nilify_all)
 
       add :system_label, :string
 

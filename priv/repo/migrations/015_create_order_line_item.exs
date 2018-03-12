@@ -7,7 +7,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :account_id, references(:accounts, type: :binary_id, on_delete: :delete_all), null: false
 
       add :parent_id, references(:order_line_items, type: :binary_id, on_delete: :delete_all)
-      add :price_id, references(:prices, type: :binary_id)
+      add :price_id, references(:prices, type: :binary_id, on_delete: :nilify_all)
       add :order_id, references(:orders, type: :binary_id, on_delete: :delete_all), null: false
       add :product_id, references(:products, type: :binary_id, on_delete: :nilify_all)
 

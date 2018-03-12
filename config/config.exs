@@ -98,6 +98,7 @@ config :blue_jet, :identity, %{
     BlueJet.Catalogue.EventHandler,
     BlueJet.DataTrading.EventHandler,
     BlueJet.FileStorage.EventHandler,
+    BlueJet.Fulfillment.EventHandler,
     BlueJet.Notification.EventHandler
   ]
 }
