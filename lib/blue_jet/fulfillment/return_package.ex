@@ -10,7 +10,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Fulfillment.ReturnPackage.Proxy
+  alias __MODULE__.Proxy
   alias BlueJet.Fulfillment.ReturnItem
 
   schema "return_packages" do

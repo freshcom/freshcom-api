@@ -12,7 +12,7 @@ defmodule BlueJet.Goods.Stockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.Stockable.Proxy
+  alias __MODULE__.Proxy
 
   schema "stockables" do
     field :account_id, Ecto.UUID

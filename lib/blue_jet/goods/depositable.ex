@@ -9,7 +9,7 @@ defmodule BlueJet.Goods.Depositable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.Depositable.Proxy
+  alias __MODULE__.Proxy
 
   schema "depositables" do
     field :account_id, Ecto.UUID

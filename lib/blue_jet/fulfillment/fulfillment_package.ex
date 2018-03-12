@@ -10,7 +10,7 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Fulfillment.FulfillmentPackage.Proxy
+  alias __MODULE__.Proxy
   alias BlueJet.Fulfillment.FulfillmentItem
 
   schema "fulfillment_packages" do

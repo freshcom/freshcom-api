@@ -9,16 +9,17 @@ defmodule BlueJet.Goods.Depositable.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label
   ]
 
   def default() do
-    from(d in Depositable, order_by: [desc: :updated_at])
+    from d in Depositable
   end
 
   def for_account(query, account_id) do
-    from(d in query, where: d.account_id == ^account_id)
+    from d in query, where: d.account_id == ^account_id
   end
 
   def search(query, keyword, locale, default_locale) do

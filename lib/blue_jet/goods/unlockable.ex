@@ -9,7 +9,7 @@ defmodule BlueJet.Goods.Unlockable do
     :custom_data
   ], container: :translations
 
-  alias BlueJet.Goods.Unlockable.Proxy
+  alias __MODULE__.Proxy
 
   schema "unlockables" do
     field :account_id, Ecto.UUID

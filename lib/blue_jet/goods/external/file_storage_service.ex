@@ -1,6 +1,4 @@
 defmodule BlueJet.Goods.FileStorageService do
-  alias BlueJet.FileStorage.File
-
   @file_storage_service Application.get_env(:blue_jet, :goods)[:file_storage_service]
 
   @callback delete_file(String.t, map) :: File.t | nil

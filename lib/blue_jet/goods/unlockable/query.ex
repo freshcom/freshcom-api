@@ -19,7 +19,7 @@ defmodule BlueJet.Goods.Unlockable.Query do
   end
 
   def for_account(query, account_id) do
-    from(u in query, where: u.account_id == ^account_id)
+    from u in query, where: u.account_id == ^account_id
   end
 
   def search(query, keyword, locale, default_locale) do

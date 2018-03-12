@@ -9,16 +9,17 @@ defmodule BlueJet.Goods.Stockable.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :label
   ]
 
   def default() do
-    from(s in Stockable, order_by: [desc: :updated_at])
+    from s in Stockable
   end
 
   def for_account(query, account_id) do
-    from(s in query, where: s.account_id == ^account_id)
+    from s in query, where: s.account_id == ^account_id
   end
 
   def search(query, keyword, locale, default_locale) do
