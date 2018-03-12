@@ -4,6 +4,8 @@ defmodule BlueJet.Goods.DefaultService do
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
   alias BlueJet.Goods.{IdentityService}
 
+  @behaviour BlueJet.Goods.Service
+
   defp get_account(opts) do
     opts[:account] || IdentityService.get_account(opts)
   end

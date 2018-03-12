@@ -59,6 +59,7 @@ config :blue_jet, :crm, %{
 }
 
 config :blue_jet, :notification, %{
+  service: BlueJet.Notification.ServiceMock,
   identity_service: BlueJet.Notification.IdentityServiceMock
 }
 

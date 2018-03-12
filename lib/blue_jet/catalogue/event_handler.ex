@@ -1,7 +1,7 @@
 defmodule BlueJet.Catalogue.EventHandler do
-  @behaviour BlueJet.EventHandler
-
   alias BlueJet.Catalogue.Service
+
+  @behaviour BlueJet.EventHandler
 
   def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
     Task.start(fn ->
