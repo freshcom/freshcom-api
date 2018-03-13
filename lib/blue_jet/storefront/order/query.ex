@@ -1,8 +1,7 @@
 defmodule BlueJet.Storefront.Order.Query do
   use BlueJet, :query
 
-  alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.OrderLineItem
+  alias BlueJet.Storefront.{Order, OrderLineItem}
 
   @searchable_fields [
     :name,
@@ -13,12 +12,13 @@ defmodule BlueJet.Storefront.Order.Query do
   ]
 
   @filterable_fields [
+    :id,
     :status,
     :customer_id
   ]
 
   def default() do
-    from(o in Order, order_by: [desc: o.opened_at, desc: o.inserted_at])
+    from o in Order
   end
 
   def search(query, keyword, locale, default_locale) do
@@ -30,7 +30,7 @@ defmodule BlueJet.Storefront.Order.Query do
   end
 
   def for_account(query, account_id) do
-    from(o in query, where: o.account_id == ^account_id)
+    from o in query, where: o.account_id == ^account_id
   end
 
   def preloads({:root_line_items, root_line_item_preloads}, options) do

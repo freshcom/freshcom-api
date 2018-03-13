@@ -60,7 +60,7 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def create_system_default_trigger(opts = %{ account: account }) do
+  def create_system_default_trigger(%{ account: account }) do
     # Password Reset
     email_template =
       account

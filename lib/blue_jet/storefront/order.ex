@@ -10,7 +10,7 @@ defmodule BlueJet.Storefront.Order do
   alias BlueJet.Utils
 
   alias BlueJet.Storefront.OrderLineItem
-  alias BlueJet.Storefront.Order.Proxy
+  alias __MODULE__.Proxy
 
   schema "orders" do
     field :account_id, Ecto.UUID

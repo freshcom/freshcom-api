@@ -86,6 +86,7 @@ config :blue_jet, :fulfillment, %{
 }
 
 config :blue_jet, :storefront, %{
+  service: BlueJet.Storefront.ServiceMock,
   balance_service: BlueJet.Storefront.BalanceServiceMock,
   fulfillment_service: BlueJet.Storefront.FulfillmentServiceMock,
   catalogue_service: BlueJet.Storefront.CatalogueServiceMock,

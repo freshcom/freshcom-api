@@ -38,6 +38,7 @@ Mox.defmock(BlueJet.Fulfillment.IdentityServiceMock, for: BlueJet.Fulfillment.Id
 Mox.defmock(BlueJet.Fulfillment.CrmServiceMock, for: BlueJet.Fulfillment.CrmService)
 Mox.defmock(BlueJet.Fulfillment.GoodsServiceMock, for: BlueJet.Fulfillment.GoodsService)
 
+Mox.defmock(BlueJet.Storefront.ServiceMock, for: BlueJet.Storefront.Service)
 Mox.defmock(BlueJet.Storefront.BalanceServiceMock, for: BlueJet.Storefront.BalanceService)
 Mox.defmock(BlueJet.Storefront.FulfillmentServiceMock, for: BlueJet.Storefront.FulfillmentService)
 Mox.defmock(BlueJet.Storefront.CatalogueServiceMock, for: BlueJet.Storefront.CatalogueService)

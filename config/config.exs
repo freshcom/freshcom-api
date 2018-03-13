@@ -99,7 +99,8 @@ config :blue_jet, :identity, %{
     BlueJet.DataTrading.EventHandler,
     BlueJet.FileStorage.EventHandler,
     BlueJet.Fulfillment.EventHandler,
-    BlueJet.Notification.EventHandler
+    BlueJet.Notification.EventHandler,
+    BlueJet.Storefront.EventHandler
   ]
 }
 
@@ -157,6 +158,7 @@ config :blue_jet, :fulfillment, %{
 }
 
 config :blue_jet, :storefront, %{
+  service: BlueJet.Storefront.DefaultService,
   balance_service: BlueJet.Balance.Service,
   fulfillment_service: BlueJet.Fulfillment.Service,
   catalogue_service: BlueJet.Catalogue.Service,

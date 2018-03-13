@@ -14,7 +14,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   alias BlueJet.Catalogue.Price
   alias BlueJet.Storefront.{CatalogueService, CrmService, FulfillmentService}
   alias BlueJet.Storefront.Order
-  alias BlueJet.Storefront.OrderLineItem.Proxy
+  alias __MODULE__.Proxy
 
   schema "order_line_items" do
     field :account_id, Ecto.UUID

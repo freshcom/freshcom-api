@@ -4,8 +4,17 @@ defmodule BlueJet.Storefront.EventHandler do
   alias BlueJet.Repo
   alias Ecto.Changeset
   alias BlueJet.Storefront.{Order, OrderLineItem}
+  alias BlueJet.Storefront.Service
 
   @behaviour BlueJet.EventHandler
+
+  def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
+    Task.start(fn ->
+      Service.delete_all_order(%{ account: account })
+    end)
+
+    {:ok, nil}
+  end
 
   def handle_event("balance.payment.create.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
     order =

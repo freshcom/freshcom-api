@@ -1,4 +1,4 @@
-defmodule BlueJet.Storefront.ServiceTest do
+defmodule BlueJet.Storefront.DefaultServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
@@ -6,7 +6,7 @@ defmodule BlueJet.Storefront.ServiceTest do
   alias BlueJet.Catalogue.Product
 
   alias BlueJet.Storefront.{CrmServiceMock, CatalogueServiceMock, BalanceServiceMock}
-  alias BlueJet.Storefront.Service
+  alias BlueJet.Storefront.DefaultService
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
   describe "list_order/2" do
@@ -17,7 +17,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
       Repo.insert!(%Order{ account_id: other_account.id, status: "opened" })
 
-      orders = Service.list_order(%{ account: account })
+      orders = DefaultService.list_order(%{ account: account })
       assert length(orders) == 2
     end
 
@@ -29,10 +29,10 @@ defmodule BlueJet.Storefront.ServiceTest do
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
 
-      orders = Service.list_order(%{ account: account, pagination: %{ size: 3, number: 1 } })
+      orders = DefaultService.list_order(%{ account: account, pagination: %{ size: 3, number: 1 } })
       assert length(orders) == 3
 
-      orders = Service.list_order(%{ account: account, pagination: %{ size: 3, number: 2 } })
+      orders = DefaultService.list_order(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(orders) == 2
     end
 
@@ -87,7 +87,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       preloads_path = [root_line_items: [:children, :product], customer: :point_account]
       preloads = %{ path: preloads_path }
 
-      orders = Service.list_order(%{ account: account, preloads: preloads })
+      orders = DefaultService.list_order(%{ account: account, preloads: preloads })
       assert length(orders) == 1
 
       order = Enum.at(orders, 0)
@@ -114,7 +114,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
       Repo.insert!(%Order{ account_id: other_account.id, status: "opened" })
 
-      assert Service.count_order(%{ account: account }) == 2
+      assert DefaultService.count_order(%{ account: account }) == 2
     end
 
     test "only order matching filter is counted" do
@@ -124,14 +124,14 @@ defmodule BlueJet.Storefront.ServiceTest do
       Repo.insert!(%Order{ account_id: account.id, status: "cart" })
       Repo.insert!(%Order{ account_id: account.id, status: "opened" })
 
-      assert Service.count_order(%{ filter: %{ status: "opened" } }, %{ account: account }) == 1
+      assert DefaultService.count_order(%{ filter: %{ status: "opened" } }, %{ account: account }) == 1
     end
   end
 
   describe "create_order/2" do
     test "when given valid fields" do
       account = Repo.insert!(%Account{})
-      {:ok, order} = Service.create_order(%{}, %{ account: account })
+      {:ok, order} = DefaultService.create_order(%{}, %{ account: account })
 
       assert order
     end
@@ -144,7 +144,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: account.id
       })
 
-      assert Service.get_order(%{ id: order.id }, %{ account: account })
+      assert DefaultService.get_order(%{ id: order.id }, %{ account: account })
     end
 
     test "when given id belongs to a different account" do
@@ -154,26 +154,26 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: other_account.id
       })
 
-      refute Service.get_order(%{ id: order.id }, %{ account: account })
+      refute DefaultService.get_order(%{ id: order.id }, %{ account: account })
     end
 
     test "when give id does not exist" do
       account = Repo.insert!(%Account{})
 
-      refute Service.get_order(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute DefaultService.get_order(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
   end
 
   describe "update_order/2" do
     test "when given nil for order" do
-      {:error, error} = Service.update_order(nil, %{}, %{})
+      {:error, error} = DefaultService.update_order(nil, %{}, %{})
       assert error == :not_found
     end
 
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = Service.update_order(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(Ecto.UUID.generate(), %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -184,7 +184,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: other_account.id
       })
 
-      {:error, error} = Service.update_order(order.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(order.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -194,7 +194,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: account.id
       })
 
-      {:error, changeset} = Service.update_order(order.id, %{ "status" => "regsitered" }, %{ account: account })
+      {:error, changeset} = DefaultService.update_order(order.id, %{ "status" => "regsitered" }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -210,7 +210,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         "fulfillment_method" => "pickup"
       }
 
-      {:ok, order} = Service.update_order(order.id, fields, %{ account: account })
+      {:ok, order} = DefaultService.update_order(order.id, fields, %{ account: account })
       assert order
     end
 
@@ -220,7 +220,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: account.id
       })
 
-      {:error, changeset} = Service.update_order(order, %{ "status" => "regsitered" }, %{ account: account })
+      {:error, changeset} = DefaultService.update_order(order, %{ "status" => "regsitered" }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -236,7 +236,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         "fulfillment_method" => "pickup"
       }
 
-      {:ok, order} = Service.update_order(order, fields, %{ account: account })
+      {:ok, order} = DefaultService.update_order(order, fields, %{ account: account })
       assert order
     end
   end
@@ -251,7 +251,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       BalanceServiceMock
       |> expect(:count_payment, fn(_, _) -> 1 end)
 
-      {:error, changeset} = Service.delete_order(order, %{ account: account })
+      {:error, changeset} = DefaultService.delete_order(order, %{ account: account })
       assert length(changeset.errors) == 1
     end
 
@@ -264,7 +264,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       BalanceServiceMock
       |> expect(:count_payment, fn(_, _) -> 0 end)
 
-      {:ok, order} = Service.delete_order(order, %{ account: account })
+      {:ok, order} = DefaultService.delete_order(order, %{ account: account })
       assert order
       refute Repo.get(Order, order.id)
     end
@@ -274,7 +274,7 @@ defmodule BlueJet.Storefront.ServiceTest do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
 
-      {:error, changeset} = Service.create_order_line_item(%{}, %{ account: account })
+      {:error, changeset} = DefaultService.create_order_line_item(%{}, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -293,14 +293,14 @@ defmodule BlueJet.Storefront.ServiceTest do
         "sub_total_cents" => 0
       }
 
-      {:ok, oli} = Service.create_order_line_item(fields, %{ account: account })
+      {:ok, oli} = DefaultService.create_order_line_item(fields, %{ account: account })
       assert oli
     end
   end
 
   describe "update_order_line_item/3" do
     test "when given nil for oli" do
-      {:error, error} = Service.update_order(nil, %{}, %{})
+      {:error, error} = DefaultService.update_order(nil, %{}, %{})
 
       assert error == :not_found
     end
@@ -312,7 +312,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         account_id: other_account.id
       })
 
-      {:error, error} = Service.update_order(order.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(order.id, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -336,7 +336,7 @@ defmodule BlueJet.Storefront.ServiceTest do
         "name" => nil
       }
 
-      {:error, changeset} = Service.update_order_line_item(order_line_item.id, fields, %{ account: account })
+      {:error, changeset} = DefaultService.update_order_line_item(order_line_item.id, fields, %{ account: account })
       assert changeset.valid? == false
       assert length(changeset.errors) > 0
     end
@@ -365,14 +365,14 @@ defmodule BlueJet.Storefront.ServiceTest do
         "name" => new_name
       }
 
-      {:ok, oli} = Service.update_order_line_item(oli.id, fields, %{ account: account })
+      {:ok, oli} = DefaultService.update_order_line_item(oli.id, fields, %{ account: account })
       assert oli.name == new_name
     end
   end
 
   describe "delete_order_line_item/2" do
     test "when given nil for oli" do
-      {:error, error} = Service.delete_order_line_item(nil, %{})
+      {:error, error} = DefaultService.delete_order_line_item(nil, %{})
       assert error == :not_found
     end
 
@@ -395,7 +395,7 @@ defmodule BlueJet.Storefront.ServiceTest do
       BalanceServiceMock
       |> expect(:list_payment, fn(_, _) -> [] end)
 
-      {:ok, oli} = Service.delete_order_line_item(oli.id, %{ account: account })
+      {:ok, oli} = DefaultService.delete_order_line_item(oli.id, %{ account: account })
       refute Repo.get(OrderLineItem, oli.id)
     end
   end
