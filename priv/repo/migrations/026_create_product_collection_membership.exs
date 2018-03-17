@@ -9,7 +9,7 @@ defmodule BlueJet.Repo.Migrations.CreateProductCollectionMembership do
       add :collection_id, references(:product_collections, on_delete: :delete_all, type: :binary_id)
       add :product_id, references(:products, on_delete: :delete_all, type: :binary_id)
 
-      add :sort_index, :integer, null: false, default: 100
+      add :sort_index, :integer, null: false, default: 1000
 
       timestamps()
     end

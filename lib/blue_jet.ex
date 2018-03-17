@@ -145,6 +145,10 @@ defmodule BlueJet do
     quote do
       import Ecto.Query
 
+      def order_by(query, order) do
+        from q in query, order_by: ^order
+      end
+
       def search_default_locale(query, columns, keyword) do
         keyword = "%#{keyword}%"
 

@@ -154,6 +154,7 @@ defmodule BlueJet.Goods.DefaultService do
     |> Unlockable.Query.filter_by(filter)
     |> Unlockable.Query.for_account(account.id)
     |> Unlockable.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Unlockable.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
