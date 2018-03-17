@@ -1,8 +1,10 @@
 defmodule BlueJetWeb.FileCollectionMembershipController do
   use BlueJetWeb, :controller
 
-  # alias JaSerializer.Params
-  # alias BlueJet.FileStorage
+  alias JaSerializer.Params
+  alias BlueJet.FileStorage
+
+  action_fallback BlueJetWeb.FallbackController
 
   plug :scrub_params, "data" when action in [:create, :update]
 
@@ -28,53 +30,60 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   #   render(conn, "index.json-api", data: efcms, opts: [meta: meta, include: conn.query_params["include"]])
   # end
 
-  # def create(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "file_collection_id" => efc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
-  #   fields = Map.merge(Params.to_attributes(data), %{ "collection_id" => efc_id })
-  #   request = %{
-  #     vas: assigns[:vas],
-  #     fields: fields,
-  #     preloads: assigns[:preloads]
-  #   }
+  def create(conn = %{ assigns: assigns }, %{ "file_collection_id" => fc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "collection_id" => fc_id },
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads]
+    }
 
-  #   case FileStorage.create_file_collection_membership(request) do
-  #     {:ok, efcm} ->
-  #       conn
-  #       |> put_status(:created)
-  #       |> render("show.json-api", data: efcm, opts: [include: conn.query_params["include"]])
-  #     {:error, changeset} ->
-  #       conn
-  #       |> put_status(:unprocessable_entity)
-  #       |> render(:errors, data: extract_errors(changeset))
-  #   end
-  # end
+    case FileStorage.create_file_collection_membership(request) do
+      {:ok, %{ data: fcm, meta: meta }} ->
+        conn
+        |> put_status(:created)
+        |> render("show.json-api", data: fcm, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-  # def update(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
-  #   request = %{
-  #     vas: assigns[:vas],
-  #     file_collection_membership_id: efcm_id,
-  #     fields: Params.to_attributes(data),
-  #     preloads: assigns[:preloads],
-  #     locale: assigns[:locale]
-  #   }
+      {:error, %AccessResponse{ errors: errors }} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
 
-  #   case FileStorage.update_file_collection_membership(request) do
-  #     {:ok, efcm} ->
-  #       render(conn, "show.json-api", data: efcm, opts: [include: conn.query_params["include"]])
-  #     {:error, changeset} ->
-  #       conn
-  #       |> put_status(:unprocessable_entity)
-  #       |> render(:errors, data: changeset)
-  #   end
-  # end
+      other -> other
+    end
+  end
 
-  # def delete(conn = %{ assigns: assigns = %{ vas: %{ account_id: _, user_id: _ } } }, %{ "id" => efcm_id }) do
-  #   request = %{
-  #     vas: assigns[:vas],
-  #     file_collection_membership_id: efcm_id
-  #   }
+  def update(conn = %{ assigns: assigns }, %{ "id" => fcm_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => fcm_id },
+      fields: Params.to_attributes(data),
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
 
-  #   FileStorage.delete_file_collection_membership!(request)
+    case FileStorage.update_file_collection_membership(request) do
+      {:ok, %{ data: fcm, meta: meta }} ->
+        render(conn, "show.json-api", data: fcm, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-  #   send_resp(conn, :no_content, "")
-  # end
+      {:error, %AccessResponse{ errors: errors }} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
+
+      other ->
+        other
+    end
+  end
+
+  def delete(conn = %{ assigns: assigns }, %{ "id" => fcm_id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => fcm_id }
+    }
+
+    {:ok, _} = FileStorage.delete_file_collection_membership(request)
+
+    send_resp(conn, :no_content, "")
+  end
 end

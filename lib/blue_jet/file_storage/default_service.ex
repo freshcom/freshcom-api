@@ -233,6 +233,7 @@ defmodule BlueJet.FileStorage.DefaultService do
     |> Repo.get_by(fields)
     |> preload(preloads[:path], preloads[:opts])
     |> FileCollection.put_file_urls()
+    |> FileCollection.put_file_count()
   end
 
   def update_file_collection(nil, _, _), do: {:error, :not_found}
@@ -315,6 +316,51 @@ defmodule BlueJet.FileStorage.DefaultService do
   #
   # MARK: File Collection Membership
   #
+  def create_file_collection_membership(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %FileCollectionMembership{ account_id: account.id, account: account }
+      |> FileCollectionMembership.changeset(:insert, fields)
+
+    case Repo.insert(changeset) do
+      {:ok, fcm} ->
+        fcm = preload(fcm, preloads[:path], preloads[:opts])
+        {:ok, fcm}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_file_collection_membership(nil, _, _), do: {:error, :not_found}
+
+  def update_file_collection_membership(fcm = %FileCollectionMembership{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ fcm | account: account }
+      |> FileCollectionMembership.changeset(:update, fields)
+
+    with {:ok, fcm} <- Repo.update(changeset) do
+      fcm = preload(fcm, preloads[:path], preloads[:opts])
+      {:ok, fcm}
+    else
+      other -> other
+    end
+  end
+
+  def update_file_collection_membership(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    FileCollectionMembership
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_file_collection_membership(fields, opts)
+  end
+
   def delete_file_collection_membership(nil, _), do: {:error, :not_found}
 
   def delete_file_collection_membership(fcm = %FileCollectionMembership{}, opts) do

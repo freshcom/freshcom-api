@@ -2,8 +2,6 @@ defmodule BlueJetWeb.FileCollectionView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.FileStorage.FileCollection
-
   attributes [
     :status,
     :code,
@@ -21,14 +19,11 @@ defmodule BlueJetWeb.FileCollectionView do
   ]
 
   has_many :files, serializer: BlueJetWeb.FileView, identifiers: :when_included
+  has_many :memberships, serializer: BlueJetWeb.FileCollectionMembershipView, identifiers: :when_included
   has_one :owner, serializer: BlueJetWeb.IdentifierView, identifiers: :always
 
   def type do
     "FileCollection"
-  end
-
-  def file_count(efc, _conn) do
-    FileCollection.file_count(efc)
   end
 
   def owner(struct, _) do

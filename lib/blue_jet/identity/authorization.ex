@@ -26,6 +26,9 @@ defmodule BlueJet.Identity.Authorization do
     "file_storage.get_file_collection",
     "file_storage.update_file_collection",
     "file_storage.delete_file_collection",
+    "file_storage.create_file_collection_membership",
+    "file_storage.update_file_collection_membership",
+    "file_storage.delete_file_collection_membership",
 
     "goods.list_stockable",
     "goods.create_stockable",
@@ -246,6 +249,9 @@ defmodule BlueJet.Identity.Authorization do
       "file_storage.get_file_collection",
       "file_storage.update_file_collection",
       "file_storage.delete_file_collection",
+      "file_storage.create_file_collection_membership",
+      "file_storage.update_file_collection_membership",
+      "file_storage.delete_file_collection_membership",
 
       "identity.list_stockable",
       "identity.get_stockable",
@@ -308,7 +314,9 @@ defmodule BlueJet.Identity.Authorization do
       "identity.create_password_reset_token",
       "identity.update_password",
       "identity.create_email_verification_token",
-      "identity.create_email_verification"
+      "identity.create_email_verification",
+      "file_storage.create_file_collection_membership",
+      "file_storage.delete_file_collection_membership"
     ],
 
     "goods_specialist" => [
@@ -320,6 +328,9 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
+      "file_storage.create_file_collection_membership",
+      "file_storage.update_file_collection_membership",
+      "file_storage.delete_file_collection_membership",
 
       "file_storage.list_file",
       "file_storage.create_file",
@@ -391,6 +402,9 @@ defmodule BlueJet.Identity.Authorization do
       "file_storage.get_file_collection",
       "file_storage.update_file_collection",
       "file_storage.delete_file_collection",
+      "file_storage.create_file_collection_membership",
+      "file_storage.update_file_collection_membership",
+      "file_storage.delete_file_collection_membership",
 
       "goods.list_stockable",
       "goods.create_stockable",
@@ -515,6 +529,9 @@ defmodule BlueJet.Identity.Authorization do
       "file_storage.get_file_collection",
       "file_storage.update_file_collection",
       "file_storage.delete_file_collection",
+      "file_storage.create_file_collection_membership",
+      "file_storage.update_file_collection_membership",
+      "file_storage.delete_file_collection_membership",
 
       "goods.list_stockable",
       "goods.create_stockable",

@@ -17,6 +17,8 @@ defmodule BlueJet.FileStorage.Service do
   @callback delete_file_collection(String.t | FileCollection.t, map) :: {:ok, FileCollection.t} | {:error, any}
   @callback delete_all_file_collection(map) :: :ok
 
+  @callback create_file_collection_membership(map, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
+  @callback update_file_collection_membership(String.t | FileCollectionMembership.t, map, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
   @callback delete_file_collection_membership(String.t | FileCollectionMembership.t, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
 
   defdelegate list_file(params, opts), to: @service
@@ -35,5 +37,7 @@ defmodule BlueJet.FileStorage.Service do
   defdelegate delete_file_collection(id_or_file_collection, opts), to: @service
   defdelegate delete_all_file_collection(opts), to: @service
 
+  defdelegate create_file_collection_membership(fields, opts), to: @service
   defdelegate delete_file_collection_membership(id_or_fcm, opts), to: @service
+  defdelegate update_file_collection_membership(id_or_fcm, fields, opts), to: @service
 end

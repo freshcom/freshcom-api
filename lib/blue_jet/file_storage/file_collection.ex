@@ -30,10 +30,12 @@ defmodule BlueJet.FileStorage.FileCollection do
     field :owner_id, Ecto.UUID
     field :owner_type, :string
 
+    field :file_count, :integer, virtual: true
+
     timestamps()
 
-    has_many :file_memberships, FileCollectionMembership, foreign_key: :collection_id
-    has_many :files, through: [:file_memberships, :file]
+    has_many :memberships, FileCollectionMembership, foreign_key: :collection_id
+    has_many :files, through: [:memberships, :file]
   end
 
   @type t :: Ecto.Schema.t
@@ -112,10 +114,14 @@ defmodule BlueJet.FileStorage.FileCollection do
     {:ok, file_collection}
   end
 
-  def file_count(%__MODULE__{ id: efc_id }) do
-    from(efcm in FileCollectionMembership,
-      select: count(efcm.id),
-      where: efcm.collection_id == ^efc_id)
-    |> Repo.one()
+  def file_count(%__MODULE__{ id: collection_id }) do
+    FileCollectionMembership.Query.default()
+    |> FileCollectionMembership.Query.for_collection(collection_id)
+    |> FileCollectionMembership.Query.with_file_status("uploaded")
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def put_file_count(file_collection) do
+    %{ file_collection | file_count: file_count(file_collection) }
   end
 end

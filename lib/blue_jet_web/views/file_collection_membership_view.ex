@@ -2,35 +2,32 @@ defmodule BlueJetWeb.FileCollectionMembershipView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
-  alias BlueJet.Repo
-
   attributes [
     :sort_index,
     :inserted_at,
     :updated_at
   ]
 
-  has_one :collection, serializer: BlueJetWeb.FileCollectionView
-  has_one :file, serializer: BlueJetWeb.FileView
+  has_one :collection, serializer: BlueJetWeb.FileCollectionView, identifiers: :always
+  has_one :file, serializer: BlueJetWeb.FileView, identifiers: :always
 
-  def collection(struct, %{ assigns: %{ locale: locale } }) do
-    case struct.collection do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:collection)
-        |> Repo.one
-        |> Translation.translate(locale)
-      other -> other
-    end
+  def type(_, _conn) do
+    "FileCollectionMembership"
   end
 
-  def file(struct, _) do
-    case struct.file do
-      %Ecto.Association.NotLoaded{} ->
-        struct
-        |> Ecto.assoc(:file)
-        |> Repo.one
-      other -> other
+  def collection(membership = %{ collection: %Ecto.Association.NotLoaded{} }, _) do
+    case membership.collection_id do
+      nil -> nil
+      _ -> %{ type: "ProductCollection", id: membership.collection_id }
     end
   end
+  def collection(membership, _), do: Map.get(membership, :collection)
+
+  def file(membership = %{ file: %Ecto.Association.NotLoaded{} }, _) do
+    case membership.file_id do
+      nil -> nil
+      _ -> %{ type: "Product", id: membership.file_id }
+    end
+  end
+  def file(membership, _), do: Map.get(membership, :file)
 end

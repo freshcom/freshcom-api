@@ -28,13 +28,9 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:collection_id, :file_id]
-  end
-
+  #
+  # MARK: Validate
+  #
   defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
     account_id = get_field(changeset, :account_id)
     collection = Repo.get(FileCollection, collection_id)
@@ -68,11 +64,33 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     |> validate_file_id()
   end
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
+  #
+  # MARK: Changeset
+  #
+  def castable_fields(:insert) do
+    writable_fields()
+  end
+
+  def castable_fields(:update) do
+    writable_fields() -- [:collection_id, :file_id]
+  end
+
   def changeset(fcm, :delete) do
     change(fcm)
     |> Map.put(:action, :delete)
+  end
+
+  def changeset(fcm, :insert, params) do
+    fcm
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  def changeset(fcm, :update, params) do
+    fcm
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> validate()
   end
 end

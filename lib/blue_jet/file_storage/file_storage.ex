@@ -275,6 +275,53 @@ defmodule BlueJet.FileStorage do
   #
   # MARK: File Collection Membership
   #
+  def create_file_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.create_file_collection_membership") do
+      request
+      |> do_create_file_collection_membership()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_create_file_collection_membership(request = %{
+    account: account,
+    params: %{ "collection_id" => collection_id }
+  }) do
+    fields = Map.merge(request.fields, %{ "collection_id" => collection_id })
+
+    with {:ok, fcm} <- Service.create_file_collection_membership(fields, get_sopts(request)) do
+      fcm = Translation.translate(fcm, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fcm }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  def update_file_collection_membership(request) do
+    with {:ok, request} <- preprocess_request(request, "file_storage.update_file_collection_membership") do
+      request
+      |> do_update_file_collection_membership()
+    else
+      {:error, _} -> {:error, :access_denied}
+    end
+  end
+
+  def do_update_file_collection_membership(request = %{ account: account, params: %{ "id" => id }}) do
+    with {:ok, fcm} <- Service.update_file_collection_membership(id, request.fields, get_sopts(request)) do
+      fcm = Translation.translate(fcm, request.locale, account.default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fcm }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
   def delete_file_collection_membership(request) do
     with {:ok, request} <- preprocess_request(request, "file_storage.delete_file_collection_membership") do
       request
