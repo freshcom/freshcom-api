@@ -123,6 +123,12 @@ defmodule BlueJet.FileStorage.FileCollection do
 
   def put_file_count(nil), do: nil
 
+  def put_file_count(file_collections) when is_list(file_collections) do
+    Enum.map(file_collections, fn(file_collection) ->
+      put_file_count(file_collection)
+    end)
+  end
+
   def put_file_count(file_collection) do
     %{ file_collection | file_count: file_count(file_collection) }
   end

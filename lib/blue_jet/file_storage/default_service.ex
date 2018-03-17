@@ -179,9 +179,11 @@ defmodule BlueJet.FileStorage.DefaultService do
     |> FileCollection.Query.filter_by(filter)
     |> FileCollection.Query.for_account(account.id)
     |> FileCollection.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> FileCollection.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
     |> FileCollection.put_file_urls()
+    |> FileCollection.put_file_count()
   end
 
   def count_file_collection(fields \\ %{}, opts) do
