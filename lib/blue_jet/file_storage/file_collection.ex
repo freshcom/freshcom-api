@@ -121,6 +121,8 @@ defmodule BlueJet.FileStorage.FileCollection do
     |> Repo.aggregate(:count, :id)
   end
 
+  def put_file_count(nil), do: nil
+
   def put_file_count(file_collection) do
     %{ file_collection | file_count: file_count(file_collection) }
   end
