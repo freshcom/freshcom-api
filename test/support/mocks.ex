@@ -19,6 +19,7 @@ Mox.defmock(BlueJet.Balance.IdentityServiceMock, for: BlueJet.Balance.IdentitySe
 Mox.defmock(BlueJet.Crm.ServiceMock, for: BlueJet.Crm.Service)
 Mox.defmock(BlueJet.Crm.StripeClientMock, for: BlueJet.Crm.StripeClient)
 Mox.defmock(BlueJet.Crm.IdentityServiceMock, for: BlueJet.Crm.IdentityService)
+Mox.defmock(BlueJet.Crm.FileStorageServiceMock, for: BlueJet.Crm.FileStorageService)
 
 Mox.defmock(BlueJet.Notification.ServiceMock, for: BlueJet.Notification.Service)
 Mox.defmock(BlueJet.Notification.IdentityServiceMock, for: BlueJet.Notification.IdentityService)
