@@ -182,6 +182,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> ProductCollection.Query.filter_by(filter)
     |> ProductCollection.Query.for_account(account.id)
     |> ProductCollection.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> ProductCollection.Query.order_by([desc: :sort_index])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end

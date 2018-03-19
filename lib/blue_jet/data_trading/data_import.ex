@@ -118,7 +118,8 @@ defmodule BlueJet.DataTrading.DataImport do
     else
       CatalogueService.create_product_collection_membership(%{
         "product_id" => product.id,
-        "collection_id" => collection_id
+        "collection_id" => collection_id,
+        "sort_index" => row["collection_sort_index"]
       }, %{ account: account })
     end
   end
