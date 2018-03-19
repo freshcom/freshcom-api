@@ -120,21 +120,14 @@ defmodule BlueJet.Identity.User do
     |> unique_constraint(:email)
   end
 
-  defp validate_current_password(changeset = %{ changes: %{ password: _ } }) do
-    encrypted_password = get_field(changeset, :encrypted_password)
+  defp validate_current_password(changeset = %{ data: user, changes: %{ password: _ } }) do
     current_password = get_field(changeset, :current_password)
-
     changeset = validate_required(changeset, [:current_password])
 
-    cond do
-      changeset.valid? && checkpw(current_password, encrypted_password) ->
-        changeset
-
-      changeset.valid? ->
-        add_error(changeset, :current_password, "is invalid", validation: :must_match)
-
-      !changeset.valid? ->
-        changeset
+    if current_password && !checkpw(current_password, user.encrypted_password) do
+      add_error(changeset, :current_password, "is invalid", validation: :must_match)
+    else
+      changeset
     end
   end
 
@@ -165,7 +158,7 @@ defmodule BlueJet.Identity.User do
 
   defp validate_phone_verification_code_exists(changeset), do: changeset
 
-  defp validate_phone_verification_code(changeset) do
+  defp validate_phone_verification_code(changeset = %{ changes: %{ status: "registered" } }) do
     auth_method = get_field(changeset, :auth_method)
     if auth_method == "tfa_sms" do
       changeset
@@ -175,6 +168,8 @@ defmodule BlueJet.Identity.User do
       changeset
     end
   end
+
+  defp validate_phone_verification_code(changeset), do: changeset
 
   defp validate_password(changeset = %{ action: :insert }) do
     changeset
