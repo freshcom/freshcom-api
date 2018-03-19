@@ -56,4 +56,6 @@ defmodule BlueJet.Identity.Password do
   defp put_encrypted_value(changeset = %{ changes: %{ value: value } })  do
     put_change(changeset, :encrypted_value, encrypt_value(value))
   end
+
+  defp put_encrypted_value(changeset), do: changeset
 end

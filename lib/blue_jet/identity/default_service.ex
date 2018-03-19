@@ -397,7 +397,6 @@ defmodule BlueJet.Identity.DefaultService do
   # MARK: Password
   #
 
-  # TODO: rename to update_password instead
   def update_password(password = %Password{}, new_password) do
     changeset =
       password
