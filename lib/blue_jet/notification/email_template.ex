@@ -194,8 +194,8 @@ defmodule BlueJet.Notification.EmailTemplate do
       %EmailTemplate{
         account_id: account.id,
         system_label: "default",
-        name: "Email Confirmation",
-        subject: "Confirm your email for {{account.name}}",
+        name: "Email Verification",
+        subject: "Verify your email for {{account.name}}",
         to: "{{user.email}}",
         body_html: email_verification_html,
         body_text: email_verification_text
