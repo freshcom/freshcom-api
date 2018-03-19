@@ -20,6 +20,13 @@ defmodule BlueJet.Goods.Unlockable.Proxy do
     %{ unlockable | avatar: avatar }
   end
 
+  def put(unlockable, {:file, nil}, opts) do
+    opts = Map.take(opts, [:account, :account_id])
+
+    file = FileStorageService.get_file(%{ id: unlockable.file_id }, opts)
+    %{ unlockable | file: file }
+  end
+
   def put(unlockable, {:file_collections, file_collection_path}, opts) do
     preloads = %{ path: file_collection_path, opts: opts }
     opts =

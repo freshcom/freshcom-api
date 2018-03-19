@@ -18,7 +18,8 @@ defmodule BlueJetWeb.UnlockableView do
     :updated_at
   ]
 
-  has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :when_included
+  has_one :avatar, serializer: BlueJetWeb.FileView, identifiers: :always
+  has_one :file, serializer: BlueJetWeb.FileView, identifiers: :always
   has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
 
   def type do
@@ -28,4 +29,8 @@ defmodule BlueJetWeb.UnlockableView do
   def avatar(%{ avatar_id: nil }, _), do: nil
   def avatar(%{ avatar_id: avatar_id, avatar: nil }, _), do: %{ id: avatar_id, type: "File" }
   def avatar(%{ avatar: avatar }, _), do: avatar
+
+  def file(%{ file_id: nil }, _), do: nil
+  def file(%{ file_id: file_id, file: nil }, _), do: %{ id: file_id, type: "File" }
+  def file(%{ file: file }, _), do: file
 end

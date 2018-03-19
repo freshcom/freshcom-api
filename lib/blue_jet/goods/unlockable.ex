@@ -30,6 +30,9 @@ defmodule BlueJet.Goods.Unlockable do
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
 
+    field :file_id, Ecto.UUID
+    field :file, :map, virtual: true
+
     field :file_collections, {:array, :map}, virtual: true, default: []
 
     timestamps()
