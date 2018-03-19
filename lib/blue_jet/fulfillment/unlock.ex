@@ -7,7 +7,7 @@ defmodule BlueJet.Fulfillment.Unlock do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    field :sort_index, :integer, default: 0
+    field :sort_index, :integer, default: 1000
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 

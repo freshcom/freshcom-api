@@ -9,7 +9,7 @@ defmodule BlueJet.Repo.Migrations.CreateFileCollectionMembership do
       add :collection_id, references(:file_collections, on_delete: :delete_all, type: :binary_id)
       add :file_id, references(:files, on_delete: :delete_all, type: :binary_id)
 
-      add :sort_index, :integer, null: false, default: 1000
+      add :sort_index, :integer, null: false
 
       timestamps()
     end

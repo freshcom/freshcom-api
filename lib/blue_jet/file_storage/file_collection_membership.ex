@@ -7,7 +7,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
 
-    field :sort_index, :integer, default: 100
+    field :sort_index, :integer, default: 1000
 
     timestamps()
 
