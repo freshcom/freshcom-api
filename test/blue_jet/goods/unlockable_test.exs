@@ -31,7 +31,8 @@ defmodule BlueJet.Goods.UnlockableTest do
       :description,
       :custom_data,
       :translations,
-      :avatar_id
+      :avatar_id,
+      :file_id
     ]
   end
 
