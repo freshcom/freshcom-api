@@ -35,6 +35,8 @@ defmodule BlueJetWeb.CustomerView do
   # has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
   has_one :point_account, serializer: BlueJetWeb.PointAccountView, identifiers: :when_included
 
+  has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
+
   def type do
     "Customer"
   end

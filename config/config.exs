@@ -127,7 +127,8 @@ config :blue_jet, :balance, %{
 config :blue_jet, :crm, %{
   service: BlueJet.Crm.DefaultService,
   stripe_client: BlueJet.Stripe.Client,
-  identity_service: BlueJet.Identity.Service
+  identity_service: BlueJet.Identity.Service,
+  file_storage_service: BlueJet.FileStorage.Service
 }
 
 config :blue_jet, :notification, %{

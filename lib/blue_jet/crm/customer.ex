@@ -37,6 +37,8 @@ defmodule BlueJet.Crm.Customer do
     field :user_id, Ecto.UUID
     field :user, :map, virtual: true
 
+    field :file_collections, {:array, :map}, virtual: true, default: []
+
     timestamps()
 
     has_one :point_account, PointAccount
