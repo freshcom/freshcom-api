@@ -13,6 +13,7 @@ defmodule BlueJet.Identity.Jwt do
       {true, claims}
     else
       {:error, _} -> {false, nil}
+      {false, _} -> {false, nil}
     end
   end
 end
