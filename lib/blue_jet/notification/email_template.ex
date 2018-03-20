@@ -117,6 +117,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     line_items = Enum.map(order.root_line_items, fn(line_item) ->
       %{
         name: line_item.name,
+        order_quantity: line_item.order_quantity,
         sub_total: dollar_string(line_item.sub_total_cents)
       }
     end)
