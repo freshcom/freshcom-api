@@ -122,11 +122,12 @@ defmodule BlueJet.Notification.EmailTemplate do
       }
     end)
 
+    {:ok, opened_date} = Timex.format(order.opened_at, "%Y-%m-%d", :strftime)
     order =
       order
       |> Map.put(:tax_total, dollar_string(order.tax_one_cents + order.tax_two_cents + order.tax_three_cents))
       |> Map.put(:grand_total, dollar_string(order.grand_total_cents))
-      |> Map.put(:opened_date, Timex.format(order.opened_at, "%Y-%m-%d", :strftime))
+      |> Map.put(:opened_date, opened_date)
 
     %{
       account: account,
