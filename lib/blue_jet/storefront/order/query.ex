@@ -14,7 +14,9 @@ defmodule BlueJet.Storefront.Order.Query do
   @filterable_fields [
     :id,
     :status,
-    :customer_id
+    :customer_id,
+    :payment_status,
+    :fulfillment_status
   ]
 
   def default() do
