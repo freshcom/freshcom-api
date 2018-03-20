@@ -126,6 +126,7 @@ defmodule BlueJet.Notification.EmailTemplate do
       order
       |> Map.put(:tax_total, dollar_string(order.tax_one_cents + order.tax_two_cents + order.tax_three_cents))
       |> Map.put(:grand_total, dollar_string(order.grand_total_cents))
+      |> Map.put(:opened_date, Timex.format(order.opened_at, "%Y-%m-%d", :strftime))
 
     %{
       account: account,
