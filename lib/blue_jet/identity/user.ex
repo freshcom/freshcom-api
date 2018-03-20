@@ -158,7 +158,7 @@ defmodule BlueJet.Identity.User do
 
   defp validate_phone_verification_code_exists(changeset), do: changeset
 
-  defp validate_phone_verification_code(changeset = %{ changes: %{ status: "registered" } }) do
+  defp validate_phone_verification_code(changeset = %{ action: :insert }) do
     auth_method = get_field(changeset, :auth_method)
     if auth_method == "tfa_sms" do
       changeset
