@@ -32,6 +32,7 @@ defmodule BlueJet.Storefront.DefaultService do
     |> Order.Query.filter_by(filter)
     |> Order.Query.for_account(account.id)
     |> Order.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Order.Query.order_by([desc: :opened_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
