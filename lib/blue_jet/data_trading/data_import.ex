@@ -13,6 +13,9 @@ defmodule BlueJet.DataTrading.DataImport do
     field :data_count, :integer
     field :time_spent_seconds, :integer
 
+    field :file_id, Ecto.UUID
+    field :file, :map, virtual: true
+
     timestamps()
   end
 
