@@ -86,6 +86,7 @@ defmodule BlueJet.OrderLineItemTest do
       :code,
       :name,
       :label,
+      :sort_index,
       :fulfillment_status,
       :print_name,
       :is_leaf,

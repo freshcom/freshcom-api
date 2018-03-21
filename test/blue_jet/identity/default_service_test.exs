@@ -244,6 +244,12 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         phone_verification_code: pvc.value
       }
 
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.user.update.success"
+          {:ok, nil}
+         end)
+
       {:ok, user} = DefaultService.update_user(user.id, fields, %{ account: account })
 
       assert user.phone_number == fields.phone_number
