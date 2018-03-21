@@ -256,6 +256,14 @@ defmodule BlueJet.Identity.User do
     |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
   end
 
+  defp put_email_fields(changeset = %{ action: update, changes: %{ email: _ } }) do
+    changeset
+    |> put_change(:email_verified, false)
+    |> put_change(:email_verification_token, generate_email_verification_token())
+  end
+
+  defp put_email_fields(changeset), do: changeset
+
   def changeset(user, :insert, params) do
     user
     |> Repo.preload(:account)
@@ -265,6 +273,7 @@ defmodule BlueJet.Identity.User do
     |> Utils.put_parameterized([:email, :username])
     |> put_auth_method()
     |> put_tfa_code()
+    |> put_email_fields()
     |> put_encrypted_password()
     |> validate()
   end
@@ -276,6 +285,7 @@ defmodule BlueJet.Identity.User do
     |> Map.put(:action, :update)
     |> put_name()
     |> Utils.put_parameterized([:email, :username])
+    |> put_email_fields()
     |> put_encrypted_password()
     |> validate()
   end
