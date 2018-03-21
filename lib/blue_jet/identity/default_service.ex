@@ -109,7 +109,7 @@ defmodule BlueJet.Identity.DefaultService do
           create_account(account_fields)
          end)
       |> Multi.run(:user, fn(%{ account: account }) ->
-          %User{ default_account_id: account.id, email_verification_token: User.generate_email_verification_token() }
+          %User{ default_account_id: account.id }
           |> User.changeset(:insert, fields)
           |> Repo.insert()
          end)
@@ -162,8 +162,7 @@ defmodule BlueJet.Identity.DefaultService do
       account_id: account.id,
       account: account,
       default_account_id: account.id,
-      default_account: account,
-      email_verification_token: User.generate_email_verification_token()
+      default_account: account
     }
     changeset =
       user
@@ -234,6 +233,14 @@ defmodule BlueJet.Identity.DefaultService do
       |> Multi.update(:user, changeset)
       |> Multi.run(:processed_user, fn(%{ user: user}) ->
           User.process(user, changeset)
+         end)
+      |> Multi.run(:after_update, fn(%{ processed_user: user }) ->
+          emit_event("identity.user.update.success", %{ user: user, changeset: changeset, account: account })
+          if changeset.changes[:email_verification_token] do
+            emit_event("identity.email_verification_token.create.success", %{ user: user, account: account })
+          end
+
+          {:ok, nil}
          end)
 
     case Repo.transaction(statements) do
