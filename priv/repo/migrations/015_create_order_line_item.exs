@@ -17,6 +17,7 @@ defmodule BlueJet.Repo.Migrations.CreateOrderLineItem do
       add :code, :string
       add :name, :string, null: false
       add :label, :string
+      add :sort_index, :integer, null: false
 
       add :fulfillment_status, :string, null: false
 

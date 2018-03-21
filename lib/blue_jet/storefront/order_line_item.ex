@@ -23,6 +23,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     field :code, :string
     field :name, :string
     field :label, :string
+    field :sort_index, :integer, default: 1000
 
     # pending, partially_fulfilled, fulfilled, partially_returned, returned, discarded
     field :fulfillment_status, :string, default: "pending"
