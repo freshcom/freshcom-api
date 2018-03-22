@@ -106,8 +106,14 @@ defmodule BlueJet.Crm do
     end
   end
 
-  def do_update_customer(request = %{ account: account, params: %{ "id" => id } }) do
-    with {:ok, customer} <- Service.update_customer(id, request.fields, get_sopts(request)) do
+  def do_update_customer(request = %{ role: role, account: account, params: %{ "id" => id } }) do
+    extra_opts = if role not in ["anonymous", "guest", "customer"] do
+      %{ bypass_user_pvc_validation: true }
+    else
+      %{}
+    end
+
+    with {:ok, customer} <- Service.update_customer(id, request.fields, get_sopts(request, extra_opts)) do
       customer = Translation.translate(customer, request.locale, account.default_locale)
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
     else

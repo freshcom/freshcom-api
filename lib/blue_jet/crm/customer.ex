@@ -99,6 +99,7 @@ defmodule BlueJet.Crm.Customer do
 
     customer
     |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
     |> put_name()
     |> Utils.put_clean_email()
     |> validate()
@@ -231,7 +232,22 @@ defmodule BlueJet.Crm.Customer do
     {:ok, customer}
   end
 
-  def process(customer = %{ user_id: user_id }, %{ action: :delete }) when not is_nil(user_id) do
+  def process(customer, changeset, opts \\ %{})
+  def process(customer, %{ changes: %{ status: "registered" } }, _), do: {:ok, customer}
+  def process(customer = %{ user_id: nil }, _, opts), do: {:ok, customer}
+
+  def process(customer = %{ user_id: user_id }, %{ action: :update, changes: changes }, opts) do
+    account = Proxy.get_account(customer)
+    fields = Map.take(changes, [:email, :phone_number, :phone_verification_code, :name, :first_name, :last_name])
+
+    with {:ok, _} <- IdentityService.update_user(user_id, fields, %{ account: account, bypass_pvc_validation: !!opts[:bypass_user_pvc_validation] }) do
+      {:ok, customer}
+    else
+      other -> other
+    end
+  end
+
+  def process(customer = %{ user_id: user_id }, %{ action: :delete }, _) do
     account = Proxy.get_account(customer)
     with {:ok, _} <- IdentityService.delete_user(user_id, %{ account: account }) do
       {:ok, customer}
@@ -240,7 +256,7 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
-  def process(customer, _), do: {:ok, customer}
+  def process(customer, _, _), do: {:ok, customer}
 
   @doc """
   Preprocess the customer to be ready for its first payment

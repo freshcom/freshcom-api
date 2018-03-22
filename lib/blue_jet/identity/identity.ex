@@ -284,7 +284,7 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def do_update_user(request = %{ account: account, role: role, vas: vas }) when role in ["customer"] do
+  def do_update_user(request = %{ account: account, role: role, vas: vas }) when role in ["anonymous", "guest", "customer"] do
     with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request)) do
       Translation.translate(user, request.locale, account.default_locale)
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
@@ -296,7 +296,7 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def do_update_user(request = %{ account: account, role: role, vas: vas }) when role not in ["administrator"] do
+  def do_update_user(request = %{ account: account, vas: vas }) do
     with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request, %{ bypass_pvc_validation: true })) do
       user = if user.account_id do
         Translation.translate(user, request.locale, account.default_locale)

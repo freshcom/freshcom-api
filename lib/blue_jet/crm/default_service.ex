@@ -104,6 +104,13 @@ defmodule BlueJet.Crm.DefaultService do
       |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
           Repo.update(changeset)
          end)
+      |> Multi.run(:processed_customer, fn(%{ customer: customer, changeset: changeset }) ->
+          if map_size(changeset.changes) > 0 do
+            Customer.process(customer, changeset, opts)
+          else
+            {:ok, customer}
+          end
+         end)
 
     case Repo.transaction(statements) do
       {:ok, %{ customer: customer }} ->
