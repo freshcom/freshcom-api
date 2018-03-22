@@ -158,9 +158,13 @@ defmodule BlueJet.Identity.User do
 
   defp validate_phone_verification_code_exists(changeset), do: changeset
 
-  defp validate_phone_verification_code(changeset = %{ action: :insert }) do
+  defp validate_phone_verification_code(changeset, %{ bypass: true }), do: changeset
+
+  defp validate_phone_verification_code(changeset = %{ action: action }, _) do
     auth_method = get_field(changeset, :auth_method)
-    if auth_method == "tfa_sms" do
+    is_updating_phone_number = action == :update && get_change(changeset, :phone_number)
+
+    if (action == :insert || is_updating_phone_number) && auth_method == "tfa_sms" do
       changeset
       |> validate_required([:phone_verification_code])
       |> validate_phone_verification_code_exists()
@@ -168,8 +172,6 @@ defmodule BlueJet.Identity.User do
       changeset
     end
   end
-
-  defp validate_phone_verification_code(changeset), do: changeset
 
   defp validate_password(changeset = %{ action: :insert }) do
     changeset
@@ -188,7 +190,9 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  def validate(changeset = %{ action: :insert }) do
+  def validate(changeset, opts \\ %{})
+
+  def validate(changeset = %{ action: :insert }, opts) do
     changeset
     |> validate_required(@required_fields)
 
@@ -196,12 +200,12 @@ defmodule BlueJet.Identity.User do
     |> validate_email()
 
     |> validate_phone_number()
-    |> validate_phone_verification_code()
+    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
 
     |> validate_password()
   end
 
-  def validate(changeset = %{ action: :update }) do
+  def validate(changeset = %{ action: :update }, opts) do
     changeset
     |> validate_required(@required_fields)
 
@@ -209,7 +213,7 @@ defmodule BlueJet.Identity.User do
     |> validate_email()
 
     |> validate_phone_number()
-    |> validate_phone_verification_code()
+    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
 
     |> validate_current_password()
     |> validate_password()
@@ -256,7 +260,7 @@ defmodule BlueJet.Identity.User do
     |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
   end
 
-  defp put_email_fields(changeset = %{ action: update, changes: %{ email: _ } }) do
+  defp put_email_fields(changeset = %{ action: :update, changes: %{ email: _ } }) do
     changeset
     |> put_change(:email_verified, false)
     |> put_change(:email_verification_token, generate_email_verification_token())
@@ -264,7 +268,9 @@ defmodule BlueJet.Identity.User do
 
   defp put_email_fields(changeset), do: changeset
 
-  def changeset(user, :insert, params) do
+  def changeset(user, action, params, opts \\ %{})
+
+  def changeset(user, :insert, params, opts) do
     user
     |> Repo.preload(:account)
     |> cast(params, writable_fields())
@@ -275,10 +281,10 @@ defmodule BlueJet.Identity.User do
     |> put_tfa_code()
     |> put_email_fields()
     |> put_encrypted_password()
-    |> validate()
+    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
   end
 
-  def changeset(user, :update, params) do
+  def changeset(user, :update, params, opts) do
     user
     |> Repo.preload(:account)
     |> cast(params, writable_fields())
@@ -287,7 +293,7 @@ defmodule BlueJet.Identity.User do
     |> Utils.put_parameterized([:email, :username])
     |> put_email_fields()
     |> put_encrypted_password()
-    |> validate()
+    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
   end
 
   def changeset(user, :delete) do

@@ -187,6 +187,7 @@ defmodule BlueJet.Identity.Authorization do
       "identity.update_password",
       "identity.create_email_verification_token",
       "identity.create_email_verification",
+      "identity.create_phone_verification_code",
 
       "file_storage.get_file",
       "file_storage.get_file_collection",

@@ -226,7 +226,7 @@ defmodule BlueJet.Identity.DefaultService do
 
     changeset =
       %{ user | account: account }
-      |> User.changeset(:update, fields)
+      |> User.changeset(:update, fields, opts)
 
     statements =
       Multi.new()
