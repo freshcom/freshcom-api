@@ -3,13 +3,13 @@ defmodule BlueJet.ContextHelpers do
 
   alias BlueJet.Authorization
 
-  def get_sopts(request) do
-    %{
+  def get_sopts(request, additional \\ %{}) do
+    Map.merge(%{
       account: request.account,
       pagination: request.pagination,
       preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
       locale: request.locale
-    }
+    }, additional)
   end
 
   def preprocess_request(request = %{ locale: locale }, endpoint) do
