@@ -234,7 +234,7 @@ defmodule BlueJet.Crm.Customer do
 
   def process(customer, changeset, opts \\ %{})
   def process(customer, %{ changes: %{ status: "registered" } }, _), do: {:ok, customer}
-  def process(customer = %{ user_id: nil }, _, opts), do: {:ok, customer}
+  def process(customer = %{ user_id: nil }, _, _), do: {:ok, customer}
 
   def process(customer = %{ user_id: user_id }, %{ action: :update, changes: changes }, opts) do
     account = Proxy.get_account(customer)
