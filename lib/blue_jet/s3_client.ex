@@ -27,6 +27,9 @@ defmodule BlueJet.S3.Client do
     policy
     |> :public_key.sign(:sha, key)
     |> Base.encode64()
+    |> String.replace("+", "-")
+    |> String.replace("=", "_")
+    |> String.replace("/", "~")
   end
 
   def get_presigned_url(key, :get) do
