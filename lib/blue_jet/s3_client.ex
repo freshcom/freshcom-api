@@ -11,7 +11,7 @@ defmodule BlueJet.S3.Client do
              "Resource" => url,
              "Condition" => %{
                 "DateLessThan" => %{
-                   "AWS:EpochTime" => :os.system_time(:seconds) + 3600
+                   "AWS:EpochTime" => expiry_time
                 }
              }
           }
