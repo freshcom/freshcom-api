@@ -9,6 +9,7 @@ defmodule BlueJet.FileStorage.File do
   ], container: :translations
 
   alias BlueJet.FileStorage.S3Client
+  alias BlueJet.FileStorage.CloudfrontClient
   alias BlueJet.FileStorage.FileCollectionMembership
   alias __MODULE__.Proxy
 
@@ -141,6 +142,6 @@ defmodule BlueJet.FileStorage.File do
 
   def get_url(file) do
     get_s3_key(file)
-    |> S3Client.get_presigned_url(:get)
+    |> CloudfrontClient.get_presigned_url()
   end
 end
