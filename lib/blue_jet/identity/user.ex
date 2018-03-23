@@ -260,7 +260,7 @@ defmodule BlueJet.Identity.User do
     |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
   end
 
-  defp put_email_fields(changeset = %{ action: :update, changes: %{ email: _ } }) do
+  defp put_email_fields(changeset = %{ changes: %{ email: _ } }) do
     changeset
     |> put_change(:email_verified, false)
     |> put_change(:email_verification_token, generate_email_verification_token())

@@ -197,7 +197,7 @@ defmodule BlueJet.Identity.DefaultService do
       |> Multi.run(:processed_user, fn(%{ user: user }) ->
           User.process(user, changeset)
          end)
-      |> Multi.run(:after_create, fn(%{ user: user }) ->
+      |> Multi.run(:after_create, fn(%{ processed_user: user }) ->
           emit_event("identity.user.create.success", %{ user: user, account: account })
 
           if user.email do
