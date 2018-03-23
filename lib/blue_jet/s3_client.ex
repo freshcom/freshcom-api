@@ -26,7 +26,7 @@ defmodule BlueJet.S3.Client do
 
     policy
     |> :public_key.sign(:sha, key)
-    |> Base.encode64()
+    |> Base.encode64(padding: false)
     |> String.replace("+", "-")
     |> String.replace("=", "_")
     |> String.replace("/", "~")
@@ -36,8 +36,6 @@ defmodule BlueJet.S3.Client do
     config = ExAws.Config.new(:s3)
 
     if System.get_env("CDN_HOST") && String.length(System.get_env("CDN_HOST")) > 0 do
-      expires_in = 3600
-
       url = build_cdn_url(key)
       expires = :os.system_time(:seconds) + 3600
 
