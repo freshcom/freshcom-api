@@ -26,7 +26,7 @@ defmodule BlueJet.S3.Client do
 
     policy
     |> :public_key.sign(:sha, key)
-    |> Base.encode64(padding: false)
+    |> Base.encode64()
     |> String.replace("+", "-")
     |> String.replace("=", "_")
     |> String.replace("/", "~")
