@@ -6,6 +6,7 @@ Mox.defmock(BlueJet.Identity.ServiceMock, for: BlueJet.Identity.Service)
 Mox.defmock(BlueJet.FileStorage.ServiceMock, for: BlueJet.FileStorage.Service)
 Mox.defmock(BlueJet.FileStorage.IdentityServiceMock, for: BlueJet.FileStorage.IdentityService)
 Mox.defmock(BlueJet.FileStorage.S3ClientMock, for: BlueJet.FileStorage.S3Client)
+Mox.defmock(BlueJet.FileStorage.CloudfrontClientMock, for: BlueJet.FileStorage.CloudfrontClient)
 
 Mox.defmock(BlueJet.Goods.ServiceMock, for: BlueJet.Goods.Service)
 Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
