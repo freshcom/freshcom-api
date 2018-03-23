@@ -92,7 +92,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
-        "name" => "充值$100",
+        "name" => "充值 CAD$100",
         "code" => "DEP100",
         "gateway" => "freshcom",
         "amount" => 10000
@@ -133,7 +133,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
-        "name" => "充值$50",
+        "name" => "充值 CAD$50",
         "code" => "DEP50",
         "gateway" => "freshcom",
         "amount" => 5000
