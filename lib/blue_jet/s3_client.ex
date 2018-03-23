@@ -1,9 +1,11 @@
 defmodule BlueJet.S3.Client do
   def get_presigned_url(key, method) do
-    host = System.get_env("CDN_HOST")
-    config =
+    config = if method == :get do
       ExAws.Config.new(:s3)
-      |> Map.put(:host, host)
+      |> Map.put(:host, System.get_env("CDN_HOST"))
+    else
+      ExAws.Config.new(:s3)
+    end
 
     {:ok, url} = ExAws.S3.presigned_url(config, method, System.get_env("AWS_S3_BUCKET_NAME"), key)
 
