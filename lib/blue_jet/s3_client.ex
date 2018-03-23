@@ -7,7 +7,7 @@ defmodule BlueJet.S3.Client do
       host = System.get_env("CDN_HOST")
       url = "https://#{host}/#{key}"
       datetime = :calendar.universal_time
-      {:ok, url} = ExAws.Auth.presigned_url(:get, url, :s3, datetime, config, expires_in, [])
+      {:ok, url} = ExAws.Auth.presigned_url(:get, url, :cloudfront, datetime, config, expires_in, [])
 
       url
     else
