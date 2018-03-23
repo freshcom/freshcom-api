@@ -141,7 +141,13 @@ defmodule BlueJet.FileStorage.File do
   end
 
   def get_url(file) do
-    get_s3_key(file)
-    |> CloudfrontClient.get_presigned_url()
+    is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
+    key = get_s3_key(file)
+
+    if is_cdn_enabled do
+      CloudfrontClient.get_presigned_url(key)
+    else
+      S3Client.get_presigned_url(key, :get)
+    end
   end
 end
