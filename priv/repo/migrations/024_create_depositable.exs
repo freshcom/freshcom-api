@@ -1,4 +1,4 @@
-defmodule BlueJet.Repo.Migrations.CreatePointDeposit do
+defmodule BlueJet.Repo.Migrations.CreateDepositable do
   use Ecto.Migration
 
   def change do
