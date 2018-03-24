@@ -10,7 +10,7 @@ defmodule BlueJetWeb.DepositableView do
 
     :print_name,
     :amount,
-    :target_type,
+    :gateway,
 
     :caption,
     :description,
