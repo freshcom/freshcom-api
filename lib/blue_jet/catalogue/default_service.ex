@@ -222,6 +222,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     ProductCollection.Query.default()
     |> ProductCollection.Query.for_account(account.id)
     |> Repo.get_by(filter)
+    |> ProductCollection.put_product_count()
     |> preload(preloads[:path], preloads[:opts])
   end
 

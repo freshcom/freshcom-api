@@ -41,6 +41,8 @@ defmodule BlueJet.Catalogue.ProductCollection.Query do
     query =
       ProductCollectionMembership.Query.default()
       |> ProductCollectionMembership.Query.with_product_status(filter[:product_status])
+      |> ProductCollectionMembership.Query.paginate(size: 10, number: 1)
+      |> ProductCollectionMembership.Query.order_by([desc: :sort_index, desc: :inserted_at])
 
     [memberships: {query, ProductCollectionMembership.Query.preloads(membership_preloads, options)}]
   end

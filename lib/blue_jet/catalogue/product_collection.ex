@@ -29,6 +29,8 @@ defmodule BlueJet.Catalogue.ProductCollection do
     field :avatar_id, Ecto.UUID
     field :avatar, :map, virtual: true
 
+    field :product_count, :integer, virtual: true
+
     timestamps()
 
     has_many :memberships, ProductCollectionMembership, foreign_key: :collection_id
@@ -86,4 +88,22 @@ defmodule BlueJet.Catalogue.ProductCollection do
   end
 
   def process(product_collection, _), do: {:ok, product_collection}
+
+  def product_count(%__MODULE__{ id: collection_id }) do
+    ProductCollectionMembership.Query.default()
+    |> ProductCollectionMembership.Query.for_collection(collection_id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def put_product_count(nil), do: nil
+
+  def put_product_count(product_collections) when is_list(product_collections) do
+    Enum.map(product_collections, fn(product_collection) ->
+      put_product_count(product_collection)
+    end)
+  end
+
+  def put_product_count(product_collection) do
+    %{ product_collection | product_count: product_count(product_collection) }
+  end
 end

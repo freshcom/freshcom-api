@@ -8,6 +8,7 @@ defmodule BlueJetWeb.ProductCollectionView do
     :name,
     :label,
     :sort_index,
+    :product_count,
 
     :caption,
     :description,
