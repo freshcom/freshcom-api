@@ -27,13 +27,14 @@ defmodule BlueJet.Catalogue.Product do
     field :status, :string, default: "draft"
     field :code, :string
     field :kind, :string, default: "simple"
+    field :label, :string
 
     field :name_sync, :string, default: "disabled"
     field :name, :string
     field :short_name, :string
     field :print_name, :string
 
-    field :sort_index, :integer, default: 0
+    field :sort_index, :integer, default: 1000
     field :goods_quantity, :integer, default: 1
     field :maximum_public_order_quantity, :integer, default: 999
     field :primary, :boolean, default: false
