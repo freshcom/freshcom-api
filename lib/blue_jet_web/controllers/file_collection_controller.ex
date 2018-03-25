@@ -31,10 +31,10 @@ defmodule BlueJetWeb.FileCollectionController do
     }
 
     case FileStorage.create_file_collection(request) do
-      {:ok, %{ data: efc, meta: meta }} ->
+      {:ok, %{ data: fc, meta: meta }} ->
         conn
         |> put_status(:created)
-        |> render("show.json-api", data: efc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+        |> render("show.json-api", data: fc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       {:error, %AccessResponse{ errors: errors }} ->
         conn
@@ -45,34 +45,34 @@ defmodule BlueJetWeb.FileCollectionController do
     end
   end
 
-  def show(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
+  def show(conn = %{ assigns: assigns }, %{ "id" => fc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ "id" => efc_id },
+      params: %{ "id" => fc_id },
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case FileStorage.get_file_collection(request) do
-      {:ok, %AccessResponse{ data: efc, meta: meta }} ->
-        render(conn, "show.json-api", data: efc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+      {:ok, %AccessResponse{ data: fc, meta: meta }} ->
+        render(conn, "show.json-api", data: fc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
     end
   end
 
-  def update(conn = %{ assigns: assigns }, %{ "id" => efc_id, "data" => data = %{ "type" => "FileCollection" } }) do
+  def update(conn = %{ assigns: assigns }, %{ "id" => fc_id, "data" => data = %{ "type" => "FileCollection" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ "id" => efc_id },
+      params: %{ "id" => fc_id },
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
 
     case FileStorage.update_file_collection(request) do
-      {:ok, %AccessResponse{ data: efc }} ->
-        render(conn, "show.json-api", data: efc, opts: [include: conn.query_params["include"]])
+      {:ok, %AccessResponse{ data: fc }} ->
+        render(conn, "show.json-api", data: fc, opts: [include: conn.query_params["include"]])
 
       {:error, %AccessResponse{ errors: errors }} ->
         conn
@@ -83,13 +83,13 @@ defmodule BlueJetWeb.FileCollectionController do
     end
   end
 
-  def delete(conn = %{ assigns: assigns }, %{ "id" => efc_id }) do
+  def delete(conn = %{ assigns: assigns }, %{ "id" => fc_id }) do
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ "id" => efc_id }
+      params: %{ "id" => fc_id }
     }
 
-    FileStorage.delete_file_collection(request)
+    {:ok, _} = FileStorage.delete_file_collection(request)
 
     send_resp(conn, :no_content, "")
   end

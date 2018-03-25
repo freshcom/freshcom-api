@@ -90,15 +90,14 @@ defmodule BlueJetWeb.ProductCollectionController do
     end
   end
 
-  # def delete(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
-  #   request = %AccessRequest{
-  #     vas: assigns[:vas],
-  #     params: %{ id: id }
-  #   }
+  def delete(conn = %{ assigns: assigns }, %{ "id" => pc_id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => pc_id }
+    }
 
-  #   {:ok, _} = Catalogue.delete_product_collection(request)
+    {:ok, _} = Catalogue.delete_product_collection(request)
 
-  #   send_resp(conn, :no_content, "")
-  # end
-
+    send_resp(conn, :no_content, "")
+  end
 end
