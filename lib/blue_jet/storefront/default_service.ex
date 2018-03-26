@@ -98,6 +98,7 @@ defmodule BlueJet.Storefront.DefaultService do
               OrderLineItem.Query.default()
               |> OrderLineItem.Query.for_order(order.id)
               |> OrderLineItem.Query.root()
+              |> OrderLineItem.Query.order_by([desc: :sort_index, asc: :inserted_at])
               |> Repo.all()
 
             order = %{ order | root_line_items: root_line_items }

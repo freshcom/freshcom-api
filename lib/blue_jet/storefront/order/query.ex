@@ -36,7 +36,11 @@ defmodule BlueJet.Storefront.Order.Query do
   end
 
   def preloads({:root_line_items, root_line_item_preloads}, options) do
-    [root_line_items: {OrderLineItem.Query.root(), OrderLineItem.Query.preloads(root_line_item_preloads, options)}]
+    query =
+    OrderLineItem.Query.root()
+    |> OrderLineItem.Query.order_by([desc: :sort_index, asc: :inserted_at])
+
+    [root_line_items: {query, OrderLineItem.Query.preloads(root_line_item_preloads, options)}]
   end
 
   def preloads(_, _) do
