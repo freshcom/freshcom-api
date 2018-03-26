@@ -268,7 +268,7 @@ defmodule BlueJet.DataTrading.DataImport do
   def process(data_import = %{ data_url: data_url, data_type: data_type }, %{ action: :insert }) do
     RemoteCSV.stream(data_url)
     |> CSV.decode(headers: true)
-    |> Stream.chunk_every(1000)
+    |> Stream.chunk_every(500)
     |> Enum.each(fn(chunk) ->
         start_time = :os.system_time(:milli_seconds)
         {:ok, _} = Repo.transaction(fn ->
