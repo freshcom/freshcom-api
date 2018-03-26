@@ -270,15 +270,18 @@ defmodule BlueJet.DataTrading.DataImport do
     |> CSV.decode(headers: true)
     |> Stream.chunk_every(1000)
     |> Enum.each(fn(chunk) ->
+        start_time = :os.system_time(:milli_seconds)
         {:ok, _} = Repo.transaction(fn ->
           Enum.each(chunk, fn({:ok, row}) ->
             row
             |> cleanup_row_value()
             |> import_resource(data_import.account, data_type)
           end)
-
-          Logger.info("Imported #{length(chunk)} #{data_type}")
         end)
+        end_time = :os.system_time(:milli_seconds)
+        spent_time = end_time - start_time
+
+        Logger.info("Imported #{length(chunk)} #{data_type} in #{spent_time} ms")
        end)
   end
 end
