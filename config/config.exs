@@ -55,13 +55,13 @@ config :ex_aws, :retries,
 
 config :sentry,
   dsn: "https://4409d5822eb148cd8b2d7883c4e14a59:f8772da31a684c3684e573e2f6644049@sentry.io/286411",
-  environment_name: Mix.env,
+  environment_name: System.get_env("RELEASE_LEVEL") || "development",
   enable_source_code_context: true,
   root_source_code_path: File.cwd!,
   tags: %{
-    env: Mix.env
+    mix_env: Mix.env
   },
-  included_environments: [:prod]
+  included_environments: ["staging", "production"]
 
 config :blue_jet, BlueJet.Gettext,
   default_locale: "en"
