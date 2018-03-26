@@ -1,4 +1,5 @@
 defmodule BlueJet.DataTrading.DataImport do
+  require Logger
   use BlueJet, :data
 
   alias BlueJet.DataTrading.{GoodsService, CrmService, CatalogueService}
@@ -269,12 +270,14 @@ defmodule BlueJet.DataTrading.DataImport do
     |> CSV.decode(headers: true)
     |> Stream.chunk_every(1000)
     |> Enum.each(fn(chunk) ->
-        Repo.transaction(fn ->
+        {:ok, _} = Repo.transaction(fn ->
           Enum.each(chunk, fn({:ok, row}) ->
             row
             |> cleanup_row_value()
             |> import_resource(data_import.account, data_type)
           end)
+
+          Logger.info("Imported #{length(chunk)} #{data_type}")
         end)
        end)
   end
