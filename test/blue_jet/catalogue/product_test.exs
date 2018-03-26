@@ -63,7 +63,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert product.status == "draft"
       assert product.kind == "simple"
       assert product.name_sync == "disabled"
-      assert product.sort_index == 0
+      assert product.sort_index == 1000
       assert product.maximum_public_order_quantity == 999
       assert product.primary == false
       assert product.auto_fulfill == false
@@ -77,6 +77,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       :status,
       :code,
       :kind,
+      :label,
       :name_sync,
       :name,
       :short_name,
