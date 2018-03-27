@@ -31,11 +31,10 @@ defmodule BlueJetWeb.CustomerView do
   has_one :enroller, serializer: BlueJetWeb.CustomerView, identifiers: :always
   has_one :sponsor, serializer: BlueJetWeb.CustomerView, identifiers: :always
   has_one :user, serializer: BlueJetWeb.IdentifierView, identifiers: :always
-
-  # has_one :refresh_token, serializer: BlueJetWeb.RefreshTokenView, identifiers: :when_included
   has_one :point_account, serializer: BlueJetWeb.PointAccountView, identifiers: :when_included
 
   has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
+  has_many :cards, serializer: BlueJetWeb.CardView, identifiers: :when_included
 
   def type do
     "Customer"

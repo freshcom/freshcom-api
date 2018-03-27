@@ -68,6 +68,7 @@ defmodule BlueJet.Crm.PointTransaction do
   def validate(changeset) do
     changeset
     |> validate_required([:status, :amount])
+    |> validate_number(:balance_after_commit, greater_than_or_equal_to: 0)
   end
 
   # def put_point_account_id(changeset = %{ changes: %{ customer_id: customer_id } }) do
@@ -107,9 +108,9 @@ defmodule BlueJet.Crm.PointTransaction do
   def changeset(point_transaction, :insert, params) do
     point_transaction
     |> cast(params, writable_fields())
-    |> validate()
     |> put_committed_at()
     |> put_balance_after_commit()
+    |> validate()
   end
 
   def changeset(point_transaction, :update, params, locale \\ nil, default_locale \\ nil) do
@@ -119,9 +120,9 @@ defmodule BlueJet.Crm.PointTransaction do
 
     point_transaction
     |> cast(params, writable_fields())
-    |> validate()
     |> put_committed_at()
     |> put_balance_after_commit()
+    |> validate()
     |> Translation.put_change(translatable_fields(), locale)
   end
 

@@ -38,6 +38,7 @@ defmodule BlueJet.Crm.Customer do
     field :user, :map, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
+    field :cards, {:array, :map}, virtual: true, default: []
 
     timestamps()
 

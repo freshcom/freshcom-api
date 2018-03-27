@@ -1,7 +1,7 @@
 defmodule BlueJet.Crm.Customer.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Crm.{IdentityService, FileStorageService}
+  alias BlueJet.Crm.{IdentityService, FileStorageService, BalanceService}
 
   def get_account(customer) do
     customer.account || IdentityService.get_account(customer)
@@ -20,6 +20,17 @@ defmodule BlueJet.Crm.Customer.Proxy do
 
     file_collections = FileStorageService.list_file_collection(%{ filter: %{ owner_id: customer.id, owner_type: "Customer" } }, opts)
     %{ customer | file_collections: file_collections }
+  end
+
+  def put(customer, {:cards, card_path}, opts) do
+    preloads = %{ path: card_path, opts: opts }
+    opts =
+      opts
+      |> Map.take([:account, :account_id])
+      |> Map.merge(%{ preloads: preloads })
+
+    cards = BalanceService.list_card(%{ filter: %{ owner_id: customer.id, owner_type: "Customer", status: "saved_by_owner" } }, opts)
+    %{ customer | cards: cards }
   end
 
   def put(customer, _, _), do: customer
