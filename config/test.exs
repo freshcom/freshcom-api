@@ -57,7 +57,8 @@ config :blue_jet, :crm, %{
   service: BlueJet.Crm.ServiceMock,
   stripe_client: BlueJet.Crm.StripeClientMock,
   identity_service: BlueJet.Crm.IdentityServiceMock,
-  file_storage_service: BlueJet.Crm.FileStorageServiceMock
+  file_storage_service: BlueJet.Crm.FileStorageServiceMock,
+  balance_service: BlueJet.Crm.BalanceServiceMock
 }
 
 config :blue_jet, :notification, %{
