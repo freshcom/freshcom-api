@@ -4,6 +4,8 @@ defmodule BlueJetWeb.RefundController do
   alias JaSerializer.Params
   alias BlueJet.Balance
 
+  action_fallback BlueJetWeb.FallbackController
+
   plug :scrub_params, "data" when action in [:create, :update]
 
   def create(conn = %{ assigns: assigns }, %{ "payment_id" => payment_id, "data" => data = %{ "type" => "Refund" } }) do
