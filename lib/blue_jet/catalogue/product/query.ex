@@ -12,6 +12,7 @@ defmodule BlueJet.Catalogue.Product.Query do
     :id,
     :status,
     :label,
+    :parent_id,
     :kind
   ]
 
@@ -51,8 +52,8 @@ defmodule BlueJet.Catalogue.Product.Query do
     from p in Product, where: p.kind == "item", order_by: [desc: :updated_at]
   end
 
-  def with_parent(query, parent_id) do
-    from p in query, where: p.parent_id == ^parent_id
+  def without(query, product_id) do
+    from p in query, where: p.id != ^product_id
   end
 
   def preloads({:items, item_preloads}, options) do

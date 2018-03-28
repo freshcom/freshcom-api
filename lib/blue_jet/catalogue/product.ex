@@ -309,7 +309,8 @@ defmodule BlueJet.Catalogue.Product do
 
   def process(product = %{ parent_id: parent_id }, %{ action: :update, changes: %{ primary: true } }) when not is_nil(parent_id) do
     Query.default()
-    |> Query.with_parent(parent_id)
+    |> Query.filter_by(%{ parent_id: parent_id })
+    |> Query.without(product.id)
     |> Repo.update_all(set: [primary: false])
 
     {:ok, product}
