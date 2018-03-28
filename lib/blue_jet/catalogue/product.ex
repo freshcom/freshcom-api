@@ -57,8 +57,9 @@ defmodule BlueJet.Catalogue.Product do
     timestamps()
 
     belongs_to :parent, __MODULE__
-    has_many :items, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
-    has_many :variants, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
+    has_many :items, __MODULE__, foreign_key: :parent_id
+    has_many :variants, __MODULE__, foreign_key: :parent_id
+    has_many :children, __MODULE__, foreign_key: :parent_id
 
     has_many :prices, Price, on_delete: :delete_all
     has_one :default_price, Price

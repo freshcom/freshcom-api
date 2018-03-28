@@ -35,6 +35,7 @@ defmodule BlueJetWeb.ProductView do
   has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
   has_many :items, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :variants, serializer: BlueJetWeb.ProductView, identifiers: :when_included
+  has_many :children, serializer: BlueJetWeb.ProductView, identifiers: :when_included
   has_many :prices, serializer: BlueJetWeb.PriceView, identifiers: :when_included
 
   def type do

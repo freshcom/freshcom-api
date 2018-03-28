@@ -137,7 +137,7 @@ defmodule BlueJet.Catalogue.Price do
 
   def validate(changeset = %{ data: price }, :delete) do
     if price.status != "disabled" do
-      add_error(changeset, :status, {"must be disabled", [validation: :must_be_disabled]})
+      add_error(changeset, :status, "must be disabled", [validation: :must_be_disabled])
     else
       changeset
     end

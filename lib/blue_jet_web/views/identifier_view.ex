@@ -3,6 +3,6 @@ defmodule BlueJetWeb.IdentifierView do
   use JaSerializer.PhoenixView
 
   def type(struct, _) do
-    struct.type
+    Map.get(struct, :type) || Enum.at(Module.split(struct.__struct__), 0)
   end
 end
