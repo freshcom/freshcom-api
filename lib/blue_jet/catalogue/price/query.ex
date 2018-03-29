@@ -13,6 +13,10 @@ defmodule BlueJet.Catalogue.Price.Query do
     from p in Price
   end
 
+  def for_account(query, account_id) do
+    from p in query, where: p.account_id == ^account_id
+  end
+
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end

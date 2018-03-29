@@ -443,6 +443,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     filter = Map.take(fields, [:id, :code, :status, :product_id, :parent_id])
 
     Price.Query.default()
+    |> Price.Query.for_account(account.id)
     |> Price.Query.with_order_quantity(fields[:order_quantity])
     |> Repo.get_by(filter)
     |> preload(preloads[:path], preloads[:opts])
