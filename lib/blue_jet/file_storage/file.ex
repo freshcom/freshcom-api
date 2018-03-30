@@ -123,8 +123,8 @@ defmodule BlueJet.FileStorage.File do
     prefix = Application.get_env(:blue_jet, :s3)[:prefix]
     id = file.id
     name = file.name
-
-    "#{prefix}/File/#{id}/#{name}"
+    ext = Path.extname(name)
+    "#{prefix}/file/#{id}#{ext}"
   end
 
   def put_url(structs) when is_list(structs) do
