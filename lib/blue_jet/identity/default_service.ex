@@ -326,10 +326,10 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def create_email_verification_token(%{ "email" => nil }, _), do: {:error, :not_found}
+  def create_email_verification_token(%{ "user_id" => nil }, _), do: {:error, :not_found}
 
-  def create_email_verification_token(%{ "email" => email }, opts) do
-    user = get_user(%{ email: email }, opts)
+  def create_email_verification_token(%{ "user_id" => user_id }, opts) do
+    user = get_user(%{ id: user_id }, opts)
 
     if user do
       %{ user | account: opts[:account] }
