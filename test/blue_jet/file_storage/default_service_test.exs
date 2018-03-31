@@ -237,8 +237,14 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      CloudfrontClientMock
-      |> expect(:get_presigned_url, fn(_) -> nil end)
+      is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
+      if is_cdn_enabled do
+        CloudfrontClientMock
+        |> expect(:get_presigned_url, fn(_) -> nil end)
+      else
+        S3ClientMock
+        |> expect(:get_presigned_url, fn(_, _) -> nil end)
+      end
 
       fields = %{
         "status" => "uploaded"
@@ -270,8 +276,14 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      CloudfrontClientMock
-      |> expect(:get_presigned_url, fn(_) -> nil end)
+      is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
+      if is_cdn_enabled do
+        CloudfrontClientMock
+        |> expect(:get_presigned_url, fn(_) -> nil end)
+      else
+        S3ClientMock
+        |> expect(:get_presigned_url, fn(_, _) -> nil end)
+      end
 
       fields = %{
         "status" => "uploaded"
