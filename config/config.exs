@@ -54,7 +54,7 @@ config :ex_aws, :retries,
   max_backoff_in_ms: 10_000
 
 config :sentry,
-  dsn: "https://4409d5822eb148cd8b2d7883c4e14a59:f8772da31a684c3684e573e2f6644049@sentry.io/286411",
+  dsn: System.get_env("SENTRY_DSN"),
   environment_name: System.get_env("RELEASE_LEVEL") || "development",
   enable_source_code_context: true,
   root_source_code_path: File.cwd!,
