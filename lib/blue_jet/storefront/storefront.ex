@@ -26,17 +26,18 @@ defmodule BlueJet.Storefront do
 
   def do_list_order(request = %{ account: account, filter: filter }) do
     filter = if !filter[:status] do
-      Map.put(filter, :status, "opened")
+      Map.put(filter, :status, ["opened", "closed"])
     else
       filter
     end
 
+    all_count_filter = Map.take(filter, [:status, :customer_id])
     total_count =
       %{ filter: filter, search: request.search }
       |> Service.count_order(%{ account: account })
 
     all_count =
-      %{ filter: Map.take(filter, [:customer_id]) }
+      %{ filter: all_count_filter }
       |> Service.count_order(%{ account: account })
 
     orders =
