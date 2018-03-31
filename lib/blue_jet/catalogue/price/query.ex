@@ -41,10 +41,6 @@ defmodule BlueJet.Catalogue.Price.Query do
     from p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity]
   end
 
-  def for_account(query, account_id) do
-    from p in query, where: p.account_id == ^account_id
-  end
-
   def active(query) do
     from p in query, where: p.status == "active"
   end
