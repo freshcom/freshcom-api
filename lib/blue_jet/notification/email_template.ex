@@ -89,9 +89,9 @@ defmodule BlueJet.Notification.EmailTemplate do
     :erlang.float_to_binary(cents / 100, [decimals: 2])
   end
 
-  def extract_variables("identity.password_reset_token.create.error.email_not_found", %{ account: account, email: email }) do
+  def extract_variables("identity.password_reset_token.create.error.username_not_found", %{ account: account, username: username }) do
     %{
-      email: email,
+      username: username,
       account: Map.take(account, [:name]),
       freshcom_reset_password_url: System.get_env("RESET_PASSWORD_URL")
     }

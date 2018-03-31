@@ -40,7 +40,7 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("identity.password_reset_token.create.error.email_not_found", %{ email: email, account_id: nil }) do
+  def handle_event("identity.password_reset_token.create.error.username_not_found", %{ email: email, account_id: nil }) do
     Email.Factory.password_reset_not_registered_email(email)
     |> GlobalMailer.deliver_later()
 

@@ -375,14 +375,13 @@ defmodule BlueJet.Identity.DefaultService do
   When an account is provided in `opts`, this function will only search for account
   user otherwise this function will only search for global user.
   """
-  def create_password_reset_token(%{ "email" => email }, opts) do
+  def create_password_reset_token(%{ "username" => username }, opts) do
     changeset =
-      Changeset.change(%User{}, %{ email: email })
-      |> Changeset.validate_required(:email)
-      |> Changeset.validate_format(:email, Application.get_env(:blue_jet, :email_regex))
+      Changeset.change(%User{}, %{ username: username })
+      |> Changeset.validate_required(:username)
 
     with true <- changeset.valid?,
-         user = %User{} <- get_user(%{ email: email }, opts)
+         user = %User{} <- get_user(%{ username: username }, opts)
     do
       user = User.refresh_password_reset_token(user)
       event_data = Map.merge(opts, %{ user: user })
@@ -394,8 +393,8 @@ defmodule BlueJet.Identity.DefaultService do
         {:error, changeset}
 
       nil ->
-        event_data = Map.merge(opts, %{ email: email })
-        emit_event("identity.password_reset_token.create.error.email_not_found", event_data)
+        event_data = Map.merge(opts, %{ username: username })
+        emit_event("identity.password_reset_token.create.error.username_not_found", event_data)
         {:error, :not_found}
     end
   end

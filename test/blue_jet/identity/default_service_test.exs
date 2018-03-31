@@ -443,24 +443,24 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "create_password_reset_token/2" do
-    test "when email is not in correct format" do
-      {:error, changeset} = DefaultService.create_password_reset_token(%{ "email" => "invalidemail" }, %{})
+    test "when username is not provided" do
+      {:error, changeset} = DefaultService.create_password_reset_token(%{ "username" => "" }, %{})
 
       assert changeset.valid? == false
     end
 
-    test "when email does not belong to any user" do
+    test "when username does not belong to any user" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity.password_reset_token.create.error.email_not_found"
+          assert event_name == "identity.password_reset_token.create.error.username_not_found"
 
           {:ok, nil}
          end)
 
-      {:error, :not_found} = DefaultService.create_password_reset_token(%{ "email" => Faker.Internet.safe_email() }, %{})
+      {:error, :not_found} = DefaultService.create_password_reset_token(%{ "username" => Faker.Internet.safe_email() }, %{})
     end
 
-    test "when email belongs to a user" do
+    test "when username belongs to a user" do
       account = Repo.insert!(%Account{})
       user = Repo.insert!(%User{
         account_id: account.id,
@@ -483,7 +483,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_password_reset_token(%{ "email" => user.email }, %{ account: account })
+      {:ok, user} = DefaultService.create_password_reset_token(%{ "username" => user.username }, %{ account: account })
 
       assert user.password_reset_token
     end
