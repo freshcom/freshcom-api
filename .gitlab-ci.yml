@@ -20,6 +20,5 @@ before_script:
 test:
   only:
     - develop
-    - master
   script:
     - mix coveralls test/blue_jet
