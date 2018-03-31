@@ -4,7 +4,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
   alias BlueJet.FileStorage.DefaultService
-  alias BlueJet.FileStorage.S3ClientMock
+  alias BlueJet.FileStorage.{S3ClientMock, CloudfrontClientMock}
 
   describe "list_file/2" do
     test "file for different account is not returned" do
@@ -237,8 +237,8 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      S3ClientMock
-      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+      CloudfrontClientMock
+      |> expect(:get_presigned_url, fn(_) -> nil end)
 
       fields = %{
         "status" => "uploaded"
@@ -270,8 +270,8 @@ defmodule BlueJet.FileStorage.ServiceTest do
         size_bytes: 19890
       })
 
-      S3ClientMock
-      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+      CloudfrontClientMock
+      |> expect(:get_presigned_url, fn(_) -> nil end)
 
       fields = %{
         "status" => "uploaded"

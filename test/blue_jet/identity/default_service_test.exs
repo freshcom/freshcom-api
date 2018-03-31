@@ -326,20 +326,20 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "create_email_verification_token/2" do
-    test "when email is nil" do
-      assert DefaultService.create_email_verification_token(%{ "email" => nil }, %{}) == {:error, :not_found}
+    test "when user_id is nil" do
+      assert DefaultService.create_email_verification_token(%{ "user_id" => nil }, %{}) == {:error, :not_found}
     end
 
-    test "when account is given and email does not exist" do
+    test "when account is given and user_id does not exist" do
       account = Repo.insert!(%Account{})
-      assert DefaultService.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+      assert DefaultService.create_email_verification(%{ "user_id" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
     end
 
-    test "when account is nil and email does not exist" do
-      assert DefaultService.create_email_verification(%{ "email" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
+    test "when account is nil and user_id does not exist" do
+      assert DefaultService.create_email_verification(%{ "user_id" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
     end
 
-    test "when account is given and email is valid" do
+    test "when account is given and user_id is valid" do
       account = Repo.insert!(%Account{})
       target_user = Repo.insert!(%User{
         account_id: account.id,
@@ -359,7 +359,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_email_verification_token(%{ "email" => target_user.email }, %{ account: account })
+      {:ok, user} = DefaultService.create_email_verification_token(%{ "user_id" => target_user.id }, %{ account: account })
       assert user.id == target_user.id
       assert user.email_verification_token
     end
@@ -378,7 +378,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_email_verification_token(%{ "email" => target_user.email }, %{ account: nil })
+      {:ok, user} = DefaultService.create_email_verification_token(%{ "user_id" => target_user.id }, %{ account: nil })
       assert user.id == target_user.id
       assert user.email_verification_token
     end
