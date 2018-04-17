@@ -236,11 +236,13 @@ defmodule BlueJet.Identity.DefaultService do
          end)
       |> Multi.run(:after_update, fn(%{ processed_user: user }) ->
           emit_event("identity.user.update.success", %{ user: user, changeset: changeset, account: account })
+         end)
+      |> Multi.run(:after_evt_create, fn(%{ processed_user: user }) ->
           if changeset.changes[:email_verification_token] do
             emit_event("identity.email_verification_token.create.success", %{ user: user, account: account })
+          else
+            {:ok, nil}
           end
-
-          {:ok, nil}
          end)
 
     case Repo.transaction(statements) do

@@ -15,8 +15,7 @@ defmodule BlueJet.Crm.EventHandler do
     customer = Repo.get_by(Customer, user_id: user.id)
     fields = Map.take(changeset.changes, [:email, :phone_number, :name, :first_name, :last_name])
 
-    {:ok, customer} = Service.update_customer(customer, fields, %{ account: account })
-    {:ok, customer}
+    Service.update_customer(customer, fields, %{ account: account })
   end
 
   def handle_event("balance.payment.create.before", %{ fields: fields = %{ "owner_type" => "Customer", "owner_id" => customer_id } }) do

@@ -225,6 +225,31 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       assert changeset.valid? == false
     end
 
+    # Issue: GL#24
+    test "when event handler returns error" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234",
+        email: Faker.Internet.safe_email()
+      })
+      fields = %{
+        email: nil
+      }
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity.user.update.success"
+
+          {:error, %{ errors: [email: {"can't be blank", [validation: :required]}] }}
+         end)
+
+      {:error, changeset} = DefaultService.update_user(user.id, fields, %{ account: account })
+      assert changeset.errors
+    end
+
     test "when user is given and fields are valid" do
       account = Repo.insert!(%Account{})
       pvc = Repo.insert!(%PhoneVerificationCode{
