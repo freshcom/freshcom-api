@@ -38,7 +38,6 @@ defmodule BlueJet.Crm.Customer do
     field :user, :map, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
-    field :cards, {:array, :map}, virtual: true, default: []
 
     timestamps()
 
@@ -52,7 +51,6 @@ defmodule BlueJet.Crm.Customer do
   @system_fields [
     :id,
     :account_id,
-    :stripe_customer_id,
     :inserted_at,
     :updated_at
   ]

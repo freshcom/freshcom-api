@@ -117,25 +117,25 @@ config :blue_jet, :goods, %{
   file_storage_service: BlueJet.FileStorage.Service
 }
 
-config :blue_jet, :balance, %{
-  service: BlueJet.Balance.DefaultService,
-  stripe_client: BlueJet.Stripe.Client,
-  oauth_client: BlueJet.OauthClient,
-  identity_service: BlueJet.Identity.Service,
-  listeners: [BlueJet.Storefront.EventHandler, BlueJet.Crm.EventHandler]
-}
-
 config :blue_jet, :crm, %{
   service: BlueJet.Crm.DefaultService,
   stripe_client: BlueJet.Stripe.Client,
   identity_service: BlueJet.Identity.Service,
-  file_storage_service: BlueJet.FileStorage.Service,
-  balance_service: BlueJet.Balance.Service
+  file_storage_service: BlueJet.FileStorage.Service
 }
 
 config :blue_jet, :notification, %{
   service: BlueJet.Notification.DefaultService,
   identity_service: BlueJet.Identity.Service
+}
+
+config :blue_jet, :balance, %{
+  service: BlueJet.Balance.DefaultService,
+  stripe_client: BlueJet.Stripe.Client,
+  oauth_client: BlueJet.OauthClient,
+  identity_service: BlueJet.Identity.Service,
+  crm_service: BlueJet.Crm.Service,
+  listeners: [BlueJet.Storefront.EventHandler]
 }
 
 config :blue_jet, :catalogue, %{

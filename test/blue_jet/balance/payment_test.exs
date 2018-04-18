@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Payment, Settings}
-  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock}
+  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock, CrmServiceMock}
 
   test "writable_fields/0" do
     assert Payment.writable_fields() == [
@@ -91,6 +91,43 @@ defmodule BlueJet.Balance.PaymentTest do
       verify!()
       assert changeset.changes[:gross_amount_cents] == 5000
       assert changeset.changes[:net_amount_cents] == 5000
+    end
+  end
+
+  describe "preprocess/1" do
+    test "when source is changed" do
+      account = %Account{}
+      owner = %{
+        id: Ecto.UUID.generate(),
+        email: Faker.Internet.safe_email(),
+        name: Faker.Name.name(),
+        stripe_customer_id: nil
+      }
+      stripe_customer = %{
+        "id" => Faker.String.base64(12)
+      }
+
+      changeset = change(%Payment{}, %{
+        account: account,
+        owner_id: owner.id,
+        owner_type: "Customer",
+        source: Faker.String.base64(12)
+      })
+
+      StripeClientMock
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_customer} end)
+
+      CrmServiceMock
+      |> expect(:get_customer, fn(_, _) ->
+          owner
+         end)
+      |> expect(:update_customer, fn(_, _, _) ->
+          {:ok, owner}
+         end)
+
+      {:ok, changeset} = Payment.preprocess(changeset)
+
+      assert changeset.changes[:stripe_customer_id] == stripe_customer["id"]
     end
   end
 

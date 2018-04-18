@@ -244,6 +244,43 @@ defmodule BlueJet.Balance.Payment do
     {:ok, payment}
   end
 
+  def put_stripe_customer_id(changeset, nil, nil), do: changeset
+
+  def put_stripe_customer_id(changeset, owner_id, owner_type) do
+    account = get_field(changeset, :account)
+
+    owner =
+      Proxy.get_owner(%{ account: account, owner_id: owner_id, owner_type: owner_type })
+      |> Map.put(:account, account)
+
+    stripe_customer_id = if owner.stripe_customer_id do
+      owner.stripe_customer_id
+    else
+      {:ok, stripe_customer} = create_stripe_customer(owner, owner_type)
+      {:ok, _} = Proxy.update_owner(%{
+        owner_type: owner_type,
+        owner: owner,
+        account: account,
+      }, %{
+        stripe_customer_id: stripe_customer["id"]
+      })
+
+      stripe_customer["id"]
+    end
+
+    put_change(changeset, :stripe_customer_id, stripe_customer_id)
+  end
+
+  def preprocess(changeset = %{ changes: %{ source: source } }) do
+    owner_id = get_field(changeset, :owner_id)
+    owner_type = get_field(changeset, :owner_type)
+
+    changeset = put_stripe_customer_id(changeset, owner_id, owner_type)
+    {:ok, changeset}
+  end
+
+  def preprocess(changeset), do: {:ok, changeset}
+
   @doc """
   Process the given payment using the corresponding gateway and processor.
 
@@ -376,6 +413,12 @@ defmodule BlueJet.Balance.Payment do
       |> Repo.update!()
 
     {:ok, payment}
+  end
+
+  @spec create_stripe_customer(__MODULE__.t, String.t) :: {:ok, map} | {:error, map}
+  defp create_stripe_customer(owner, owner_type) do
+    account = Proxy.get_account(owner)
+    StripeClient.post("/customers", %{ email: owner.email, metadata: %{ fc_id: owner.id, fc_type: owner_type, fc_name: owner.name } }, mode: account.mode)
   end
 
   @spec create_stripe_charge(__MODULE__.t, String.t, Settings.t) :: {:ok, map} | {:error, map}

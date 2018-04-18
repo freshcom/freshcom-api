@@ -253,16 +253,14 @@ defmodule BlueJet.Balance.DefaultService do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
+    changeset =
+      %Payment{ account_id: account.id, account: account }
+      |> Payment.changeset(:insert, fields)
+
     statements =
       Multi.new()
-      |> Multi.run(:fields, fn(_) ->
-          run_before_create_payment(fields)
-         end)
-      |> Multi.run(:changeset, fn(%{ fields: fields }) ->
-          changeset =
-            %Payment{ account_id: account.id, account: account }
-            |> Payment.changeset(:insert, fields)
-          {:ok, changeset}
+      |> Multi.run(:changeset, fn(_) ->
+          Payment.preprocess(changeset)
          end)
       |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)

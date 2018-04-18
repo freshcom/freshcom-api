@@ -45,25 +45,25 @@ config :blue_jet, :goods, %{
   file_storage_service: BlueJet.Goods.FileStorageServiceMock
 }
 
-config :blue_jet, :balance, %{
-  service: BlueJet.Balance.ServiceMock,
-  stripe_client: BlueJet.Balance.StripeClientMock,
-  oauth_client: BlueJet.Balance.OauthClientMock,
-  identity_service: BlueJet.Balance.IdentityServiceMock,
-  listeners: [BlueJet.EventHandlerMock]
-}
-
 config :blue_jet, :crm, %{
   service: BlueJet.Crm.ServiceMock,
   stripe_client: BlueJet.Crm.StripeClientMock,
   identity_service: BlueJet.Crm.IdentityServiceMock,
-  file_storage_service: BlueJet.Crm.FileStorageServiceMock,
-  balance_service: BlueJet.Crm.BalanceServiceMock
+  file_storage_service: BlueJet.Crm.FileStorageServiceMock
 }
 
 config :blue_jet, :notification, %{
   service: BlueJet.Notification.ServiceMock,
   identity_service: BlueJet.Notification.IdentityServiceMock
+}
+
+config :blue_jet, :balance, %{
+  service: BlueJet.Balance.ServiceMock,
+  stripe_client: BlueJet.Balance.StripeClientMock,
+  oauth_client: BlueJet.Balance.OauthClientMock,
+  identity_service: BlueJet.Balance.IdentityServiceMock,
+  crm_service: BlueJet.Balance.CrmServiceMock,
+  listeners: [BlueJet.EventHandlerMock]
 }
 
 config :blue_jet, :catalogue, %{

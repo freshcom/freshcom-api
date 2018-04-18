@@ -38,7 +38,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, settings} = DefaultService.update_settings(settings, fields, %{ account: account })
 
-      verify!()
       assert settings
     end
   end
@@ -163,7 +162,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, card} = DefaultService.update_card(card.id, fields, %{ account: account })
 
-      verify!()
       assert card
     end
 
@@ -213,7 +211,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, card} = DefaultService.delete_card(card, %{ account: account })
 
-      verify!()
       assert card
       refute Repo.get(Card, card.id)
     end
@@ -296,15 +293,8 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         "source" => Ecto.UUID.generate()
       }
 
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.before"
-          {:ok, nil}
-         end)
-
       {:error, changeset} = DefaultService.create_payment(fields, %{ account: account })
 
-      verify!()
       assert changeset.valid? == false
     end
 
@@ -333,10 +323,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.before"
-          {:ok, nil}
-         end)
-      |> expect(:handle_event, fn(name, _) ->
           assert name == "balance.payment.create.success"
           {:ok, nil}
          end)
@@ -351,7 +337,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, payment} = DefaultService.create_payment(fields, %{ account: account })
 
-      verify!()
       assert payment
     end
   end
@@ -442,7 +427,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, payment} = DefaultService.update_payment(payment.id, fields, %{ account: account })
 
-      verify!()
       assert payment
     end
   end
@@ -471,7 +455,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:error, changeset} = DefaultService.create_refund(fields, %{ account: account })
 
-      verify!()
       assert changeset.valid? == false
     end
 
@@ -516,7 +499,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
       {:ok, refund} = DefaultService.create_refund(fields, %{ account: account })
 
-      verify!()
       assert refund
     end
   end
