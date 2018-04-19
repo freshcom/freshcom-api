@@ -29,7 +29,7 @@ defmodule BlueJet.Identity.Authentication do
   alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}
 
   def create_token(fields = %{ "grant_type" => "password", "username" => username, "password" => password, "scope" => scope }) do
-    create_token(%{ grant_type: "password", username: username, password: password, otp: fields["otp"], scope: deserialize_scope(scope) })
+    create_token(%{ grant_type: "password", username: username, password: password, otp: fields["otp"], scope: deserialize_scope(scope, %{ aid: :account_id }) })
   end
 
   def create_token(fields = %{ "grant_type" => "password", "username" => username, "password" => password }) do
@@ -37,7 +37,7 @@ defmodule BlueJet.Identity.Authentication do
   end
 
   def create_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token, "scope" => scope }) do
-    create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token, scope: deserialize_scope(scope) })
+    create_token(%{ grant_type: "refresh_token", refresh_token: refresh_token, scope: deserialize_scope(scope, %{ aid: :account_id }) })
   end
 
   def create_token(%{ "grant_type" => "refresh_token", "refresh_token" => refresh_token }) do
@@ -153,11 +153,13 @@ defmodule BlueJet.Identity.Authentication do
     {:ok, %{ access_token: token, token_type: "bearer", expires_in: @token_expiry_seconds, refresh_token: RefreshToken.get_prefixed_id(refresh_token) }}
   end
 
-  def deserialize_scope(scope_string) do
+  def deserialize_scope(scope_string, abr_mappings \\ %{}) do
     scopes = String.split(scope_string, ",")
     Enum.reduce(scopes, %{}, fn(scope, acc) ->
       with [key, value] <- String.split(scope, ":") do
-        Map.put(acc, String.to_atom(key), value)
+        raw_key = String.to_atom(key)
+        key = abr_mappings[raw_key] || raw_key
+        Map.put(acc, key, value)
       else
         _ -> acc
       end

@@ -6,14 +6,20 @@ defmodule BlueJet.Identity.AuthenticationTest do
   alias BlueJet.Identity.Authentication
 
   describe "deserialize_scope/1" do
-    test "with valid scope" do
-      scope = Authentication.deserialize_scope("account_id:test-test-test")
+    test "with valid scope using abbreviation" do
+      scope = Authentication.deserialize_scope("aid:test-test-test", %{ aid: :account_id })
+
+      assert scope.account_id == "test-test-test"
+    end
+
+    test "with valid scope using full name" do
+      scope = Authentication.deserialize_scope("account_id:test-test-test", %{ aid: :account_id })
 
       assert scope.account_id == "test-test-test"
     end
 
     test "with partially valid scope" do
-      scope = Authentication.deserialize_scope("account_id:test-test-test,ddd")
+      scope = Authentication.deserialize_scope("aid:test-test-test,ddd", %{ aid: :account_id })
 
       assert scope.account_id == "test-test-test"
     end
