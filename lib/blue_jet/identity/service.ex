@@ -1,6 +1,7 @@
 defmodule BlueJet.Identity.Service do
   @service Application.get_env(:blue_jet, :identity)[:service]
 
+  @callback get_vas_data(map) :: map
   @callback get_account(map | String.t) :: Account.t | nil
   @callback create_account(map) :: {:ok, Account.t} | {:error, any}
   @callback update_account(Account.t, map, map) :: {:ok, Account.t} | {:error, any}
@@ -26,6 +27,7 @@ defmodule BlueJet.Identity.Service do
 
   @callback get_refresh_token(map) :: {:ok, RefreshToken.t} | {:error, any}
 
+  defdelegate get_vas_data(map), to: @service
   defdelegate get_account(id_or_struct), to: @service
   defdelegate create_account(fields), to: @service
   defdelegate update_account(account, fields, opts), to: @service

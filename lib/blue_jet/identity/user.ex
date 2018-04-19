@@ -317,8 +317,10 @@ defmodule BlueJet.Identity.User do
   #
   # MARK: Pure
   #
-  def put_role(user, account) do
-    %{ user | role: get_role(user, account) }
+  def put_role(nil, _), do: nil
+
+  def put_role(user, account_id) do
+    %{ user | role: get_role(user, account_id) }
   end
 
   #
@@ -332,8 +334,8 @@ defmodule BlueJet.Identity.User do
     end
   end
 
-  def get_role(user, account) do
-    membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)
+  def get_role(user, account_id) do
+    membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account_id)
 
     if membership do
       membership.role

@@ -1,9 +1,10 @@
 defmodule BlueJet.BalanceTest do
   use BlueJet.ContextCase
 
-  alias BlueJet.Identity.Account
+  alias BlueJet.Identity.{Account, User}
   alias BlueJet.Balance
   alias BlueJet.Balance.{Card, Payment, Refund}
+  alias BlueJet.Balance.{IdentityServiceMock, CrmServiceMock}
   alias BlueJet.Balance.ServiceMock
 
   describe "list_card/1" do
@@ -161,44 +162,85 @@ defmodule BlueJet.BalanceTest do
 
   describe "list_payment/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      IdentityServiceMock
+      |> expect(:get_vas_data, fn(_) ->
+          %{ account: %Account{}, user: nil, role: "guest" }
+         end)
 
       {:error, error} = Balance.list_payment(%AccessRequest{})
       assert error == :access_denied
     end
 
-    test "when request is valid" do
+    test "when role is customer" do
       account = %Account{}
+      IdentityServiceMock
+      |> expect(:get_vas_data, fn(_) ->
+          %{ account: account, user: %User{}, role: "customer" }
+         end)
 
-      request = %AccessRequest{
-        account: account,
-        filter: %{ owner_id: Ecto.UUID.generate(), owner_type: "Customer" }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      customer = %{ id: Ecto.UUID.generate() }
+      CrmServiceMock
+      |> expect(:get_customer, fn(_, _) ->
+          customer
+         end)
 
       ServiceMock
-      |> expect(:list_payment, fn(params, opts) ->
-          assert params[:filter] == request.filter
+      |> expect(:list_payment, fn(fields, opts) ->
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
           assert opts[:account] == account
 
           [%Payment{}]
          end)
-      |> expect(:count_payment, fn(params, opts) ->
-          assert params[:filter] == request.filter
+      |> expect(:count_payment, fn(fields, opts) ->
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
           assert opts[:account] == account
 
           1
          end)
-      |> expect(:count_payment, fn(params, opts) ->
-          assert params == %{}
+      |> expect(:count_payment, fn(fields, opts) ->
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
           assert opts[:account] == account
 
           1
          end)
 
+      request = %AccessRequest{}
+      {:ok, response} = Balance.list_payment(request)
+
+      assert length(response.data) == 1
+      assert response.meta.all_count == 1
+      assert response.meta.total_count == 1
+    end
+
+    @tag :focus
+    test "when role is administrator" do
+      account = %Account{}
+      IdentityServiceMock
+      |> expect(:get_vas_data, fn(_) ->
+          %{ account: account, user: %User{}, role: "administrator" }
+         end)
+
+      ServiceMock
+      |> expect(:list_payment, fn(_, opts) ->
+          assert opts[:account] == account
+
+          [%Payment{}]
+         end)
+      |> expect(:count_payment, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_payment, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+
+      request = %AccessRequest{}
       {:ok, response} = Balance.list_payment(request)
 
       assert length(response.data) == 1

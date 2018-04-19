@@ -386,14 +386,14 @@ defmodule BlueJet.Identity.UserTest do
         role: "developer"
       })
 
-      assert User.get_role(user, account) == "developer"
+      assert User.get_role(user, account.id) == "developer"
     end
 
     test "when uesr is not part of the account" do
       user = %User{ id: Ecto.UUID.generate() }
       account = %Account{ id: Ecto.UUID.generate() }
 
-      assert User.get_role(user, account) == nil
+      assert User.get_role(user, account.id) == nil
     end
   end
 

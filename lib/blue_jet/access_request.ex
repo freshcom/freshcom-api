@@ -27,4 +27,18 @@ defmodule BlueJet.AccessRequest do
   end
 
   def transform_by_role(request), do: request
+
+  def to_authorized_args(request, :list) do
+    %{
+      filter: request.filter,
+      search: request.search,
+
+      opts: %{
+        account: request.account,
+        pagination: request.pagination,
+        preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
+        locale: request.locale
+      }
+    }
+  end
 end

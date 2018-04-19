@@ -7,6 +7,25 @@ defmodule BlueJet.Identity.DefaultService do
 
   @behaviour BlueJet.Identity.Service
 
+  def get_vas_data(%{ account_id: nil }) do
+    %{ account: nil, user: nil, role: "anonymous" }
+  end
+
+  def get_vas_data(%{ account_id: account_id, user_id: nil }) do
+    %{ account: get_account(account_id), user: nil, role: "guest" }
+  end
+
+  def get_vas_data(%{ account_id: account_id, user_id: user_id }) do
+    account = get_account(account_id)
+    user = get_user(%{ id: user_id }, %{ account: account }) || get_user(%{ id: user_id }, %{ account_id: account.live_account_id })
+
+    cond do
+      account && user -> %{ account: account, user: user, role: user.role }
+      account -> %{ account: account, user: nil, role: "guest" }
+      true -> %{ account: nil, user: nil, role: "anonymous" }
+    end
+  end
+
   #
   # MARK: Account
   #
@@ -271,6 +290,7 @@ defmodule BlueJet.Identity.DefaultService do
       User.Query.default()
       |> User.Query.member_of_account(account_id)
       |> Repo.get_by(fields)
+      |> User.put_role(account_id)
     else
       User.Query.default()
       |> User.Query.global()

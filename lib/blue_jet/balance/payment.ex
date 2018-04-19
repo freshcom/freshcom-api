@@ -271,7 +271,7 @@ defmodule BlueJet.Balance.Payment do
     put_change(changeset, :stripe_customer_id, stripe_customer_id)
   end
 
-  def preprocess(changeset = %{ changes: %{ source: source } }) do
+  def preprocess(changeset = %{ changes: %{ source: _ } }) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 

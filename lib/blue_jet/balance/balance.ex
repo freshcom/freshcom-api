@@ -2,7 +2,7 @@ defmodule BlueJet.Balance do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :balance
 
-  alias BlueJet.Balance.Service
+  alias BlueJet.Balance.{Policy, Service}
 
   def update_settings(request) do
     with {:ok, request} <- preprocess_request(request, "balance.update_settings") do
@@ -131,30 +131,28 @@ defmodule BlueJet.Balance do
   # MARK: Payment
   #
   def list_payment(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.list_payment") do
-      request
-      |> AccessRequest.transform_by_role()
-      |> do_list_payment()
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_payment") do
+      do_list_payment(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_payment(request = %AccessRequest{ account: account, filter: filter }) do
+  def do_list_payment(args = %{ opts: %{ account: account } }) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_payment(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_payment(args[:opts])
 
-    all_count = Service.count_payment(%{ account: account })
+    all_count = Service.count_payment(%{ filter: args[:filter] }, %{ account: args[:opts][:account] })
 
     payments =
-      %{ filter: filter, search: request.search }
-      |> Service.list_payment(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_payment(args[:opts])
+      |> Translation.translate(args[:opts][:locale], account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:opts][:locale],
         all_count: all_count,
         total_count: total_count
       },

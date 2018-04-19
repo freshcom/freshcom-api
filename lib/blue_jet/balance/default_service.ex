@@ -232,23 +232,6 @@ defmodule BlueJet.Balance.DefaultService do
     |> Repo.aggregate(:count, :id)
   end
 
-  defp run_before_create_payment(fields) do
-    with {:ok, results} <- emit_event("balance.payment.create.before", %{ fields: fields }) do
-      values = [fields] ++ Keyword.values(results)
-      fields = Enum.reduce(values, %{}, fn(fields, acc) ->
-        if fields do
-          Map.merge(acc, fields)
-        else
-          acc
-        end
-      end)
-
-      {:ok, fields}
-    else
-      other -> other
-    end
-  end
-
   def create_payment(fields, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)

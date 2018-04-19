@@ -1,7 +1,7 @@
 defmodule BlueJet.Crm.Customer.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Crm.{IdentityService, FileStorageService, BalanceService}
+  alias BlueJet.Crm.{IdentityService, FileStorageService}
 
   def get_account(customer) do
     customer.account || IdentityService.get_account(customer)
