@@ -215,7 +215,6 @@ defmodule BlueJet.BalanceTest do
       assert response.meta.total_count == 1
     end
 
-    @tag :focus
     test "when role is administrator" do
       account = %Account{}
       IdentityServiceMock

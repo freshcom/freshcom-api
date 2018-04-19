@@ -32,6 +32,12 @@ defmodule BlueJet.Storefront.OrderLineItem.Query do
     from oli in query, where: oli.is_leaf == true
   end
 
+  def leaf_for_target_type(query, target_type) do
+    from oli in query,
+      where: oli.is_leaf == true,
+      where: oli.target_type == ^target_type
+  end
+
   def with_order(query, filter) do
     from oli in query,
       join: o in Order, where: oli.order_id == o.id,

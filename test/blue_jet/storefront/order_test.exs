@@ -120,6 +120,40 @@ defmodule BlueJet.OrderTest do
       {_, error_info} = changeset.errors[:customer]
       assert error_info[:validation] == :required_for_unlockable
     end
+
+    test "when given order has depositable" do
+      account = Repo.insert!(%Account{})
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+      Repo.insert!(%OrderLineItem{
+        account_id: account.id,
+        order_id: order.id,
+        name: Faker.String.base64(5),
+        charge_quantity: 1,
+        sub_total_cents: 500,
+        grand_total_cents: 500,
+        authorization_total_cents: 500,
+        is_leaf: true,
+        auto_fulfill: false,
+        target_type: "Depositable"
+      })
+
+      changeset =
+        order
+        |> change(%{
+            name: Faker.String.base64(5),
+            email: Faker.Internet.safe_email(),
+            fulfillment_method: "pickup"
+           })
+        |> Map.put(:action, :update)
+        |> Order.validate()
+
+      assert Keyword.keys(changeset.errors) == [:customer]
+
+      {_, error_info} = changeset.errors[:customer]
+      assert error_info[:validation] == :required_for_depositable
+    end
   end
 
   describe "changeset/4" do

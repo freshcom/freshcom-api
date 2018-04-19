@@ -141,14 +141,21 @@ defmodule BlueJet.Storefront.Order do
       changeset
     else
       ordered_unlockable_count =
-        from(oli in OrderLineItem, where: oli.order_id == ^id, where: oli.is_leaf == true, where: oli.target_type == "Unlockable")
+        OrderLineItem.Query.default()
+        |> OrderLineItem.Query.for_order(id)
+        |> OrderLineItem.Query.leaf_for_target_type("Unlockable")
         |> Repo.aggregate(:count, :id)
 
-      # TODO: Also need to consider depositable
-      case ordered_unlockable_count do
-        0 -> changeset
+      ordered_depositable_count =
+        OrderLineItem.Query.default()
+        |> OrderLineItem.Query.for_order(id)
+        |> OrderLineItem.Query.leaf_for_target_type("Depositable")
+        |> Repo.aggregate(:count, :id)
 
-        _ -> add_error(changeset, :customer, "An Order that contains Unlockable must be associated to a Customer.", [validation: :required_for_unlockable, full_error_message: true])
+      cond do
+        ordered_unlockable_count > 0 -> add_error(changeset, :customer, "An order that contains unlockable must be associated to a customer.", [validation: :required_for_unlockable, full_error_message: true])
+        ordered_depositable_count > 0 -> add_error(changeset, :customer, "An order that contains depositable must be associated to a customer.", [validation: :required_for_depositable, full_error_message: true])
+        true -> changeset
       end
     end
   end
