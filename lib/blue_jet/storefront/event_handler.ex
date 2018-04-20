@@ -18,36 +18,10 @@ defmodule BlueJet.Storefront.EventHandler do
 
   def handle_event("balance.payment.create.before", %{ changeset: changeset = %{ changes: %{ target_type: "Order", target_id: order_id } } }) do
     account = Changeset.get_field(changeset, :account)
-
-    order =
-      Repo.get!(Order, order_id)
-      |> Map.put(:account, account)
+    order = Service.get_order(%{ id: order_id }, %{ account: account })
 
     if order.status == "cart" do
-      changeset =
-        order
-        |> Changeset.change(status: "opened", opened_at: Ecto.DateTime.utc())
-        |> Map.put(:action, :update)
-
-      process_result =
-        changeset
-        |> Repo.update!()
-        |> Order.process(changeset)
-
-      case process_result do
-        {:ok, order} ->
-          root_line_items =
-            OrderLineItem.Query.default()
-            |> OrderLineItem.Query.for_order(order.id)
-            |> OrderLineItem.Query.root()
-            |> OrderLineItem.Query.order_by([desc: :sort_index, asc: :inserted_at])
-            |> Repo.all()
-
-          order = %{ order | root_line_items: root_line_items }
-          emit_event("storefront.order.opened.success", %{ order: order, account: account })
-
-        other -> other
-      end
+      Service.update_order(order, %{ status: "opened" }, %{ account: account })
     else
       {:ok, order}
     end
