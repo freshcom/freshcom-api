@@ -58,8 +58,20 @@ defmodule BlueJet.Fulfillment.Unlock do
   def validate(changeset) do
     changeset
     |> validate_required(required_fields())
-    |> unique_constraint(:unlockable_id, name: :unlocks_customer_id_unlockable_id_index)
+    |> validate_unlockable_id()
   end
+
+  defp validate_unlockable_id(changeset = %{ valid?: true }) do
+    customer_id = get_field(changeset, :customer_id)
+    unlockable_id = get_field(changeset, :unlockable_id)
+    if Repo.get_by(__MODULE__, customer_id: customer_id, unlockable_id: unlockable_id) do
+      add_error(changeset, :unlockable_id, "Unlockable is already unlocked", [validation: :cannot_be_unlocked_unlockable, full_error_message: true])
+    else
+      changeset
+    end
+  end
+
+  defp validate_unlockable_id(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.

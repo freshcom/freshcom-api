@@ -235,15 +235,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   # MARK: Preprocess
   #
   defp fulfill_unlockable(unlockable_id, customer_id, opts) do
-    unlock =
-      %Unlock{ account_id: opts[:account].id, account: opts[:account] }
-      |> change(%{
-          unlockable_id: unlockable_id,
-          customer_id: customer_id
-         })
-      |> Repo.insert!()
-
-    {:ok, unlock}
+    %Unlock{ account_id: opts[:account].id, account: opts[:account] }
+    |> Unlock.changeset(:insert, %{ unlockable_id: unlockable_id, customer_id: customer_id })
+    |> Repo.insert()
   end
 
   defp fulfill_depositable(depositable_id, quantity, customer_id, opts) do
@@ -266,33 +260,35 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     CrmService.update_point_transaction(pt_id, %{ status: "committed" }, opts)
   end
 
-  defp preprocess(changeset = %{
+  defp preprocess("Unlockable", changeset = %{
     data: %{
       package: %{ customer_id: customer_id },
       account: account
     },
     changes: %{ status: "fulfilled" }
-  }, "Unlockable") do
+  }) do
     unlockable_id = get_field(changeset, :target_id)
     opts = %{ account: account }
 
-    {:ok, unlock} = fulfill_unlockable(unlockable_id, customer_id, opts)
+    with {:ok, unlock} <- fulfill_unlockable(unlockable_id, customer_id, opts) do
+      changeset =
+        changeset
+        |> put_change(:source_type, "Unlock")
+        |> put_change(:source_id, unlock.id)
 
-    changeset =
-      changeset
-      |> put_change(:source_type, "Unlock")
-      |> put_change(:source_id, unlock.id)
-
-    {:ok, changeset}
+      {:ok, changeset}
+    else
+      other -> other
+    end
   end
 
-  defp preprocess(changeset = %{
+  defp preprocess("Depositable", changeset = %{
     data: %{
       package: %{ customer_id: customer_id },
       account: account
     },
     changes: %{ status: "fulfilled" }
-  }, "Depositable") do
+  }) do
     depositable_id = get_field(changeset, :target_id)
     quantity = get_field(changeset, :quantity)
 
@@ -312,10 +308,10 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     end
   end
 
-  defp preprocess(changeset = %{
+  defp preprocess("PointTransaction", changeset = %{
     data: %{ account: account },
     changes: %{ status: "fulfilled" }
-  }, "PointTransaction") do
+  }) do
     point_transaction_id = get_field(changeset, :target_id)
     opts = %{ account: account }
 
@@ -331,8 +327,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     end
   end
 
-  defp preprocess(changeset, nil), do: {:ok, changeset}
+  defp preprocess(nil, changeset), do: {:ok, changeset}
 
+  @spec preprocess(Changeset.t) :: {:ok, Changeset.t} | {:error, Changeset.t}
   def preprocess(changeset = %{
     data: data,
     changes: %{ status: "fulfilled" }
@@ -341,7 +338,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     changeset = %{ changeset | data: data }
 
     target_type = get_field(changeset, :target_type)
-    preprocess(changeset, target_type)
+    preprocess(target_type, changeset)
   end
 
   def preprocess(changeset), do: {:ok, changeset}

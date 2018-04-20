@@ -246,6 +246,37 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
       assert changeset.changes[:source_id] == unlock.id
     end
 
+    test "when fulfilling unlockable that is already unlocked" do
+      account = Repo.insert!(%Account{})
+      unlockable = Repo.insert!(%Unlockable{
+        account_id: account.id,
+        name: Faker.Commerce.product_name()
+      })
+      customer = Repo.insert!(%Customer{
+        account: account,
+        name: Faker.Name.name()
+      })
+      Repo.insert!(%Unlock{
+        account_id: account.id,
+        customer_id: customer.id,
+        unlockable_id: unlockable.id
+      })
+
+      fulfillment_item = %FulfillmentItem{
+        account: account,
+        package: %{ customer_id: customer.id }
+      }
+      changes = %{
+        status: "fulfilled",
+        target_type: "Unlockable",
+        target_id: unlockable.id
+      }
+
+      {:error, _} =
+        change(fulfillment_item, changes)
+        |> FulfillmentItem.preprocess()
+    end
+
     test "when fulfilling depositable" do
       account = %Account{}
 

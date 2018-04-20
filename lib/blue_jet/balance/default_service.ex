@@ -242,6 +242,9 @@ defmodule BlueJet.Balance.DefaultService do
 
     statements =
       Multi.new()
+      |> Multi.run(:before_create, fn(_)->
+          emit_event("balance.payment.create.before", %{ changeset: changeset })
+         end)
       |> Multi.run(:changeset, fn(_) ->
           Payment.preprocess(changeset)
          end)

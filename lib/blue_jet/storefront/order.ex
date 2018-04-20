@@ -442,13 +442,19 @@ defmodule BlueJet.Storefront.Order do
       |> Repo.all()
 
     package = Proxy.create_auto_fulfillment_package(order)
-    if length(af_line_items) > 0 do
-      Enum.each(af_line_items, fn(af_line_item) ->
-        OrderLineItem.Proxy.create_fulfillment_item(af_line_item, package)
-      end)
-    end
+    af_results = Enum.map(af_line_items, fn(af_line_item) ->
+      OrderLineItem.Proxy.create_fulfillment_item(af_line_item, package)
+    end)
 
-    order
+    error = Enum.find(af_results, fn({status, result}) ->
+      status == :error
+    end)
+
+    if error do
+      error
+    else
+      {:ok, order}
+    end
   end
 
   @doc """
@@ -456,14 +462,12 @@ defmodule BlueJet.Storefront.Order do
 
   This function may change the order in database.
   """
+  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, Changeset.t}
   def process(order, %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    order =
-      order
-      |> Proxy.put_account()
-      |> Proxy.put_customer()
-      |> process_auto_fulfill()
-
-    {:ok, order}
+    order
+    |> Proxy.put_account()
+    |> Proxy.put_customer()
+    |> process_auto_fulfill()
   end
 
   def process(order, _), do: {:ok, order}

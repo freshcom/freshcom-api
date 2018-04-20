@@ -293,6 +293,12 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         "source" => Ecto.UUID.generate()
       }
 
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance.payment.create.before"
+          {:ok, nil}
+         end)
+
       {:error, changeset} = DefaultService.create_payment(fields, %{ account: account })
 
       assert changeset.valid? == false
@@ -322,6 +328,10 @@ defmodule BlueJet.Balance.DefaultServiceTest do
       |> expect(:post, fn(_, _, _) -> {:ok, stripe_charge} end)
 
       EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance.payment.create.before"
+          {:ok, nil}
+         end)
       |> expect(:handle_event, fn(name, _) ->
           assert name == "balance.payment.create.success"
           {:ok, nil}
