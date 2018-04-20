@@ -64,8 +64,9 @@ defmodule BlueJet.Fulfillment.Unlock do
   defp validate_unlockable_id(changeset = %{ valid?: true }) do
     customer_id = get_field(changeset, :customer_id)
     unlockable_id = get_field(changeset, :unlockable_id)
+
     if Repo.get_by(__MODULE__, customer_id: customer_id, unlockable_id: unlockable_id) do
-      add_error(changeset, :unlockable_id, "Unlockable is already unlocked", [validation: :cannot_be_unlocked_unlockable, full_error_message: true])
+      add_error(changeset, :unlockable_id, "Unlockable is already unlocked", [code: :already_unlocked, full_error_message: true])
     else
       changeset
     end

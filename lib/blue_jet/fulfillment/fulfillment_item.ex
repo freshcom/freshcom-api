@@ -278,6 +278,10 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
 
       {:ok, changeset}
     else
+      {:error, %{ errors: [unlockable_id: {_, [code: :already_unlocked, full_error_message: true]}] }} ->
+        changeset = add_error(changeset, :target, "The target unlockable is already unlocked", [code: :already_unlocked, full_error_message: true])
+        {:error, changeset}
+
       other -> other
     end
   end

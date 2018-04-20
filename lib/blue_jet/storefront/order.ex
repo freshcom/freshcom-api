@@ -433,7 +433,7 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  defp process_auto_fulfill(order) do
+  defp process_auto_fulfill(order, changeset) do
     af_line_items =
       OrderLineItem
       |> OrderLineItem.Query.for_order(order.id)
@@ -446,14 +446,20 @@ defmodule BlueJet.Storefront.Order do
       OrderLineItem.Proxy.create_fulfillment_item(af_line_item, package)
     end)
 
-    error = Enum.find(af_results, fn({status, result}) ->
+    error = Enum.find(af_results, fn({status, _}) ->
       status == :error
     end)
 
-    if error do
-      error
-    else
-      {:ok, order}
+    case error do
+      {:error, %{ errors: [target: {_, [code: :already_unlocked, full_error_message: true]}] }} ->
+        changeset = add_error(changeset, :line_items, "Some line items have unlockables that are already unlocked", [code: :already_unlocked, full_error_message: true])
+        {:error, changeset}
+
+      nil ->
+        {:ok, order}
+
+      other ->
+        other
     end
   end
 
@@ -463,11 +469,11 @@ defmodule BlueJet.Storefront.Order do
   This function may change the order in database.
   """
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, Changeset.t}
-  def process(order, %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+  def process(order, changeset = %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     order
     |> Proxy.put_account()
     |> Proxy.put_customer()
-    |> process_auto_fulfill()
+    |> process_auto_fulfill(changeset)
   end
 
   def process(order, _), do: {:ok, order}
