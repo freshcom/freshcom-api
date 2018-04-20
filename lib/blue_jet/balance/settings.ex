@@ -32,7 +32,6 @@ defmodule BlueJet.Balance.Settings do
   @system_fields [
     :id,
     :account_id,
-    :stripe_user_id,
     :stripe_livemode,
     :stripe_access_token,
     :stripe_refresh_token,
@@ -52,7 +51,20 @@ defmodule BlueJet.Balance.Settings do
   def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
+    |> sync_with_stripe_user_id()
   end
+
+  defp sync_with_stripe_user_id(changeset = %{ changes: %{ stripe_user_id: _ } }) do
+    changeset
+    |> put_change(:stripe_user_id, nil)
+    |> put_change(:stripe_livemode, nil)
+    |> put_change(:stripe_access_token, nil)
+    |> put_change(:stripe_refresh_token, nil)
+    |> put_change(:stripe_publishable_key, nil)
+    |> put_change(:stripe_scope, nil)
+  end
+
+  defp sync_with_stripe_user_id(changeset), do: changeset
 
   def for_account(account_id) do
     Repo.get_by!(__MODULE__, account_id: account_id)
