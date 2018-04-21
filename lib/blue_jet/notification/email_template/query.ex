@@ -11,7 +11,8 @@ defmodule BlueJet.Notification.EmailTemplate.Query do
   ]
 
   @filterable_fields [
-    :id
+    :id,
+    :from
   ]
 
   def default() do

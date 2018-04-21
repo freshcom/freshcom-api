@@ -21,6 +21,7 @@ defmodule BlueJet.Notification.EmailTemplate do
 
     field :name, :string
     field :subject, :string
+    field :from, :string
     field :to, :string
     field :reply_to, :string
     field :body_html, :string

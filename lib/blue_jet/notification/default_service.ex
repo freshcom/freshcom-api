@@ -231,9 +231,11 @@ defmodule BlueJet.Notification.DefaultService do
     account = get_account(opts)
     pagination = get_pagination(opts)
     preloads = get_preloads(opts, account)
+    filter = get_filter(fields)
 
     EmailTemplate.Query.default()
     |> EmailTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> EmailTemplate.Query.filter_by(filter)
     |> EmailTemplate.Query.for_account(account.id)
     |> EmailTemplate.Query.paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
@@ -242,9 +244,11 @@ defmodule BlueJet.Notification.DefaultService do
 
   def count_email_template(fields \\ %{}, opts) do
     account = get_account(opts)
+    filter = get_filter(fields)
 
     EmailTemplate.Query.default()
     |> EmailTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
+    |> EmailTemplate.Query.filter_by(filter)
     |> EmailTemplate.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
