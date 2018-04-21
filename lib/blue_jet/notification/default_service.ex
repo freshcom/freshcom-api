@@ -238,6 +238,7 @@ defmodule BlueJet.Notification.DefaultService do
     |> EmailTemplate.Query.filter_by(filter)
     |> EmailTemplate.Query.for_account(account.id)
     |> EmailTemplate.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> EmailTemplate.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
