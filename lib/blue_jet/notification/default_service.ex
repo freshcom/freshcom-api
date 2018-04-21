@@ -29,6 +29,7 @@ defmodule BlueJet.Notification.DefaultService do
     |> Trigger.Query.filter_by(filter)
     |> Trigger.Query.for_account(account.id)
     |> Trigger.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Trigger.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
