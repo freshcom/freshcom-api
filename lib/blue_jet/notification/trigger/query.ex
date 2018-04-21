@@ -4,6 +4,7 @@ defmodule BlueJet.Notification.Trigger.Query do
   alias BlueJet.Notification.Trigger
 
   @searchable_fields [
+    :name,
     :event
   ]
 

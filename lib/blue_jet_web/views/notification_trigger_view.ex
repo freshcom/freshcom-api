@@ -8,7 +8,9 @@ defmodule BlueJetWeb.NotificationTriggerView do
     :event,
     :action_type,
     :action_target,
-    :description
+    :description,
+    :updated_at,
+    :inserted_at
   ]
 
   def type do
