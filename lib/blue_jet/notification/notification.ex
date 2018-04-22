@@ -37,6 +37,24 @@ defmodule BlueJet.Notification do
     {:ok, response}
   end
 
+  def get_email(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_email") do
+      do_get_email(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_get_email(args) do
+    email = Service.get_email(args[:identifiers], args[:opts])
+
+    if email do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: email }}
+    else
+      {:error, :not_found}
+    end
+  end
+
   #
   # MARK: Email Templates
   #

@@ -24,4 +24,20 @@ defmodule BlueJetWeb.EmailController do
       other -> other
     end
   end
+
+  def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id },
+      preloads: assigns[:preloads],
+      locale: assigns[:locale]
+    }
+
+    case Notification.get_email(request) do
+      {:ok, %{ data: email, meta: meta }} ->
+        render(conn, "show.json-api", data: email, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+
+      other -> other
+    end
+  end
 end

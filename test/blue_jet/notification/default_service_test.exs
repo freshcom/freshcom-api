@@ -3,8 +3,8 @@ defmodule BlueJet.Notification.DefaultServiceTest do
 
   alias BlueJet.Identity.Account
 
-  alias BlueJet.Notification.{Trigger}
   alias BlueJet.Notification.DefaultService
+  alias BlueJet.Notification.{Trigger, Email}
 
   describe "update_trigger/2" do
     test "when given nil for trigger" do
@@ -55,6 +55,33 @@ defmodule BlueJet.Notification.DefaultServiceTest do
       {:ok, trigger} = DefaultService.update_trigger(trigger.id, fields, %{ account: account })
 
       assert trigger
+    end
+  end
+
+  describe "get_email/2" do
+    test "when given identifiers has no match" do
+      account = Repo.insert!(%Account{})
+
+      refute DefaultService.get_email(%{ id: Ecto.UUID.generate() }, %{ account: account })
+    end
+
+    test "when given identifiers belongs to a different account" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      email = Repo.insert!(%Email{
+        account_id: other_account.id
+      })
+
+      refute DefaultService.get_email(%{ id: email.id }, %{ account: account })
+    end
+
+    test "when given valid identifiers" do
+      account = Repo.insert!(%Account{})
+      email = Repo.insert!(%Email{
+        account_id: account.id
+      })
+
+      assert DefaultService.get_email(%{ id: email.id }, %{ account: account })
     end
   end
 end

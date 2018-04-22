@@ -12,6 +12,7 @@ defmodule BlueJet.Notification.Service do
 
   @callback list_email(map, map) :: [Email.t]
   @callback count_email(map, map) :: integer
+  @callback get_email(map, map) :: Email.t | nil
   @callback delete_all_email(map) :: :ok
 
   @callback list_email_template(map, map) :: [EmailTemplate.t]
@@ -44,6 +45,7 @@ defmodule BlueJet.Notification.Service do
   defdelegate list_email(params, opts), to: @service
   defdelegate count_email(params \\ %{}, opts), to: @service
   defdelegate delete_all_email(opts), to: @service
+  defdelegate get_email(identifiers, opts), to: @service
 
   defdelegate list_email_template(params, opts), to: @service
   defdelegate count_email_template(params \\ %{}, opts), to: @service
