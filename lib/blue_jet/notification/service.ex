@@ -6,6 +6,7 @@ defmodule BlueJet.Notification.Service do
   @callback create_trigger(map, map) :: {:ok, Trigger.t} | {:error, any}
   @callback create_system_default_trigger(map) :: :ok
   @callback get_trigger(map, map) :: Trigger.t | nil
+  @callback update_trigger(String.t | Trigger.t, map, map) :: {:ok, Trigger.t} | {:error, any}
   @callback delete_trigger(String.t | Trigger.t, map) :: {:ok, Trigger.t} | {:error, any}
   @callback delete_all_trigger(map) :: :ok
 
@@ -36,6 +37,7 @@ defmodule BlueJet.Notification.Service do
   defdelegate create_trigger(fields, opts), to: @service
   defdelegate create_system_default_trigger(opts), to: @service
   defdelegate get_trigger(identifiers, opts), to: @service
+  defdelegate update_trigger(id_or_trigger, fields, opts), to: @service
   defdelegate delete_trigger(id_or_trigger, opts), to: @service
   defdelegate delete_all_trigger(opts), to: @service
 

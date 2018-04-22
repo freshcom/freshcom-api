@@ -39,12 +39,28 @@ defmodule BlueJet.Notification.Trigger do
 
   def validate(changeset) do
     changeset
-    |> validate_required([:name, :status, :event, :action_target, :action_type])
+    |> validate_required([:name, :status, :event, :action_type, :action_target])
   end
 
-  def changeset(trigger, :insert, params) do
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:event, :action_type]
+  end
+
+  def changeset(trigger, :insert, fields) do
     trigger
-    |> cast(params, writable_fields())
+    |> cast(fields, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  def changeset(trigger, :update, fields) do
+    trigger
+    |> cast(fields, castable_fields(:update))
+    |> Map.put(:action, :update)
     |> validate()
   end
 

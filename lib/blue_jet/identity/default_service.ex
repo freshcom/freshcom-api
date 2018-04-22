@@ -26,6 +26,15 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
+  def put_vas_data(request = %{ vas: vas }) do
+    %{account: account, user: user, role: role} = get_vas_data(vas)
+
+    request
+    |> Map.put(:account, account)
+    |> Map.put(:user, user)
+    |> Map.put(:role, role)
+  end
+
   #
   # MARK: Account
   #

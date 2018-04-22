@@ -128,6 +128,33 @@ defmodule BlueJet.Notification.DefaultService do
     |> preload(preloads[:path], preloads[:opts])
   end
 
+  def update_trigger(nil, _, _), do: {:error, :not_found}
+
+  def update_trigger(trigger = %Trigger{}, fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %{ trigger | account: account }
+      |> Trigger.changeset(:update, fields)
+
+    with {:ok, trigger} <- Repo.update(changeset) do
+      trigger = preload(trigger, preloads[:path], preloads[:opts])
+      {:ok, trigger}
+    else
+      other -> other
+    end
+  end
+
+  def update_trigger(id, fields, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+
+    Trigger
+    |> Repo.get_by(id: id, account_id: account.id)
+    |> update_trigger(fields, opts)
+  end
+
   def delete_trigger(nil, _), do: {:error, :not_found}
 
   def delete_trigger(trigger = %Trigger{}, opts) do

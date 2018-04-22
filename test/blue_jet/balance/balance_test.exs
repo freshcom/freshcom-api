@@ -4,7 +4,7 @@ defmodule BlueJet.BalanceTest do
   alias BlueJet.Identity.{Account, User}
   alias BlueJet.Balance
   alias BlueJet.Balance.{Card, Payment, Refund}
-  alias BlueJet.Balance.{IdentityServiceMock, CrmServiceMock}
+  alias BlueJet.Balance.{CrmServiceMock}
   alias BlueJet.Balance.ServiceMock
 
   describe "list_card/1" do
@@ -162,21 +162,22 @@ defmodule BlueJet.BalanceTest do
 
   describe "list_payment/1" do
     test "when role is not authorized" do
-      IdentityServiceMock
-      |> expect(:get_vas_data, fn(_) ->
-          %{ account: %Account{}, user: nil, role: "guest" }
-         end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Balance.list_payment(%AccessRequest{})
+      {:error, error} = Balance.list_payment(request)
       assert error == :access_denied
     end
 
     test "when role is customer" do
-      account = %Account{}
-      IdentityServiceMock
-      |> expect(:get_vas_data, fn(_) ->
-          %{ account: account, user: %User{}, role: "customer" }
-         end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
       customer = %{ id: Ecto.UUID.generate() }
       CrmServiceMock
@@ -188,26 +189,25 @@ defmodule BlueJet.BalanceTest do
       |> expect(:list_payment, fn(fields, opts) ->
           assert fields[:filter][:owner_type] == "Customer"
           assert fields[:filter][:owner_id] == customer.id
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           [%Payment{}]
          end)
       |> expect(:count_payment, fn(fields, opts) ->
           assert fields[:filter][:owner_type] == "Customer"
           assert fields[:filter][:owner_id] == customer.id
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           1
          end)
       |> expect(:count_payment, fn(fields, opts) ->
           assert fields[:filter][:owner_type] == "Customer"
           assert fields[:filter][:owner_id] == customer.id
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           1
          end)
 
-      request = %AccessRequest{}
       {:ok, response} = Balance.list_payment(request)
 
       assert length(response.data) == 1
@@ -216,30 +216,29 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when role is administrator" do
-      account = %Account{}
-      IdentityServiceMock
-      |> expect(:get_vas_data, fn(_) ->
-          %{ account: account, user: %User{}, role: "administrator" }
-         end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "administrator"
+      }
 
       ServiceMock
       |> expect(:list_payment, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           [%Payment{}]
          end)
       |> expect(:count_payment, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           1
          end)
       |> expect(:count_payment, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts[:account] == request.account
 
           1
          end)
 
-      request = %AccessRequest{}
       {:ok, response} = Balance.list_payment(request)
 
       assert length(response.data) == 1

@@ -1,5 +1,7 @@
 defmodule BlueJet.AccessRequest do
   defstruct vas: %{},
+            account: nil,
+            user: nil,
             role: nil,
 
             params: %{},
@@ -11,8 +13,6 @@ defmodule BlueJet.AccessRequest do
             pagination: %{ size: 25, number: 1 },
             counts: %{ all: %{} }, # TODO: Remove
             count_filter: %{ all: %{} },
-
-            account: nil,
 
             preloads: [],
             preload_filters: %{},
@@ -36,6 +36,19 @@ defmodule BlueJet.AccessRequest do
       opts: %{
         account: request.account,
         pagination: request.pagination,
+        preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
+        locale: request.locale
+      }
+    }
+  end
+
+  def to_authorized_args(request, :update) do
+    %{
+      id: request.params["id"],
+      fields: request.fields,
+
+      opts: %{
+        account: request.account,
         preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
         locale: request.locale
       }

@@ -1,6 +1,7 @@
 defmodule BlueJet.Notification do
   use BlueJet, :context
 
+  alias BlueJet.Notification.Policy
   alias BlueJet.Notification.Service
 
   def list_email(request) do
@@ -347,6 +348,25 @@ defmodule BlueJet.Notification do
       {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: trigger }}
     else
       {:error, :not_found}
+    end
+  end
+
+  def update_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_trigger") do
+      do_update_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_update_trigger(args) do
+    with {:ok, trigger} <- Service.update_trigger(args[:id], args[:fields], args[:opts]) do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: trigger }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 

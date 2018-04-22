@@ -17,12 +17,8 @@ defmodule BlueJet.Balance.Policy do
   end
 
   def authorize(request = %{ vas: vas, role: nil }, endpoint) do
-    %{account: account, user: user, role: role} = IdentityService.get_vas_data(vas)
-
     request
-    |> Map.put(:account, account)
-    |> Map.put(:user, user)
-    |> Map.put(:role, role)
+    |> IdentityService.put_vas_data()
     |> authorize(endpoint)
   end
 
