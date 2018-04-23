@@ -54,6 +54,18 @@ defmodule BlueJet.AccessRequest do
     }
   end
 
+  def to_authorized_args(request, :get) do
+    %{
+      identifiers: %{ id: request.params["id"] },
+
+      opts: %{
+        account: request.account,
+        preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
+        locale: request.locale
+      }
+    }
+  end
+
   def to_authorized_args(request, :update) do
     %{
       id: request.params["id"],
@@ -67,14 +79,12 @@ defmodule BlueJet.AccessRequest do
     }
   end
 
-  def to_authorized_args(request, :get) do
+  def to_authorized_args(request, :delete) do
     %{
       identifiers: %{ id: request.params["id"] },
 
       opts: %{
-        account: request.account,
-        preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
-        locale: request.locale
+        account: request.account
       }
     }
   end

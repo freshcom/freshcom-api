@@ -4,7 +4,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
   alias BlueJet.Identity.Account
 
   alias BlueJet.Notification.DefaultService
-  alias BlueJet.Notification.{Trigger, Email, Sms}
+  alias BlueJet.Notification.{Trigger, Email, Sms, SmsTemplate}
 
   describe "update_trigger/2" do
     test "when given nil for trigger" do
@@ -128,6 +128,35 @@ defmodule BlueJet.Notification.DefaultServiceTest do
       }
 
       {:ok, _} = DefaultService.create_sms_template(fields, %{ account: account })
+    end
+  end
+
+  describe "delete_sms_template/2" do
+    test "when given identifiers has no match" do
+      account = Repo.insert!(%Account{})
+
+      {:error, :not_found} =  DefaultService.delete_sms_template(%{ id: Ecto.UUID.generate() }, %{ account: account })
+    end
+
+    test "when given identifiers belongs to a different account" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      sms_template = Repo.insert!(%SmsTemplate{
+        account_id: other_account.id,
+        name: Faker.Lorem.sentence(5)
+      })
+
+      {:error, :not_found} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
+    end
+
+    test "when given valid identifiers" do
+      account = Repo.insert!(%Account{})
+      sms_template = Repo.insert!(%SmsTemplate{
+        account_id: account.id,
+        name: Faker.Lorem.sentence(5)
+      })
+
+      {:ok, _} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
     end
   end
 end

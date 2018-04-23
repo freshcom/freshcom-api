@@ -539,6 +539,32 @@ defmodule BlueJet.Notification.DefaultService do
     |> update_sms_template(fields, opts)
   end
 
+  def delete_sms_template(nil, _), do: {:error, :not_found}
+
+  def delete_sms_template(sms_template = %SmsTemplate{}, opts) do
+    account = get_account(opts)
+
+    changeset =
+      %{ sms_template | account: account }
+      |> SmsTemplate.changeset(:delete)
+
+    with {:ok, sms_template} <- Repo.delete(changeset) do
+      {:ok, sms_template}
+    else
+      other -> other
+    end
+  end
+
+  def delete_sms_template(identifiers, opts) do
+    opts = put_account(opts)
+    account = opts[:account]
+    identifiers = Map.put(identifiers, :account_id, account.id)
+
+    SmsTemplate
+    |> Repo.get_by(identifiers)
+    |> delete_sms_template(opts)
+  end
+
   def delete_all_sms_template(opts = %{ account: account = %{ mode: "test" } }) do
     batch_size = opts[:batch_size] || 1000
 

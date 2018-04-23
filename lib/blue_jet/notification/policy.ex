@@ -18,6 +18,10 @@ defmodule BlueJet.Notification.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :create)}
   end
 
+  def authorize(request = %{ role: role }, "delete_sms_template") when role in ["developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+  end
+
   def authorize(request = %{ role: nil }, endpoint) do
     request
     |> IdentityService.put_vas_data()

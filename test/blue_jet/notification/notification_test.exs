@@ -119,7 +119,6 @@ defmodule BlueJet.NotificationTest do
       assert error == :access_denied
     end
 
-    @tag :focus
     test "when request is valid" do
       request = %AccessRequest{
         account: %Account{},
@@ -135,6 +134,39 @@ defmodule BlueJet.NotificationTest do
          end)
 
       {:ok, _} = Notification.create_sms_template(request)
+    end
+  end
+
+  describe "delete_sms_template/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, error} = Notification.delete_sms_template(request)
+      assert error == :access_denied
+    end
+
+    test "request is valid" do
+      sms_template = %SmsTemplate{ id: Ecto.UUID.generate() }
+
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => sms_template.id }
+      }
+
+      ServiceMock
+      |> expect(:delete_sms_template, fn(identifiers, _) ->
+          assert identifiers[:id] == sms_template.id
+
+          {:ok, %SmsTemplate{}}
+         end)
+
+      {:ok, _} = Notification.delete_sms_template(request)
     end
   end
 end

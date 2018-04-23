@@ -329,6 +329,25 @@ defmodule BlueJet.Notification do
     end
   end
 
+  def delete_sms_template(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_sms_template") do
+      do_delete_sms_template(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_delete_sms_template(args) do
+    with {:ok, _} <- Service.delete_sms_template(args[:identifiers], args[:opts]) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
   #
   # MARK: Trigger
   #

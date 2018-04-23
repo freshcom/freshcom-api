@@ -33,6 +33,7 @@ defmodule BlueJet.Notification.Service do
   @callback create_sms_template(map, map) :: {:ok, SmsTemplate.t} | {:error, any}
   @callback get_sms_template(map, map) :: SmsTemplate.t | nil
   @callback update_sms_template(String.t | SmsTemplate.t, map, map) :: {:ok, SmsTemplate.t} | {:error, any}
+  @callback delete_sms_template(String.t | SmsTemplate.t, map) :: {:ok, SmsTemplate.t} | {:error, any}
   @callback delete_all_sms_template(map) :: :ok
 
   defdelegate list_trigger(params, opts), to: @service
@@ -67,5 +68,6 @@ defmodule BlueJet.Notification.Service do
   defdelegate create_sms_template(fields, opts), to: @service
   defdelegate get_sms_template(identifiers, opts), to: @service
   defdelegate update_sms_template(id_or_sms_template, fields, opts), to: @service
+  defdelegate delete_sms_template(id_or_email_template, opts), to: @service
   defdelegate delete_all_sms_template(opts), to: @service
 end
