@@ -424,6 +424,16 @@ defmodule BlueJet.Notification.DefaultService do
     |> Repo.aggregate(:count, :id)
   end
 
+  def get_sms(identifiers, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    Sms.Query.default()
+    |> Sms.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
   def delete_all_sms(opts = %{ account: account = %{ mode: "test" } }) do
     batch_size = opts[:batch_size] || 1000
 

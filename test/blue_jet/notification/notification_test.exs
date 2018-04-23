@@ -4,7 +4,7 @@ defmodule BlueJet.NotificationTest do
   alias BlueJet.Identity.{Account, User}
 
   alias BlueJet.Notification
-  alias BlueJet.Notification.{ServiceMock, Trigger, Email}
+  alias BlueJet.Notification.{ServiceMock, Trigger, Email, Sms}
 
   describe "update_trigger/1" do
     test "when role is not authorized" do
@@ -71,6 +71,39 @@ defmodule BlueJet.NotificationTest do
          end)
 
       {:ok, _} = Notification.get_email(request)
+    end
+  end
+
+  describe "get_sms/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, error} = Notification.get_sms(request)
+      assert error == :access_denied
+    end
+
+    test "request is valid" do
+      sms = %Sms{ id: Ecto.UUID.generate() }
+
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => sms.id }
+      }
+
+      ServiceMock
+      |> expect(:get_sms, fn(identifiers, _) ->
+          assert identifiers[:id] == sms.id
+
+          {:ok, %Sms{}}
+         end)
+
+      {:ok, _} = Notification.get_sms(request)
     end
   end
 end

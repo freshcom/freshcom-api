@@ -25,6 +25,7 @@ defmodule BlueJet.Notification.Service do
 
   @callback list_sms(map, map) :: [Sms.t]
   @callback count_sms(map, map) :: integer
+  @callback get_sms(map, map) :: Sms.t | nil
   @callback delete_all_sms(map) :: :ok
 
   @callback list_sms_template(map, map) :: [SmsTemplate.t]
@@ -44,8 +45,8 @@ defmodule BlueJet.Notification.Service do
 
   defdelegate list_email(params, opts), to: @service
   defdelegate count_email(params \\ %{}, opts), to: @service
-  defdelegate delete_all_email(opts), to: @service
   defdelegate get_email(identifiers, opts), to: @service
+  defdelegate delete_all_email(opts), to: @service
 
   defdelegate list_email_template(params, opts), to: @service
   defdelegate count_email_template(params \\ %{}, opts), to: @service
@@ -57,6 +58,7 @@ defmodule BlueJet.Notification.Service do
 
   defdelegate list_sms(params, opts), to: @service
   defdelegate count_sms(params \\ %{}, opts), to: @service
+  defdelegate get_sms(identifiers, opts), to: @service
   defdelegate delete_all_sms(opts), to: @service
 
   defdelegate list_sms_template(params, opts), to: @service

@@ -10,6 +10,10 @@ defmodule BlueJet.Notification.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :get)}
   end
 
+  def authorize(request = %{ role: role }, "get_sms") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :get)}
+  end
+
   def authorize(request = %{ role: nil }, endpoint) do
     request
     |> IdentityService.put_vas_data()

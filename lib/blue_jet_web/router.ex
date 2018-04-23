@@ -125,10 +125,10 @@ defmodule BlueJetWeb.Router do
     #
     # Notification
     #
+    resources "/notification_triggers", NotificationTriggerController, only: [:create, :show, :update, :index, :delete]
     resources "/emails", EmailController, only: [:index, :show]
     resources "/email_templates", EmailTemplateController, only: [:create, :show, :update, :index, :delete]
-    resources "/notification_triggers", NotificationTriggerController, only: [:create, :show, :update, :index, :delete]
-    resources "/sms", SmsController, only: [:index]
+    resources "/sms", SmsController, only: [:index, :show]
     resources "/sms_templates", SmsTemplateController, only: [:create, :show, :update, :index, :delete]
   end
 end

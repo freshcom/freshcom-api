@@ -211,6 +211,24 @@ defmodule BlueJet.Notification do
     {:ok, response}
   end
 
+  def get_sms(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_sms") do
+      do_get_sms(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_get_sms(args) do
+    sms = Service.get_sms(args[:identifiers], args[:opts])
+
+    if sms do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: sms }}
+    else
+      {:error, :not_found}
+    end
+  end
+
   #
   # MARK: SMS Template
   #
