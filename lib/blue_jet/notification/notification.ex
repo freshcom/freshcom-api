@@ -265,6 +265,27 @@ defmodule BlueJet.Notification do
     {:ok, response}
   end
 
+  def create_sms_template(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_sms_template") do
+      do_create_sms_template(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_create_sms_template(args) do
+    with {:ok, sms_template} <- Service.create_sms_template(args[:fields], args[:opts]) do
+      locale = args[:opts][:locale]
+      sms_template = Translation.translate(sms_template, locale, args[:opts][:account].default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: locale }, data: sms_template }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
   def get_sms_template(request) do
     with {:ok, request} <- preprocess_request(request, "notification.get_sms_template") do
       request

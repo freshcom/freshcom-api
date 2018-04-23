@@ -42,6 +42,18 @@ defmodule BlueJet.AccessRequest do
     }
   end
 
+  def to_authorized_args(request, :create) do
+    %{
+      fields: request.fields,
+
+      opts: %{
+        account: request.account,
+        preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
+        locale: request.locale
+      }
+    }
+  end
+
   def to_authorized_args(request, :update) do
     %{
       id: request.params["id"],

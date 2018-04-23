@@ -467,6 +467,7 @@ defmodule BlueJet.Notification.DefaultService do
     |> SmsTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
     |> SmsTemplate.Query.for_account(account.id)
     |> SmsTemplate.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> SmsTemplate.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
@@ -478,6 +479,22 @@ defmodule BlueJet.Notification.DefaultService do
     |> SmsTemplate.Query.search(fields[:search], opts[:locale], account.default_locale)
     |> SmsTemplate.Query.for_account(account.id)
     |> Repo.aggregate(:count, :id)
+  end
+
+  def create_sms_template(fields, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    changeset =
+      %SmsTemplate{ account_id: account.id, account: account }
+      |> SmsTemplate.changeset(:insert, fields)
+
+    with {:ok, sms_template} <- Repo.insert(changeset) do
+      sms_template = preload(sms_template, preloads[:path], preloads[:opts])
+      {:ok, sms_template}
+    else
+      other -> other
+    end
   end
 
   def get_sms_template(fields, opts) do

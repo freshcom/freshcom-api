@@ -30,6 +30,7 @@ defmodule BlueJet.Notification.Service do
 
   @callback list_sms_template(map, map) :: [SmsTemplate.t]
   @callback count_sms_template(map, map) :: integer
+  @callback create_sms_template(map, map) :: {:ok, SmsTemplate.t} | {:error, any}
   @callback get_sms_template(map, map) :: SmsTemplate.t | nil
   @callback update_sms_template(String.t | SmsTemplate.t, map, map) :: {:ok, SmsTemplate.t} | {:error, any}
   @callback delete_all_sms_template(map) :: :ok
@@ -63,6 +64,7 @@ defmodule BlueJet.Notification.Service do
 
   defdelegate list_sms_template(params, opts), to: @service
   defdelegate count_sms_template(params \\ %{}, opts), to: @service
+  defdelegate create_sms_template(fields, opts), to: @service
   defdelegate get_sms_template(identifiers, opts), to: @service
   defdelegate update_sms_template(id_or_sms_template, fields, opts), to: @service
   defdelegate delete_all_sms_template(opts), to: @service
