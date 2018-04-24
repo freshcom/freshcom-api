@@ -9,8 +9,6 @@ defmodule BlueJetWeb.FulfillmentPackageView do
     :label,
     :system_label,
 
-    :print_name,
-
     :caption,
     :description,
     :custom_data,
@@ -20,6 +18,8 @@ defmodule BlueJetWeb.FulfillmentPackageView do
   ]
 
   has_one :source, serializer: BlueJetWeb.IdentifierView, identifiers: :always
+  has_one :order, serializer: BlueJetWeb.OrderView, identifiers: :always
+  has_one :customer, serializer: BlueJetWeb.CustomerView, identifiers: :always
 
   has_many :items, serializer: BlueJetWeb.FulfillmentItemView, identifiers: :when_included
   has_many :file_collections, serializer: BlueJetWeb.FileCollectionView, identifiers: :when_included
@@ -31,4 +31,8 @@ defmodule BlueJetWeb.FulfillmentPackageView do
   def order(%{ order_id: nil }, _), do: nil
   def order(%{ order_id: order_id, order: nil }, _), do: %{ id: order_id, type: "Order" }
   def order(%{ order: order }, _), do: order
+
+  def customer(%{ customer_id: nil }, _), do: nil
+  def customer(%{ customer_id: customer_id, customer: nil }, _), do: %{ id: customer_id, type: "Order" }
+  def customer(%{ customer: customer }, _), do: customer
 end

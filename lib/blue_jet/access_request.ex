@@ -33,6 +33,8 @@ defmodule BlueJet.AccessRequest do
       filter: request.filter,
       search: request.search,
 
+      all_count_filter: %{},
+
       opts: %{
         account: request.account,
         pagination: request.pagination,

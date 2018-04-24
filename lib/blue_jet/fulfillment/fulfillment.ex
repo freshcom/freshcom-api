@@ -2,37 +2,37 @@ defmodule BlueJet.Fulfillment do
   use BlueJet, :context
 
   alias BlueJet.Fulfillment.CrmService
-  alias BlueJet.Fulfillment.Service
+  alias BlueJet.Fulfillment.{Policy, Service}
 
   #
   # MARK: Fulfillment Package
   #
   def list_fulfillment_package(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.list_fulfillment_package") do
-      request
-      |> do_list_fulfillment_package()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_fulfillment_package") do
+      do_list_fulfillment_package(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_fulfillment_package(request = %{ account: account, filter: filter }) do
+  def do_list_fulfillment_package(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_fulfillment_package(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_fulfillment_package(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_fulfillment_package(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_fulfillment_package(args[:opts])
 
+    locale = args[:opts][:locale]
     fulfillment_packages =
-      %{ filter: filter, search: request.search }
-      |> Service.list_fulfillment_package(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_fulfillment_package(args[:opts])
+      |> Translation.translate(locale, args[:opts][:account].default_locale)
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: locale,
         all_count: all_count,
         total_count: total_count,
       },
@@ -40,6 +40,24 @@ defmodule BlueJet.Fulfillment do
     }
 
     {:ok, response}
+  end
+
+  def get_fulfillment_package(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_fulfillment_package") do
+      do_get_fulfillment_package(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_get_fulfillment_package(args) do
+    fulfillment_package = Service.get_fulfillment_package(args[:identifiers], args[:opts])
+
+    if fulfillment_package do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: fulfillment_package }}
+    else
+      {:error, :not_found}
+    end
   end
 
   def delete_fulfillment_package(request) do

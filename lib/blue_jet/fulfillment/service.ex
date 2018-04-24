@@ -4,6 +4,7 @@ defmodule BlueJet.Fulfillment.Service do
   @callback list_fulfillment_package(map, map) :: [FulfillmentPackage.t]
   @callback count_fulfillment_package(map, map) :: integer
   @callback create_fulfillment_package(map, map) :: {:ok, FulfillmentPackage.t} | {:error, any}
+  @callback get_fulfillment_package(map, map) :: FulfillmentPackage.t | nil
   @callback delete_fulfillment_package(String.t | FulfillmentPackage.t, map) :: {:ok, FulfillmentPackage.t} | {:error, any}
   @callback delete_all_fulfillment_package(map) :: :ok
 
@@ -28,6 +29,7 @@ defmodule BlueJet.Fulfillment.Service do
   defdelegate list_fulfillment_package(params, opts), to: @service
   defdelegate count_fulfillment_package(params \\ %{}, opts), to: @service
   defdelegate create_fulfillment_package(fields, opts), to: @service
+  defdelegate get_fulfillment_package(identifiers, opts), to: @service
   defdelegate delete_fulfillment_package(id_or_fulfillment_package, opts), to: @service
   defdelegate delete_all_fulfillment_package(opts), to: @service
 

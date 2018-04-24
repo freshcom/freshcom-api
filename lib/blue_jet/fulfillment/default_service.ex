@@ -64,6 +64,16 @@ defmodule BlueJet.Fulfillment.DefaultService do
     end
   end
 
+  def get_fulfillment_package(identifiers, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+
+    FulfillmentPackage.Query.default()
+    |> FulfillmentPackage.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
   def delete_fulfillment_package(nil, _), do: {:error, :not_found}
 
   def delete_fulfillment_package(fulfillment_package = %FulfillmentPackage{}, opts) do

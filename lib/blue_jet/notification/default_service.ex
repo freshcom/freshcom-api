@@ -307,13 +307,13 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def get_email_template(fields, opts) do
+  def get_email_template(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
     EmailTemplate.Query.default()
     |> EmailTemplate.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(identifiers)
     |> preload(preloads[:path], preloads[:opts])
   end
 

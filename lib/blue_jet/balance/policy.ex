@@ -1,6 +1,6 @@
 defmodule BlueJet.Balance.Policy do
   alias BlueJet.AccessRequest
-  alias BlueJet.Balance.{CrmService, IdentityService}
+  alias BlueJet.Balance.{IdentityService, CrmService}
 
   def authorize(request = %{ role: role, account: account, user: user }, "list_payment") when role in ["customer"] do
     authorized_args = AccessRequest.to_authorized_args(request, :list)
@@ -16,7 +16,7 @@ defmodule BlueJet.Balance.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :list)}
   end
 
-  def authorize(request = %{ vas: vas, role: nil }, endpoint) do
+  def authorize(request = %{ role: nil }, endpoint) do
     request
     |> IdentityService.put_vas_data()
     |> authorize(endpoint)

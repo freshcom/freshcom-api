@@ -4,8 +4,36 @@ defmodule BlueJet.Fulfillment.DefaultServiceTest do
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
   alias BlueJet.Goods.Unlockable
+
   alias BlueJet.Fulfillment.DefaultService
-  alias BlueJet.Fulfillment.Unlock
+  alias BlueJet.Fulfillment.{FulfillmentPackage, Unlock}
+
+  describe "get_fulfillment_package/2" do
+    test "when given identifiers has no match" do
+      account = Repo.insert!(%Account{})
+
+      refute DefaultService.get_fulfillment_package(%{ id: Ecto.UUID.generate() }, %{ account: account })
+    end
+
+    test "when given identifiers belongs to a different account" do
+      account = Repo.insert!(%Account{})
+      other_account = Repo.insert!(%Account{})
+      fulfillment_package = Repo.insert!(%FulfillmentPackage{
+        account_id: other_account.id
+      })
+
+      refute DefaultService.get_fulfillment_package(%{ id: fulfillment_package.id }, %{ account: account })
+    end
+
+    test "when given valid identifiers" do
+      account = Repo.insert!(%Account{})
+      fulfillment_package = Repo.insert!(%FulfillmentPackage{
+        account_id: account.id
+      })
+
+      assert DefaultService.get_fulfillment_package(%{ id: fulfillment_package.id }, %{ account: account })
+    end
+  end
 
   describe "list_unlock/2" do
     test "unlock for different account is not returned" do
