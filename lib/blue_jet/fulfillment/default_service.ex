@@ -33,6 +33,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
     |> FulfillmentPackage.Query.filter_by(filter)
     |> FulfillmentPackage.Query.for_account(account.id)
     |> FulfillmentPackage.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> FulfillmentPackage.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end

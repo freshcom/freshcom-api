@@ -5,6 +5,9 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage.Query do
 
   @filterable_fields [
     :id,
+    :status,
+    :label,
+    :customer_id,
     :order_id
   ]
 
