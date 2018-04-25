@@ -12,7 +12,6 @@ defmodule BlueJetWeb.RefundController do
     fields = Map.merge(Params.to_attributes(data), %{ "payment_id" => payment_id })
     request = %AccessRequest{
       vas: assigns[:vas],
-      params: %{ "payment_id" => payment_id },
       fields: fields,
       preloads: assigns[:preloads]
     }

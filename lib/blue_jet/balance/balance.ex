@@ -19,7 +19,7 @@ defmodule BlueJet.Balance do
     settings = Service.get_settings(args[:opts])
 
     if settings do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: settings }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: settings }}
     else
       {:error, :not_found}
     end
@@ -35,7 +35,7 @@ defmodule BlueJet.Balance do
 
   def do_update_settings(args) do
     with {:ok, settings} <- Service.update_settings(args[:fields], args[:opts]) do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: settings }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: settings }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -67,11 +67,11 @@ defmodule BlueJet.Balance do
     cards =
       %{ filter: args[:filter], search: args[:search] }
       |> Service.list_card(args[:opts])
-      |> Translation.translate(args[:opts][:locale], args[:opts][:account].default_locale)
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: args[:opts][:locale],
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count,
       },
@@ -91,8 +91,8 @@ defmodule BlueJet.Balance do
 
   def do_update_card(args) do
     with {:ok, card} <- Service.update_card(args[:id], args[:fields], args[:opts]) do
-      card = Translation.translate(card, args[:opts][:locale], args[:opts][:account].default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: card }}
+      card = Translation.translate(card, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: card }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -141,11 +141,11 @@ defmodule BlueJet.Balance do
     payments =
       %{ filter: args[:filter], search: args[:search] }
       |> Service.list_payment(args[:opts])
-      |> Translation.translate(args[:opts][:locale], account.default_locale)
+      |> Translation.translate(args[:locale], account.default_locale)
 
     response = %AccessResponse{
       meta: %{
-        locale: args[:opts][:locale],
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -165,8 +165,8 @@ defmodule BlueJet.Balance do
 
   def do_create_payment(args) do
     with {:ok, payment} <- Service.create_payment(args[:fields], args[:opts]) do
-      payment = Translation.translate(payment, args[:opts][:locale], args[:opts][:account].default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: payment }}
+      payment = Translation.translate(payment, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: payment }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -176,40 +176,37 @@ defmodule BlueJet.Balance do
   end
 
   def get_payment(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.get_payment") do
-      request
-      |> do_get_payment()
+    with {:ok, authorize_args} <- Policy.authorize(request, "get_payment") do
+      do_get_payment(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_payment(request = %{ account: account, params: %{ "id" => id } }) do
+  def do_get_payment(args) do
     payment =
-      %{ id: id }
-      |> Service.get_payment(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_payment(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if payment do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: payment }}
     else
       {:error, :not_found}
     end
   end
 
   def update_payment(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.update_payment") do
-      request
-      |> do_update_payment()
+    with {:ok, authorize_args} <- Policy.authorize(request, "update_payment") do
+      do_update_payment(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_payment(request = %{ account: account, params: %{ "id" => id } }) do
-    with {:ok, payment} <- Service.update_payment(id, request.fields, get_sopts(request)) do
-      payment = Translation.translate(payment, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
+  def do_update_payment(args) do
+    with {:ok, payment} <- Service.update_payment(args[:id], args[:fields], args[:opts]) do
+      payment = Translation.translate(payment, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: payment }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -219,16 +216,15 @@ defmodule BlueJet.Balance do
   end
 
   def delete_payment(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.delete_payment") do
-      request
-      |> do_delete_payment()
+    with {:ok, authorize_args} <- Policy.authorize(request, "delete_payment") do
+      do_delete_payment(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_payment(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_payment(id, %{ account: account }) do
+  def do_delete_payment(args) do
+    with {:ok, _} <- Service.delete_payment(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -242,20 +238,17 @@ defmodule BlueJet.Balance do
   # MARK: Refund
   #
   def create_refund(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.create_refund") do
-      request
-      |> do_create_refund()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_refund") do
+      do_create_refund(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_refund(request = %{ account: account, params: %{ "payment_id" => payment_id } }) do
-    fields = Map.merge(request.fields, %{ "payment_id" => payment_id })
-
-    with {:ok, refund} <- Service.create_refund(fields, get_sopts(request)) do
-      refund = Translation.translate(refund, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: refund }}
+  def do_create_refund(args) do
+    with {:ok, refund} <- Service.create_refund(args[:fields], args[:opts]) do
+      refund = Translation.translate(refund, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: refund }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}

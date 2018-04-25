@@ -217,6 +217,7 @@ defmodule BlueJet.Balance.DefaultService do
     |> Payment.Query.filter_by(filter)
     |> Payment.Query.for_account(account.id)
     |> Payment.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> Payment.Query.order_by([desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end

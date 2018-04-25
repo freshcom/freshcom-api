@@ -344,63 +344,58 @@ defmodule BlueJet.BalanceTest do
 
   describe "get_payment/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Balance.get_payment(%AccessRequest{})
+      {:error, error} = Balance.get_payment(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      payment = %Payment{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => Ecto.UUID.generate() }
+        user: %User{},
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate(), }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:get_payment, fn(identifiers, opts) ->
           assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
-          payment
+          {:ok, %Payment{}}
          end)
 
-      {:ok, response} = Balance.get_payment(request)
-
-      assert response.data == payment
+      {:ok, _} = Balance.get_payment(request)
     end
   end
 
   describe "update_payment/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Balance.update_payment(%AccessRequest{})
+      {:error, error} = Balance.update_payment(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      payment = %Payment{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "id" => Ecto.UUID.generate(), },
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "capture" => true, "capture_amount_cents" => 300 }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:update_payment, fn(id, fields, opts) ->
@@ -408,40 +403,43 @@ defmodule BlueJet.BalanceTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, payment}
+          {:ok, %Payment{}}
          end)
 
-      {:ok, response} = Balance.update_payment(request)
+      {:ok, _} = Balance.update_payment(request)
+    end
+  end
 
-      assert response.data == payment
+  describe "delete_payment/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, error} = Balance.delete_payment(request)
+      assert error == :access_denied
     end
 
-    test "when request is invalid" do
+    test "when request is valid" do
       account = %Account{}
       request = %AccessRequest{
-        role: "developer",
         account: account,
-        params: %{ "id" => Ecto.UUID.generate(), },
-        fields: %{ "capture" => true, "capture_amount_cents" => 300 }
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
-      |> expect(:update_payment, fn(id, fields, opts) ->
+      |> expect(:delete_payment, fn(id, opts) ->
           assert id == request.params["id"]
-          assert fields == request.fields
           assert opts[:account] == account
 
-          {:error, %{ errors: "errors" }}
+          {:ok, %Payment{}}
          end)
 
-      {:error, response} = Balance.update_payment(request)
-
-      assert response.errors == "errors"
+      {:ok, _} = Balance.delete_payment(request)
     end
   end
 
@@ -450,42 +448,38 @@ defmodule BlueJet.BalanceTest do
   #
   describe "create_refund/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Balance.create_refund(%AccessRequest{})
+      {:error, error} = Balance.create_refund(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      refund = %Refund{}
       request = %AccessRequest{
-        role: "customer",
         account: account,
-        params: %{
-          "payment_id" => Ecto.UUID.generate()
-        },
+        user: %User{},
+        role: "administrator",
         fields: %{
           "gateway" => "freshcom",
           "processor" => "stripe",
           "amount_cents" => 5000
         }
       }
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:create_refund, fn(fields, opts) ->
-          assert fields["payment_id"] == request.params["payment_id"]
+          assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, refund}
+          {:ok, %Refund{}}
          end)
 
-      {:ok, response} = Balance.create_refund(request)
-
-      assert response.data == refund
+      {:ok, _} = Balance.create_refund(request)
     end
   end
 end

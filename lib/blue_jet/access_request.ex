@@ -35,6 +35,9 @@ defmodule BlueJet.AccessRequest do
 
       all_count_filter: %{},
 
+      locale: request.locale,
+      default_locale: request.account.default_locale,
+
       opts: %{
         account: request.account,
         pagination: request.pagination,
@@ -60,6 +63,9 @@ defmodule BlueJet.AccessRequest do
     %{
       identifiers: %{ id: request.params["id"] },
 
+      locale: request.locale,
+      default_locale: request.account.default_locale,
+
       opts: %{
         account: request.account,
         preloads: %{ path: request.preloads, opts: %{ filters: request.preload_filters } },
@@ -72,6 +78,9 @@ defmodule BlueJet.AccessRequest do
     %{
       id: request.params["id"],
       fields: request.fields,
+
+      locale: request.locale,
+      default_locale: request.account.default_locale,
 
       opts: %{
         account: request.account,

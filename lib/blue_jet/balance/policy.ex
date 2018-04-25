@@ -73,11 +73,34 @@ defmodule BlueJet.Balance.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :list)}
   end
 
-  def authorize(request = %{ role: "anonymous" }, "create_payment") do
+  def authorize(%{ role: "anonymous" }, "create_payment") do
     {:error, :access_denied}
   end
 
   def authorize(request = %{ role: role }, "create_payment") when not is_nil(role) do
+    {:ok, AccessRequest.to_authorized_args(request, :create)}
+  end
+
+  def authorize(%{ role: role }, "get_payment") when role in ["anonymous", "guest"] do
+    {:error, :access_denied}
+  end
+
+  def authorize(request = %{ role: role }, "get_payment") when not is_nil(role) do
+    {:ok, AccessRequest.to_authorized_args(request, :get)}
+  end
+
+  def authorize(request = %{ role: role }, "update_payment") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :update)}
+  end
+
+  def authorize(request = %{ role: role }, "delete_payment") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+  end
+
+  #
+  # MARK: Refund
+  #
+  def authorize(request = %{ role: role }, "create_refund") when role in ["support_specialist", "developer", "administrator"] do
     {:ok, AccessRequest.to_authorized_args(request, :create)}
   end
 
