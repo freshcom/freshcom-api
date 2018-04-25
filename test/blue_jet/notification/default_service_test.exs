@@ -135,7 +135,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given identifiers has no match" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} =  DefaultService.delete_sms_template(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      {:error, :not_found} =  DefaultService.delete_sms_template(Ecto.UUID.generate(), %{ account: account })
     end
 
     test "when given identifiers belongs to a different account" do
@@ -146,7 +146,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:error, :not_found} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
+      {:error, :not_found} = DefaultService.delete_sms_template(sms_template.id, %{ account: account })
     end
 
     test "when given valid identifiers" do
@@ -156,7 +156,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:ok, _} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
+      {:ok, _} = DefaultService.delete_sms_template(sms_template.id, %{ account: account })
     end
   end
 end

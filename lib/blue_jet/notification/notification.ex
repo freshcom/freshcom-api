@@ -338,7 +338,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_delete_sms_template(args) do
-    with {:ok, _} <- Service.delete_sms_template(args[:identifiers], args[:opts]) do
+    with {:ok, _} <- Service.delete_sms_template(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

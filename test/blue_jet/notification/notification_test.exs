@@ -160,8 +160,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:delete_sms_template, fn(identifiers, _) ->
-          assert identifiers[:id] == sms_template.id
+      |> expect(:delete_sms_template, fn(id, _) ->
+          assert id == sms_template.id
 
           {:ok, %SmsTemplate{}}
          end)

@@ -555,13 +555,12 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def delete_sms_template(identifiers, opts) do
+  def delete_sms_template(id, opts) do
     opts = put_account(opts)
     account = opts[:account]
-    identifiers = Map.put(identifiers, :account_id, account.id)
 
     SmsTemplate
-    |> Repo.get_by(identifiers)
+    |> Repo.get_by(id: id, account_id: account.id)
     |> delete_sms_template(opts)
   end
 

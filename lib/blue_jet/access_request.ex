@@ -83,7 +83,7 @@ defmodule BlueJet.AccessRequest do
 
   def to_authorized_args(request, :delete) do
     %{
-      identifiers: %{ id: request.params["id"] },
+      id: request.params["id"],
 
       opts: %{
         account: request.account

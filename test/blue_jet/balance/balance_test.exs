@@ -3,16 +3,50 @@ defmodule BlueJet.BalanceTest do
 
   alias BlueJet.Identity.{Account, User}
   alias BlueJet.Balance
-  alias BlueJet.Balance.{Card, Payment, Refund}
+  alias BlueJet.Balance.{Settings, Card, Payment, Refund}
   alias BlueJet.Balance.{CrmServiceMock}
   alias BlueJet.Balance.ServiceMock
 
-  describe "list_card/1" do
+  #
+  # MARK: Settings
+  #
+  describe "get_settings/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Balance.list_card(%AccessRequest{})
+      {:error, error} = Balance.get_settings(request)
+      assert error == :access_denied
+    end
+
+    test "when request is valid" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:get_settings, fn(_) ->
+          {:ok, %Settings{}}
+         end)
+
+      {:ok, _} = Balance.get_settings(request)
+    end
+  end
+
+  describe "update_settings/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, error} = Balance.update_settings(request)
       assert error == :access_denied
     end
 
@@ -20,37 +54,106 @@ defmodule BlueJet.BalanceTest do
       account = %Account{}
       request = %AccessRequest{
         account: account,
-        filter: %{
-          owner_id: Ecto.UUID.generate(),
-          owner_type: "Customer"
-        }
+        user: %User{},
+        role: "administrator"
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      ServiceMock
+      |> expect(:update_settings, fn(_, opts) ->
+          assert opts[:account] == account
+
+          {:ok, %Settings{}}
+         end)
+
+      {:ok, _} = Balance.update_settings(request)
+    end
+  end
+
+  #
+  # MARK: Cards
+  #
+  describe "list_card/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
+
+      {:error, error} = Balance.list_card(request)
+      assert error == :access_denied
+    end
+
+    test "when role is customer" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      customer = %{ id: Ecto.UUID.generate() }
+      CrmServiceMock
+      |> expect(:get_customer, fn(_, _) ->
+          customer
+         end)
 
       ServiceMock
-      |> expect(:list_card, fn(params, opts) ->
-          assert params[:filter][:status] == "saved_by_owner"
-          assert params[:filter][:owner_id] == request.filter[:owner_id]
-          assert params[:filter][:owner_type] == request.filter[:owner_type]
-          assert opts[:account] == account
+      |> expect(:list_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
+          assert opts[:account] == request.account
 
-          [%Card{}]
+          [%Payment{}]
          end)
-      |> expect(:count_card, fn(params, opts) ->
-          assert params[:filter][:status] == "saved_by_owner"
-          assert params[:filter][:owner_id] == request.filter[:owner_id]
-          assert params[:filter][:owner_type] == request.filter[:owner_type]
-          assert opts[:account] == account
+      |> expect(:count_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
+          assert opts[:account] == request.account
 
           1
          end)
-      |> expect(:count_card, fn(params, opts) ->
-          assert params[:filter][:status] == "saved_by_owner"
-          assert params[:filter][:owner_id] == nil
-          assert params[:filter][:owner_type] == nil
-          assert opts[:account] == account
+      |> expect(:count_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert fields[:filter][:owner_type] == "Customer"
+          assert fields[:filter][:owner_id] == customer.id
+          assert opts[:account] == request.account
+
+          1
+         end)
+
+      {:ok, response} = Balance.list_card(request)
+
+      assert length(response.data) == 1
+      assert response.meta.all_count == 1
+      assert response.meta.total_count == 1
+    end
+
+    test "when role is administrator" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:list_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert opts[:account] == request.account
+
+          [%Card{}]
+         end)
+      |> expect(:count_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert opts[:account] == request.account
+
+          1
+         end)
+      |> expect(:count_card, fn(fields, opts) ->
+          assert fields[:filter][:status] == "saved_by_owner"
+          assert opts[:account] == request.account
 
           1
          end)
@@ -65,26 +168,25 @@ defmodule BlueJet.BalanceTest do
 
   describe "update_card/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Balance.update_card(%AccessRequest{})
+      {:error, error} = Balance.update_card(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      card = %Card{}
-
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "customer",
         params: %{ "id" => Ecto.UUID.generate(), },
         fields: %{ "exp_month" => 9, "exp_year" => 2025 }
       }
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:update_card, fn(id, fields, opts) ->
@@ -92,68 +194,41 @@ defmodule BlueJet.BalanceTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, card}
+          {:ok, %Card{}}
          end)
 
-      {:ok, response} = Balance.update_card(request)
-
-      assert response.data == card
-    end
-
-    test "when request is invalid" do
-      account = %Account{}
-
-      request = %AccessRequest{
-        account: account,
-        params: %{ "id" => Ecto.UUID.generate(), },
-        fields: %{ "exp_month" => 9, "exp_year" => 2025 }
-      }
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:update_card, fn(id, fields, opts) ->
-          assert id == request.params["id"]
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Balance.update_card(request)
-
-      assert response.errors == "errors"
+      {:ok, _} = Balance.update_card(request)
     end
   end
 
   describe "delete_card/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Balance.delete_card(%AccessRequest{})
+      {:error, error} = Balance.delete_card(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      card = %Card{}
 
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => card.id, }
+        user: %User{},
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:delete_card, fn(id, opts) ->
           assert id == request.params["id"]
           assert opts[:account] == account
 
-          {:ok, card}
+          {:ok, %Card{}}
          end)
 
       {:ok, _} = Balance.delete_card(request)
