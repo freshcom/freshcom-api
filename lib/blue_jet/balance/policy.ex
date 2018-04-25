@@ -73,6 +73,17 @@ defmodule BlueJet.Balance.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :list)}
   end
 
+  def authorize(request = %{ role: "anonymous" }, "create_payment") do
+    {:error, :access_denied}
+  end
+
+  def authorize(request = %{ role: role }, "create_payment") when not is_nil(role) do
+    {:ok, AccessRequest.to_authorized_args(request, :create)}
+  end
+
+  #
+  # MARK: Other
+  #
   def authorize(request = %{ role: nil }, endpoint) do
     request
     |> IdentityService.put_vas_data()

@@ -156,18 +156,17 @@ defmodule BlueJet.Balance do
   end
 
   def create_payment(request) do
-    with {:ok, request} <- preprocess_request(request, "balance.create_payment") do
-      request
-      |> do_create_payment()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_payment") do
+      do_create_payment(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_payment(request = %{ account: account }) do
-    with {:ok, payment} <- Service.create_payment(request.fields, get_sopts(request)) do
-      payment = Translation.translate(payment, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: payment }}
+  def do_create_payment(args) do
+    with {:ok, payment} <- Service.create_payment(args[:fields], args[:opts]) do
+      payment = Translation.translate(payment, args[:opts][:locale], args[:opts][:account].default_locale)
+      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: payment }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}

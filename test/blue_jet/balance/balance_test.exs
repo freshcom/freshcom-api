@@ -235,6 +235,9 @@ defmodule BlueJet.BalanceTest do
     end
   end
 
+  #
+  # MARK: Payment
+  #
   describe "list_payment/1" do
     test "when role is not authorized" do
       request = %AccessRequest{
@@ -323,74 +326,19 @@ defmodule BlueJet.BalanceTest do
   end
 
   describe "create_payment/1" do
-    test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Balance.create_payment(%AccessRequest{})
-      assert error == :access_denied
-    end
-
-    test "when request is invalid" do
-      account = %Account{}
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "status" => "paid",
-          "gateway" => "freshcom",
-          "processor" => "stripe",
-          "source" => Ecto.UUID.generate()
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_payment, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Balance.create_payment(request)
-
-      assert response.errors == "errors"
-    end
-
     test "when request is valid" do
-      account = %Account{}
-      payment = %Payment{}
       request = %AccessRequest{
-        account: account,
-        fields: %{
-          "status" => "paid",
-          "gateway" => "freshcom",
-          "processor" => "stripe",
-          "amount_cents" => 500,
-          "source" => "tok_" <> Faker.String.base64(12)
-        }
+        account: %Account{},
+        user: nil,
+        role: "guest"
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
-      |> expect(:create_payment, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:ok, payment}
+      |> expect(:create_payment, fn(_, _) ->
+          {:ok, %Payment{}}
          end)
 
-      {:ok, response} = Balance.create_payment(request)
-
-      assert response.data == payment
+      {:ok, _} = Balance.create_payment(request)
     end
   end
 
@@ -497,6 +445,9 @@ defmodule BlueJet.BalanceTest do
     end
   end
 
+  #
+  # MARK: Refund
+  #
   describe "create_refund/1" do
     test "when role is not authorized" do
       AuthorizationMock
