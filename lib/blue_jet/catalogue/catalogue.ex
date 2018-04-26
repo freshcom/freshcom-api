@@ -1,52 +1,36 @@
 defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
-  alias BlueJet.Catalogue.Service
+  alias BlueJet.Catalogue.{Policy, Service}
 
   #
   # MARK: Product
   #
-  defp filter_product_by_role(request = %{ role: role, filter: filter }) when role in ["guest", "customer"] do
-    filter = Map.put(filter, :status, "active")
-    all_count_filter = Map.take(filter, [:status, :collection_id, :parent_id])
-    preload_filters = %{
-      prices: %{ status: "active" },
-      items: %{ status: "active" },
-      variants: %{ status: "active" }
-    }
-
-    %{ request | filter: filter, count_filter: %{ all: all_count_filter }, preload_filters: preload_filters }
-  end
-
-  defp filter_product_by_role(request), do: request
-
   def list_product(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.list_product") do
-      request
-      |> filter_product_by_role()
-      |> do_list_product
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_product") do
+      do_list_product(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_product(request = %{ account: account, filter: filter }) do
+  def do_list_product(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_product(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_product(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_product(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_product(args[:opts])
 
     products =
-      %{ filter: filter, search: request.search }
-      |> Service.list_product(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_product(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -57,18 +41,17 @@ defmodule BlueJet.Catalogue do
   end
 
   def create_product(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.create_product") do
-      request
-      |> do_create_product()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_product") do
+      do_create_product(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_product(request = %{ account: account }) do
-    with {:ok, product} <- Service.create_product(request.fields, get_sopts(request)) do
-      product = Translation.translate(product, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
+  def do_create_product(args) do
+    with {:ok, product} <- Service.create_product(args[:fields], args[:opts]) do
+      product = Translation.translate(product, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: product }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -78,41 +61,37 @@ defmodule BlueJet.Catalogue do
   end
 
   def get_product(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.get_product") do
-      request
-      |> filter_product_by_role()
-      |> do_get_product()
+    with {:ok, authorize_args} <- Policy.authorize(request, "get_product") do
+      do_get_product(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_product(request = %{ account: account, params: params }) do
+  def do_get_product(args) do
     product =
-      atom_map(params)
-      |> Service.get_product(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_product(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if product do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: product }}
     else
       {:error, :not_found}
     end
   end
 
   def update_product(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.update_product") do
-      request
-      |> do_update_product()
+    with {:ok, authorize_args} <- Policy.authorize(request, "update_product") do
+      do_update_product(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_product(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, product} <- Service.update_product(id, request.fields, get_sopts(request)) do
-      product = Translation.translate(product, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: product }}
+  def do_update_product(args) do
+    with {:ok, product} <- Service.update_product(args[:id], args[:fields], args[:opts]) do
+      product = Translation.translate(product, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: product }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -122,16 +101,15 @@ defmodule BlueJet.Catalogue do
   end
 
   def delete_product(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.delete_product") do
-      request
-      |> do_delete_product()
+    with {:ok, authorize_args} <- Policy.authorize(request, "delete_product") do
+      do_delete_product(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_product(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_product(id, %{ account: account }) do
+  def do_delete_product(args) do
+    with {:ok, _} <- Service.delete_product(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
