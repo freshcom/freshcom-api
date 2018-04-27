@@ -6,6 +6,9 @@ defmodule BlueJet.CatalogueTest do
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
   alias BlueJet.Catalogue.ServiceMock
 
+  #
+  # MARK: Product
+  #
   describe "list_product/1" do
     test "when role is not authorized" do
       request = %AccessRequest{
@@ -195,42 +198,44 @@ defmodule BlueJet.CatalogueTest do
     end
   end
 
+  #
+  # MARK: Product Collection
+  #
   describe "list_product_collection/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
 
-      {:error, error} = Catalogue.list_product_collection(%AccessRequest{})
+      {:error, error} = Catalogue.list_product_collection(request)
       assert error == :access_denied
     end
 
-    test "when request has role customer" do
+    test "when request has role guest" do
       account = %Account{}
       request = %AccessRequest{
-        role: "customer",
-        account: account
+        account: account,
+        user: %User{},
+        role: "guest",
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
-      |> expect(:list_product_collection, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:list_product_collection, fn(fields, opts) ->
+          assert fields[:filter][:status] == "active"
           assert opts[:account] == account
 
           [%ProductCollection{}]
          end)
-      |> expect(:count_product_collection, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:count_product_collection, fn(fields, opts) ->
+          assert fields[:filter][:status] == "active"
           assert opts[:account] == account
 
           1
          end)
-      |> expect(:count_product_collection, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:count_product_collection, fn(fields, opts) ->
+          assert fields[:filter][:status] == "active"
           assert opts[:account] == account
 
           1

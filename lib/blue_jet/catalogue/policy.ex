@@ -56,6 +56,27 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   #
+  # MARK: Product Collection
+  #
+  def authorize(request = %{ role: role }, "list_product_collection") when role in ["guest", "customer"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :list)
+
+    filter = Map.merge(request.filter, %{ status: "active" })
+    all_count_filter = Map.take(filter, [:status])
+    authorized_args = %{ authorized_args | filter: filter, all_count_filter: all_count_filter }
+
+    authorized_args = put_in(authorized_args, [:opts, :preloads, :opts, :filters], %{
+      memberships: %{ product_status: "active" }
+    })
+
+    {:ok, authorized_args}
+  end
+
+  def authorize(request = %{ role: role }, "list_product_collection") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :list)}
+  end
+
+  #
   # MARK: Other
   #
   def authorize(request = %{ role: nil }, endpoint) do

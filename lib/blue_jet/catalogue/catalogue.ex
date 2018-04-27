@@ -135,32 +135,30 @@ defmodule BlueJet.Catalogue do
   defp filter_product_collection_by_role(request), do: request
 
   def list_product_collection(request) do
-    with {:ok, request} <- preprocess_request(request, "catalogue.list_product_collection") do
-      request
-      |> filter_product_collection_by_role()
-      |> do_list_product_collection
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_product_collection") do
+      do_list_product_collection(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_product_collection(request = %AccessRequest{ account: account, filter: filter }) do
+  def do_list_product_collection(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_product_collection(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_product_collection(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_product_collection(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_product_collection(args[:opts])
 
     product_collections =
-      %{ filter: filter, search: request.search }
-      |> Service.list_product_collection(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_product_collection(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
