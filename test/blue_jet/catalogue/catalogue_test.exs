@@ -251,27 +251,26 @@ defmodule BlueJet.CatalogueTest do
 
   describe "create_product_collection/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.create_product_collection(%AccessRequest{})
+      {:error, error} = Catalogue.create_product_collection(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = Repo.insert!(%Account{})
-      product_collection = %ProductCollection{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "name" => Faker.String.base64(5)
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_product_collection, fn(fields, opts) ->
@@ -281,68 +280,64 @@ defmodule BlueJet.CatalogueTest do
           {:ok, %ProductCollection{}}
          end)
 
-      {:ok, response} = Catalogue.create_product_collection(request)
-
-      assert response.data == product_collection
+      {:ok, _} = Catalogue.create_product_collection(request)
     end
   end
 
   describe "get_product_collection/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "anonymous"
+      }
 
-      {:error, error} = Catalogue.get_product_collection(%AccessRequest{})
+      {:error, error} = Catalogue.get_product_collection(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      product_collection = %ProductCollection{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => product_collection.id }
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-        end)
 
       ServiceMock
       |> expect(:get_product_collection, fn(identifiers, opts) ->
           assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
-          product_collection
+          %ProductCollection{}
          end)
 
-      {:ok, response} = Catalogue.get_product_collection(request)
-
-      assert response.data == product_collection
+      {:ok, _} = Catalogue.get_product_collection(request)
     end
   end
 
   describe "update_product_collection/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.update_product_collection(%AccessRequest{})
+      {:error, error} = Catalogue.update_product_collection(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      product_collection = %ProductCollection{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "name" => Faker.Commerce.product_name() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:update_product_collection, fn(id, fields, opts) ->
@@ -350,45 +345,80 @@ defmodule BlueJet.CatalogueTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, product_collection}
+          {:ok, %ProductCollection{}}
          end)
 
-      {:ok, response} = Catalogue.update_product_collection(request)
-
-      assert response.data == product_collection
+      {:ok, _} = Catalogue.update_product_collection(request)
     end
   end
 
-  describe "list_product_collection_membership/1" do
+  describe "delete_product_collection/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.list_product_collection_membership(%AccessRequest{})
+      {:error, error} = Catalogue.delete_product_collection(request)
       assert error == :access_denied
     end
 
-    test "when request has role customer" do
+    test "when request is valid" do
       account = %Account{}
       request = %AccessRequest{
-        role: "customer",
         account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:delete_product_collection, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, %ProductCollection{}}
+         end)
+
+      {:ok, _} = Catalogue.delete_product_collection(request)
+    end
+  end
+
+  #
+  # MARK: Product Collection Membership
+  #
+  describe "list_product_collection_membership/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
+
+      {:error, error} = Catalogue.list_product_collection_membership(request)
+      assert error == :access_denied
+    end
+
+    test "when role is guest" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "guest",
         params: %{ "collection_id" => Ecto.UUID.generate() }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
-
       ServiceMock
-      |> expect(:list_product_collection_membership, fn(params, opts) ->
-          assert params[:filter][:collection_id] == request.params["collection_id"]
-          assert params[:filter][:product_status] == "active"
+      |> expect(:list_product_collection_membership, fn(fields, opts) ->
+          assert fields[:filter][:collection_id] == request.params["collection_id"]
+          assert fields[:filter][:product_status] == "active"
           assert opts[:account] == account
 
           [%ProductCollectionMembership{}]
          end)
-      |> expect(:count_product_collection_membership, fn(params, opts) ->
-          assert params[:filter][:collection_id] == request.params["collection_id"]
+      |> expect(:count_product_collection_membership, fn(fields, opts) ->
+          assert fields[:filter][:collection_id] == request.params["collection_id"]
           assert opts[:account] == account
 
           1
@@ -399,34 +429,62 @@ defmodule BlueJet.CatalogueTest do
           1
          end)
 
-      {:ok, response} = Catalogue.list_product_collection_membership(request)
+      {:ok, _} = Catalogue.list_product_collection_membership(request)
+    end
 
-      assert length(response.data) == 1
-      assert response.meta.all_count == 1
-      assert response.meta.total_count == 1
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "collection_id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:list_product_collection_membership, fn(fields, opts) ->
+          assert fields[:filter][:collection_id] == request.params["collection_id"]
+          assert opts[:account] == account
+
+          [%ProductCollectionMembership{}]
+         end)
+      |> expect(:count_product_collection_membership, fn(fields, opts) ->
+          assert fields[:filter][:collection_id] == request.params["collection_id"]
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_product_collection_membership, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+
+      {:ok, _} = Catalogue.list_product_collection_membership(request)
     end
   end
 
   describe "create_product_collection_membership/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.create_product_collection_membership(%AccessRequest{})
+      {:error, error} = Catalogue.create_product_collection_membership(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      pcm = %ProductCollectionMembership{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "collection_id" => Ecto.UUID.generate() },
         fields: %{ "product_id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:create_product_collection_membership, fn(fields, opts) ->
@@ -434,66 +492,69 @@ defmodule BlueJet.CatalogueTest do
           assert fields["product_id"] == request.fields["product_id"]
           assert opts[:account] == account
 
-          {:ok, pcm}
+          {:ok, %ProductCollectionMembership{}}
          end)
 
-      {:ok, response} = Catalogue.create_product_collection_membership(request)
-
-      assert response.data == pcm
+      {:ok, _} = Catalogue.create_product_collection_membership(request)
     end
   end
 
   describe "delete_product_collection_membership/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.delete_product_collection_membership(%AccessRequest{})
+      {:error, error} = Catalogue.delete_product_collection_membership(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      pcm = %ProductCollectionMembership{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:delete_product_collection_membership, fn(id, opts) ->
           assert id == request.params["id"]
           assert opts[:account] == account
 
-          {:ok, pcm}
+          {:ok, %ProductCollectionMembership{}}
          end)
 
       {:ok, _} = Catalogue.delete_product_collection_membership(request)
     end
   end
 
+  #
+  # MARK: Price
+  #
   describe "list_price/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
 
-      {:error, error} = Catalogue.list_price(%AccessRequest{})
+      {:error, error} = Catalogue.list_price(request)
       assert error == :access_denied
     end
 
     test "when request has role customer" do
       account = %Account{}
       request = %AccessRequest{
-        role: "customer",
         account: account,
+        user: %User{},
+        role: "guest",
         params: %{ "product_id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:list_price, fn(params, opts) ->
@@ -518,29 +579,28 @@ defmodule BlueJet.CatalogueTest do
           1
          end)
 
-
-      {:ok, response} = Catalogue.list_price(request)
-
-      assert length(response.data) == 1
-      assert response.meta.all_count == 1
-      assert response.meta.total_count == 1
+      {:ok, _} = Catalogue.list_price(request)
     end
   end
 
   describe "create_price/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.create_price(%AccessRequest{})
+      {:error, error} = Catalogue.create_price(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      price = %Price{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "product_id" => Ecto.UUID.generate() },
         fields: %{
           "name" => Faker.String.base64(5),
@@ -549,82 +609,74 @@ defmodule BlueJet.CatalogueTest do
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
       |> expect(:create_price, fn(fields, opts) ->
           assert fields["product_id"] == request.params["product_id"]
           assert fields["name"] == request.fields["name"]
           assert opts[:account] == account
 
-          {:ok, price}
+          {:ok, %Price{}}
          end)
 
-      {:ok, response} = Catalogue.create_price(request)
-
-      assert response.data == price
+      {:ok, _} = Catalogue.create_price(request)
     end
   end
 
   describe "get_price/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
 
-      {:error, error} = Catalogue.get_price(%AccessRequest{})
+      {:error, error} = Catalogue.get_price(request)
       assert error == :access_denied
     end
 
     test "when request has role guest" do
       account = %Account{}
-      price = %Price{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => price.id }
+        user: %User{},
+        role: "guest",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:get_price, fn(identifiers, opts) ->
           assert identifiers[:id] == request.params["id"]
+          assert identifiers[:status] == "active"
           assert opts[:account] == account
 
-          price
+          %Price{}
          end)
 
-      {:ok, response} = Catalogue.get_price(request)
-
-      assert response.data == price
+      {:ok, _} = Catalogue.get_price(request)
     end
   end
 
   describe "update_price/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.update_price(%AccessRequest{})
+      {:error, error} = Catalogue.update_price(request)
       assert error == :access_denied
     end
 
     test "when request has role guest" do
       account = %Account{}
-      price = %Price{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => price.id },
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "name" => Faker.String.base64(5) }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:update_price, fn(id, fields, opts) ->
@@ -632,42 +684,40 @@ defmodule BlueJet.CatalogueTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, price}
+          {:ok, %Price{}}
          end)
 
-      {:ok, response} = Catalogue.update_price(request)
-
-      assert response.data == price
+      {:ok, _} = Catalogue.update_price(request)
     end
   end
 
   describe "delete_price/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Catalogue.delete_price(%AccessRequest{})
+      {:error, error} = Catalogue.delete_price(request)
       assert error == :access_denied
     end
 
     test "when request is valid" do
       account = %Account{}
-      price = %Price{}
-
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => price.id }
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:delete_price, fn(id, opts) ->
           assert id == request.params["id"]
           assert opts[:account] == account
 
-          {:ok, price}
+          {:ok, %Price{}}
          end)
 
       {:ok, _} = Catalogue.delete_price(request)
