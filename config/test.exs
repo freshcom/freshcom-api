@@ -75,6 +75,7 @@ config :blue_jet, :catalogue, %{
 
 config :blue_jet, :data_trading, %{
   service: BlueJet.DataTrading.ServiceMock,
+  identity_service: BlueJet.DataTrading.IdentityServiceMock,
   goods_service: BlueJet.DataTrading.GoodsServiceMock,
   crm_service: BlueJet.DataTrading.CrmServiceMock,
   catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
