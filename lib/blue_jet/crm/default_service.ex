@@ -303,7 +303,7 @@ defmodule BlueJet.Crm.DefaultService do
   end
 
   def delete_point_transaction(nil, _), do: {:error, :not_found}
-  def delete_point_transaction(%PointTransaction{ status: "committed" }, _), do: {:error, :not_found}
+  def delete_point_transaction(%PointTransaction{ status: "committed", amount: amount }, _) when amount != 0, do: {:error, :not_found}
 
   def delete_point_transaction(point_transaction = %PointTransaction{}, opts) do
     account = get_account(opts)
