@@ -1,35 +1,34 @@
 defmodule BlueJet.Crm do
   use BlueJet, :context
 
-  alias BlueJet.Crm.Service
+  alias BlueJet.Crm.{Policy, Service}
 
   #
   # MARK: Customer
   #
   def list_customer(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.list_customer") do
-      request
-      |> do_list_customer()
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_customer") do
+      do_list_customer(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_customer(request = %{ account: account, filter: filter }) do
+  def do_list_customer(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_customer(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_customer(args[:opts])
 
-    all_count = Service.count_customer(%{ account: account })
+    all_count = Service.count_customer(args[:opts])
 
     customers =
-      %{ filter: filter, search: request.search }
-      |> Service.list_customer(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_customer(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count,
       },
@@ -40,82 +39,56 @@ defmodule BlueJet.Crm do
   end
 
   def create_customer(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.create_customer") do
-      request
-      |> do_create_customer()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_customer") do
+      do_create_customer(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_customer(request = %{ account: account }) do
-    fields = Map.merge(request.fields, %{
-      "role" => "customer"
-    })
-
-    case Service.create_customer(fields, %{ account: account }) do
+  def do_create_customer(args) do
+    case Service.create_customer(args[:fields], args[:opts]) do
       {:ok, customer} ->
-        customer = Translation.translate(customer, request.locale, account.default_locale)
-        {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
+        customer = Translation.translate(customer, args[:locale], args[:default_locale])
+        {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: customer }}
 
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
     end
   end
 
-  defp filter_customer_by_role(request = %{ role: "customer", vas: vas }) do
-    %{ request | params: %{ "user_id" => vas[:user_id] } }
-  end
-
-  defp filter_customer_by_role(request = %{ role: "guest" }) do
-    params = Map.put(request.params, "status", "guest")
-    %{ request | params: params }
-  end
-
-  defp filter_customer_by_role(request), do: request
-
   def get_customer(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.get_customer") do
-      request
-      |> filter_customer_by_role()
-      |> do_get_customer()
+    with {:ok, authorize_args} <- Policy.authorize(request, "get_customer") do
+      do_get_customer(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_customer(request = %{ account: account, params: params }) do
+  def do_get_customer(args) do
     customer =
-      atom_map(params)
-      |> Service.get_customer(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_customer(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if customer do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: customer }}
     else
       {:error, :not_found}
     end
   end
 
   def update_customer(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.update_customer") do
-      request
-      |> do_update_customer()
+    with {:ok, authorize_args} <- Policy.authorize(request, "update_customer") do
+      do_update_customer(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_customer(request = %{ role: role, account: account, params: %{ "id" => id } }) do
-    extra_opts = if role not in ["anonymous", "guest", "customer"] do
-      %{ bypass_user_pvc_validation: true }
-    else
-      %{}
-    end
-
-    with {:ok, customer} <- Service.update_customer(id, request.fields, get_sopts(request, extra_opts)) do
-      customer = Translation.translate(customer, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: customer }}
+  def do_update_customer(args) do
+    with {:ok, customer} <- Service.update_customer(args[:id], args[:fields], args[:opts]) do
+      customer = Translation.translate(customer, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: customer }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -125,16 +98,15 @@ defmodule BlueJet.Crm do
   end
 
   def delete_customer(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.delete_customer") do
-      request
-      |> do_delete_customer()
+    with {:ok, authorize_args} <- Policy.authorize(request, "delete_customer") do
+      do_delete_customer(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_customer(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_customer(id, %{ account: account }) do
+  def do_delete_customer(args) do
+    with {:ok, _} <- Service.delete_customer(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
