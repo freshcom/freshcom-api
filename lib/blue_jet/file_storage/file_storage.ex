@@ -1,35 +1,36 @@
 defmodule BlueJet.FileStorage do
   use BlueJet, :context
 
-  alias BlueJet.FileStorage.Service
+  alias BlueJet.FileStorage.{Policy, Service}
 
   #
   # MARK: File
   #
   def list_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.list_file") do
-      request
-      |> do_list_file
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_file") do
+      do_list_file(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_file(request = %{ account: account, filter: filter }) do
+  def do_list_file(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_file(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_file(args[:opts])
 
-    all_count = Service.count_file(%{ account: account })
+    all_count =
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_file(args[:opts])
 
     files =
-      %{ filter: filter, search: request.search }
-      |> Service.list_file(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_file(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -40,20 +41,17 @@ defmodule BlueJet.FileStorage do
   end
 
   def create_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.create_file") do
-      request
-      |> do_create_file()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_file") do
+      do_create_file(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_file(request = %{ vas: vas, account: account }) do
-    fields = Map.merge(request.fields, %{ "user_id" => vas[:user_id] })
-
-    with {:ok, file} <- Service.create_file(fields, get_sopts(request)) do
-      file = Translation.translate(file, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
+  def do_create_file(args) do
+    with {:ok, file} <- Service.create_file(args[:fields], args[:opts]) do
+      file = Translation.translate(file, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: file }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -63,40 +61,37 @@ defmodule BlueJet.FileStorage do
   end
 
   def get_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.get_file") do
-      request
-      |> do_get_file()
+    with {:ok, authorize_args} <- Policy.authorize(request, "get_file") do
+      do_get_file(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_file(request = %{ account: account, params: %{ "id" => id }}) do
+  def do_get_file(args) do
     file =
-      %{ id: id }
-      |> Service.get_file(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_file(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if file do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: file }}
     else
       {:error, :not_found}
     end
   end
 
   def update_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.update_file") do
-      request
-      |> do_update_file()
+    with {:ok, authorize_args} <- Policy.authorize(request, "update_file") do
+      do_update_file(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_file(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, file} <- Service.update_file(id, request.fields, get_sopts(request)) do
-      file = Translation.translate(file, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: file }}
+  def do_update_file(args) do
+    with {:ok, file} <- Service.update_file(args[:id], args[:fields], args[:opts]) do
+      file = Translation.translate(file, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: file }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -106,16 +101,15 @@ defmodule BlueJet.FileStorage do
   end
 
   def delete_file(request) do
-    with {:ok, request} <- preprocess_request(request, "file_storage.delete_file") do
-      request
-      |> do_delete_file()
+    with {:ok, authorize_args} <- Policy.authorize(request, "delete_file") do
+      do_delete_file(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_file(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_file(id, %{ account: account }) do
+  def do_delete_file(args) do
+    with {:ok, _} <- Service.delete_file(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

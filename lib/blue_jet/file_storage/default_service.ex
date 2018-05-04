@@ -65,13 +65,13 @@ defmodule BlueJet.FileStorage.DefaultService do
     end
   end
 
-  def get_file(fields, opts) do
+  def get_file(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
 
     File.Query.default()
     |> File.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Repo.get_by(identifiers)
     |> File.put_url()
     |> preload(preloads[:path], preloads[:opts])
   end
