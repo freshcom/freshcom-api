@@ -120,41 +120,30 @@ defmodule BlueJet.Crm do
   # PointTransaction
   #
   def list_point_transaction(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.list_point_transaction") do
-      request
-      |> do_list_point_transaction()
+    with {:ok, authorize_args} <- Policy.authorize(request, "list_point_transaction") do
+      do_list_point_transaction(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  # TODO: check role, customer can only view its own point transaction
-  def do_list_point_transaction(request = %{
-    account: account,
-    filter: filter,
-    params: %{ "point_account_id" => point_account_id }
-  }) do
-    filter =
-      filter
-      |> Map.put(:status, "committed")
-      |> Map.put(:point_account_id, point_account_id)
-
+  def do_list_point_transaction(args) do
     total_count =
-      %{ filter: filter }
-      |> Service.count_point_transaction(%{ account: account })
+      %{ filter: args[:filter] }
+      |> Service.count_point_transaction(args[:opts])
 
     all_count =
-      %{ filter: %{ point_account_id: point_account_id, status: "committed" } }
-      |> Service.count_point_transaction(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_point_transaction(args[:opts])
 
     point_transactions =
-      %{ filter: filter }
-      |> Service.list_point_transaction(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter] }
+      |> Service.list_point_transaction(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count,
       },
@@ -164,29 +153,18 @@ defmodule BlueJet.Crm do
     {:ok, response}
   end
 
-  defp point_transaction_fields_by_role(request = %{ role: "customer", fields: fields }) do
-    fields = Map.put(fields, "status", "pending")
-    Map.put(request, :fields, fields)
-  end
-
-  defp point_transaction_fields_by_role(request), do: request
-
   def create_point_transaction(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.create_point_transaction") do
-      request
-      |> point_transaction_fields_by_role()
-      |> do_create_point_transaction()
+    with {:ok, authorize_args} <- Policy.authorize(request, "create_point_transaction") do
+      do_create_point_transaction(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_point_transaction(request = %{ account: account, params: %{ "point_account_id" => point_account_id } }) do
-    fields = Map.merge(request.fields, %{ "point_account_id" => point_account_id })
-
-    with {:ok, point_transaction} <- Service.create_point_transaction(fields, get_sopts(request)) do
-      point_transaction = Translation.translate(point_transaction, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: point_transaction }}
+  def do_create_point_transaction(args) do
+    with {:ok, point_transaction} <- Service.create_point_transaction(args[:fields], args[:opts]) do
+      point_transaction = Translation.translate(point_transaction, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: point_transaction }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -196,40 +174,37 @@ defmodule BlueJet.Crm do
   end
 
   def get_point_transaction(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.get_point_transaction") do
-      request
-      |> do_get_point_transaction()
+    with {:ok, authorize_args} <- Policy.authorize(request, "get_point_transaction") do
+      do_get_point_transaction(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_point_transaction(request = %{ account: account, params: params }) do
+  def do_get_point_transaction(args) do
     point_transaction =
-      atom_map(params)
-      |> Service.get_point_transaction(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_point_transaction(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if point_transaction do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: point_transaction }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: point_transaction }}
     else
       {:error, :not_found}
     end
   end
 
   def update_point_transaction(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.update_point_transaction") do
-      request
-      |> do_update_point_transaction
+    with {:ok, authorize_args} <- Policy.authorize(request, "update_point_transaction") do
+      do_update_point_transaction(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_point_transaction(request = %{ account: account, params: %{ "id" => id } }) do
-    with {:ok, pt} <- Service.update_point_transaction(id, request.fields, %{ account: account }) do
-      pt = Translation.translate(pt, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: pt }}
+  def do_update_point_transaction(args) do
+    with {:ok, pt} <- Service.update_point_transaction(args[:id], args[:fields], args[:opts]) do
+      pt = Translation.translate(pt, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: pt }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -239,16 +214,15 @@ defmodule BlueJet.Crm do
   end
 
   def delete_point_transaction(request) do
-    with {:ok, request} <- preprocess_request(request, "crm.delete_point_transaction") do
-      request
-      |> do_delete_point_transaction()
+    with {:ok, authorize_args} <- Policy.authorize(request, "delete_point_transaction") do
+      do_delete_point_transaction(authorize_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_point_transaction(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_point_transaction(id, %{ account: account }) do
+  def do_delete_point_transaction(args) do
+    with {:ok, _} <- Service.delete_point_transaction(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

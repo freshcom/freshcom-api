@@ -3,7 +3,7 @@ defmodule BlueJet.CrmTest do
 
   alias BlueJet.Identity.{Account, User}
   alias BlueJet.Crm
-  alias BlueJet.Crm.{Customer, PointTransaction}
+  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Crm.ServiceMock
 
   describe "list_customer/1" do
@@ -266,23 +266,71 @@ defmodule BlueJet.CrmTest do
 
   describe "list_point_transaction/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Crm.list_point_transaction(%AccessRequest{})
+      {:error, error} = Crm.list_point_transaction(request)
       assert error == :access_denied
     end
 
-    test "when request is valid" do
+    test "when role is customer and given point account ID does not belong to the customer" do
       account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{}
       request = %AccessRequest{
         account: account,
+        user: user,
+        role: "customer",
         params: %{ "point_account_id" => Ecto.UUID.generate() }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == request.params["point_account_id"]
+          assert identifiers[:customer_id] == customer.id
+
+          nil
+         end)
+
+      {:error, :access_denied} = Crm.list_point_transaction(request)
+    end
+
+    test "when role is customer and given point account ID belong to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{}
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "point_account_id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == request.params["point_account_id"]
+          assert identifiers[:customer_id] == customer.id
+
+          %PointAccount{}
          end)
 
       ServiceMock
@@ -308,103 +356,200 @@ defmodule BlueJet.CrmTest do
           1
          end)
 
-      {:ok, response} = Crm.list_point_transaction(request)
+      {:ok, _} = Crm.list_point_transaction(request)
+    end
 
-      assert length(response.data) == 1
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "point_account_id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:list_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          [%PointTransaction{}]
+         end)
+      |> expect(:count_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_point_transaction, fn(params, opts) ->
+          assert params[:filter][:status] == "committed"
+          assert params[:filter][:point_account_id] == request.params["point_account_id"]
+          assert opts[:account] == account
+
+          1
+         end)
+
+      {:ok, _} = Crm.list_point_transaction(request)
     end
   end
 
   describe "create_point_transaction/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Crm.create_point_transaction(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Crm.create_point_transaction(request)
     end
 
-    test "when request is valid" do
+    test "when role is guest and given point account ID does not belong to the customer" do
       account = %Account{}
-      point_transaction = %PointTransaction{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{}
       request = %AccessRequest{
         account: account,
+        user: user,
+        role: "customer",
         params: %{ "point_account_id" => Ecto.UUID.generate() },
         fields: %{ "amount" => 5000 }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
          end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == request.params["point_account_id"]
+          assert identifiers[:customer_id] == customer.id
+
+          nil
+         end)
+
+      {:error, :access_denied} = Crm.create_point_transaction(request)
+    end
+
+    test "when role is guest and given point account ID belong to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{}
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "point_account_id" => Ecto.UUID.generate() },
+        fields: %{ "amount" => 5000 }
+      }
+
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == request.params["point_account_id"]
+          assert identifiers[:customer_id] == customer.id
+
+          %PointAccount{}
+         end)
+
+      ServiceMock
+      |> expect(:create_point_transaction, fn(fields, opts) ->
+          assert fields == Map.merge(request.fields, %{ "point_account_id" => request.params["point_account_id"], "status" => "pending" })
+          assert opts[:account] == account
+
+          {:ok, %PointTransaction{}}
+         end)
+
+      {:ok, _} = Crm.create_point_transaction(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "point_account_id" => Ecto.UUID.generate() },
+        fields: %{ "status" => "committed", "amount" => 5000 }
+      }
 
       ServiceMock
       |> expect(:create_point_transaction, fn(fields, opts) ->
           assert fields == Map.merge(request.fields, %{ "point_account_id" => request.params["point_account_id"] })
           assert opts[:account] == account
 
-          {:ok, point_transaction}
+          {:ok, %PointTransaction{}}
          end)
 
-      {:ok, response} = Crm.create_point_transaction(request)
-
-      assert response.data == point_transaction
+      {:ok, _} = Crm.create_point_transaction(request)
     end
   end
 
   describe "get_point_transaction/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Crm.get_point_transaction(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Crm.get_point_transaction(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      point_transaction = %PointTransaction{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => point_transaction.id }
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:get_point_transaction, fn(identifiers, opts) ->
           assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
-          point_transaction
+          %PointTransaction{}
          end)
 
-      {:ok, response} = Crm.get_point_transaction(request)
-
-      assert response.data == point_transaction
+      {:ok, _} = Crm.get_point_transaction(request)
     end
   end
 
   describe "update_point_transaction/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Crm.update_point_transaction(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Crm.update_point_transaction(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      point_transaction = %PointTransaction{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => point_transaction.id },
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "name" => Faker.String.base64(5) }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:update_point_transaction, fn(id, fields, opts) ->
@@ -412,41 +557,131 @@ defmodule BlueJet.CrmTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, point_transaction}
+          {:ok, %PointTransaction{}}
          end)
 
-      {:ok, response} = Crm.update_point_transaction(request)
-
-      assert response.data == point_transaction
+      {:ok, _} = Crm.update_point_transaction(request)
     end
   end
 
   describe "delete_point_transaction/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Crm.delete_point_transaction(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Crm.delete_point_transaction(request)
     end
 
-    test "when request is valid" do
+    test "when role is guest and given point account ID does not belong to the customer" do
       account = %Account{}
-      point_transaction = %PointTransaction{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{ id: Ecto.UUID.generate() }
+      point_transaction = %{
+        id: Ecto.UUID.generate(),
+        point_account_id: Ecto.UUID.generate()
+      }
       request = %AccessRequest{
         account: account,
+        user: user,
+        role: "customer",
         params: %{ "id" => point_transaction.id }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_point_transaction, fn(identifiers, opts) ->
+          assert identifiers[:id] == point_transaction.id
+          assert opts[:account] == account
+
+          point_transaction
+         end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == point_transaction.point_account_id
+          assert identifiers[:customer_id] == customer.id
+
+          nil
+         end)
+
+      {:error, :access_denied} = Crm.delete_point_transaction(request)
+    end
+
+    test "when role is guest and given point account ID belong to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %Customer{ id: Ecto.UUID.generate() }
+      point_transaction = %{
+        id: Ecto.UUID.generate(),
+        point_account_id: Ecto.UUID.generate()
+      }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => point_transaction.id }
+      }
+
+      ServiceMock
+      |> expect(:get_customer, fn(identifiers, opts) ->
+          assert identifiers[:user_id] == user.id
+          assert opts[:account] == account
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_point_transaction, fn(identifiers, opts) ->
+          assert identifiers[:id] == point_transaction.id
+          assert opts[:account] == account
+
+          point_transaction
+         end)
+
+      ServiceMock
+      |> expect(:get_point_account, fn(identifiers, _) ->
+          assert identifiers[:id] == point_transaction.point_account_id
+          assert identifiers[:customer_id] == customer.id
+
+          %PointAccount{}
+         end)
 
       ServiceMock
       |> expect(:delete_point_transaction, fn(id, opts) ->
           assert id == request.params["id"]
           assert opts[:account] == account
 
-          {:ok, point_transaction}
+          {:ok, %PointTransaction{}}
+         end)
+
+      {:ok, _} = Crm.delete_point_transaction(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:delete_point_transaction, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, %PointTransaction{}}
          end)
 
       {:ok, _} = Crm.delete_point_transaction(request)

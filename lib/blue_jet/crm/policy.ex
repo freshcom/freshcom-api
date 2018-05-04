@@ -62,6 +62,107 @@ defmodule BlueJet.Crm.Policy do
   end
 
   #
+  # Point Transaction
+  #
+  def authorize(request = %{ account: account, user: user, role: role }, "list_point_transaction") when role in ["customer"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    filter = Map.merge(authorized_args[:filter], %{
+      point_account_id: request.params["point_account_id"],
+      status: "committed"
+    })
+
+    customer = Service.get_customer(%{ user_id: user.id }, %{ account: account })
+    point_account = Service.get_point_account(%{
+      id: filter[:point_account_id],
+      customer_id: customer.id
+    }, %{ account: account })
+
+    if point_account do
+      all_count_filter = Map.take(filter, [:status, :point_account_id])
+      authorized_args = %{ authorized_args | filter: filter, all_count_filter: all_count_filter }
+
+      {:ok, authorized_args}
+    else
+      {:error, :access_denied}
+    end
+  end
+
+  def authorize(request = %{ role: role }, "list_point_transaction") when role in ["support_specialist", "developer", "administrator"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :list)
+
+    filter = Map.merge(authorized_args[:filter], %{
+      point_account_id: request.params["point_account_id"],
+      status: "committed"
+    })
+
+    all_count_filter = Map.take(filter, [:status, :point_account_id])
+    authorized_args = %{ authorized_args | filter: filter, all_count_filter: all_count_filter }
+
+    {:ok, authorized_args}
+  end
+
+  def authorize(request = %{ account: account, user: user, role: role }, "create_point_transaction") when role in ["customer"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :create)
+    fields = Map.merge(authorized_args[:fields], %{
+      "point_account_id" => request.params["point_account_id"],
+      "status" => "pending"
+    })
+
+    customer = Service.get_customer(%{ user_id: user.id }, %{ account: account })
+    point_account = Service.get_point_account(%{
+      id: fields["point_account_id"],
+      customer_id: customer.id
+    }, %{ account: account })
+
+    if point_account do
+      authorized_args = %{ authorized_args | fields: fields }
+      {:ok, authorized_args}
+    else
+      {:error, :access_denied}
+    end
+  end
+
+  def authorize(request = %{ role: role }, "create_point_transaction") when role in ["support_specialist", "developer", "administrator"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :create)
+
+    fields = Map.merge(authorized_args[:fields], %{
+      "point_account_id" => request.params["point_account_id"]
+    })
+    authorized_args = %{ authorized_args | fields: fields }
+
+    {:ok, authorized_args}
+  end
+
+  def authorize(request = %{ role: role }, "get_point_transaction") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :get)}
+  end
+
+  def authorize(request = %{ role: role }, "update_point_transaction") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :update)}
+  end
+
+  def authorize(request = %{ account: account, user: user, role: role }, "delete_point_transaction") when role in ["customer"] do
+    authorized_args = AccessRequest.to_authorized_args(request, :delete)
+
+    customer = Service.get_customer(%{ user_id: user.id }, %{ account: account })
+    point_transaction = Service.get_point_transaction(%{ id: authorized_args[:id] }, %{ account: account })
+    point_account = Service.get_point_account(%{
+      id: point_transaction.point_account_id,
+      customer_id: customer.id
+    }, %{ account: account })
+
+    if point_account do
+      {:ok, authorized_args}
+    else
+      {:error, :access_denied}
+    end
+  end
+
+  def authorize(request = %{ role: role }, "delete_point_transaction") when role in ["support_specialist", "developer", "administrator"] do
+    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+  end
+
+  #
   # MARK: Other
   #
   def authorize(request = %{ role: nil }, endpoint) do
