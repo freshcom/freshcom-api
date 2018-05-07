@@ -1,7 +1,6 @@
 defmodule BlueJet.Fulfillment do
   use BlueJet, :context
 
-  alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.{Policy, Service}
 
   #
@@ -24,15 +23,14 @@ defmodule BlueJet.Fulfillment do
       %{ filter: args[:all_count_filter] }
       |> Service.count_fulfillment_package(args[:opts])
 
-    locale = args[:opts][:locale]
     fulfillment_packages =
       %{ filter: args[:filter], search: args[:search] }
       |> Service.list_fulfillment_package(args[:opts])
-      |> Translation.translate(locale, args[:opts][:account].default_locale)
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count,
       },
@@ -54,23 +52,22 @@ defmodule BlueJet.Fulfillment do
     fulfillment_package = Service.get_fulfillment_package(args[:identifiers], args[:opts])
 
     if fulfillment_package do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:opts][:locale] }, data: fulfillment_package }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: fulfillment_package }}
     else
       {:error, :not_found}
     end
   end
 
   def delete_fulfillment_package(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.delete_fulfillment_package") do
-      request
-      |> do_delete_fulfillment_package()
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_fulfillment_package") do
+      do_delete_fulfillment_package(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_fulfillment_package(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_fulfillment_package(id, %{ account: account }) do
+  def do_delete_fulfillment_package(args) do
+    with {:ok, _} <- Service.delete_fulfillment_package(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -84,31 +81,30 @@ defmodule BlueJet.Fulfillment do
   # MARK: Fulfillment Item
   #
   def list_fulfillment_item(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.list_fulfillment_item") do
-      request
-      |> do_list_fulfillment_item()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_fulfillment_item") do
+      do_list_fulfillment_item(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_fulfillment_item(request = %{ account: account, filter: filter }) do
+  def do_list_fulfillment_item(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_fulfillment_item(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_fulfillment_item(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_fulfillment_item(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_fulfillment_item(args[:opts])
 
     fulfillment_items =
-      %{ filter: filter, search: request.search }
-      |> Service.list_fulfillment_item(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_fulfillment_item(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -119,18 +115,17 @@ defmodule BlueJet.Fulfillment do
   end
 
   def create_fulfillment_item(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.create_fulfillment_item") do
-      request
-      |> do_create_fulfillment_item()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_fulfillment_item") do
+      do_create_fulfillment_item(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_fulfillment_item(request = %{ account: account }) do
-    with {:ok, fulfillment_item} <- Service.create_fulfillment_item(request.fields, %{ account: account }) do
-      fulfillment_item = Translation.translate(fulfillment_item, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
+  def do_create_fulfillment_item(args) do
+    with {:ok, fulfillment_item} <- Service.create_fulfillment_item(args[:fields], args[:opts]) do
+      fulfillment_item = Translation.translate(fulfillment_item, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: fulfillment_item }}
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
@@ -140,18 +135,17 @@ defmodule BlueJet.Fulfillment do
   end
 
   def update_fulfillment_item(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.update_fulfillment_item") do
-      request
-      |> do_update_fulfillment_item()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_fulfillment_item") do
+      do_update_fulfillment_item(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_fulfillment_item(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, fulfillment_item} <- Service.update_fulfillment_item(id, request.fields, get_sopts(request)) do
-      fulfillment_item = Translation.translate(fulfillment_item, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: fulfillment_item }}
+  def do_update_fulfillment_item(args) do
+    with {:ok, fulfillment_item} <- Service.update_fulfillment_item(args[:id], args[:fields], args[:opts]) do
+      fulfillment_item = Translation.translate(fulfillment_item, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: fulfillment_item }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -164,31 +158,30 @@ defmodule BlueJet.Fulfillment do
   # MARK: Return Package
   #
   def list_return_package(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.list_return_package") do
-      request
-      |> do_list_return_package()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_return_package") do
+      do_list_return_package(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_return_package(request = %{ account: account, filter: filter }) do
+  def do_list_return_package(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_return_package(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_return_package(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_return_package(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_return_package(args[:opts])
 
     return_packages =
-      %{ filter: filter, search: request.search }
-      |> Service.list_return_package(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_return_package(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count,
       },
@@ -202,18 +195,17 @@ defmodule BlueJet.Fulfillment do
   # MARK: Return Item
   #
   def create_return_item(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.create_return_item") do
-      request
-      |> do_create_return_item()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_return_item") do
+      do_create_return_item(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_return_item(request = %{ account: account }) do
-    with {:ok, return_item} <- Service.create_return_item(request.fields, %{ account: account }) do
-      return_item = Translation.translate(return_item, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: return_item }}
+  def do_create_return_item(args) do
+    with {:ok, return_item} <- Service.create_return_item(args[:fields], args[:opts]) do
+      return_item = Translation.translate(return_item, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: return_item }}
     else
       {:error, changeset} ->
         {:error, %AccessResponse{ errors: changeset.errors }}
@@ -225,33 +217,25 @@ defmodule BlueJet.Fulfillment do
   #
   # MARK: Unlock
   #
-  defp filter_unlock_by_role(request = %{ account: account, vas: vas, role: "customer" }) do
-    customer = CrmService.get_customer(%{ user_id: vas[:user_id] }, %{ account: account })
-    %{ request | filter: Map.put(request.filter, :customer_id, customer.id ) }
-  end
-
-  defp filter_unlock_by_role(request), do: request
-
   def list_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.list_unlock") do
-      request
-      |> filter_unlock_by_role()
-      |> do_list_unlock()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_unlock") do
+      do_list_unlock(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_unlock(request = %{ account: account, filter: filter }) do
-    total_count = Service.count_unlock(%{ filter: filter }, %{ account: account })
-    all_count = Service.count_unlock(%{ filter: Map.take(filter, [:customer_id]) }, %{ account: account })
+  def do_list_unlock(args) do
+    total_count = Service.count_unlock(%{ filter: args[:filter] }, args[:opts])
+    all_count = Service.count_unlock(%{ filter: args[:all_count_filter] }, args[:opts])
+
     unlocks =
-      Service.list_unlock(%{ filter: filter }, get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.list_unlock(%{ filter: args[:filter] }, args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -262,18 +246,17 @@ defmodule BlueJet.Fulfillment do
   end
 
   def create_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.create_unlock") do
-      request
-      |> do_create_unlock()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_unlock") do
+      do_create_unlock(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_unlock(request = %{ account: account }) do
-    with {:ok, unlock} <- Service.create_unlock(request.fields, get_sopts(request)) do
-      unlock = Translation.translate(unlock, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}
+  def do_create_unlock(args) do
+    with {:ok, unlock} <- Service.create_unlock(args[:fields], args[:opts]) do
+      unlock = Translation.translate(unlock, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlock }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -283,38 +266,35 @@ defmodule BlueJet.Fulfillment do
   end
 
   def get_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.get_unlock") do
-      request
-      |> do_get_unlock()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_unlock") do
+      do_get_unlock(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_unlock(request = %{ account: account, params: %{ "id" => id } }) do
+  def do_get_unlock(args) do
     unlock =
-      %{ id: id }
-      |> Service.get_unlock(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_unlock(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if unlock do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlock }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlock }}
     else
       {:error, :not_found}
     end
   end
 
   def delete_unlock(request) do
-    with {:ok, request} <- preprocess_request(request, "fulfillment.delete_unlock") do
-      request
-      |> do_delete_unlock()
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_unlock") do
+      do_delete_unlock(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_unlock(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_unlock(id, %{ account: account }) do
+  def do_delete_unlock(args) do
+    with {:ok, _} <- Service.delete_unlock(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
