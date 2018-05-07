@@ -1,45 +1,36 @@
 defmodule BlueJet.Goods do
   use BlueJet, :context
 
-  alias BlueJet.Goods.Service
-
-  defp filter_by_role(request = %{ role: role }) when role in ["guest", "customer"] do
-    request = %{ request | filter: Map.put(request.filter, :status, "active") }
-    %{ request | count_filter: %{ all: %{ status: "active" } } }
-  end
-
-  defp filter_by_role(request), do: request
+  alias BlueJet.Goods.{Policy, Service}
 
   #
   # MARK: Stockable
   #
   def list_stockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.list_stockable") do
-      request
-      |> filter_by_role()
-      |> do_list_stockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_stockable") do
+      do_list_stockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_stockable(request = %{ account: account, filter: filter }) do
+  def do_list_stockable(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_stockable(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_stockable(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_stockable(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_stockable(args[:opts])
 
     stockables =
-      %{ filter: filter, search: request.search }
-      |> Service.list_stockable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_stockable(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -50,18 +41,17 @@ defmodule BlueJet.Goods do
   end
 
   def create_stockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.create_stockable") do
-      request
-      |> do_create_stockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_stockable") do
+      do_create_stockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_stockable(request = %{ account: account }) do
-    with {:ok, stockable} <- Service.create_stockable(request.fields, get_sopts(request)) do
-      stockable = Translation.translate(stockable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
+  def do_create_stockable(args) do
+    with {:ok, stockable} <- Service.create_stockable(args[:fields], args[:opts]) do
+      stockable = Translation.translate(stockable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -71,40 +61,37 @@ defmodule BlueJet.Goods do
   end
 
   def get_stockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.get_stockable") do
-      request
-      |> do_get_stockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_stockable") do
+      do_get_stockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_stockable(request = %{ account: account, params: params }) do
+  def do_get_stockable(args) do
     stockable =
-      atom_map(params)
-      |> Service.get_stockable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_stockable(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if stockable do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: stockable }}
     else
       {:error, :not_found}
     end
   end
 
   def update_stockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.update_stockable") do
-      request
-      |> do_update_stockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_stockable") do
+      do_update_stockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_stockable(request = %{ account: account, params: %{ "id" => id } }) do
-    with {:ok, stockable} <- Service.update_stockable(id, request.fields, get_sopts(request)) do
-      stockable = Translation.translate(stockable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: stockable }}
+  def do_update_stockable(args) do
+    with {:ok, stockable} <- Service.update_stockable(args[:id], args[:fields], args[:opts]) do
+      stockable = Translation.translate(stockable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: stockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -114,16 +101,15 @@ defmodule BlueJet.Goods do
   end
 
   def delete_stockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.delete_stockable") do
-      request
-      |> do_delete_stockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_stockable") do
+      do_delete_stockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_stockable(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_stockable(id, %{ account: account }) do
+  def do_delete_stockable(args) do
+    with {:ok, _} <- Service.delete_stockable(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -137,32 +123,30 @@ defmodule BlueJet.Goods do
   # MARK: Unlockable
   #
   def list_unlockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.list_unlockable") do
-      request
-      |> filter_by_role()
-      |> do_list_unlockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_unlockable") do
+      do_list_unlockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_unlockable(request = %{ account: account, filter: filter }) do
+  def do_list_unlockable(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_unlockable(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_unlockable(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_unlockable(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_unlockable(args[:opts])
 
     unlockables =
-      %{ filter: filter, search: request.search }
-      |> Service.list_unlockable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_unlockable(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -173,18 +157,17 @@ defmodule BlueJet.Goods do
   end
 
   def create_unlockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.create_unlockable") do
-      request
-      |> do_create_unlockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_unlockable") do
+      do_create_unlockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_unlockable(request = %{ account: account }) do
-    with {:ok, unlockable} <- Service.create_unlockable(request.fields, get_sopts(request)) do
-      unlockable = Translation.translate(unlockable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+  def do_create_unlockable(args) do
+    with {:ok, unlockable} <- Service.create_unlockable(args[:fields], args[:opts]) do
+      unlockable = Translation.translate(unlockable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -194,40 +177,37 @@ defmodule BlueJet.Goods do
   end
 
   def get_unlockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.get_unlockable") do
-      request
-      |> do_get_unlockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_unlockable") do
+      do_get_unlockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_unlockable(request = %AccessRequest{ account: account, params: params }) do
+  def do_get_unlockable(args) do
     unlockable =
-      atom_map(params)
-      |> Service.get_unlockable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_unlockable(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if unlockable do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlockable }}
     else
       {:error, :not_found}
     end
   end
 
   def update_unlockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.update_unlockable") do
-      request
-      |> do_update_unlockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_unlockable") do
+      do_update_unlockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_unlockable(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, unlockable} <- Service.update_unlockable(id, request.fields, get_sopts(request)) do
-      unlockable = Translation.translate(unlockable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: unlockable }}
+  def do_update_unlockable(args) do
+    with {:ok, unlockable} <- Service.update_unlockable(args[:id], args[:fields], args[:opts]) do
+      unlockable = Translation.translate(unlockable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlockable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -237,16 +217,15 @@ defmodule BlueJet.Goods do
   end
 
   def delete_unlockable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.delete_unlockable") do
-      request
-      |> do_delete_unlockable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_unlockable") do
+      do_delete_unlockable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_unlockable(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_unlockable(id, %{ account: account }) do
+  def do_delete_unlockable(args) do
+    with {:ok, _} <- Service.delete_unlockable(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -260,32 +239,30 @@ defmodule BlueJet.Goods do
   # MARK: Depositable
   #
   def list_depositable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.list_depositable") do
-      request
-      |> filter_by_role()
-      |> do_list_depositable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_depositable") do
+      do_list_depositable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_list_depositable(request = %{ account: account, filter: filter }) do
+  def do_list_depositable(args) do
     total_count =
-      %{ filter: filter, search: request.search }
-      |> Service.count_depositable(%{ account: account })
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_depositable(args[:opts])
 
     all_count =
-      %{ filter: request.count_filter[:all] }
-      |> Service.count_depositable(%{ account: account })
+      %{ filter: args[:all_count_filter] }
+      |> Service.count_depositable(args[:opts])
 
     depositables =
-      %{ filter: filter, search: request.search }
-      |> Service.list_depositable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_depositable(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     response = %AccessResponse{
       meta: %{
-        locale: request.locale,
+        locale: args[:locale],
         all_count: all_count,
         total_count: total_count
       },
@@ -296,18 +273,17 @@ defmodule BlueJet.Goods do
   end
 
   def create_depositable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.create_depositable") do
-      request
-      |> do_create_depositable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_depositable") do
+      do_create_depositable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_depositable(request = %{ account: account }) do
-    with {:ok, depositable} <- Service.create_depositable(request.fields, get_sopts(request)) do
-      depositable = Translation.translate(depositable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
+  def do_create_depositable(args) do
+    with {:ok, depositable} <- Service.create_depositable(args[:fields], args[:opts]) do
+      depositable = Translation.translate(depositable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: depositable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -317,40 +293,37 @@ defmodule BlueJet.Goods do
   end
 
   def get_depositable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.get_depositable") do
-      request
-      |> do_get_depositable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_depositable") do
+      do_get_depositable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_depositable(request = %{ account: account, params: params }) do
+  def do_get_depositable(args) do
     depositable =
-      atom_map(params)
-      |> Service.get_depositable(get_sopts(request))
-      |> Translation.translate(request.locale, account.default_locale)
+      Service.get_depositable(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
 
     if depositable do
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: depositable }}
     else
       {:error, :not_found}
     end
   end
 
   def update_depositable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.update_depositable") do
-      request
-      |> do_update_depositable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_depositable") do
+      do_update_depositable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_depositable(request = %{ account: account, params: %{ "id" => id }}) do
-    with {:ok, depositable} <- Service.update_depositable(id, request.fields, get_sopts(request)) do
-      depositable = Translation.translate(depositable, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: depositable }}
+  def do_update_depositable(args) do
+    with {:ok, depositable} <- Service.update_depositable(args[:id], args[:fields], args[:opts]) do
+      depositable = Translation.translate(depositable, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: depositable }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -360,16 +333,15 @@ defmodule BlueJet.Goods do
   end
 
   def delete_depositable(request) do
-    with {:ok, request} <- preprocess_request(request, "goods.delete_depositable") do
-      request
-      |> do_delete_depositable()
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_depositable") do
+      do_delete_depositable(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_delete_depositable(%AccessRequest{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_depositable(id, %{ account: account }) do
+  def do_delete_depositable(args) do
+    with {:ok, _} <- Service.delete_depositable(args[:id], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

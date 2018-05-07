@@ -1,66 +1,63 @@
 defmodule BlueJet.GoodsTest do
   use BlueJet.ContextCase
 
-  alias BlueJet.AuthorizationMock
-  alias BlueJet.Identity.Account
+  alias BlueJet.Identity.{Account, User}
   alias BlueJet.Goods
-  alias BlueJet.Goods.{Stockable, Unlockable}
+  alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
   alias BlueJet.Goods.ServiceMock
 
+  #
+  # MARK: Stockable
+  #
   describe "list_stockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Goods.list_stockable(%AccessRequest{})
-      assert error == :access_denied
-    end
-
-    test "when using customer identity" do
-      account = %Account{}
       request = %AccessRequest{
-        account: account,
+        account: %Account{},
+        user: %User{},
         role: "customer"
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
+      {:error, :access_denied} = Goods.list_stockable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator"
+      }
 
       ServiceMock
-      |> expect(:list_stockable, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:list_stockable, fn(_, opts) ->
           assert opts[:account] == account
 
           [%Stockable{}]
          end)
-      |> expect(:count_stockable, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:count_stockable, fn(_, opts) ->
           assert opts[:account] == account
 
           1
          end)
-      |> expect(:count_stockable, fn(params, opts) ->
-          assert params[:filter][:status] == "active"
+      |> expect(:count_stockable, fn(_, opts) ->
           assert opts[:account] == account
 
           1
          end)
 
-      {:ok, response} = Goods.list_stockable(request)
-
-      assert length(response.data) == 1
-      assert response.meta.all_count == 1
-      assert response.meta.total_count == 1
+      {:ok, _} = Goods.list_stockable(request)
     end
   end
 
   describe "create_stockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.create_stockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.create_stockable(request)
     end
 
     test "when request is valid" do
@@ -68,14 +65,13 @@ defmodule BlueJet.GoodsTest do
       stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "name" => Faker.Commerce.product_name(),
           "unit_of_measure" => Faker.String.base64(2)
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:create_stockable, fn(fields, opts) ->
@@ -85,66 +81,62 @@ defmodule BlueJet.GoodsTest do
           {:ok, stockable}
          end)
 
-      {:ok, response} = Goods.create_stockable(request)
-
-      assert response.data == stockable
+      {:ok, _} = Goods.create_stockable(request)
     end
   end
 
   describe "get_stockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.get_stockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.get_stockable(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:get_stockable, fn(identifiers, opts) ->
           assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
-          stockable
+          %Stockable{}
          end)
 
-      {:ok, response} = Goods.get_stockable(request)
-
-      assert response.data == stockable
+      {:ok, _} = Goods.get_stockable(request)
     end
   end
 
   describe "update_stockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.update_stockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.update_stockable(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
-        params: %{ "id" => stockable.id },
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "name" => Faker.Commerce.product_name() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:update_stockable, fn(id, fields, opts) ->
@@ -152,104 +144,174 @@ defmodule BlueJet.GoodsTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, stockable}
+          {:ok, %Stockable{}}
          end)
 
-      {:ok, response} = Goods.update_stockable(request)
-
-      assert response.data == stockable
+      {:ok, _} = Goods.update_stockable(request)
     end
   end
 
   describe "delete_stockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.delete_stockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.delete_stockable(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      stockable = %Stockable{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:delete_stockable, fn(id, opts) ->
           assert id == request.params["id"]
           assert opts[:account] == account
 
-          {:ok, stockable}
+          {:ok, %Stockable{}}
          end)
 
       {:ok, _} = Goods.delete_stockable(request)
     end
   end
 
-  describe "create_unlockable/1" do
+  #
+  # MARK: Unlockable
+  #
+  describe "list_unlockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.create_unlockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.list_unlockable(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      unlockable = %Unlockable{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:list_unlockable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          [%Unlockable{}]
+         end)
+      |> expect(:count_unlockable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_unlockable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+
+      {:ok, _} = Goods.list_unlockable(request)
+    end
+  end
+
+  describe "create_unlockable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.create_unlockable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "name" => Faker.Commerce.product_name()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:create_unlockable, fn(fields, opts) ->
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, unlockable}
+          {:ok, %Unlockable{}}
          end)
 
-      {:ok, response} = Goods.create_unlockable(request)
+      {:ok, _} = Goods.create_unlockable(request)
+    end
+  end
 
-      assert response.data == unlockable
+  describe "get_unlockable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.get_unlockable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:get_unlockable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          %Unlockable{}
+         end)
+
+      {:ok, _} = Goods.get_unlockable(request)
     end
   end
 
   describe "update_unlockable/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Goods.update_unlockable(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Goods.update_unlockable(request)
     end
 
     test "when request is valid" do
       account = %Account{}
-      unlockable = %Unlockable{}
       request = %AccessRequest{
         account: account,
-        role: "developer",
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() },
         fields: %{ "name" => Faker.Commerce.product_name() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:ok, request} end)
 
       ServiceMock
       |> expect(:update_unlockable, fn(id, fields, opts) ->
@@ -257,12 +319,217 @@ defmodule BlueJet.GoodsTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:ok, unlockable}
+          {:ok, %Unlockable{}}
          end)
 
-      {:ok, response} = Goods.update_unlockable(request)
+      {:ok, _} = Goods.update_unlockable(request)
+    end
+  end
 
-      assert response.data == unlockable
+  describe "delete_unlockable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.delete_unlockable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:delete_unlockable, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, %Unlockable{}}
+         end)
+
+      {:ok, _} = Goods.delete_unlockable(request)
+    end
+  end
+
+  #
+  # MARK: Depositable
+  #
+  describe "list_depositable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.list_depositable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:list_depositable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          [%Depositable{}]
+         end)
+      |> expect(:count_depositable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+      |> expect(:count_depositable, fn(_, opts) ->
+          assert opts[:account] == account
+
+          1
+         end)
+
+      {:ok, _} = Goods.list_depositable(request)
+    end
+  end
+
+  describe "create_depositable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.create_depositable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        fields: %{
+          "name" => Faker.Commerce.product_name()
+        }
+      }
+
+      ServiceMock
+      |> expect(:create_depositable, fn(fields, opts) ->
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, %Depositable{}}
+         end)
+
+      {:ok, _} = Goods.create_depositable(request)
+    end
+  end
+
+  describe "get_depositable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.get_depositable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:get_depositable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
+          assert opts[:account] == account
+
+          %Depositable{}
+         end)
+
+      {:ok, _} = Goods.get_depositable(request)
+    end
+  end
+
+  describe "update_depositable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.update_depositable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{ "name" => Faker.Commerce.product_name() }
+      }
+
+      ServiceMock
+      |> expect(:update_depositable, fn(id, fields, opts) ->
+          assert id == request.params["id"]
+          assert fields == request.fields
+          assert opts[:account] == account
+
+          {:ok, %Depositable{}}
+         end)
+
+      {:ok, _} = Goods.update_depositable(request)
+    end
+  end
+
+  describe "delete_depositable/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Goods.delete_depositable(request)
+    end
+
+    test "when request is valid" do
+      account = %Account{}
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:delete_depositable, fn(id, opts) ->
+          assert id == request.params["id"]
+          assert opts[:account] == account
+
+          {:ok, %Depositable{}}
+         end)
+
+      {:ok, _} = Goods.delete_depositable(request)
     end
   end
 end
