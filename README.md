@@ -43,7 +43,9 @@ Right now Freshcom API depends on the following third party services.
 5. Install dependencies with `mix deps.get`
 6. Create and migrate your database with `mix ecto.create && mix ecto.migrate`
 7. Start Phoenix endpoint with `mix phx.server
-8. You can now make API request to [`localhost:4000`](http://localhost:4000)
+8. Add a test user `mix blue_jet.db.sample`
+9. You can now make API request to [`localhost:4000`](http://localhost:4000)
+10. If you have Freshcom Dashboard setup then you can now login using the test user with email `test@example.com` password `test1234`.
 
 ## Documentation
 
