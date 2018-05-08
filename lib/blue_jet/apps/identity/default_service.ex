@@ -26,6 +26,10 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
+  def get_vas_data(_) do
+    %{ account: nil, user: nil, role: "anonymous" }
+  end
+
   def put_vas_data(request = %{ vas: vas }) do
     %{account: account, user: user, role: role} = get_vas_data(vas)
 

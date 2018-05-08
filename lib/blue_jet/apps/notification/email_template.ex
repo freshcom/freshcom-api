@@ -162,8 +162,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     alias BlueJet.Notification.EmailTemplate
 
     def password_reset(account) do
-      password_reset_html = File.read!("lib/blue_jet/notification/email_templates/password_reset.html")
-      password_reset_text = File.read!("lib/blue_jet/notification/email_templates/password_reset.txt")
+      password_reset_html = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.html")
+      password_reset_text = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -177,8 +177,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def password_reset_not_registered(account) do
-      password_reset_not_registered_html = File.read!("lib/blue_jet/notification/email_templates/password_reset_not_registered.html")
-      password_reset_not_registered_text = File.read!("lib/blue_jet/notification/email_templates/password_reset_not_registered.txt")
+      password_reset_not_registered_html = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.html")
+      password_reset_not_registered_text = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -192,8 +192,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def email_verification(account) do
-      email_verification_html = File.read!("lib/blue_jet/notification/email_templates/email_verification.html")
-      email_verification_text = File.read!("lib/blue_jet/notification/email_templates/email_verification.txt")
+      email_verification_html = File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.html")
+      email_verification_text = File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -207,8 +207,8 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def order_confirmation(account) do
-      order_confirmation_html = File.read!("lib/blue_jet/notification/email_templates/order_confirmation.html")
-      order_confirmation_text = File.read!("lib/blue_jet/notification/email_templates/order_confirmation.txt")
+      order_confirmation_html = File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.html")
+      order_confirmation_text = File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.txt")
 
       %EmailTemplate{
         account_id: account.id,
