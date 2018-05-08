@@ -19,7 +19,9 @@ Some key highlights of Freshcom API:
 
 Freshcom API can be used with [Freshcom Dashboard](https://github.com/freshcom/freshcom-dashboard) which is the front-end for back office.
 
-The front-end for the customer facing store is not provided. This is intentional because every store demands different experiences for their customer, it is up to you to develop your own customer facing store using the Freshcom API. We recommend using [VueJS](https://vuejs.org), but any SPA front-end (ex. React, Angular) framework works well with our [JS SDK](https://github.com/freshcom/freshcom-js-sdk)
+The front-end for the customer facing store is not provided. This is intentional because every store demands different experiences for their customer, it is up to you to develop your own customer facing store using the Freshcom API. We recommend using [VueJS](https://vuejs.org), but any SPA front-end (ex. React, Angular) framework works well with our [JS SDK](https://gist.github.com/rbao/d220335aedb1b45025bdb4bad9451634). (I know its just a gist, an actual JS SDK will be relaese in the future).
+
+API references is avilable [here](https://github.com/freshcom/freshcom-api-reference), its still work in progress, so you need to run it locally.
 
 ## Required Third Party Dependencies
 
@@ -42,6 +44,10 @@ Right now Freshcom API depends on the following third party services.
 6. Create and migrate your database with `mix ecto.create && mix ecto.migrate`
 7. Start Phoenix endpoint with `mix phx.server
 8. You can now make API request to [`localhost:4000`](http://localhost:4000)
+
+## Documentation
+
+Please see documentation at [https://docs.freshcom.io](https://docs.freshcom.io)
 
 ## Generate RSA key pairs
 
