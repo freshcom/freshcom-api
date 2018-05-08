@@ -5,26 +5,27 @@ defmodule BlueJet.Identity.IdentityTest do
   alias BlueJet.Identity.{User, Account, RefreshToken}
   alias BlueJet.Identity.ServiceMock
 
+  #
+  # MARK: Account
+  #
   describe "get_account/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
 
-      {:error, error} = Identity.get_account(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.get_account(request)
     end
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
-        account: account
+        account: account,
+        user: nil,
+        role: "guest"
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-        end)
 
       ServiceMock
       |> expect(:get_account, fn(id) ->
@@ -33,36 +34,31 @@ defmodule BlueJet.Identity.IdentityTest do
           account
          end)
 
-      {:ok, response} = Identity.get_account(request)
-
-      assert response.data == account
+      {:ok, _} = Identity.get_account(request)
     end
   end
 
   describe "update_account/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Identity.update_account(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.update_account(request)
     end
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      new_name = Faker.Company.name()
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
-          "name" => new_name
+          "name" => Faker.Company.name()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:update_account, fn(account, fields, opts) ->
@@ -70,65 +66,31 @@ defmodule BlueJet.Identity.IdentityTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          account = %{ account | name: new_name }
           {:ok, account}
          end)
 
-      {:ok, response} = Identity.update_account(request)
-
-      assert response.data.id == account.id
-      assert response.data.name == new_name
-    end
-
-    test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "name" => nil
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:update_account, fn(account, fields, opts) ->
-          assert account == account
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Identity.update_account(request)
-
-      assert response.errors == "errors"
+      {:ok, _} = Identity.update_account(request)
     end
   end
 
   describe "reset_account/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Identity.reset_account(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.reset_account(request)
     end
 
     test "when request is valid" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator"
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:reset_account, fn(account) ->
@@ -137,35 +99,34 @@ defmodule BlueJet.Identity.IdentityTest do
           {:ok, account}
          end)
 
-      {:ok, response} = Identity.reset_account(request)
-
-      assert response.data.id == account.id
+      {:ok, _} = Identity.reset_account(request)
     end
   end
 
+  #
+  # MARK: Email Verificatino Token
+  #
   describe "create_email_verification_token/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Identity.create_email_verification_token(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.create_email_verification_token(request)
     end
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "email" => Faker.Internet.safe_email()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_email_verification_token, fn(fields, opts) ->
@@ -177,58 +138,32 @@ defmodule BlueJet.Identity.IdentityTest do
 
       {:ok, _} = Identity.create_email_verification_token(request)
     end
-
-    test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "email" => "invalid"
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_email_verification_token, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Identity.create_email_verification_token(request)
-
-      assert response.errors == "errors"
-    end
   end
 
+  #
+  # MARK: Email Verification
+  #
   describe "create_email_verification/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Identity.create_email_verification(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.create_email_verification(request)
     end
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "token" => "token"
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_email_verification, fn(fields, opts) ->
@@ -240,58 +175,32 @@ defmodule BlueJet.Identity.IdentityTest do
 
       {:ok, _} = Identity.create_email_verification(request)
     end
-
-    test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "token" => "invalid"
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_email_verification, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Identity.create_email_verification(request)
-
-      assert response.errors == "errors"
-    end
   end
 
+  #
+  # MARK: Phone Verification Code
+  #
   describe "create_phone_verification_code/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous"
+      }
 
-      {:error, error} = Identity.create_phone_verification_code(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.create_phone_verification_code(request)
     end
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: nil,
+        role: "guest",
         fields: %{
           "phone_number" => Faker.Phone.EnUs.phone()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_phone_verification_code, fn(fields, opts) ->
@@ -303,58 +212,22 @@ defmodule BlueJet.Identity.IdentityTest do
 
       {:ok, _} = Identity.create_phone_verification_code(request)
     end
-
-    test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "phone_number" => "invalid"
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_phone_verification_code, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Identity.create_phone_verification_code(request)
-
-      assert response.errors == "errors"
-    end
   end
 
+  #
+  # MARK: Password Reset Token
+  #
   describe "create_password_reset_token/1" do
-    test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Identity.create_password_reset_token(%AccessRequest{})
-
-      assert error == :access_denied
-    end
-
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
-          "email" => Faker.Internet.safe_email()
+          "username" => Faker.Internet.safe_email()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_password_reset_token, fn(fields, opts) ->
@@ -371,15 +244,12 @@ defmodule BlueJet.Identity.IdentityTest do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
-          "email" => Faker.Internet.safe_email()
+          "username" => Faker.Internet.safe_email()
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_password_reset_token, fn(fields, opts) ->
@@ -396,15 +266,12 @@ defmodule BlueJet.Identity.IdentityTest do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
+        user: %User{},
+        role: "administrator",
         fields: %{
           "email" => "invalid"
         }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:create_password_reset_token, fn(fields, opts) ->
@@ -414,42 +281,29 @@ defmodule BlueJet.Identity.IdentityTest do
           {:error, %{ errors: "errors" }}
          end)
 
-      {:error, response} = Identity.create_password_reset_token(request)
-
-      assert response.errors == "errors"
+      {:error, _} = Identity.create_password_reset_token(request)
     end
   end
 
+  #
+  # MARK: Password
+  #
   describe "update_password/1" do
-    test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Identity.update_password(%AccessRequest{})
-
-      assert error == :access_denied
-    end
-
     test "when request is valid" do
-      account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
-        account: account,
+        account: nil,
+        user: nil,
+        role: "anonymous",
         fields: %{
           "reset_token" => "token",
           "value" => "test1234"
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
-      |> expect(:update_password, fn(identifiers, new_password, opts) ->
+      |> expect(:update_password, fn(identifiers, new_password, _) ->
           assert identifiers[:reset_token] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
-          assert opts[:account] == account
 
           {:ok, nil}
          end)
@@ -458,60 +312,105 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
-        account: account,
+        account: nil,
+        user: nil,
+        role: "anonymous",
         fields: %{
           "reset_token" => "invalid",
           "value" => "test1234"
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
-      |> expect(:update_password, fn(identifiers, new_password, opts) ->
+      |> expect(:update_password, fn(identifiers, new_password, _) ->
           assert identifiers[:reset_token] == request.fields["reset_token"]
           assert new_password == request.fields["value"]
-          assert opts[:account] == account
 
           {:error, %{ errors: "errors" }}
          end)
 
-      {:error, response} = Identity.update_password(request)
-
-      assert response.errors == "errors"
+      {:error, _} = Identity.update_password(request)
     end
   end
 
-  describe "create_user/1" do
+  #
+  # MARK: Refresh Token
+  #
+  describe "get_refresh_token/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
 
-      {:error, error} = Identity.create_user(%AccessRequest{})
-
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.get_refresh_token(request)
     end
 
-    test "when role is guest and request is valid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      user = %User{}
+    test "when request is valid" do
+      account = %Account{}
       request = %AccessRequest{
         account: account,
-        role: "guest",
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:get_refresh_token, fn(opts) ->
+          assert opts[:account] == account
+
+          %RefreshToken{}
+         end)
+
+      {:ok, _} = Identity.get_refresh_token(request)
+    end
+  end
+
+  #
+  # MARK: User
+  #
+  describe "create_user/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Identity.create_user(request)
+    end
+
+    test "when role is anonymous" do
+      request = %AccessRequest{
+        account: nil,
+        user: nil,
+        role: "anonymous",
         fields: %{
           "name" => Faker.Name.name()
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
+      ServiceMock
+      |> expect(:create_user, fn(fields, _) ->
+          assert fields["name"] == request.fields["name"]
+
+          {:ok, %User{}}
          end)
+
+      {:ok, _} = Identity.create_user(request)
+    end
+
+    test "when role is guest" do
+      account = %Account{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: nil,
+        role: "guest",
+        fields: %{
+          "name" => Faker.Name.name()
+        }
+      }
 
       ServiceMock
       |> expect(:create_user, fn(fields, opts) ->
@@ -519,89 +418,57 @@ defmodule BlueJet.Identity.IdentityTest do
           assert fields["name"] == request.fields["name"]
           assert opts[:account] == account
 
-          {:ok, user}
+          {:ok, %User{}}
          end)
 
       {:ok, _} = Identity.create_user(request)
-    end
-
-    test "when role is anonymous and request is valid" do
-      account = %Account{}
-      user = %User{ default_account: account }
-      request = %AccessRequest{
-        role: "anonymous",
-        fields: %{
-          "name" => Faker.Name.name()
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_user, fn(fields, _) ->
-          assert fields["name"] == request.fields["name"]
-
-          {:ok, user}
-         end)
-
-      {:ok, _} = Identity.create_user(request)
-    end
-
-    test "when request is invalid" do
-      account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
-        account: account,
-        fields: %{
-          "username" => "invalid"
-        }
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:create_user, fn(fields, opts) ->
-          assert fields == request.fields
-          assert opts[:account] == account
-
-          {:error, %{ errors: "errors" }}
-         end)
-
-      {:error, response} = Identity.create_user(request)
-
-      assert response.errors == "errors"
     end
   end
 
   describe "get_user/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Identity.get_user(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.get_user(request)
+    end
+
+    test "when role is customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:get_user, fn(identifiers, opts) ->
+          assert identifiers[:id] == user.id
+          assert opts[:account] == account
+
+          %User{}
+         end)
+
+      {:ok, _} = Identity.get_user(request)
     end
 
     test "when request is valid" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
-        vas: %{ user_id: Ecto.UUID.generate() }
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:get_user, fn(identifiers, opts) ->
-          assert identifiers[:id] == request.vas[:user_id]
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           %User{}
@@ -613,31 +480,31 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "update_user/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "guest"
+      }
 
-      {:error, error} = Identity.update_user(%AccessRequest{})
-      assert error == :access_denied
+      {:error, :access_denied} = Identity.update_user(request)
     end
 
-    test "when request is valid" do
+    test "when role is customer" do
       account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
-        vas: %{ user_id: Ecto.UUID.generate() },
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{
           "name" => Faker.Name.name()
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
       |> expect(:update_user, fn(id, fields, opts) ->
-          assert id == request.vas[:user_id]
+          assert id == user.id
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -647,58 +514,38 @@ defmodule BlueJet.Identity.IdentityTest do
       {:ok, _} = Identity.update_user(request)
     end
 
-    test "when request is invalid" do
+    test "when request is valid" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
-        vas: %{ user_id: Ecto.UUID.generate() },
+        user: %User{},
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
         fields: %{
-          "name" => "invalid"
+          "name" => Faker.Name.name()
         }
       }
 
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
       ServiceMock
       |> expect(:update_user, fn(id, fields, opts) ->
-          assert id == request.vas[:user_id]
+          assert id == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:error, %{ errors: "errors" }}
+          {:ok, %User{}}
          end)
 
-      {:error, response} = Identity.update_user(request)
-
-      assert response.errors == "errors"
+      {:ok, _} = Identity.update_user(request)
     end
   end
 
   describe "delete_user/1" do
     test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Identity.delete_user(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() } })
-      assert error == :access_denied
-    end
-
-    test "when request is denied" do
-      account = %Account{}
       request = %AccessRequest{
-        account: account,
-        role: "customer",
-        vas: %{ user_id: Ecto.UUID.generate() },
-        params: %{ "id" => Ecto.UUID.generate() }
+        account: %Account{},
+        user: %User{},
+        role: "customer"
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       {:error, :access_denied} = Identity.delete_user(request)
     end
@@ -707,14 +554,10 @@ defmodule BlueJet.Identity.IdentityTest do
       account = %Account{}
       request = %AccessRequest{
         account: account,
-        vas: %{ user_id: Ecto.UUID.generate() },
+        user: %User{},
+        role: "administrator",
         params: %{ "id" => Ecto.UUID.generate() }
       }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
 
       ServiceMock
       |> expect(:delete_user, fn(id, opts) ->
@@ -725,37 +568,6 @@ defmodule BlueJet.Identity.IdentityTest do
          end)
 
       {:ok, _} = Identity.delete_user(request)
-    end
-  end
-
-  describe "get_refresh_token/1" do
-    test "when role is not authorized" do
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) -> {:error, :access_denied} end)
-
-      {:error, error} = Identity.get_refresh_token(%AccessRequest{ params: %{ "id" => Ecto.UUID.generate() }})
-      assert error == :access_denied
-    end
-
-    test "when request is valid" do
-      account = %Account{}
-      request = %AccessRequest{
-        account: account
-      }
-
-      AuthorizationMock
-      |> expect(:authorize_request, fn(_, _) ->
-          {:ok, request}
-         end)
-
-      ServiceMock
-      |> expect(:get_refresh_token, fn(opts) ->
-          assert opts[:account] == account
-
-          %RefreshToken{}
-         end)
-
-      {:ok, _} = Identity.get_refresh_token(request)
     end
   end
 end

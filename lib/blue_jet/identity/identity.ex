@@ -2,7 +2,7 @@ defmodule BlueJet.Identity do
   use BlueJet, :context
   use BlueJet.EventEmitter, namespace: :identity
 
-  alias BlueJet.Identity.{Authentication, Service}
+  alias BlueJet.Identity.{Authentication, Policy, Service}
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
@@ -36,38 +36,36 @@ defmodule BlueJet.Identity do
   # end
 
   def get_account(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.get_account") do
-      request
-      |> do_get_account()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_account") do
+      do_get_account(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_account(request = %{ account: account }) do
-    case Service.get_account(account.id) do
+  def do_get_account(args) do
+    case Service.get_account(args[:identifiers][:id]) do
       nil ->
         {:error, :not_found}
 
       account ->
-        account = Translation.translate(account, request.locale, account.default_locale)
-        {:ok, %AccessResponse{ data: account, meta: %{ locale: request.locale } }}
+        account = Translation.translate(account, args[:locale], args[:default_locale])
+        {:ok, %AccessResponse{ data: account, meta: %{ locale: args[:locale] } }}
     end
   end
 
   def update_account(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.update_account") do
-      request
-      |> do_update_account()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_account") do
+      do_update_account(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_account(request = %{ account: account, fields: fields }) do
-    with {:ok, account} <- Service.update_account(account, fields, get_sopts(request)) do
-      account = Translation.translate(account, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: account }}
+  def do_update_account(args) do
+    with {:ok, account} <- Service.update_account(args[:opts][:account], args[:fields], args[:opts]) do
+      account = Translation.translate(account, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: account }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -77,18 +75,19 @@ defmodule BlueJet.Identity do
   end
 
   def reset_account(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.reset_account") do
-      request
-      |> do_reset_account()
+    with {:ok, authorized_args} <- Policy.authorize(request, "reset_account") do
+      do_reset_account(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_reset_account(request = %{ account: account }) do
+  def do_reset_account(args) do
+    account = args[:opts][:account]
+
     with {:ok, account} <- Service.reset_account(account) do
-      account = Translation.translate(account, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: account }}
+      account = Translation.translate(account, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: account }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -98,19 +97,18 @@ defmodule BlueJet.Identity do
   end
 
   #
-  # MARK: Email Confirmation Token
+  # MARK: Email Verification Token
   #
   def create_email_verification_token(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_email_verification_token") do
-      request
-      |> do_create_email_verification_token()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_email_verification_token") do
+      do_create_email_verification_token(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_email_verification_token(request) do
-    with {:ok, _} <- Service.create_email_verification_token(request.fields, %{ account: request.account }) do
+  def do_create_email_verification_token(args) do
+    with {:ok, _} <- Service.create_email_verification_token(args[:fields], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -121,19 +119,18 @@ defmodule BlueJet.Identity do
   end
 
   #
-  # MARK: Email Confirmation
+  # MARK: Email Verification
   #
   def create_email_verification(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_email_verification") do
-      request
-      |> do_create_email_verification()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_email_verification") do
+      do_create_email_verification(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_email_verification(request) do
-    with {:ok, _} <- Service.create_email_verification(request.fields, %{ account: request.account }) do
+  def do_create_email_verification(args) do
+    with {:ok, _} <- Service.create_email_verification(args[:fields], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -147,16 +144,15 @@ defmodule BlueJet.Identity do
   # MARK: Phone Verification Code
   #
   def create_phone_verification_code(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_phone_verification_code") do
-      request
-      |> do_create_phone_verification_code()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_phone_verification_code") do
+      do_create_phone_verification_code(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_phone_verification_code(request) do
-    with {:ok, _} <- Service.create_phone_verification_code(request.fields, %{ account: request.account }) do
+  def do_create_phone_verification_code(args) do
+    with {:ok, _} <- Service.create_phone_verification_code(args[:fields], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -170,16 +166,15 @@ defmodule BlueJet.Identity do
   # MARK: Password Reset Token
   #
   def create_password_reset_token(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_password_reset_token") do
-      request
-      |> do_create_password_reset_token()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_password_reset_token") do
+      do_create_password_reset_token(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_password_reset_token(request) do
-    with {:ok, _} <- Service.create_password_reset_token(request.fields, %{ account: request.account }) do
+  def do_create_password_reset_token(args) do
+    with {:ok, _} <- Service.create_password_reset_token(args[:fields], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found} ->
@@ -194,16 +189,15 @@ defmodule BlueJet.Identity do
   # MARK: Password
   #
   def update_password(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.update_password") do
-      request
-      |> do_update_password()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_password") do
+      do_update_password(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_update_password(request) do
-    with {:ok, _} <- Service.update_password(%{ reset_token: request.fields["reset_token"] }, request.fields["value"], %{ account: request.account }) do
+  def do_update_password(args) do
+    with {:ok, _} <- Service.update_password(args[:identifiers], args[:fields]["value"], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -214,35 +208,45 @@ defmodule BlueJet.Identity do
   end
 
   #
+  # MARK: Refresh Token
+  #
+  def get_refresh_token(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_refresh_token") do
+      do_get_refresh_token(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_get_refresh_token(args) do
+    case Service.get_refresh_token(args[:opts]) do
+      nil ->
+        {:error, :not_found}
+
+      refresh_token ->
+        {:ok, %AccessResponse{ data: refresh_token }}
+    end
+  end
+
+  #
   # MARK: User
   #
   def create_user(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.create_user") do
-      request
-      |> do_create_user()
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_user") do
+      do_create_user(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_create_user(%{ account: nil, fields: fields }) do
-    with {:ok, user} <- Service.create_user(fields, %{ account: nil }) do
-      {:ok, %AccessResponse{ data: user }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-    end
-  end
+  def do_create_user(args) do
+    with {:ok, user} <- Service.create_user(args[:fields], args[:opts]) do
+      user = if user.account_id do
+        Translation.translate(user, args[:locale], args[:default_locale])
+      else
+        user
+      end
 
-  def do_create_user(request = %{ role: role, account: account, fields: fields }) do
-    fields = if role == "guest" do
-      Map.merge(fields, %{ "role" => "customer" })
-    else
-      fields
-    end
-
-    with {:ok, user} <- Service.create_user(fields, %{ account: account }) do
-      user = Translation.translate(user, request.locale, account.default_locale)
       {:ok, %AccessResponse{ data: user }}
     else
       {:error, %{ errors: errors }} ->
@@ -251,22 +255,21 @@ defmodule BlueJet.Identity do
   end
 
   def get_user(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.get_user") do
-      request
-      |> do_get_user()
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_user") do
+      do_get_user(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
+      other -> other
     end
   end
 
-  def do_get_user(request = %{ account: account, vas: %{ user_id: user_id } }) do
-    case Service.get_user(%{ id: user_id }, %{ account: account }) do
+  def do_get_user(args) do
+    case Service.get_user(args[:identifiers], args[:opts]) do
       nil ->
         {:error, :not_found}
 
       user ->
         user = if user.account_id do
-          Translation.translate(user, request.locale, account.default_locale)
+          Translation.translate(user, args[:locale], args[:default_locale])
         else
           user
         end
@@ -276,35 +279,22 @@ defmodule BlueJet.Identity do
   end
 
   def update_user(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.update_user") do
-      request
-      |> do_update_user()
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_user") do
+      do_update_user(authorized_args)
     else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_update_user(request = %{ account: account, role: role, vas: vas }) when role in ["anonymous", "guest", "customer"] do
-    with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request)) do
-      Translation.translate(user, request.locale, account.default_locale)
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
       other -> other
     end
   end
 
-  def do_update_user(request = %{ account: account, vas: vas }) do
-    with {:ok, user} <- Service.update_user(vas[:user_id], request.fields, get_sopts(request, %{ bypass_pvc_validation: true })) do
+  def do_update_user(args) do
+    with {:ok, user} <- Service.update_user(args[:id], args[:fields], args[:opts]) do
       user = if user.account_id do
-        Translation.translate(user, request.locale, account.default_locale)
+        Translation.translate(user, args[:locale], args[:default_locale])
       else
         user
       end
 
-      {:ok, %AccessResponse{ meta: %{ locale: request.locale }, data: user }}
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: user }}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
@@ -313,50 +303,19 @@ defmodule BlueJet.Identity do
     end
   end
 
-  def delete_user(request = %{ vas: vas, params: %{ "id" => id } }) do
-    with {:ok, request} <- preprocess_request(request, "identity.delete_user") do
-      cond do
-        # Customer user cannot delete a user other than himself
-        request.role == "customer" && vas[:user_id] != id ->
-          {:error, :access_denied}
-
-        # Allow other role to delete
-        true ->
-          request
-          |> do_delete_user()
-      end
-    else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_delete_user(%{ account: account, params: %{ "id" => id } }) do
-    with {:ok, _} <- Service.delete_user(id, %{ account: account }) do
-      {:ok, %AccessResponse{}}
+  def delete_user(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_user") do
+      do_delete_user(authorized_args)
     else
       other -> other
     end
   end
 
-  #
-  # MARK: Refresh Token
-  #
-  def get_refresh_token(request) do
-    with {:ok, request} <- preprocess_request(request, "identity.get_refresh_token") do
-      request
-      |> do_get_refresh_token()
+  def do_delete_user(args) do
+    with {:ok, _} <- Service.delete_user(args[:id], args[:opts]) do
+      {:ok, %AccessResponse{}}
     else
-      {:error, _} -> {:error, :access_denied}
-    end
-  end
-
-  def do_get_refresh_token(%{ account: account }) do
-    case Service.get_refresh_token(%{ account: account }) do
-      nil ->
-        {:error, :not_found}
-
-      refresh_token ->
-        {:ok, %AccessResponse{ data: refresh_token }}
+      other -> other
     end
   end
 end

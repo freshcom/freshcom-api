@@ -36,7 +36,7 @@ defmodule BlueJet.AccessRequest do
       all_count_filter: %{},
 
       locale: request.locale,
-      default_locale: request.account.default_locale,
+      default_locale: (request.account || %{ default_locale: nil }).default_locale,
 
       opts: %{
         account: request.account,
@@ -64,7 +64,7 @@ defmodule BlueJet.AccessRequest do
       identifiers: %{ id: request.params["id"] },
 
       locale: request.locale,
-      default_locale: request.account.default_locale,
+      default_locale: (request.account || %{ default_locale: nil }).default_locale,
 
       opts: %{
         account: request.account,
@@ -77,10 +77,11 @@ defmodule BlueJet.AccessRequest do
   def to_authorized_args(request, :update) do
     %{
       id: request.params["id"],
+      identifiers: %{ id: request.params["id"] },
       fields: request.fields,
 
       locale: request.locale,
-      default_locale: request.account.default_locale,
+      default_locale: (request.account || %{ default_locale: nil }).default_locale,
 
       opts: %{
         account: request.account,
