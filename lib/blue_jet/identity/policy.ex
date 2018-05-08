@@ -100,14 +100,15 @@ defmodule BlueJet.Identity.Policy do
     {:ok, AccessRequest.to_authorized_args(request, :create)}
   end
 
-  def authorize(request = %{ role: role }, "get_user") when role in ["anonymous", "guest"] do
+  def authorize(%{ role: role }, "get_user") when role in ["anonymous", "guest"] do
     {:error, :access_denied}
   end
 
   def authorize(request = %{ role: role, user: user }, "get_user") when role in ["developer", "administrator"] do
     authorized_args = AccessRequest.to_authorized_args(request, :get)
 
-    identifiers = Map.merge(%{ id: user.id }, authorized_args[:identifiers])
+    id = authorized_args[:identifiers][:id] || user.id
+    identifiers = %{ authorized_args[:identifiers] | id: id }
     authorized_args = %{ authorized_args | identifiers: identifiers }
 
     {:ok, authorized_args}
@@ -122,7 +123,7 @@ defmodule BlueJet.Identity.Policy do
     {:ok, authorized_args}
   end
 
-  def authorize(request = %{ role: role }, "update_user") when role in ["anonymous", "guest"] do
+  def authorize(%{ role: role }, "update_user") when role in ["anonymous", "guest"] do
     {:error, :access_denied}
   end
 
