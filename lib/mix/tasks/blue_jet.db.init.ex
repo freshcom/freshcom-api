@@ -28,7 +28,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
         "username" => "roy@freshcom.io",
         "email" => "roy@freshcom.io",
         "password" => "test1234",
-        "account_name" => "Hines Education",
+        "account_name" => "Example",
         "default_locale" => "zh-CN"
       }
     })
@@ -86,7 +86,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     })
 
     #
-    # MARK: 充值相关
+    # MARK: Deposit
     #
     {:ok, %{ data: deposit_100 }} = Goods.create_depositable(%AccessRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
