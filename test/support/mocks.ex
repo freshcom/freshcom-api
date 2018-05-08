@@ -1,5 +1,4 @@
 Mox.defmock(BlueJet.EventHandlerMock, for: BlueJet.EventHandler)
-Mox.defmock(BlueJet.AuthorizationMock, for: BlueJet.Authorization)
 
 Mox.defmock(BlueJet.Identity.ServiceMock, for: BlueJet.Identity.Service)
 

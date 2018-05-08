@@ -87,8 +87,6 @@ config :blue_jet, :phone_regex, ~r/\+(9[976]\d|8[987530]\d|6[987]\d|5[90]\d|42\d
 
 config :blue_jet, :s3, prefix: "uploads"
 
-config :blue_jet, :authorization, BlueJet.Identity.Authorization
-
 config :blue_jet, :identity, %{
   service: BlueJet.Identity.DefaultService,
   listeners: [

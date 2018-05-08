@@ -173,7 +173,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_order(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -184,7 +184,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         account_id: other_account.id
       })
 
-      {:error, error} = DefaultService.update_order(order.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(%{ id: order.id }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -194,7 +194,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         account_id: account.id
       })
 
-      {:error, changeset} = DefaultService.update_order(order.id, %{ "status" => "regsitered" }, %{ account: account })
+      {:error, changeset} = DefaultService.update_order(%{ id: order.id }, %{ "status" => "regsitered" }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -210,7 +210,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         "fulfillment_method" => "pickup"
       }
 
-      {:ok, order} = DefaultService.update_order(order.id, fields, %{ account: account })
+      {:ok, order} = DefaultService.update_order(%{ id: order.id }, fields, %{ account: account })
       assert order
     end
 
@@ -312,7 +312,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         account_id: other_account.id
       })
 
-      {:error, error} = DefaultService.update_order(order.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_order(%{ id: order.id }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -321,7 +321,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
       order = Repo.insert!(%Order{
         account_id: account.id
       })
-      order_line_item = Repo.insert!(%OrderLineItem{
+      oli = Repo.insert!(%OrderLineItem{
         account_id: account.id,
         order_id: order.id,
         name: Faker.Commerce.product_name(),
@@ -336,7 +336,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         "name" => nil
       }
 
-      {:error, changeset} = DefaultService.update_order_line_item(order_line_item.id, fields, %{ account: account })
+      {:error, changeset} = DefaultService.update_order_line_item(%{ id: oli.id }, fields, %{ account: account })
       assert changeset.valid? == false
       assert length(changeset.errors) > 0
     end
@@ -365,7 +365,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         "name" => new_name
       }
 
-      {:ok, oli} = DefaultService.update_order_line_item(oli.id, fields, %{ account: account })
+      {:ok, oli} = DefaultService.update_order_line_item(%{ id: oli.id }, fields, %{ account: account })
       assert oli.name == new_name
     end
   end
@@ -395,7 +395,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
       BalanceServiceMock
       |> expect(:list_payment, fn(_, _) -> [] end)
 
-      {:ok, oli} = DefaultService.delete_order_line_item(oli.id, %{ account: account })
+      {:ok, oli} = DefaultService.delete_order_line_item(%{ id: oli.id }, %{ account: account })
       refute Repo.get(OrderLineItem, oli.id)
     end
   end

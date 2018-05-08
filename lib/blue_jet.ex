@@ -9,15 +9,9 @@ defmodule BlueJet do
 
   def context do
     quote do
-      alias BlueJet.Repo
       alias BlueJet.Translation
       alias BlueJet.AccessRequest
       alias BlueJet.AccessResponse
-
-      import Ecto
-      import Ecto.Query
-
-      import BlueJet.ContextHelpers
     end
   end
 
@@ -36,28 +30,6 @@ defmodule BlueJet do
 
       alias BlueJet.Repo
       alias BlueJet.Translation
-
-      def put_external_resources(struct_or_structs, targets, options) when is_list(targets) and length(targets) == 0 do
-        struct_or_structs
-      end
-
-      def put_external_resources(structs, targets, options) when is_list(structs) do
-        Enum.map(structs, fn(struct) ->
-          put_external_resources(struct, targets, options)
-        end)
-      end
-
-      def put_external_resources(struct, targets, options) when is_list(targets) do
-        [target | rest] = targets
-
-        struct
-        |> put_external_resources(target, options)
-        |> put_external_resources(rest, options)
-      end
-
-      def put_external_resources(struct, target, options) when is_atom(target) do
-        put_external_resources(struct, {target, nil}, options)
-      end
     end
   end
 

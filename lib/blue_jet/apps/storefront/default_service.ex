@@ -117,12 +117,13 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
-  def update_order(id, fields, opts) do
+  def update_order(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    Order
-    |> Repo.get_by(id: id, account_id: account.id)
+    Order.Query.default()
+    |> Order.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
     |> update_order(fields, opts)
   end
 
@@ -142,12 +143,13 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
-  def delete_order(id, opts) do
+  def delete_order(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    Order
-    |> Repo.get_by(id: id, account_id: account.id)
+    Order.Query.default()
+    |> Order.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
     |> delete_order(opts)
   end
 
@@ -227,12 +229,13 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
-  def update_order_line_item(id, fields, opts) do
+  def update_order_line_item(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    OrderLineItem
-    |> Repo.get_by(id: id, account_id: account.id)
+    OrderLineItem.Query.default()
+    |> OrderLineItem.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
     |> update_order_line_item(fields, opts)
   end
 
@@ -261,12 +264,13 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
-  def delete_order_line_item(id, opts) do
+  def delete_order_line_item(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
 
-    OrderLineItem
-    |> Repo.get_by(id: id, account_id: account.id)
+    OrderLineItem.Query.default()
+    |> OrderLineItem.Query.for_account(account.id)
+    |> Repo.get_by(identifiers)
     |> delete_order_line_item(opts)
   end
 end
