@@ -4,6 +4,8 @@
 
 I don't recommend using this in production just yet. I am aiming for a stable release by early August 2018.
 
+Make sure you use the develop branch, all the instruction here is base on the develop branch.
+
 ## Introduction
 
 Freshcom API is a eCommerce backend solution that provides a RESTful eCommerce API.
