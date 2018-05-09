@@ -10,6 +10,7 @@ defmodule BlueJet.Storefront.Service do
   @callback delete_all_order(map) :: :ok
 
   @callback create_order_line_item(map, map) :: {:ok, OrderLineItem.t} | {:error, any}
+  @callback get_order_line_item(map, map) :: OrderLineItem.t | nil
   @callback update_order_line_item(OrderLineItem.t | map, map, map) :: {:ok, OrderLineItem.t} | {:error, any}
   @callback delete_order_line_item(OrderLineItem.t | map, map) :: {:ok, OrderLineItem.t} | {:error, any}
 
@@ -22,6 +23,7 @@ defmodule BlueJet.Storefront.Service do
   defdelegate delete_all_order(opts), to: @service
 
   defdelegate create_order_line_item(fields, opts), to: @service
+  defdelegate get_order_line_item(identifiers, opts), to: @service
   defdelegate update_order_line_item(identifiers_or_oli, fields, opts), to: @service
   defdelegate delete_order_line_item(identifiers_or_oli, opts), to: @service
 end

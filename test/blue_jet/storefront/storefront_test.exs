@@ -33,31 +33,31 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:list_order, fn(fields, opts) ->
-          assert fields[:filter][:customer_id] == customer.id
-          assert fields[:filter][:status] == ["opened", "closed"]
-          assert opts[:account] == account
+          assert fields.filter.customer_id == customer.id
+          assert fields.filter.status == ["opened", "closed"]
+          assert opts.account == account
 
           [%Order{}]
          end)
       |> expect(:count_order, fn(fields, opts) ->
-          assert fields[:filter][:customer_id] == customer.id
-          assert fields[:filter][:status] == ["opened", "closed"]
+          assert fields.filter.customer_id == customer.id
+          assert fields.filter.status == ["opened", "closed"]
 
-          assert opts[:account] == account
+          assert opts.account == account
 
           1
          end)
       |> expect(:count_order, fn(fields, opts) ->
-          assert fields[:filter][:customer_id] == customer.id
-          assert fields[:filter][:status] == ["opened", "closed"]
-          assert opts[:account] == account
+          assert fields.filter.customer_id == customer.id
+          assert fields.filter.status == ["opened", "closed"]
+          assert opts.account == account
 
           1
          end)
@@ -66,7 +66,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.list_order(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -76,17 +76,17 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:list_order, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts.account == account
 
           [%Order{}]
          end)
       |> expect(:count_order, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts.account == account
 
           1
          end)
       |> expect(:count_order, fn(_, opts) ->
-          assert opts[:account] == account
+          assert opts.account == account
 
           1
          end)
@@ -118,7 +118,7 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
@@ -126,7 +126,7 @@ defmodule BlueJet.StorefrontTest do
       ServiceMock
       |> expect(:create_order, fn(fields, opts) ->
           assert fields == Map.merge(request.fields, %{ customer_id: customer.id })
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -134,7 +134,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.create_order(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -148,7 +148,7 @@ defmodule BlueJet.StorefrontTest do
       ServiceMock
       |> expect(:create_order, fn(fields, opts) ->
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -180,8 +180,9 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:get_order, fn(identifiers, _) ->
-          assert identifiers[:id] == order.id
-          assert identifiers[:status] == "cart"
+          assert identifiers.id == order.id
+          assert identifiers.customer_id == nil
+          assert identifiers.status == "cart"
 
           {:ok, order}
          end)
@@ -202,15 +203,15 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:get_order, fn(identifiers, _) ->
-          assert identifiers[:id] == order.id
-          assert identifiers[:customer_id] == customer.id
+          assert identifiers.id == order.id
+          assert identifiers.customer_id == customer.id
 
           {:ok, order}
          end)
@@ -218,7 +219,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.get_order(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       order = %Order{ id: Ecto.UUID.generate() }
 
       request = %AccessRequest{
@@ -230,7 +231,7 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:get_order, fn(identifiers, _) ->
-          assert identifiers[:id] == order.id
+          assert identifiers.id == order.id
 
           {:ok, %Order{}}
          end)
@@ -253,27 +254,20 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
-      customer = %{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
         user: user,
-        role: "customer",
+        role: "guest",
         params: %{ "id" => Ecto.UUID.generate() }
       }
 
-      CrmServiceMock
-      |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
-
-          customer
-         end)
-
       ServiceMock
       |> expect(:update_order, fn(identifiers, fields, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert identifiers[:status] == "cart"
+          assert identifiers.id == request.params["id"]
+          assert identifiers.customer_id == nil
+          assert identifiers.status == "cart"
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -294,18 +288,18 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:update_order, fn(identifiers, fields, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert identifiers[:status] == "cart"
-          assert identifiers[:customer_id] == customer.id
+          assert identifiers.id == request.params["id"]
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -313,7 +307,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.update_order(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -327,9 +321,9 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:update_order, fn(identifiers, fields, opts) ->
-          assert identifiers[:id] == request.params["id"]
+          assert identifiers.id == request.params["id"]
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -360,9 +354,10 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:delete_order, fn(identifiers, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert identifiers[:status] == "cart"
-          assert opts[:account] == account
+          assert identifiers.id == request.params["id"]
+          assert identifiers.customer_id == nil
+          assert identifiers.status == "cart"
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -383,17 +378,17 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:delete_order, fn(identifiers, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert identifiers[:status] == "cart"
-          assert identifiers[:customer_id] == customer.id
-          assert opts[:account] == account
+          assert identifiers.id == request.params["id"]
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -401,7 +396,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.delete_order(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -412,8 +407,8 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:delete_order, fn(identifiers, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert opts[:account] == account
+          assert identifiers.id == request.params["id"]
+          assert opts.account == account
 
           {:ok, %Order{}}
          end)
@@ -436,11 +431,36 @@ defmodule BlueJet.StorefrontTest do
       {:error, :access_denied} = Storefront.create_order_line_item(request)
     end
 
-    test "when role is customer and given order does not belongs to the customer" do
+    test "when role is guest and the order is not in cart status or the customer_id does not match" do
+      account = %Account{}
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: nil,
+        role: "guest",
+        fields: %{
+          "name" => Faker.Commerce.product_name(),
+          "order_id" => order.id
+        }
+      }
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == nil
+
+          nil
+         end)
+
+      {:error, :access_denied} = Storefront.create_order_line_item(request)
+    end
+
+    test "when role is customer and the order is not in cart status or does not belongs to the customer" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      order = %Order{ id: Ecto.UUID.generate(), customer_id: Ecto.UUID.generate() }
+      order = %Order{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
         user: user,
@@ -450,16 +470,16 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:get_order, fn(identifiers, _) ->
-          assert identifiers[:id] == order.id
-          assert identifiers[:status] == "cart"
-          assert identifiers[:customer_id] == customer.id
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
 
           nil
          end)
@@ -467,11 +487,11 @@ defmodule BlueJet.StorefrontTest do
       {:error, :access_denied} = Storefront.create_order_line_item(request)
     end
 
-    test "when role is customer and given order belongs to the customer" do
+    test "when role is customer and given order is in cart status and belongs to the customer" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      order = %Order{ id: Ecto.UUID.generate(), customer_id: customer.id }
+      order = %Order{ id: Ecto.UUID.generate() }
       request = %AccessRequest{
         account: account,
         user: user,
@@ -481,16 +501,16 @@ defmodule BlueJet.StorefrontTest do
 
       CrmServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
-          assert identifiers[:user_id] == user.id
+          assert identifiers.user_id == user.id
 
           customer
          end)
 
       ServiceMock
       |> expect(:get_order, fn(identifiers, _) ->
-          assert identifiers[:id] == order.id
-          assert identifiers[:status] == "cart"
-          assert identifiers[:customer_id] == customer.id
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
 
           order
          end)
@@ -498,7 +518,7 @@ defmodule BlueJet.StorefrontTest do
       ServiceMock
       |> expect(:create_order_line_item, fn(fields, opts) ->
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %OrderLineItem{}}
          end)
@@ -506,7 +526,7 @@ defmodule BlueJet.StorefrontTest do
       {:ok, _} = Storefront.create_order_line_item(request)
     end
 
-    test "when request is valid" do
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -521,7 +541,7 @@ defmodule BlueJet.StorefrontTest do
       ServiceMock
       |> expect(:create_order_line_item, fn(fields, opts) ->
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %OrderLineItem{}}
          end)
@@ -541,7 +561,130 @@ defmodule BlueJet.StorefrontTest do
       {:error, :access_denied} = Storefront.update_order_line_item(request)
     end
 
-    test "when request is valid" do
+    test "when role is guest and the order is not in cart status or the customer_id does not match" do
+      account = %Account{}
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: nil,
+        role: "guest",
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{
+          "name" => Faker.Commerce.product_name()
+        }
+      }
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == nil
+
+          nil
+         end)
+
+      {:error, :access_denied} = Storefront.update_order_line_item(request)
+    end
+
+    test "when role is customer and the order is not in cart status or does not belongs to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %{ id: Ecto.UUID.generate() }
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{
+          "name" => Faker.Commerce.product_name()
+        }
+      }
+
+      CrmServiceMock
+      |> expect(:get_customer, fn(identifiers, _) ->
+          assert identifiers.user_id == user.id
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
+
+          nil
+         end)
+
+      {:error, :access_denied} = Storefront.update_order_line_item(request)
+    end
+
+    test "when role is customer and given order is in cart status and belongs to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %{ id: Ecto.UUID.generate() }
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{
+          "name" => Faker.Commerce.product_name()
+        }
+      }
+
+      CrmServiceMock
+      |> expect(:get_customer, fn(identifiers, _) ->
+          assert identifiers.user_id == user.id
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
+
+          order
+         end)
+
+      ServiceMock
+      |> expect(:update_order_line_item, fn(identifiers, fields, opts) ->
+          assert identifiers.id == request.params["id"]
+          assert fields == request.fields
+          assert opts.account == account
+
+          {:ok, %OrderLineItem{}}
+         end)
+
+      {:ok, _} = Storefront.update_order_line_item(request)
+    end
+
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -555,9 +698,9 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:update_order_line_item, fn(identifiers, fields, opts) ->
-          assert identifiers[:id] == request.params["id"]
+          assert identifiers.id == request.params["id"]
           assert fields == request.fields
-          assert opts[:account] == account
+          assert opts.account == account
 
           {:ok, %OrderLineItem{}}
          end)
@@ -577,7 +720,121 @@ defmodule BlueJet.StorefrontTest do
       {:error, :access_denied} = Storefront.delete_order_line_item(request)
     end
 
-    test "when request is valid" do
+
+    test "when role is guest and the order is not in cart status or the customer_id does not match" do
+      account = %Account{}
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: nil,
+        role: "guest",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == nil
+
+          nil
+         end)
+
+      {:error, :access_denied} = Storefront.delete_order_line_item(request)
+    end
+
+    test "when role is customer and the order is not in cart status or does not belongs to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %{ id: Ecto.UUID.generate() }
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      CrmServiceMock
+      |> expect(:get_customer, fn(identifiers, _) ->
+          assert identifiers.user_id == user.id
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
+
+          nil
+         end)
+
+      {:error, :access_denied} = Storefront.delete_order_line_item(request)
+    end
+
+    test "when role is customer and given order is in cart status and belongs to the customer" do
+      account = %Account{}
+      user = %User{ id: Ecto.UUID.generate() }
+      customer = %{ id: Ecto.UUID.generate() }
+      order = %Order{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: user,
+        role: "customer",
+        params: %{ "id" => Ecto.UUID.generate() }
+      }
+
+      CrmServiceMock
+      |> expect(:get_customer, fn(identifiers, _) ->
+          assert identifiers.user_id == user.id
+
+          customer
+         end)
+
+      ServiceMock
+      |> expect(:get_order_line_item, fn(identifiers, _) ->
+          assert identifiers.id == request.params["id"]
+
+          %OrderLineItem{ order_id: order.id }
+         end)
+
+      ServiceMock
+      |> expect(:get_order, fn(identifiers, _) ->
+          assert identifiers.id == order.id
+          assert identifiers.status == "cart"
+          assert identifiers.customer_id == customer.id
+
+          order
+         end)
+
+      ServiceMock
+      |> expect(:delete_order_line_item, fn(identifiers, opts) ->
+          assert identifiers.id == request.params["id"]
+          assert opts.account == account
+
+          {:ok, %OrderLineItem{}}
+         end)
+
+      {:ok, _} = Storefront.delete_order_line_item(request)
+    end
+
+    test "when role is administrator" do
       account = %Account{}
       request = %AccessRequest{
         account: account,
@@ -588,8 +845,8 @@ defmodule BlueJet.StorefrontTest do
 
       ServiceMock
       |> expect(:delete_order_line_item, fn(identifiers, opts) ->
-          assert identifiers[:id] == request.params["id"]
-          assert opts[:account] == account
+          assert identifiers.id == request.params["id"]
+          assert opts.account == account
 
           {:ok, %OrderLineItem{}}
          end)

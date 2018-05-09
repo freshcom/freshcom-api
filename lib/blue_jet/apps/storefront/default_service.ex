@@ -211,6 +211,19 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
+  def get_order_line_item(identifiers, opts) do
+    account = get_account(opts)
+    preloads = get_preloads(opts, account)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
+
+    OrderLineItem.Query.default()
+    |> OrderLineItem.Query.for_account(account.id)
+    |> OrderLineItem.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
   def update_order_line_item(nil, _, _), do: {:error, :not_found}
 
   def update_order_line_item(oli = %OrderLineItem{}, fields, opts) do
