@@ -55,6 +55,26 @@ defmodule BlueJet do
         fields[:filter] || %{}
       end
 
+      defp get_nil_filter(map) do
+        Enum.reduce(map, %{}, fn({k, v}, acc) ->
+          if is_nil(v) do
+            Map.put(acc, k, v)
+          else
+            acc
+          end
+        end)
+      end
+
+      defp get_clauses(map) do
+        Enum.reduce(map, %{}, fn({k, v}, acc) ->
+          if is_nil(v) do
+            acc
+          else
+            Map.put(acc, k, v)
+          end
+        end)
+      end
+
       defp preload([], _, _), do: []
       defp preload(nil, _, _), do: nil
 

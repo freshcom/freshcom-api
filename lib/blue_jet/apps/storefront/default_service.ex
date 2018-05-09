@@ -64,13 +64,16 @@ defmodule BlueJet.Storefront.DefaultService do
     end
   end
 
-  def get_order(fields, opts) do
+  def get_order(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Order.Query.default()
     |> Order.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Order.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -120,10 +123,13 @@ defmodule BlueJet.Storefront.DefaultService do
   def update_order(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Order.Query.default()
     |> Order.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    |> Order.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_order(fields, opts)
   end
 
@@ -146,10 +152,13 @@ defmodule BlueJet.Storefront.DefaultService do
   def delete_order(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Order.Query.default()
     |> Order.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    |> Order.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_order(opts)
   end
 
@@ -232,10 +241,13 @@ defmodule BlueJet.Storefront.DefaultService do
   def update_order_line_item(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     OrderLineItem.Query.default()
     |> OrderLineItem.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    |> OrderLineItem.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_order_line_item(fields, opts)
   end
 
@@ -267,10 +279,13 @@ defmodule BlueJet.Storefront.DefaultService do
   def delete_order_line_item(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     OrderLineItem.Query.default()
     |> OrderLineItem.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    |> OrderLineItem.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_order_line_item(opts)
   end
 end

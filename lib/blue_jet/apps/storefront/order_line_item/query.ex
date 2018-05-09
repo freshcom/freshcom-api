@@ -4,12 +4,22 @@ defmodule BlueJet.Storefront.OrderLineItem.Query do
   alias BlueJet.Storefront.OrderLineItem
   alias BlueJet.Storefront.Order
 
+  @filterable_fields [
+    :id,
+    :order_id,
+    :fulfillment_status
+  ]
+
   def default() do
     from oli in OrderLineItem
   end
 
   def for_order(query, order_id) do
     from oli in query, where: oli.order_id == ^order_id
+  end
+
+  def filter_by(query, filter) do
+    filter_by(query, filter, @filterable_fields)
   end
 
   def with_auto_fulfill(query) do

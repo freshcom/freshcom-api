@@ -162,6 +162,17 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
 
       refute DefaultService.get_order(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
+
+    test "when give customer_id does not match" do
+      account = Repo.insert!(%Account{})
+      customer = Repo.insert!(%Customer{})
+      Repo.insert!(%Order{
+        account_id: account.id,
+        customer_id: customer.id
+      })
+
+      refute DefaultService.get_order(%{ id: Ecto.UUID.generate(), customer_id: nil }, %{ account: account })
+    end
   end
 
   describe "update_order/2" do
