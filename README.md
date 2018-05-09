@@ -62,4 +62,4 @@ To generate use the following command
 
 ## Questions?
 
-Feel free to message me in the Elixir Slack Channel, I am usually online after 10am PST
+Feel free to message me (Roy Bao) in the Elixir Slack Channel, I am usually online after 10am PST
