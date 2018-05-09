@@ -60,3 +60,6 @@ To generate use the following command
 > openssl rsa -in private.pem -outform PEM -pubout -out public.pem
 ```
 
+## Questions?
+
+Feel free message me in the Elixir Slack Channel, I am usually online after 10am PST
