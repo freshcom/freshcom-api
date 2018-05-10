@@ -3,6 +3,122 @@ defmodule BlueJet.Notification do
 
   alias BlueJet.Notification.{Policy, Service}
 
+  #
+  # MARK: Trigger
+  #
+  def list_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "list_trigger") do
+      do_list_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_list_trigger(args) do
+    total_count =
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.count_trigger(args[:opts])
+
+    all_count = Service.count_trigger(args[:opts])
+
+    triggers =
+      %{ filter: args[:filter], search: args[:search] }
+      |> Service.list_trigger(args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
+
+    response = %AccessResponse{
+      meta: %{
+        locale: args[:locale],
+        all_count: all_count,
+        total_count: total_count
+      },
+      data: triggers
+    }
+
+    {:ok, response}
+  end
+
+  def create_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "create_trigger") do
+      do_create_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_create_trigger(args) do
+    with {:ok, trigger} <- Service.create_trigger(args[:fields], args[:opts]) do
+      trigger = Translation.translate(trigger, args[:locale], args[:default_locale])
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  def get_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "get_trigger") do
+      do_get_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_get_trigger(args) do
+    trigger =
+      Service.get_trigger(args[:identifiers], args[:opts])
+      |> Translation.translate(args[:locale], args[:default_locale])
+
+    if trigger do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
+    else
+      {:error, :not_found}
+    end
+  end
+
+  def update_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "update_trigger") do
+      do_update_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_update_trigger(args) do
+    with {:ok, trigger} <- Service.update_trigger(args[:identifiers], args[:fields], args[:opts]) do
+      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  def delete_trigger(request) do
+    with {:ok, authorized_args} <- Policy.authorize(request, "delete_trigger") do
+      do_delete_trigger(authorized_args)
+    else
+      other -> other
+    end
+  end
+
+  def do_delete_trigger(args) do
+    with {:ok, _} <- Service.delete_trigger(args[:identifiers], args[:opts]) do
+      {:ok, %AccessResponse{}}
+    else
+      {:error, %{ errors: errors }} ->
+        {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
+    end
+  end
+
+  #
+  # MARK: Email
+  #
   def list_email(request) do
     with {:ok, authorized_args} <- Policy.authorize(request, "list_email") do
       do_list_email(authorized_args)
@@ -137,7 +253,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_update_email_template(args) do
-    with {:ok, email_template} <- Service.update_email_template(args[:id], args[:fields], args[:opts]) do
+    with {:ok, email_template} <- Service.update_email_template(args[:identifiers], args[:fields], args[:opts]) do
       email_template = Translation.translate(email_template, args[:locale], args[:default_locale])
       {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: email_template }}
     else
@@ -157,7 +273,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_delete_email_template(args) do
-    with {:ok, _} <- Service.delete_email_template(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_email_template(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -304,7 +420,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_update_sms_template(args) do
-    with {:ok, sms_template} <- Service.update_sms_template(args[:id], args[:fields], args[:opts]) do
+    with {:ok, sms_template} <- Service.update_sms_template(args[:identifiers], args[:fields], args[:opts]) do
       sms_template = Translation.translate(sms_template, args[:locale], args[:default_locale])
       {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: sms_template }}
     else
@@ -324,120 +440,7 @@ defmodule BlueJet.Notification do
   end
 
   def do_delete_sms_template(args) do
-    with {:ok, _} <- Service.delete_sms_template(args[:id], args[:opts]) do
-      {:ok, %AccessResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  #
-  # MARK: Trigger
-  #
-  def list_trigger(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "list_trigger") do
-      do_list_trigger(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_list_trigger(args) do
-    total_count =
-      %{ filter: args[:filter], search: args[:search] }
-      |> Service.count_trigger(args[:opts])
-
-    all_count = Service.count_trigger(args[:opts])
-
-    triggers =
-      %{ filter: args[:filter], search: args[:search] }
-      |> Service.list_trigger(args[:opts])
-      |> Translation.translate(args[:locale], args[:default_locale])
-
-    response = %AccessResponse{
-      meta: %{
-        locale: args[:locale],
-        all_count: all_count,
-        total_count: total_count
-      },
-      data: triggers
-    }
-
-    {:ok, response}
-  end
-
-  def create_trigger(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_trigger") do
-      do_create_trigger(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_trigger(args) do
-    with {:ok, trigger} <- Service.create_trigger(args[:fields], args[:opts]) do
-      trigger = Translation.translate(trigger, args[:locale], args[:default_locale])
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  def get_trigger(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "get_trigger") do
-      do_get_trigger(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_get_trigger(args) do
-    trigger =
-      Service.get_trigger(args[:identifiers], args[:opts])
-      |> Translation.translate(args[:locale], args[:default_locale])
-
-    if trigger do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
-    else
-      {:error, :not_found}
-    end
-  end
-
-  def update_trigger(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "update_trigger") do
-      do_update_trigger(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_update_trigger(args) do
-    with {:ok, trigger} <- Service.update_trigger(args[:id], args[:fields], args[:opts]) do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: trigger }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  def delete_trigger(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "delete_trigger") do
-      do_delete_trigger(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_delete_trigger(args) do
-    with {:ok, _} <- Service.delete_trigger(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_sms_template(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

@@ -118,13 +118,16 @@ defmodule BlueJet.Notification.DefaultService do
     :ok
   end
 
-  def get_trigger(fields, opts) do
+  def get_trigger(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Trigger.Query.default()
     |> Trigger.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> Trigger.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -146,12 +149,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def update_trigger(id, fields, opts) do
+  def update_trigger(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Trigger
-    |> Repo.get_by(id: id, account_id: account.id)
+    Trigger.Query.default()
+    |> Trigger.Query.for_account(account.id)
+    |> Trigger.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_trigger(fields, opts)
   end
 
@@ -171,12 +178,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def delete_trigger(id, opts) do
+  def delete_trigger(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Trigger
-    |> Repo.get_by(id: id, account_id: account.id)
+    Trigger.Query.default()
+    |> Trigger.Query.for_account(account.id)
+    |> Trigger.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_trigger(opts)
   end
 
@@ -310,10 +321,13 @@ defmodule BlueJet.Notification.DefaultService do
   def get_email_template(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     EmailTemplate.Query.default()
     |> EmailTemplate.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    |> EmailTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -340,12 +354,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def update_email_template(id, fields, opts) do
+  def update_email_template(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    EmailTemplate
-    |> Repo.get_by(id: id, account_id: account.id)
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.for_account(account.id)
+    |> EmailTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_email_template(fields, opts)
   end
 
@@ -365,12 +383,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def delete_email_template(id, opts) do
+  def delete_email_template(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    EmailTemplate
-    |> Repo.get_by(id: id, account_id: account.id)
+    EmailTemplate.Query.default()
+    |> EmailTemplate.Query.for_account(account.id)
+    |> EmailTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_email_template(opts)
   end
 
@@ -497,13 +519,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def get_sms_template(fields, opts) do
+  def get_sms_template(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     SmsTemplate.Query.default()
     |> SmsTemplate.Query.for_account(account.id)
-    |> Repo.get_by(fields)
+    |> SmsTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -530,12 +555,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def update_sms_template(id, fields, opts) do
+  def update_sms_template(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    SmsTemplate
-    |> Repo.get_by(id: id, account_id: account.id)
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.for_account(account.id)
+    |> SmsTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_sms_template(fields, opts)
   end
 
@@ -555,12 +584,16 @@ defmodule BlueJet.Notification.DefaultService do
     end
   end
 
-  def delete_sms_template(id, opts) do
+  def delete_sms_template(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    SmsTemplate
-    |> Repo.get_by(id: id, account_id: account.id)
+    SmsTemplate.Query.default()
+    |> SmsTemplate.Query.for_account(account.id)
+    |> SmsTemplate.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_sms_template(opts)
   end
 

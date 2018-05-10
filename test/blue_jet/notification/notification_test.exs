@@ -95,7 +95,7 @@ defmodule BlueJet.NotificationTest do
 
       ServiceMock
       |> expect(:get_trigger, fn(identifiers, _) ->
-          assert identifiers[:id] == trigger.id
+          assert identifiers.id == trigger.id
 
           {:ok, %Trigger{}}
          end)
@@ -127,8 +127,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:update_trigger, fn(id, fields, _) ->
-          assert id == trigger.id
+      |> expect(:update_trigger, fn(identifiers, fields, _) ->
+          assert identifiers.id == trigger.id
           assert fields == request.fields
 
           {:ok, %Trigger{}}
@@ -160,8 +160,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:delete_trigger, fn(id, _) ->
-          assert id == trigger.id
+      |> expect(:delete_trigger, fn(identifiers, _) ->
+          assert identifiers.id == trigger.id
 
           {:ok, %Trigger{}}
          end)
@@ -230,7 +230,7 @@ defmodule BlueJet.NotificationTest do
 
       ServiceMock
       |> expect(:get_email, fn(identifiers, _) ->
-          assert identifiers[:id] == email.id
+          assert identifiers.id == email.id
 
           {:ok, %Email{}}
          end)
@@ -327,7 +327,7 @@ defmodule BlueJet.NotificationTest do
 
       ServiceMock
       |> expect(:get_email_template, fn(identifiers, _) ->
-          assert identifiers[:id] == email.id
+          assert identifiers.id == email.id
 
           {:ok, %EmailTemplate{}}
          end)
@@ -359,8 +359,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:update_email_template, fn(id, fields, _) ->
-          assert id == email_template.id
+      |> expect(:update_email_template, fn(identifiers, fields, _) ->
+          assert identifiers.id == email_template.id
           assert fields == request.fields
 
           {:ok, %EmailTemplate{}}
@@ -392,8 +392,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:delete_email_template, fn(id, _) ->
-          assert id == email_template.id
+      |> expect(:delete_email_template, fn(identifiers, _) ->
+          assert identifiers.id == email_template.id
 
           {:ok, %EmailTemplate{}}
          end)
@@ -461,7 +461,7 @@ defmodule BlueJet.NotificationTest do
 
       ServiceMock
       |> expect(:get_sms, fn(identifiers, _) ->
-          assert identifiers[:id] == sms.id
+          assert identifiers.id == sms.id
 
           {:ok, %Sms{}}
          end)
@@ -557,7 +557,7 @@ defmodule BlueJet.NotificationTest do
 
       ServiceMock
       |> expect(:get_sms_template, fn(identifiers, _) ->
-          assert identifiers[:id] == sms_template.id
+          assert identifiers.id == sms_template.id
 
           {:ok, %SmsTemplate{}}
          end)
@@ -589,8 +589,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:update_sms_template, fn(id, fields, _) ->
-          assert id == sms_template.id
+      |> expect(:update_sms_template, fn(identifiers, fields, _) ->
+          assert identifiers.id == sms_template.id
           assert fields == request.fields
 
           {:ok, %EmailTemplate{}}
@@ -622,8 +622,8 @@ defmodule BlueJet.NotificationTest do
       }
 
       ServiceMock
-      |> expect(:delete_sms_template, fn(id, _) ->
-          assert id == sms_template.id
+      |> expect(:delete_sms_template, fn(identifiers, _) ->
+          assert identifiers.id == sms_template.id
 
           {:ok, %SmsTemplate{}}
          end)

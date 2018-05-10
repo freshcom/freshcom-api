@@ -16,7 +16,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_trigger(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_trigger(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -33,7 +33,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         action_target: Faker.Internet.url()
       })
 
-      {:error, error} = DefaultService.update_trigger(trigger.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_trigger(%{ id: trigger.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -52,7 +52,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         "name" => Faker.Lorem.sentence(5)
       }
 
-      {:ok, trigger} = DefaultService.update_trigger(trigger.id, fields, %{ account: account })
+      {:ok, trigger} = DefaultService.update_trigger(%{ id: trigger.id }, fields, %{ account: account })
 
       assert trigger
     end
@@ -135,7 +135,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given identifiers has no match" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} =  DefaultService.delete_sms_template(Ecto.UUID.generate(), %{ account: account })
+      {:error, :not_found} =  DefaultService.delete_sms_template(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
 
     test "when given identifiers belongs to a different account" do
@@ -146,7 +146,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:error, :not_found} = DefaultService.delete_sms_template(sms_template.id, %{ account: account })
+      {:error, :not_found} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
     end
 
     test "when given valid identifiers" do
@@ -156,7 +156,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:ok, _} = DefaultService.delete_sms_template(sms_template.id, %{ account: account })
+      {:ok, _} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
     end
   end
 end
