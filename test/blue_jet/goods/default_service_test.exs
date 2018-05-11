@@ -130,7 +130,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_stockable(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_stockable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -144,7 +144,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         unit_of_measure: "EA"
       })
 
-      {:error, error} = DefaultService.update_stockable(stockable.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_stockable(%{ id: stockable.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -161,7 +161,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, stockable} = DefaultService.update_stockable(stockable.id, fields, %{ account: account })
+      {:ok, stockable} = DefaultService.update_stockable(%{ id: stockable.id }, fields, %{ account: account })
 
       assert stockable
     end
@@ -297,7 +297,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_unlockable(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_unlockable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -310,7 +310,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:error, error} = DefaultService.update_unlockable(unlockable.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_unlockable(%{ id: unlockable.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -326,7 +326,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, unlockable} = DefaultService.update_unlockable(unlockable.id, fields, %{ account: account })
+      {:ok, unlockable} = DefaultService.update_unlockable(%{ id: unlockable.id }, fields, %{ account: account })
 
       assert unlockable
     end
@@ -483,7 +483,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_depositable(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_depositable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -498,7 +498,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         amount: 500
       })
 
-      {:error, error} = DefaultService.update_depositable(depositable.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_depositable(%{ id: depositable.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -516,7 +516,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, depositable} = DefaultService.update_depositable(depositable.id, fields, %{ account: account })
+      {:ok, depositable} = DefaultService.update_depositable(%{ id: depositable.id }, fields, %{ account: account })
 
       assert depositable
     end

@@ -139,8 +139,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:update_stockable, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_stockable, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -172,8 +172,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:delete_stockable, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_stockable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Stockable{}}
@@ -314,8 +314,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:update_unlockable, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_unlockable, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -347,8 +347,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:delete_unlockable, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_unlockable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Unlockable{}}
@@ -489,8 +489,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:update_depositable, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_depositable, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -522,8 +522,8 @@ defmodule BlueJet.GoodsTest do
       }
 
       ServiceMock
-      |> expect(:delete_depositable, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_depositable, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Depositable{}}

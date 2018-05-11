@@ -89,7 +89,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_stockable(args) do
-    with {:ok, stockable} <- Service.update_stockable(args[:id], args[:fields], args[:opts]) do
+    with {:ok, stockable} <- Service.update_stockable(args[:identifiers], args[:fields], args[:opts]) do
       stockable = Translation.translate(stockable, args[:locale], args[:default_locale])
       {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: stockable }}
     else
@@ -109,7 +109,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_stockable(args) do
-    with {:ok, _} <- Service.delete_stockable(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_stockable(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -205,7 +205,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_unlockable(args) do
-    with {:ok, unlockable} <- Service.update_unlockable(args[:id], args[:fields], args[:opts]) do
+    with {:ok, unlockable} <- Service.update_unlockable(args[:identifiers], args[:fields], args[:opts]) do
       unlockable = Translation.translate(unlockable, args[:locale], args[:default_locale])
       {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: unlockable }}
     else
@@ -225,7 +225,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_unlockable(args) do
-    with {:ok, _} <- Service.delete_unlockable(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_unlockable(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -321,7 +321,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_update_depositable(args) do
-    with {:ok, depositable} <- Service.update_depositable(args[:id], args[:fields], args[:opts]) do
+    with {:ok, depositable} <- Service.update_depositable(args[:identifiers], args[:fields], args[:opts]) do
       depositable = Translation.translate(depositable, args[:locale], args[:default_locale])
       {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: depositable }}
     else
@@ -341,7 +341,7 @@ defmodule BlueJet.Goods do
   end
 
   def do_delete_depositable(args) do
-    with {:ok, _} <- Service.delete_depositable(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_depositable(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->

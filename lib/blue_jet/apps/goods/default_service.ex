@@ -56,14 +56,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def get_stockable(fields, opts) do
+  def get_stockable(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Stockable.Query.default()
     |> Stockable.Query.for_account(account.id)
-    |> Repo.get_by(filter)
+    |> Stockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -85,12 +87,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def update_stockable(id, fields, opts) do
+  def update_stockable(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Stockable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Stockable.Query.default()
+    |> Stockable.Query.for_account(account.id)
+    |> Stockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_stockable(fields, opts)
   end
 
@@ -110,12 +116,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def delete_stockable(id, opts) do
+  def delete_stockable(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Stockable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Stockable.Query.default()
+    |> Stockable.Query.for_account(account.id)
+    |> Stockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_stockable(opts)
   end
 
@@ -186,14 +196,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def get_unlockable(fields, opts) do
+  def get_unlockable(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Unlockable.Query.default()
     |> Unlockable.Query.for_account(account.id)
-    |> Repo.get_by(filter)
+    |> Unlockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -215,12 +227,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def update_unlockable(id, fields, opts) do
+  def update_unlockable(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Unlockable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Unlockable.Query.default()
+    |> Unlockable.Query.for_account(account.id)
+    |> Unlockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_unlockable(fields, opts)
   end
 
@@ -240,12 +256,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def delete_unlockable(id, opts) do
+  def delete_unlockable(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Unlockable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Unlockable.Query.default()
+    |> Unlockable.Query.for_account(account.id)
+    |> Unlockable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_unlockable(opts)
   end
 
@@ -315,14 +335,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def get_depositable(fields, opts) do
+  def get_depositable(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
     Depositable.Query.default()
     |> Depositable.Query.for_account(account.id)
-    |> Repo.get_by(filter)
+    |> Depositable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -344,12 +366,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def update_depositable(id, fields, opts) do
+  def update_depositable(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Depositable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Depositable.Query.default()
+    |> Depositable.Query.for_account(account.id)
+    |> Depositable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_depositable(fields, opts)
   end
 
@@ -369,12 +395,16 @@ defmodule BlueJet.Goods.DefaultService do
     end
   end
 
-  def delete_depositable(id, opts) do
+  def delete_depositable(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    Depositable
-    |> Repo.get_by(id: id, account_id: account.id)
+    Depositable.Query.default()
+    |> Depositable.Query.for_account(account.id)
+    |> Depositable.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_depositable(opts)
   end
 
