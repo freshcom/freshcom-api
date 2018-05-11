@@ -26,6 +26,10 @@ defmodule BlueJet.Notification.Sms.Query do
     search(query, @searchable_fields, keyword)
   end
 
+  def search(query, keyword, _, _) do
+    search(query, @searchable_fields, keyword)
+  end
+
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end

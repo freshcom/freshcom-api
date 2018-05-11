@@ -69,6 +69,8 @@ defmodule BlueJet.Notification.Trigger do
     |> Map.put(:action, :delete)
   end
 
+  def changeset(trigger, :update, fields, _), do: changeset(trigger, :update, fields)
+
   def fire_action(
     trigger = %{ event: event, action_type: "send_email", action_target: template_id },
     data
