@@ -12,24 +12,120 @@ defmodule BlueJet do
       alias BlueJet.Translation
       alias BlueJet.AccessRequest
       alias BlueJet.AccessResponse
-    end
-  end
 
-  def data do
-    quote do
-      use Ecto.Schema
-      import Ecto.Changeset
+      defp list(type, request) do
+        count_function = String.to_atom("count_" <> type)
+        list_function = String.to_atom("list_" <> type)
+        policy_module = Module.concat([__MODULE__, Policy])
+        service_module = Module.concat([__MODULE__, Service])
 
-      @primary_key {:id, :binary_id, autogenerate: true}
-      @foreign_key_type :binary_id
-      #######
+        with {:ok, args} <- policy_module.authorize(request, "list_" <> type) do
+          fields = %{ filter: args[:filter], search: args[:search] }
 
-      import Ecto
-      import Ecto.Query
-      import BlueJet.Validation
+          total_count = apply(service_module, count_function, [fields, args[:opts]])
+          all_count = apply(service_module, count_function, [%{ filter: args[:all_count_filter] }, args[:opts]])
 
-      alias BlueJet.Repo
-      alias BlueJet.Translation
+          resources =
+            apply(service_module, list_function, [fields, args[:opts]])
+            |> Translation.translate(args[:locale], args[:default_locale])
+
+          response = %AccessResponse{
+            meta: %{
+              locale: args[:locale],
+              all_count: all_count,
+              total_count: total_count
+            },
+            data: resources
+          }
+
+          {:ok, response}
+        else
+          other -> other
+        end
+      end
+
+      defp create(type, request) do
+        create_function = String.to_atom("create_" <> type)
+        policy_module = Module.concat([__MODULE__, Policy])
+        service_module = Module.concat([__MODULE__, Service])
+
+        with {:ok, args} <- policy_module.authorize(request, "create_" <> type),
+             {:ok, resource} <- apply(service_module, create_function, [args[:fields], args[:opts]])
+        do
+          response = %AccessResponse{
+            meta: %{ locale: args[:locale] },
+            data: resource
+          }
+
+          {:ok, response}
+        else
+          other -> other
+        end
+      end
+
+      defp get(type, request) do
+        get_function = String.to_atom("get_" <> type)
+        policy_module = Module.concat([__MODULE__, Policy])
+        service_module = Module.concat([__MODULE__, Service])
+
+        with {:ok, args} <- policy_module.authorize(request, "get_" <> type),
+             resource = %{} <- apply(service_module, get_function, [args[:identifiers], args[:opts]])
+        do
+          resource = Translation.translate(resource, args[:locale], args[:default_locale])
+
+          response = %AccessResponse{
+            meta: %{ locale: args[:locale] },
+            data: resource
+          }
+
+          {:ok, response}
+        else
+          nil -> {:error, :not_found}
+
+          other -> other
+        end
+      end
+
+      defp update(type, request) do
+        update_function = String.to_atom("update_" <> type)
+        policy_module = Module.concat([__MODULE__, Policy])
+        service_module = Module.concat([__MODULE__, Service])
+
+        with {:ok, args} <- policy_module.authorize(request, "update_" <> type),
+             {:ok, resource} <- apply(service_module, update_function, [args[:identifiers], args[:fields], args[:opts]])
+        do
+          resource = Translation.translate(resource, args[:locale], args[:default_locale])
+
+          response = %AccessResponse{
+            meta: %{ locale: args[:locale] },
+            data: resource
+          }
+
+          {:ok, response}
+        else
+          {:error, %{ errors: errors }} ->
+            {:error, %AccessResponse{ errors: errors }}
+
+          other -> other
+        end
+      end
+
+      defp delete(type, request) do
+        delete_function = String.to_atom("delete_" <> type)
+        policy_module = Module.concat([__MODULE__, Policy])
+        service_module = Module.concat([__MODULE__, Service])
+
+        with {:ok, args} <- policy_module.authorize(request, "delete_" <> type),
+             {:ok, _} <- apply(service_module, delete_function, [args[:identifiers], args[:opts]])
+        do
+          {:ok, %AccessResponse{}}
+        else
+          {:error, %{ errors: errors }} ->
+            {:error, %AccessResponse{ errors: errors }}
+
+          other -> other
+        end
+      end
     end
   end
 
@@ -75,9 +171,57 @@ defmodule BlueJet do
         end)
       end
 
+      defp extract_account(opts) do
+        identity_service =
+          Atom.to_string(__MODULE__)
+          |> String.split(".")
+          |> Enum.drop(-1)
+          |> Enum.join(".")
+          |> Module.concat(IdentityService)
+
+        opts[:account] || identity_service.get_account(opts)
+      end
+
+      defp extract_pagination(fields) do
+        Map.merge(%{ size: 20, number: 1 }, fields[:pagination] || %{})
+      end
+
+      defp extract_preloads(opts, account) do
+        preloads = opts[:preloads] || %{}
+        path = preloads[:path] || []
+
+        opts = preloads[:opts] || %{}
+        opts = Map.put(opts, :account, account)
+
+        %{ path: path, opts: opts }
+      end
+
+      defp extract_filter(fields) do
+        fields[:filter] || %{}
+      end
+
+      defp extract_nil_filter(map) do
+        Enum.reduce(map, %{}, fn({k, v}, acc) ->
+          if is_nil(v) do
+            Map.put(acc, k, v)
+          else
+            acc
+          end
+        end)
+      end
+
+      defp extract_clauses(map) do
+        Enum.reduce(map, %{}, fn({k, v}, acc) ->
+          if is_nil(v) do
+            acc
+          else
+            Map.put(acc, k, v)
+          end
+        end)
+      end
+
       defp preload([], _, _), do: []
       defp preload(nil, _, _), do: nil
-
       defp preload(struct_or_structs, path, opts) do
         struct_module = if is_list(struct_or_structs) do
           Enum.at(struct_or_structs, 0).__struct__
@@ -92,8 +236,139 @@ defmodule BlueJet do
         |> Repo.preload(preload_query)
         |> proxy_module.put(path, opts)
       end
+
+      defp list(type, fields, opts) do
+        account = extract_account(opts)
+        pagination = extract_pagination(opts)
+        preloads = extract_preloads(opts, account)
+        filter = extract_filter(fields)
+        query_module = Module.concat([type, Query])
+
+        query_module.default()
+        |> query_module.search(fields[:search], opts[:locale], account.default_locale)
+        |> query_module.filter_by(filter)
+        |> query_module.for_account(account.id)
+        |> query_module.paginate(size: pagination[:size], number: pagination[:number])
+        |> query_module.order_by([desc: :updated_at])
+        |> Repo.all()
+        |> preload(preloads[:path], preloads[:opts])
+      end
+
+      defp count(type, fields, opts) do
+        account = extract_account(opts)
+        filter = extract_filter(fields)
+        query_module = Module.concat([type, Query])
+
+        query_module.default()
+        |> query_module.search(fields[:search], opts[:locale], account.default_locale)
+        |> query_module.filter_by(filter)
+        |> query_module.for_account(account.id)
+        |> Repo.aggregate(:count, :id)
+      end
+
+      defp create(type, fields, opts) do
+        account = extract_account(opts)
+        preloads = get_preloads(opts, account)
+
+        changeset =
+          struct(type, %{ account_id: account.id, account: account })
+          |> type.changeset(:insert, fields)
+
+        with {:ok, resource} <- Repo.insert(changeset) do
+          resource = preload(resource, preloads[:path], preloads[:opts])
+          {:ok, resource}
+        else
+          other -> other
+        end
+      end
+
+      defp get(type, identifiers, opts) do
+        account = extract_account(opts)
+        preloads = extract_preloads(opts, account)
+        filter = extract_nil_filter(identifiers)
+        clauses = extract_clauses(identifiers)
+        query_module = Module.concat([type, Query])
+
+        query_module.default()
+        |> query_module.for_account(account.id)
+        |> query_module.filter_by(filter)
+        |> Repo.get_by(clauses)
+        |> preload(preloads[:path], preloads[:opts])
+      end
+
+      defp update(data, fields, opts) do
+        account = extract_account(opts)
+        preloads = get_preloads(opts, account)
+
+        changeset =
+          %{ data | account: account }
+          |> data.__struct__.changeset(:update, fields, opts[:locale])
+
+        with {:ok, data} <- Repo.update(changeset) do
+          data = preload(data, preloads[:path], preloads[:opts])
+          {:ok, data}
+        else
+          other -> other
+        end
+      end
+
+      defp delete(data, opts) do
+        account = extract_account(opts)
+
+        changeset =
+          %{ data | account: account }
+          |> data.__struct__.changeset(:delete)
+
+        with {:ok, data} <- Repo.delete(changeset) do
+          {:ok, data}
+        else
+          other -> other
+        end
+      end
+
+      defp delete_all(type, opts = %{ account: account = %{ mode: "test" }}) do
+        batch_size = opts[:batch_size] || 1000
+        query_module = Module.concat([type, Query])
+
+        data_ids =
+          query_module.default()
+          |> query_module.for_account(account.id)
+          |> query_module.paginate(size: batch_size, number: 1)
+          |> query_module.id_only()
+          |> Repo.all()
+
+        query_module.default()
+        |> query_module.filter_by(%{ id: data_ids })
+        |> Repo.delete_all()
+
+        if length(data_ids) === batch_size do
+          delete_all(type, opts)
+        else
+          :ok
+        end
+      end
     end
   end
+
+  def data do
+    quote do
+      use Ecto.Schema
+      import Ecto.Changeset
+
+      @primary_key {:id, :binary_id, autogenerate: true}
+      @foreign_key_type :binary_id
+      #######
+
+      import Ecto
+      import Ecto.Query
+      import BlueJet.Validation
+
+      alias BlueJet.Repo
+      alias BlueJet.Translation
+    end
+  end
+
+
 
   def proxy do
     quote do
@@ -217,7 +492,6 @@ defmodule BlueJet do
         [target | rest] = targets
         preloads(target) ++ preloads(rest)
       end
-
 
       def preloads(targets, options) when is_list(targets) and length(targets) == 0 do
         []
