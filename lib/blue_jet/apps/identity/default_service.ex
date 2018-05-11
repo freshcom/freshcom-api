@@ -250,6 +250,25 @@ defmodule BlueJet.Identity.DefaultService do
     create_user(fields, opts)
   end
 
+  def get_user(identifiers, opts) do
+    account_id = get_account_id(opts)
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
+
+    if account_id do
+      User.Query.default()
+      |> User.Query.member_of_account(account_id)
+      |> User.Query.filter_by(filter)
+      |> Repo.get_by(clauses)
+      |> User.put_role(account_id)
+    else
+      User.Query.default()
+      |> User.Query.global()
+      |> User.Query.filter_by(filter)
+      |> Repo.get_by(clauses)
+    end
+  end
+
   def update_user(nil, _, _), do: {:error, :not_found}
 
   def update_user(user = %User{}, fields, opts) do
@@ -287,28 +306,17 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def update_user(id, fields, opts) do
+  def update_user(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    User
-    |> Repo.get_by(id: id, account_id: account.id)
+    User.Query.default()
+    |> User.Query.for_account(account.id)
+    |> User.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> update_user(fields, opts)
-  end
-
-  def get_user(fields, opts) do
-    account_id = get_account_id(opts)
-
-    if account_id do
-      User.Query.default()
-      |> User.Query.member_of_account(account_id)
-      |> Repo.get_by(fields)
-      |> User.put_role(account_id)
-    else
-      User.Query.default()
-      |> User.Query.global()
-      |> Repo.get_by(fields)
-    end
   end
 
   def delete_user(nil, _), do: {:error, :not_found}
@@ -327,12 +335,16 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def delete_user(id, opts) do
+  def delete_user(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
+    filter = get_nil_filter(identifiers)
+    clauses = get_clauses(identifiers)
 
-    User
-    |> Repo.get_by(id: id, account_id: account.id)
+    User.Query.default()
+    |> User.Query.for_account(account.id)
+    |> User.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> delete_user(opts)
   end
 

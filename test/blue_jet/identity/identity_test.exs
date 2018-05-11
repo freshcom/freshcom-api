@@ -496,15 +496,15 @@ defmodule BlueJet.Identity.IdentityTest do
         account: account,
         user: user,
         role: "customer",
-        params: %{ "id" => Ecto.UUID.generate() },
+        params: %{ "id" => user.id },
         fields: %{
           "name" => Faker.Name.name()
         }
       }
 
       ServiceMock
-      |> expect(:update_user, fn(id, fields, opts) ->
-          assert id == user.id
+      |> expect(:update_user, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == user.id
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -527,8 +527,8 @@ defmodule BlueJet.Identity.IdentityTest do
       }
 
       ServiceMock
-      |> expect(:update_user, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_user, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -560,8 +560,8 @@ defmodule BlueJet.Identity.IdentityTest do
       }
 
       ServiceMock
-      |> expect(:delete_user, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_user, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, nil}

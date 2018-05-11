@@ -287,7 +287,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_update_user(args) do
-    with {:ok, user} <- Service.update_user(args[:id], args[:fields], args[:opts]) do
+    with {:ok, user} <- Service.update_user(args[:identifiers], args[:fields], args[:opts]) do
       user = if user.account_id do
         Translation.translate(user, args[:locale], args[:default_locale])
       else
@@ -312,7 +312,7 @@ defmodule BlueJet.Identity do
   end
 
   def do_delete_user(args) do
-    with {:ok, _} <- Service.delete_user(args[:id], args[:opts]) do
+    with {:ok, _} <- Service.delete_user(args[:identifiers], args[:opts]) do
       {:ok, %AccessResponse{}}
     else
       other -> other

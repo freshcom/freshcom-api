@@ -246,7 +246,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:error, %{ errors: [email: {"can't be blank", [validation: :required]}] }}
          end)
 
-      {:error, changeset} = DefaultService.update_user(user.id, fields, %{ account: account })
+      {:error, changeset} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
       assert changeset.errors
     end
 
@@ -275,7 +275,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.update_user(user.id, fields, %{ account: account })
+      {:ok, user} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
 
       assert user.phone_number == fields.phone_number
       refute Repo.get(PhoneVerificationCode, pvc.id)
@@ -313,7 +313,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         password: "test1234"
       })
 
-      {:ok, user} = DefaultService.delete_user(user.id, %{ account: account })
+      {:ok, user} = DefaultService.delete_user(%{ id: user.id }, %{ account: account })
 
       refute Repo.get(User, user.id)
     end
