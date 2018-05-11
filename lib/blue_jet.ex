@@ -249,7 +249,7 @@ defmodule BlueJet do
         |> query_module.filter_by(filter)
         |> query_module.for_account(account.id)
         |> query_module.paginate(size: pagination[:size], number: pagination[:number])
-        |> query_module.order_by([desc: :updated_at])
+        |> query_module.order_by(fields[:sort] || [desc: :updated_at])
         |> Repo.all()
         |> preload(preloads[:path], preloads[:opts])
       end

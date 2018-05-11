@@ -2,86 +2,35 @@ defmodule BlueJet.Storefront.DefaultService do
   use BlueJet, :service
   use BlueJet.EventEmitter, namespace: :storefront
 
-  alias BlueJet.Storefront.IdentityService
+  alias Ecto.{Multi, Changeset}
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
-  alias Ecto.Multi
-  alias Ecto.Changeset
-
   @behaviour BlueJet.Storefront.Service
-
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
-  end
 
   #
   # MARK: Order
   #
-  def list_order(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Order.Query.default()
-    |> Order.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Order.Query.filter_by(filter)
-    |> Order.Query.for_account(account.id)
-    |> Order.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Order.Query.order_by([desc: :opened_at])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+  def list_order(fields \\ %{ sort: [desc: :opened_at] }, opts) do
+    list(Order, fields, opts)
   end
 
   def count_order(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    Order.Query.default()
-    |> Order.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Order.Query.filter_by(filter)
-    |> Order.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(Order, fields, opts)
   end
 
   def create_order(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %Order{ account_id: account.id, account: account }
-      |> Order.changeset(:insert, fields)
-
-    with {:ok, order} <- Repo.insert(changeset) do
-      order = preload(order, preloads[:path], preloads[:opts])
-      {:ok, order}
-    else
-      other -> other
-    end
+    create(Order, fields, opts)
   end
 
   def get_order(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    Order.Query.default()
-    |> Order.Query.for_account(account.id)
-    |> Order.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
-    |> preload(preloads[:path], preloads[:opts])
+    get(Order, identifiers, opts)
   end
 
   def update_order(nil, _, _), do: {:error, :not_found}
 
   def update_order(order = %Order{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ order | account: account }
@@ -121,74 +70,31 @@ defmodule BlueJet.Storefront.DefaultService do
   end
 
   def update_order(identifiers, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    Order.Query.default()
-    |> Order.Query.for_account(account.id)
-    |> Order.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_order(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_order(fields, opts)
   end
 
   def delete_order(nil, _), do: {:error, :not_found}
 
   def delete_order(order = %Order{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ order | account: account }
-      |> Order.changeset(:delete)
-
-    with {:ok, order} <- Repo.delete(changeset) do
-      {:ok, order}
-    else
-      other -> other
-    end
+    delete(order, opts)
   end
 
   def delete_order(identifiers, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    Order.Query.default()
-    |> Order.Query.for_account(account.id)
-    |> Order.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_order(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_order(opts)
   end
 
-  def delete_all_order(opts = %{ account: account = %{ mode: "test" }})  do
-    batch_size = opts[:batch_size] || 1000
-
-    order_ids =
-      Order.Query.default()
-      |> Order.Query.for_account(account.id)
-      |> Order.Query.paginate(size: batch_size, number: 1)
-      |> Order.Query.id_only()
-      |> Repo.all()
-
-    Order.Query.default()
-    |> Order.Query.filter_by(%{ id: order_ids })
-    |> Repo.delete_all()
-
-    if length(order_ids) === batch_size do
-      delete_all_order(opts)
-    else
-      :ok
-    end
+  def delete_all_order(opts)  do
+    delete_all(Order, opts)
   end
 
   #
   # MARK: Order Line Item
   #
   def create_order_line_item(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %OrderLineItem{ account_id: account.id, account: account }
@@ -212,23 +118,14 @@ defmodule BlueJet.Storefront.DefaultService do
   end
 
   def get_order_line_item(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    OrderLineItem.Query.default()
-    |> OrderLineItem.Query.for_account(account.id)
-    |> OrderLineItem.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
-    |> preload(preloads[:path], preloads[:opts])
+    get(OrderLineItem, identifiers, opts)
   end
 
   def update_order_line_item(nil, _, _), do: {:error, :not_found}
 
   def update_order_line_item(oli = %OrderLineItem{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ oli | account: account }
@@ -252,22 +149,14 @@ defmodule BlueJet.Storefront.DefaultService do
   end
 
   def update_order_line_item(identifiers, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    OrderLineItem.Query.default()
-    |> OrderLineItem.Query.for_account(account.id)
-    |> OrderLineItem.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_order_line_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_order_line_item(fields, opts)
   end
 
   def delete_order_line_item(nil, _), do: {:error, :not_found}
 
   def delete_order_line_item(oli = %OrderLineItem{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ oli | account: account }
@@ -290,15 +179,7 @@ defmodule BlueJet.Storefront.DefaultService do
   end
 
   def delete_order_line_item(identifiers, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
-
-    OrderLineItem.Query.default()
-    |> OrderLineItem.Query.for_account(account.id)
-    |> OrderLineItem.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_order_line_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_order_line_item(opts)
   end
 end
