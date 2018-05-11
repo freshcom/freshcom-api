@@ -1,7 +1,7 @@
 defmodule BlueJet.Fulfillment.FulfillmentPackage.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Goods.IdentityService
+  alias BlueJet.Fulfillment.IdentityService
 
   def get_account(package) do
     package.account || IdentityService.get_account(package)
