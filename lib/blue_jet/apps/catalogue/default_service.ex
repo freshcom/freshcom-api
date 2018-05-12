@@ -2,18 +2,9 @@ defmodule BlueJet.Catalogue.DefaultService do
   use BlueJet, :service
 
   alias Ecto.Multi
-  alias BlueJet.Catalogue.IdentityService
   alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership, Price}
 
   @behaviour BlueJet.Catalogue.Service
-
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
-  end
 
   defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
   defp root_only_if_no_parent_id(query, _), do: query
@@ -22,10 +13,10 @@ defmodule BlueJet.Catalogue.DefaultService do
   defp default_order_if_no_collection_id(query, _), do: query
 
   def list_product(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
+    account = extract_account(opts)
+    pagination = extract_pagination(opts)
+    preloads = extract_preloads(opts, account)
+    filter = extract_filter(fields)
 
     Product.Query.default()
     |> Product.Query.search(fields[:search], opts[:locale], account.default_locale)
@@ -40,8 +31,8 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def count_product(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
+    account = extract_account(opts)
+    filter = extract_filter(fields)
 
     Product.Query.default()
     |> Product.Query.search(fields[:search], opts[:locale], account.default_locale)
@@ -63,8 +54,8 @@ defmodule BlueJet.Catalogue.DefaultService do
   def update_product(nil, _, _), do: {:error, :not_found}
 
   def update_product(product = %Product{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ product | account: account }
@@ -94,7 +85,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   def delete_product(nil, _), do: {:error, :not_found}
 
   def delete_product(product = %Product{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ product | account: account }
@@ -163,7 +154,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   def delete_product_collection(nil, _), do: {:error, :not_found}
 
   def delete_product_collection(product_collection = %ProductCollection{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ product_collection | account: account }
@@ -221,10 +212,10 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def list_product_collection_membership(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
+    account = extract_account(opts)
+    pagination = extract_pagination(opts)
+    preloads = extract_preloads(opts, account)
+    filter = extract_filter(fields)
 
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
@@ -236,8 +227,8 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def count_product_collection_membership(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
+    account = extract_account(opts)
+    filter = extract_filter(fields)
 
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
@@ -281,8 +272,8 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def get_price(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
     filter = extract_nil_filter(identifiers)
     clauses = extract_clauses(identifiers)
 
@@ -297,8 +288,8 @@ defmodule BlueJet.Catalogue.DefaultService do
   def update_price(nil, _, _), do: {:error, :not_found}
 
   def update_price(price = %Price{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ price | account: account }
