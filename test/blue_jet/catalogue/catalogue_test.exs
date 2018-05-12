@@ -153,8 +153,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:update_product, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_product, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -187,8 +187,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:delete_product, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_product, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Product{}}
@@ -340,8 +340,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:update_product_collection, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_product_collection, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -374,8 +374,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:delete_product_collection, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_product_collection, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %ProductCollection{}}
@@ -521,8 +521,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:delete_product_collection_membership, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_product_collection_membership, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %ProductCollectionMembership{}}
@@ -679,8 +679,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:update_price, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_price, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -713,8 +713,8 @@ defmodule BlueJet.CatalogueTest do
       }
 
       ServiceMock
-      |> expect(:delete_price, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_price, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Price{}}

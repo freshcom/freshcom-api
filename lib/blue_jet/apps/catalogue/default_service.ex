@@ -53,29 +53,11 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def create_product(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %Product{ account_id: account.id, account: account }
-      |> Product.changeset(:insert, fields)
-
-    with {:ok, product} <- Repo.insert(changeset) do
-      product = preload(product, preloads[:path], preloads[:opts])
-      {:ok, product}
-    else
-      other -> other
-    end
+    create(Product, fields, opts)
   end
 
-  def get_product(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    Product.Query.default()
-    |> Product.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_product(identifiers, opts) do
+    get(Product, identifiers, opts)
   end
 
   def update_product(nil, _, _), do: {:error, :not_found}
@@ -104,12 +86,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     end
   end
 
-  def update_product(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Product
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_product(identifiers, fields, opts) do
+    get_product(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_product(fields, opts)
   end
 
@@ -138,118 +116,47 @@ defmodule BlueJet.Catalogue.DefaultService do
     end
   end
 
-  def delete_product(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Product
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_product(identifiers, opts) do
+    get_product(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_product(opts)
   end
 
-  def delete_all_product(opts = %{ account: account = %{ mode: "test" }}) do
-    batch_size = opts[:batch_size] || 1000
-
-    product_ids =
-      Product.Query.default()
-      |> Product.Query.for_account(account.id)
-      |> Product.Query.paginate(size: batch_size, number: 1)
-      |> Product.Query.id_only()
-      |> Repo.all()
-
-    Product.Query.default()
-    |> Product.Query.filter_by(%{ id: product_ids })
-    |> Repo.delete_all()
-
-    if length(product_ids) === batch_size do
-      delete_all_product(opts)
-    else
-      :ok
-    end
+  def delete_all_product(opts) do
+    delete_all(Product, opts)
   end
 
   #
   # MARK: Product Collection
   #
   def list_product_collection(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
+    fields =
+      %{ sort: [desc: :sort_index] }
+      |> Map.merge(fields)
 
-    ProductCollection.Query.default()
-    |> ProductCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> ProductCollection.Query.filter_by(filter)
-    |> ProductCollection.Query.for_account(account.id)
-    |> ProductCollection.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> ProductCollection.Query.order_by([desc: :sort_index])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(ProductCollection, fields, opts)
   end
 
   def count_product_collection(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    ProductCollection.Query.default()
-    |> ProductCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> ProductCollection.Query.filter_by(filter)
-    |> ProductCollection.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(ProductCollection, fields, opts)
   end
 
   def create_product_collection(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %ProductCollection{ account_id: account.id, account: account }
-      |> ProductCollection.changeset(:insert, fields)
-
-    with {:ok, product_collection} <- Repo.insert(changeset) do
-      product_collection = preload(product_collection, preloads[:path], preloads[:opts])
-      {:ok, product_collection}
-    else
-      other -> other
-    end
+    create(ProductCollection, fields, opts)
   end
 
-  def get_product_collection(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
-
-    ProductCollection.Query.default()
-    |> ProductCollection.Query.for_account(account.id)
-    |> Repo.get_by(filter)
+  def get_product_collection(identifiers, opts) do
+    get(ProductCollection, identifiers, opts)
     |> ProductCollection.put_product_count()
-    |> preload(preloads[:path], preloads[:opts])
   end
 
   def update_product_collection(nil, _, _), do: {:error, :not_found}
 
   def update_product_collection(product_collection = %ProductCollection{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %{ product_collection | account: account }
-      |> ProductCollection.changeset(:update, fields, opts[:locale])
-
-    with {:ok, product_collection} <- Repo.update(changeset) do
-      product_collection = preload(product_collection, preloads[:path], preloads[:opts])
-      {:ok, product_collection}
-    else
-      other -> other
-    end
+    update(product_collection, fields, opts)
   end
 
-  def update_product_collection(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    ProductCollection
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_product_collection(identifiers, fields, opts) do
+    get_product_collection(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_product_collection(fields, opts)
   end
 
@@ -278,12 +185,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     end
   end
 
-  def delete_product_collection(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    ProductCollection
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_product_collection(identifiers, opts) do
+    get_product_collection(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_product_collection(opts)
   end
 
@@ -344,53 +247,21 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def create_product_collection_membership(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %ProductCollectionMembership{ account_id: account.id, account: account }
-      |> ProductCollectionMembership.changeset(:insert, fields)
-
-    with {:ok, product_collection_membership} <- Repo.insert(changeset) do
-      product_collection_membership = preload(product_collection_membership, preloads[:path], preloads[:opts])
-      {:ok, product_collection_membership}
-    else
-      other -> other
-    end
+    create(ProductCollectionMembership, fields, opts)
   end
 
-  def get_product_collection_membership(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    ProductCollectionMembership.Query.default()
-    |> ProductCollectionMembership.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_product_collection_membership(identifiers, opts) do
+    get(ProductCollectionMembership, identifiers, opts)
   end
 
   def delete_product_collection_membership(nil, _), do: {:error, :not_found}
 
   def delete_product_collection_membership(product_collection_membership = %ProductCollectionMembership{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ product_collection_membership | account: account }
-      |> ProductCollectionMembership.changeset(:delete)
-
-    with {:ok, product_collection_membership} <- Repo.delete(changeset) do
-      {:ok, product_collection_membership}
-    else
-      other -> other
-    end
+    delete(product_collection_membership, opts)
   end
 
-  def delete_product_collection_membership(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    ProductCollectionMembership
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_product_collection_membership(identifiers, opts) do
+    get_product_collection_membership(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_product_collection_membership(opts)
   end
 
@@ -398,54 +269,28 @@ defmodule BlueJet.Catalogue.DefaultService do
   # MARK: Price
   #
   def list_price(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Price.Query.default()
-    |> Price.Query.filter_by(filter)
-    |> Price.Query.for_account(account.id)
-    |> Price.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(Price, fields, opts)
   end
 
   def count_price(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    Price.Query.default()
-    |> Price.Query.filter_by(filter)
-    |> Price.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(Price, fields, opts)
   end
 
   def create_price(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %Price{ account_id: account.id, account: account }
-      |> Price.changeset(:insert, fields)
-
-    with {:ok, price} <- Repo.insert(changeset) do
-      price = preload(price, preloads[:path], preloads[:opts])
-      {:ok, price}
-    else
-      other -> other
-    end
+    create(Price, fields, opts)
   end
 
-  def get_price(fields, opts) do
+  def get_price(identifiers, opts) do
     account = get_account(opts)
     preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code, :status, :product_id, :parent_id])
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
 
     Price.Query.default()
     |> Price.Query.for_account(account.id)
-    |> Price.Query.with_order_quantity(fields[:order_quantity])
-    |> Repo.get_by(filter)
+    |> Price.Query.with_order_quantity(identifiers[:order_quantity])
+    |> Price.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
   end
 
@@ -476,37 +321,19 @@ defmodule BlueJet.Catalogue.DefaultService do
     end
   end
 
-  def update_price(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Price
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_price(identifiers, fields, opts) do
+    get_price(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_price(fields, opts)
   end
 
   def delete_price(nil, _), do: {:error, :not_found}
 
   def delete_price(price = %Price{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ price | account: account }
-      |> Price.changeset(:delete)
-
-    with {:ok, price} <- Repo.delete(changeset) do
-      {:ok, price}
-    else
-      other -> other
-    end
+    delete(price, opts)
   end
 
-  def delete_price(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Price
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_price(identifiers, opts) do
+    get_price(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_price(opts)
   end
 end

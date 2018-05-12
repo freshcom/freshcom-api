@@ -128,7 +128,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_product(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -141,7 +141,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:error, error} = DefaultService.update_product(product.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product(%{ id: product.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -159,7 +159,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, product} = DefaultService.update_product(product.id, fields, %{ account: account })
+      {:ok, product} = DefaultService.update_product(%{ id: product.id }, fields, %{ account: account })
 
       assert product
     end
@@ -294,7 +294,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_product_collection(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product_collection(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -307,7 +307,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         name: Faker.Commerce.product_name()
       })
 
-      {:error, error} = DefaultService.update_product_collection(product_collection.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_product_collection(%{ id: product_collection.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -323,7 +323,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, product_collection} = DefaultService.update_product_collection(product_collection.id, fields, %{ account: account })
+      {:ok, product_collection} = DefaultService.update_product_collection(%{ id: product_collection.id }, fields, %{ account: account })
 
       assert product_collection
     end

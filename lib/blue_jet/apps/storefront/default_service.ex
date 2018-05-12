@@ -10,7 +10,11 @@ defmodule BlueJet.Storefront.DefaultService do
   #
   # MARK: Order
   #
-  def list_order(fields \\ %{ sort: [desc: :opened_at] }, opts) do
+  def list_order(fields \\ %{}, opts) do
+    fields =
+      %{ sort: [desc: :opened_at] }
+      |> Map.merge(fields)
+
     list(Order, fields, opts)
   end
 
