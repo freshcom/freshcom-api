@@ -205,7 +205,7 @@ defmodule BlueJet.Fulfillment.DefaultServiceTest do
         unlockable_id: unlockable.id
       })
 
-      {:ok, _} = DefaultService.delete_unlock(unlock.id, %{ account: account })
+      {:ok, _} = DefaultService.delete_unlock(%{ id: unlock.id }, %{ account: account })
     end
   end
 end

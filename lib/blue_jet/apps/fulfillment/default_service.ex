@@ -3,54 +3,24 @@ defmodule BlueJet.Fulfillment.DefaultService do
   use BlueJet.EventEmitter, namespace: :fulfillment
 
   alias Ecto.Multi
-  alias BlueJet.Fulfillment.IdentityService
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, ReturnItem, Unlock}
 
   @behaviour BlueJet.Fulfillment.Service
-
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp get_account_id(opts) do
-    opts[:account_id] || get_account(opts).id
-  end
-
-  defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
-  end
 
   #
   # MARK: Fulfillment Package
   #
   def list_fulfillment_package(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    FulfillmentPackage.Query.default()
-    |> FulfillmentPackage.Query.filter_by(filter)
-    |> FulfillmentPackage.Query.for_account(account.id)
-    |> FulfillmentPackage.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> FulfillmentPackage.Query.order_by([desc: :updated_at])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(FulfillmentPackage, fields, opts)
   end
 
   def count_fulfillment_package(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    FulfillmentPackage.Query.default()
-    |> FulfillmentPackage.Query.filter_by(filter)
-    |> FulfillmentPackage.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(FulfillmentPackage, fields, opts)
   end
 
   def create_fulfillment_package(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %FulfillmentPackage{ account_id: account.id, account: account, system_label: opts[:system_label] }
@@ -65,19 +35,13 @@ defmodule BlueJet.Fulfillment.DefaultService do
   end
 
   def get_fulfillment_package(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    FulfillmentPackage.Query.default()
-    |> FulfillmentPackage.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
-    |> preload(preloads[:path], preloads[:opts])
+    get(FulfillmentPackage, identifiers, opts)
   end
 
   def delete_fulfillment_package(nil, _), do: {:error, :not_found}
 
   def delete_fulfillment_package(fulfillment_package = %FulfillmentPackage{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ fulfillment_package | account: account }
@@ -99,66 +63,29 @@ defmodule BlueJet.Fulfillment.DefaultService do
     end
   end
 
-  def delete_fulfillment_package(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FulfillmentPackage
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_fulfillment_package(identifiers, opts) do
+    get_fulfillment_package(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_fulfillment_package(opts)
   end
 
-  def delete_all_fulfillment_package(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    fulfillment_package_ids =
-      FulfillmentPackage.Query.default()
-      |> FulfillmentPackage.Query.for_account(account.id)
-      |> FulfillmentPackage.Query.paginate(size: batch_size, number: 1)
-      |> FulfillmentPackage.Query.id_only()
-      |> Repo.all()
-
-    FulfillmentPackage.Query.default()
-    |> FulfillmentPackage.Query.filter_by(%{ id: fulfillment_package_ids })
-    |> Repo.delete_all()
-
-    if length(fulfillment_package_ids) === batch_size do
-      delete_all_fulfillment_package(opts)
-    else
-      :ok
-    end
+  def delete_all_fulfillment_package(opts) do
+    delete_all(FulfillmentPackage, opts)
   end
 
   #
   # MARK: Fulfillment Item
   #
   def list_fulfillment_item(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    FulfillmentItem.Query.default()
-    |> FulfillmentItem.Query.filter_by(filter)
-    |> FulfillmentItem.Query.for_account(account.id)
-    |> FulfillmentItem.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(FulfillmentItem, fields, opts)
   end
 
   def count_fulfillment_item(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    FulfillmentItem.Query.default()
-    |> FulfillmentItem.Query.filter_by(filter)
-    |> FulfillmentItem.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(FulfillmentItem, fields, opts)
   end
 
   def create_fulfillment_item(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %FulfillmentItem{ account_id: account.id, account: account, package: opts[:package] }
@@ -189,11 +116,15 @@ defmodule BlueJet.Fulfillment.DefaultService do
     end
   end
 
+  def get_fulfillment_item(identifiers \\ %{}, opts) do
+    get(FulfillmentItem, identifiers, opts)
+  end
+
   def update_fulfillment_item(nil, _, _), do: {:error, :not_found}
 
   def update_fulfillment_item(fulfillment_item = %FulfillmentItem{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ fulfillment_item | account: account }
@@ -224,37 +155,19 @@ defmodule BlueJet.Fulfillment.DefaultService do
     end
   end
 
-  def update_fulfillment_item(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FulfillmentItem
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_fulfillment_item(identifiers, fields, opts) do
+    get_fulfillment_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_fulfillment_item(fields, opts)
   end
 
   def delete_fulfillment_item(nil, _), do: {:error, :not_found}
 
   def delete_fulfillment_item(fulfillment_item = %FulfillmentItem{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ fulfillment_item | account: account }
-      |> FulfillmentItem.changeset(:delete)
-
-    with {:ok, fulfillment_item} <- Repo.delete(changeset) do
-      {:ok, fulfillment_item}
-    else
-      other -> other
-    end
+    delete(fulfillment_item, opts)
   end
 
-  def delete_fulfillment_item(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FulfillmentItem
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_fulfillment_item(identifiers, opts) do
+    get_fulfillment_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_fulfillment_item(opts)
   end
 
@@ -262,56 +175,23 @@ defmodule BlueJet.Fulfillment.DefaultService do
   # MARK: Return Package
   #
   def list_return_package(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    ReturnPackage.Query.default()
-    |> ReturnPackage.Query.filter_by(filter)
-    |> ReturnPackage.Query.for_account(account.id)
-    |> ReturnPackage.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(ReturnPackage, fields, opts)
   end
 
   def count_return_package(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    ReturnPackage.Query.default()
-    |> ReturnPackage.Query.filter_by(filter)
-    |> ReturnPackage.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(ReturnPackage, fields, opts)
   end
 
-  def delete_all_return_package(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    return_package_ids =
-      ReturnPackage.Query.default()
-      |> ReturnPackage.Query.for_account(account.id)
-      |> ReturnPackage.Query.paginate(size: batch_size, number: 1)
-      |> ReturnPackage.Query.id_only()
-      |> Repo.all()
-
-    ReturnPackage.Query.default()
-    |> ReturnPackage.Query.filter_by(%{ id: return_package_ids })
-    |> Repo.delete_all()
-
-    if length(return_package_ids) === batch_size do
-      delete_all_return_package(opts)
-    else
-      :ok
-    end
+  def delete_all_return_package(opts) do
+    delete_all(ReturnPackage, opts)
   end
 
   #
   # MARK: Return Item
   #
   def create_return_item(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %ReturnItem{ account_id: account.id, account: account, package: opts[:package] || %ReturnItem{}.package  }
@@ -346,77 +226,29 @@ defmodule BlueJet.Fulfillment.DefaultService do
   # MARK: Unlock
   #
   def list_unlock(fields, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Unlock.Query.default()
-    |> Unlock.Query.filter_by(filter)
-    |> Unlock.Query.for_account(account.id)
-    |> Unlock.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(Unlock, fields, opts)
   end
 
   def count_unlock(fields, opts) do
-    account_id = get_account_id(opts)
-    filter = get_filter(fields)
-
-    Unlock.Query.default()
-    |> Unlock.Query.filter_by(filter)
-    |> Unlock.Query.for_account(account_id)
-    |> Repo.aggregate(:count, :id)
+    count(Unlock, fields, opts)
   end
 
   def create_unlock(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %Unlock{ account_id: account.id, account: account }
-      |> Unlock.changeset(:insert, fields)
-
-    with {:ok, unlock} <- Repo.insert(changeset) do
-      unlock = preload(unlock, preloads[:path], preloads[:opts])
-      {:ok, unlock}
-    else
-      other -> other
-    end
+    create(Unlock, fields, opts)
   end
 
-  def get_unlock(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    Unlock.Query.default()
-    |> Unlock.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_unlock(identifiers, opts) do
+    get(Unlock, identifiers, opts)
   end
 
   def delete_unlock(nil, _), do: {:error, :not_found}
 
   def delete_unlock(unlock = %Unlock{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ unlock | account: account }
-      |> Unlock.changeset(:delete)
-
-    with {:ok, unlock} <- Repo.delete(changeset) do
-      {:ok, unlock}
-    else
-      other -> other
-    end
+    delete(unlock, opts)
   end
 
-  def delete_unlock(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Unlock
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_unlock(identifiers, opts) do
+    get_unlock(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_unlock(opts)
   end
 end

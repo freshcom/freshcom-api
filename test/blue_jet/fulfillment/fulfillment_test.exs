@@ -146,8 +146,8 @@ defmodule BlueJet.FulfillmentTest do
       }
 
       ServiceMock
-      |> expect(:delete_fulfillment_package, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_fulfillment_package, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %FulfillmentPackage{}}
@@ -301,8 +301,8 @@ defmodule BlueJet.FulfillmentTest do
       }
 
       ServiceMock
-      |> expect(:update_fulfillment_item, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_fulfillment_item, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -649,8 +649,8 @@ defmodule BlueJet.FulfillmentTest do
       }
 
       ServiceMock
-      |> expect(:delete_unlock, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_unlock, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Unlock{}}
