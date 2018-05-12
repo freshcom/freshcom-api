@@ -1,8 +1,6 @@
 defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
-  alias BlueJet.Catalogue.{Policy, Service}
-
   def list_product(req), do: list("product", req)
   def create_product(req), do: create("product", req)
   def get_product(req), do: get("product", req)
