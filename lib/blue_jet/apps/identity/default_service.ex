@@ -322,17 +322,7 @@ defmodule BlueJet.Identity.DefaultService do
   def delete_user(nil, _), do: {:error, :not_found}
 
   def delete_user(user = %User{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ user | account: account }
-      |> User.changeset(:delete)
-
-    with {:ok, user} <- Repo.delete(changeset) do
-      {:ok, user}
-    else
-      other -> other
-    end
+    delete(user, opts)
   end
 
   def delete_user(identifiers, opts) do

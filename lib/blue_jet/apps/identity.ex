@@ -99,82 +99,25 @@ defmodule BlueJet.Identity do
   #
   # MARK: Email Verification Token
   #
-  def create_email_verification_token(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_email_verification_token") do
-      do_create_email_verification_token(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_email_verification_token(args) do
-    with {:ok, _} <- Service.create_email_verification_token(args[:fields], args[:opts]) do
-      {:ok, %AccessResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
+  def create_email_verification_token(req), do: create("email_verification_token", req)
 
   #
   # MARK: Email Verification
   #
-  def create_email_verification(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_email_verification") do
-      do_create_email_verification(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_email_verification(args) do
-    with {:ok, _} <- Service.create_email_verification(args[:fields], args[:opts]) do
-      {:ok, %AccessResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
+  def create_email_verification(req), do: create("email_verification", req)
 
   #
   # MARK: Phone Verification Code
   #
-  def create_phone_verification_code(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_phone_verification_code") do
-      do_create_phone_verification_code(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_phone_verification_code(args) do
-    with {:ok, _} <- Service.create_phone_verification_code(args[:fields], args[:opts]) do
-      {:ok, %AccessResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
+  def create_phone_verification_code(req), do: create("phone_verification_code", req)
 
   #
   # MARK: Password Reset Token
   #
   def create_password_reset_token(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_password_reset_token") do
-      do_create_password_reset_token(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_password_reset_token(args) do
-    with {:ok, _} <- Service.create_password_reset_token(args[:fields], args[:opts]) do
+    with {:ok, args} <- Policy.authorize(request, "create_password_reset_token"),
+         {:ok, _} <- Service.create_password_reset_token(args[:fields], args[:opts])
+    do
       {:ok, %AccessResponse{}}
     else
       {:error, :not_found} ->
@@ -182,6 +125,8 @@ defmodule BlueJet.Identity do
 
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
+
+      other -> other
     end
   end
 
@@ -189,15 +134,9 @@ defmodule BlueJet.Identity do
   # MARK: Password
   #
   def update_password(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "update_password") do
-      do_update_password(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_update_password(args) do
-    with {:ok, _} <- Service.update_password(args[:identifiers], args[:fields]["value"], args[:opts]) do
+    with {:ok, args} <- Policy.authorize(request, "update_password"),
+         {:ok, _} <- Service.update_password(args[:identifiers], args[:fields]["value"], args[:opts])
+    do
       {:ok, %AccessResponse{}}
     else
       {:error, %{ errors: errors }} ->
@@ -211,111 +150,22 @@ defmodule BlueJet.Identity do
   # MARK: Refresh Token
   #
   def get_refresh_token(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "get_refresh_token") do
-      do_get_refresh_token(authorized_args)
+    with {:ok, args} <- Policy.authorize(request, "get_refresh_token"),
+         refresh_token = %{} <- Service.get_refresh_token(args[:opts])
+    do
+      {:ok, %AccessResponse{ data: refresh_token }}
     else
+      nil -> {:error, :not_found}
+
       other -> other
-    end
-  end
-
-  def do_get_refresh_token(args) do
-    case Service.get_refresh_token(args[:opts]) do
-      nil ->
-        {:error, :not_found}
-
-      refresh_token ->
-        {:ok, %AccessResponse{ data: refresh_token }}
     end
   end
 
   #
   # MARK: User
   #
-  def create_user(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "create_user") do
-      do_create_user(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_create_user(args) do
-    with {:ok, user} <- Service.create_user(args[:fields], args[:opts]) do
-      user = if user.account_id do
-        Translation.translate(user, args[:locale], args[:default_locale])
-      else
-        user
-      end
-
-      {:ok, %AccessResponse{ data: user }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-    end
-  end
-
-  def get_user(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "get_user") do
-      do_get_user(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_get_user(args) do
-    case Service.get_user(args[:identifiers], args[:opts]) do
-      nil ->
-        {:error, :not_found}
-
-      user ->
-        user = if user.account_id do
-          Translation.translate(user, args[:locale], args[:default_locale])
-        else
-          user
-        end
-
-        {:ok, %AccessResponse{ data: user }}
-    end
-  end
-
-  def update_user(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "update_user") do
-      do_update_user(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_update_user(args) do
-    with {:ok, user} <- Service.update_user(args[:identifiers], args[:fields], args[:opts]) do
-      user = if user.account_id do
-        Translation.translate(user, args[:locale], args[:default_locale])
-      else
-        user
-      end
-
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: user }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  def delete_user(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "delete_user") do
-      do_delete_user(authorized_args)
-    else
-      other -> other
-    end
-  end
-
-  def do_delete_user(args) do
-    with {:ok, _} <- Service.delete_user(args[:identifiers], args[:opts]) do
-      {:ok, %AccessResponse{}}
-    else
-      other -> other
-    end
-  end
+  def create_user(req), do: create("user", req)
+  def get_user(req), do: get("user", req)
+  def update_user(req), do: update("user", req)
+  def delete_user(req), do: delete("user", req)
 end
