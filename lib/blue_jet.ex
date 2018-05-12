@@ -133,44 +133,6 @@ defmodule BlueJet do
     quote do
       alias BlueJet.Repo
 
-      defp get_pagination(fields) do
-        Map.merge(%{ size: 20, number: 1 }, fields[:pagination] || %{})
-      end
-
-      defp get_preloads(opts, account) do
-        preloads = opts[:preloads] || %{}
-        path = preloads[:path] || []
-
-        opts = preloads[:opts] || %{}
-        opts = Map.put(opts, :account, account)
-
-        %{ path: path, opts: opts }
-      end
-
-      defp get_filter(fields) do
-        fields[:filter] || %{}
-      end
-
-      defp get_nil_filter(map) do
-        Enum.reduce(map, %{}, fn({k, v}, acc) ->
-          if is_nil(v) do
-            Map.put(acc, k, v)
-          else
-            acc
-          end
-        end)
-      end
-
-      defp get_clauses(map) do
-        Enum.reduce(map, %{}, fn({k, v}, acc) ->
-          if is_nil(v) do
-            acc
-          else
-            Map.put(acc, k, v)
-          end
-        end)
-      end
-
       defp extract_account(opts) do
         identity_service =
           Atom.to_string(__MODULE__)
@@ -272,7 +234,7 @@ defmodule BlueJet do
 
       defp create(type, fields, opts) do
         account = extract_account(opts)
-        preloads = get_preloads(opts, account)
+        preloads = extract_preloads(opts, account)
 
         changeset =
           struct(type, %{ account_id: account.id, account: account })
@@ -302,7 +264,7 @@ defmodule BlueJet do
 
       defp update(data, fields, opts) do
         account = extract_account(opts)
-        preloads = get_preloads(opts, account)
+        preloads = extract_preloads(opts, account)
 
         changeset =
           %{ data | account: account }
@@ -371,8 +333,6 @@ defmodule BlueJet do
       alias BlueJet.Translation
     end
   end
-
-
 
   def proxy do
     quote do

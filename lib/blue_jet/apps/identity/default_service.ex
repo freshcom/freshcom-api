@@ -252,8 +252,8 @@ defmodule BlueJet.Identity.DefaultService do
 
   def get_user(identifiers, opts) do
     account_id = get_account_id(opts)
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
 
     if account_id do
       User.Query.default()
@@ -273,7 +273,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_user(user = %User{}, fields, opts) do
     account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ user | account: account }
@@ -309,8 +309,8 @@ defmodule BlueJet.Identity.DefaultService do
   def update_user(identifiers, fields, opts) do
     opts = put_account(opts)
     account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
 
     User.Query.default()
     |> User.Query.for_account(account.id)
@@ -328,8 +328,8 @@ defmodule BlueJet.Identity.DefaultService do
   def delete_user(identifiers, opts) do
     opts = put_account(opts)
     account = opts[:account]
-    filter = get_nil_filter(identifiers)
-    clauses = get_clauses(identifiers)
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
 
     User.Query.default()
     |> User.Query.for_account(account.id)
