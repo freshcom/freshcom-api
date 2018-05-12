@@ -182,6 +182,10 @@ defmodule BlueJet do
         opts[:account] || identity_service.get_account(opts)
       end
 
+      defp extract_account_id(opts) do
+        opts[:account_id] || extract_account(opts).id
+      end
+
       defp extract_pagination(fields) do
         Map.merge(%{ size: 20, number: 1 }, fields[:pagination] || %{})
       end

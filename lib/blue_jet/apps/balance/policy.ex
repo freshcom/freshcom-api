@@ -64,8 +64,9 @@ defmodule BlueJet.Balance.Policy do
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(authorized_args[:filter], %{ owner_id: customer.id, owner_type: "Customer" })
+    all_count_filter = Map.take(filter, [:owner_id, :owner_type])
 
-    authorized_args = %{ authorized_args | filter: filter }
+    authorized_args = %{ authorized_args | filter: filter, all_count_filter: all_count_filter }
     {:ok, authorized_args}
   end
 

@@ -116,7 +116,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_card(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_card(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -128,7 +128,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         status: "saved_by_owner"
       })
 
-      {:error, error} = DefaultService.update_card(card.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_card(%{ id: card.id }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -139,7 +139,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         status: "saved_by_owner"
       })
 
-      {:error, changeset} = DefaultService.update_card(card.id, %{ "status" => nil }, %{ account: account })
+      {:error, changeset} = DefaultService.update_card(%{ id: card.id }, %{ "status" => nil }, %{ account: account })
       assert length(changeset.errors) > 0
     end
 
@@ -160,7 +160,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         "exp_month" => 11
       }
 
-      {:ok, card} = DefaultService.update_card(card.id, fields, %{ account: account })
+      {:ok, card} = DefaultService.update_card(%{ id: card.id }, fields, %{ account: account })
 
       assert card
     end
@@ -393,7 +393,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_payment(Ecto.UUID.generate(), %{}, %{ account: account })
+      {:error, error} = DefaultService.update_payment(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -407,7 +407,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         amount_cents: 500
       })
 
-      {:error, error} = DefaultService.update_payment(payment.id, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_payment(%{ id: payment.id }, %{}, %{ account: account })
       assert error == :not_found
     end
 
@@ -435,7 +435,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
         "capture_amount_cents" => 300
       }
 
-      {:ok, payment} = DefaultService.update_payment(payment.id, fields, %{ account: account })
+      {:ok, payment} = DefaultService.update_payment(%{ id: payment.id }, fields, %{ account: account })
 
       assert payment
     end

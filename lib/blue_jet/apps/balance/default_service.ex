@@ -8,30 +8,18 @@ defmodule BlueJet.Balance.DefaultService do
 
   @behaviour BlueJet.Balance.Service
 
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp get_account_id(opts) do
-    opts[:account_id] || get_account(opts).id
-  end
-
-  defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
-  end
-
   #
   # MARK: Settings
   #
   def create_settings(opts) do
-    account_id = get_account_id(opts)
+    account_id = extract_account_id(opts)
 
     %Settings{ account_id: account_id }
     |> Repo.insert()
   end
 
   def get_settings(opts) do
-    account_id = get_account_id(opts)
+    account_id = extract_account_id(opts)
 
     Repo.get_by(Settings, account_id: account_id)
   end
@@ -39,7 +27,7 @@ defmodule BlueJet.Balance.DefaultService do
   def update_settings(nil, _, _), do: {:error, :not_found}
 
   def update_settings(settings, fields, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ settings | account: account }
@@ -61,8 +49,8 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def update_settings(fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
+    account = extract_account(opts)
+    opts = %{ opts | account: account }
 
     Settings
     |> Repo.get_by(account_id: account.id)
@@ -78,7 +66,7 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def delete_settings(opts) do
-    account_id = get_account_id(opts)
+    account_id = extract_account_id(opts)
 
     settings = Repo.get_by(Settings, account_id: account_id)
     delete_settings(settings, opts)
@@ -88,36 +76,18 @@ defmodule BlueJet.Balance.DefaultService do
   # MARK: Card
   #
   def list_card(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Card.Query.default()
-    |> Card.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Card.Query.filter_by(filter)
-    |> Card.Query.for_account(account.id)
-    |> Card.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(Card, fields, opts)
   end
 
   def count_card(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    Card.Query.default()
-    |> Card.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Card.Query.filter_by(filter)
-    |> Card.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(Card, fields, opts)
   end
 
   def update_card(nil, _, _), do: {:error, :not_found}
 
   def update_card(card = %Card{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ card | account: account }
@@ -139,19 +109,15 @@ defmodule BlueJet.Balance.DefaultService do
     end
   end
 
-  def update_card(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Card
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_card(identifiers, fields, opts) do
+    get(Card, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_card(fields, opts)
   end
 
   def delete_card(nil, _), do: {:error, :not_found}
 
   def delete_card(card = %Card{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ card | account: account }
@@ -173,69 +139,29 @@ defmodule BlueJet.Balance.DefaultService do
     end
   end
 
-  def delete_card(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Card
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_card(identifiers, opts) do
+    get(Card, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_card(opts)
   end
 
-  def delete_all_card(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    card_ids =
-      Card.Query.default()
-      |> Card.Query.for_account(account.id)
-      |> Card.Query.paginate(size: batch_size, number: 1)
-      |> Card.Query.id_only()
-      |> Repo.all()
-
-    Card.Query.default()
-    |> Card.Query.filter_by(%{ id: card_ids })
-    |> Repo.delete_all()
-
-    if length(card_ids) === batch_size do
-      delete_all_card(opts)
-    else
-      :ok
-    end
+  def delete_all_card(opts) do
+    delete_all(Card, opts)
   end
 
   #
   # MARK: Payment
   #
   def list_payment(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Payment.Query.default()
-    |> Payment.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Payment.Query.filter_by(filter)
-    |> Payment.Query.for_account(account.id)
-    |> Payment.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Payment.Query.order_by([desc: :updated_at])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(Payment, fields, opts)
   end
 
   def count_payment(fields, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    Payment.Query.default()
-    |> Payment.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Payment.Query.filter_by(filter)
-    |> Payment.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(Payment, fields, opts)
   end
 
   def create_payment(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %Payment{ account_id: account.id, account: account }
@@ -269,21 +195,15 @@ defmodule BlueJet.Balance.DefaultService do
     end
   end
 
-  def get_payment(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    Payment.Query.default()
-    |> Payment.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_payment(identifiers, opts) do
+    get(Payment, identifiers, opts)
   end
 
   def update_payment(nil, _, _), do: {:error, :not_found}
 
   def update_payment(payment = %Payment{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ payment | account: account }
@@ -309,67 +229,32 @@ defmodule BlueJet.Balance.DefaultService do
     end
   end
 
-  def update_payment(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Payment
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_payment(identifiers, fields, opts) do
+    get_payment(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_payment(fields, opts)
   end
 
   def delete_payment(nil, _), do: {:error, :not_found}
 
   def delete_payment(payment = %Payment{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ payment | account: account }
-      |> Payment.changeset(:delete)
-
-    with {:ok, payment} <- Repo.delete(changeset) do
-      {:ok, payment}
-    else
-      other -> other
-    end
+    delete(payment, opts)
   end
 
-  def delete_payment(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Payment
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_payment(identifiers, opts) do
+    get_payment(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_payment(opts)
   end
 
-  def delete_all_payment(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    payment_ids =
-      Payment.Query.default()
-      |> Payment.Query.for_account(account.id)
-      |> Payment.Query.paginate(size: batch_size, number: 1)
-      |> Payment.Query.id_only()
-      |> Repo.all()
-
-    Payment.Query.default()
-    |> Payment.Query.filter_by(%{ id: payment_ids })
-    |> Repo.delete_all()
-
-    if length(payment_ids) === batch_size do
-      delete_all_payment(opts)
-    else
-      :ok
-    end
+  def delete_all_payment(opts) do
+    delete_all(Payment, opts)
   end
 
   #
   # MARK: Refund
   #
   def create_refund(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %Refund{ account_id: account.id, account: account }
@@ -397,5 +282,4 @@ defmodule BlueJet.Balance.DefaultService do
       other -> other
     end
   end
-
 end

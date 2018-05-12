@@ -189,8 +189,8 @@ defmodule BlueJet.BalanceTest do
       }
 
       ServiceMock
-      |> expect(:update_card, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_card, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -224,8 +224,8 @@ defmodule BlueJet.BalanceTest do
       }
 
       ServiceMock
-      |> expect(:delete_card, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_card, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Card{}}
@@ -398,8 +398,8 @@ defmodule BlueJet.BalanceTest do
       }
 
       ServiceMock
-      |> expect(:update_payment, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_payment, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -432,8 +432,8 @@ defmodule BlueJet.BalanceTest do
       }
 
       ServiceMock
-      |> expect(:delete_payment, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_payment, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Payment{}}
