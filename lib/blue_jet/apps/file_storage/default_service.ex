@@ -2,52 +2,25 @@ defmodule BlueJet.FileStorage.DefaultService do
   use BlueJet, :service
 
   alias Ecto.Multi
-  alias BlueJet.FileStorage.IdentityService
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
 
   @behaviour BlueJet.FileStorage.Service
-
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp put_account(opts) do
-    %{ opts | account: get_account(opts) }
-  end
 
   #
   # MARK: File
   #
   def list_file(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    File.Query.default()
-    |> File.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> File.Query.filter_by(filter)
-    |> File.Query.for_account(account.id)
-    |> File.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
+    list(File, fields, opts)
     |> File.put_url()
-    |> preload(preloads[:path], preloads[:opts])
   end
 
   def count_file(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    File.Query.default()
-    |> File.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> File.Query.filter_by(filter)
-    |> File.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(File, fields, opts)
   end
 
   def create_file(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %File{ account_id: account.id, account: account }
@@ -66,21 +39,15 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def get_file(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    File.Query.default()
-    |> File.Query.for_account(account.id)
-    |> Repo.get_by(identifiers)
+    get(File, identifiers, opts)
     |> File.put_url()
-    |> preload(preloads[:path], preloads[:opts])
   end
 
   def update_file(nil, _, _), do: {:error, :not_found}
 
   def update_file(file = %File{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ file | account: account }
@@ -98,19 +65,15 @@ defmodule BlueJet.FileStorage.DefaultService do
     end
   end
 
-  def update_file(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    File
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_file(identifiers, fields, opts) do
+    get(File, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_file(fields, opts)
   end
 
   def delete_file(nil, _), do: {:error, :not_found}
 
   def delete_file(file = %File{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ file | account: account }
@@ -132,12 +95,8 @@ defmodule BlueJet.FileStorage.DefaultService do
     end
   end
 
-  def delete_file(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    File
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_file(identifiers, opts) do
+    get(File, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_file(opts)
   end
 
@@ -169,37 +128,18 @@ defmodule BlueJet.FileStorage.DefaultService do
   # MARK: File Collection
   #
   def list_file_collection(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    FileCollection.Query.default()
-    |> FileCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> FileCollection.Query.filter_by(filter)
-    |> FileCollection.Query.for_account(account.id)
-    |> FileCollection.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> FileCollection.Query.order_by([desc: :updated_at])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(FileCollection, fields, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
 
   def count_file_collection(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    FileCollection.Query.default()
-    |> FileCollection.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> FileCollection.Query.filter_by(filter)
-    |> FileCollection.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(FileCollection, fields, opts)
   end
 
   def create_file_collection(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %FileCollection{ account_id: account.id, account: account }
@@ -226,14 +166,8 @@ defmodule BlueJet.FileStorage.DefaultService do
     end
   end
 
-  def get_file_collection(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    FileCollection.Query.default()
-    |> FileCollection.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_file_collection(identifiers, opts) do
+    get(FileCollection, identifiers, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
@@ -241,8 +175,8 @@ defmodule BlueJet.FileStorage.DefaultService do
   def update_file_collection(nil, _, _), do: {:error, :not_found}
 
   def update_file_collection(file_collection = %FileCollection{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ file_collection | account: account }
@@ -260,37 +194,19 @@ defmodule BlueJet.FileStorage.DefaultService do
     end
   end
 
-  def update_file_collection(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FileCollection
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_file_collection(identifiers, fields, opts) do
+    get(FileCollection, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_file_collection(fields, opts)
   end
 
   def delete_file_collection(nil, _), do: {:error, :not_found}
 
   def delete_file_collection(file_collection = %FileCollection{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ file_collection | account: account }
-      |> FileCollection.changeset(:delete)
-
-    with {:ok, file_collection} <- Repo.delete(changeset) do
-      {:ok, file_collection}
-    else
-      other -> other
-    end
+    delete(file_collection, opts)
   end
 
-  def delete_file_collection(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FileCollection
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_file_collection(identifiers, opts) do
+    get(FileCollection, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_file_collection(opts)
   end
 
@@ -319,72 +235,28 @@ defmodule BlueJet.FileStorage.DefaultService do
   # MARK: File Collection Membership
   #
   def create_file_collection_membership(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %FileCollectionMembership{ account_id: account.id, account: account }
-      |> FileCollectionMembership.changeset(:insert, fields)
-
-    case Repo.insert(changeset) do
-      {:ok, fcm} ->
-        fcm = preload(fcm, preloads[:path], preloads[:opts])
-        {:ok, fcm}
-
-      {:error, changeset} ->
-        {:error, changeset}
-    end
+    create(FileCollectionMembership, fields, opts)
   end
 
   def update_file_collection_membership(nil, _, _), do: {:error, :not_found}
 
   def update_file_collection_membership(fcm = %FileCollectionMembership{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    changeset =
-      %{ fcm | account: account }
-      |> FileCollectionMembership.changeset(:update, fields)
-
-    with {:ok, fcm} <- Repo.update(changeset) do
-      fcm = preload(fcm, preloads[:path], preloads[:opts])
-      {:ok, fcm}
-    else
-      other -> other
-    end
+    update(fcm, fields, opts)
   end
 
-  def update_file_collection_membership(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FileCollectionMembership
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_file_collection_membership(identifiers, fields, opts) do
+    get(FileCollectionMembership, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_file_collection_membership(fields, opts)
   end
 
   def delete_file_collection_membership(nil, _), do: {:error, :not_found}
 
   def delete_file_collection_membership(fcm = %FileCollectionMembership{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ fcm | account: account }
-      |> FileCollectionMembership.changeset(:delete)
-
-    with {:ok, fcm} <- Repo.delete(changeset) do
-      {:ok, fcm}
-    else
-      other -> other
-    end
+    delete(fcm, opts)
   end
 
-  def delete_file_collection_membership(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    FileCollectionMembership
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_file_collection_membership(identifiers, opts) do
+    get(FileCollectionMembership, identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_file_collection_membership(opts)
   end
 end

@@ -190,8 +190,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:update_file, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_file, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -257,8 +257,8 @@ defmodule BlueJet.FileStorageTest do
          end)
 
       ServiceMock
-      |> expect(:delete_file, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_file, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, file}
@@ -278,8 +278,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:delete_file, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_file, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, file}
@@ -472,8 +472,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:update_file_collection, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_file_collection, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -505,8 +505,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:delete_file_collection, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_file_collection, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %FileCollection{}}
@@ -578,8 +578,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:update_file_collection_membership, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_file_collection_membership, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -611,8 +611,8 @@ defmodule BlueJet.FileStorageTest do
       }
 
       ServiceMock
-      |> expect(:delete_file_collection_membership, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_file_collection_membership, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %FileCollectionMembership{}}
