@@ -20,24 +20,7 @@ defmodule BlueJet.DataTrading.DefaultService do
     end
   end
 
-  def delete_all_data_import(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    data_import_ids =
-      DataImport.Query.default()
-      |> DataImport.Query.for_account(account.id)
-      |> DataImport.Query.paginate(size: batch_size, number: 1)
-      |> DataImport.Query.id_only()
-      |> Repo.all()
-
-    DataImport.Query.default()
-    |> DataImport.Query.filter_by(%{ id: data_import_ids })
-    |> Repo.delete_all()
-
-    if length(data_import_ids) === batch_size do
-      delete_all_data_import(opts)
-    else
-      :ok
-    end
+  def delete_all_data_import(opts) do
+    delete_all(DataImport, opts)
   end
 end
