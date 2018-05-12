@@ -19,21 +19,10 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def create_file(fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    case create(File, fields, opts)  do
+      {:ok, file} ->
+        {:ok, File.put_url(file)}
 
-    changeset =
-      %File{ account_id: account.id, account: account }
-      |> File.changeset(:insert, fields)
-
-    with {:ok, file} <- Repo.insert(changeset) do
-      file =
-        file
-        |> File.put_url()
-        |> preload(preloads[:path], preloads[:opts])
-
-      {:ok, file}
-    else
       other -> other
     end
   end
@@ -46,21 +35,10 @@ defmodule BlueJet.FileStorage.DefaultService do
   def update_file(nil, _, _), do: {:error, :not_found}
 
   def update_file(file = %File{}, fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    case update(file, fields, opts)  do
+      {:ok, file} ->
+        {:ok, File.put_url(file)}
 
-    changeset =
-      %{ file | account: account }
-      |> File.changeset(:update, fields, opts[:locale])
-
-    with {:ok, file} <- Repo.update(changeset) do
-      file =
-        file
-        |> File.put_url()
-        |> preload(preloads[:path], preloads[:opts])
-
-      {:ok, file}
-    else
       other -> other
     end
   end
@@ -175,21 +153,15 @@ defmodule BlueJet.FileStorage.DefaultService do
   def update_file_collection(nil, _, _), do: {:error, :not_found}
 
   def update_file_collection(file_collection = %FileCollection{}, fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    case update(file_collection, fields, opts)  do
+      {:ok, file_collection} ->
+        file_collection =
+          file_collection
+          |> FileCollection.put_file_urls()
+          |> FileCollection.put_file_count()
 
-    changeset =
-      %{ file_collection | account: account }
-      |> FileCollection.changeset(:update, fields, opts[:locale])
+        {:ok, file_collection}
 
-    with {:ok, file_collection} <- Repo.update(changeset) do
-      file_collection =
-        file_collection
-        |> preload(preloads[:path], preloads[:opts])
-        |> FileCollection.put_file_urls()
-
-      {:ok, file_collection}
-    else
       other -> other
     end
   end
