@@ -195,8 +195,8 @@ defmodule BlueJet.CrmTest do
          end)
 
       ServiceMock
-      |> expect(:update_customer, fn(id, fields, opts) ->
-          assert id == customer.id
+      |> expect(:update_customer, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == customer.id
           assert fields == request.fields
           assert opts[:account] == account
           refute opts[:bypass_user_pvc_validation]
@@ -218,8 +218,8 @@ defmodule BlueJet.CrmTest do
       }
 
       ServiceMock
-      |> expect(:update_customer, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_customer, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
           assert opts[:bypass_user_pvc_validation]
@@ -253,8 +253,8 @@ defmodule BlueJet.CrmTest do
       }
 
       ServiceMock
-      |> expect(:delete_customer, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_customer, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %Customer{}}
@@ -552,8 +552,8 @@ defmodule BlueJet.CrmTest do
       }
 
       ServiceMock
-      |> expect(:update_point_transaction, fn(id, fields, opts) ->
-          assert id == request.params["id"]
+      |> expect(:update_point_transaction, fn(identifiers, fields, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert fields == request.fields
           assert opts[:account] == account
 
@@ -657,8 +657,8 @@ defmodule BlueJet.CrmTest do
          end)
 
       ServiceMock
-      |> expect(:delete_point_transaction, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_point_transaction, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %PointTransaction{}}
@@ -677,8 +677,8 @@ defmodule BlueJet.CrmTest do
       }
 
       ServiceMock
-      |> expect(:delete_point_transaction, fn(id, opts) ->
-          assert id == request.params["id"]
+      |> expect(:delete_point_transaction, fn(identifiers, opts) ->
+          assert identifiers[:id] == request.params["id"]
           assert opts[:account] == account
 
           {:ok, %PointTransaction{}}

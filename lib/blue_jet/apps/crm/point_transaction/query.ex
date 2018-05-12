@@ -10,12 +10,21 @@ defmodule BlueJet.Crm.PointTransaction.Query do
     :reason_label,
   ]
 
+  @searchable_fields [
+    :name,
+    :caption
+  ]
+
   def default() do
     from(pt in PointTransaction, order_by: [desc: pt.inserted_at])
   end
 
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
+  end
+
+  def search(query, keyword, locale, default_locale) do
+    search(query, @searchable_fields, keyword, locale, default_locale, PointTransaction.translatable_fields())
   end
 
   def committed(query) do

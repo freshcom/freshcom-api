@@ -43,7 +43,7 @@ defmodule BlueJet.Crm.Policy do
     authorized_args = AccessRequest.to_authorized_args(request, :update)
 
     customer = Service.get_customer(%{ user_id: user.id }, %{ account: account })
-    authorized_args = %{ authorized_args | id: customer.id }
+    authorized_args = %{ authorized_args | identifiers: %{ id: customer.id } }
 
     {:ok, authorized_args}
   end

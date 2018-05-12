@@ -2,50 +2,23 @@ defmodule BlueJet.Crm.DefaultService do
   use BlueJet, :service
 
   alias Ecto.Multi
-  alias BlueJet.Crm.IdentityService
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
 
   @behaviour BlueJet.Crm.Service
-
-  defp get_account(opts) do
-    opts[:account] || IdentityService.get_account(opts)
-  end
-
-  defp put_account(opts) do
-    Map.put(opts, :account, get_account(opts))
-  end
 
   #
   # MARK: Customer
   #
   def list_customer(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    Customer.Query.default()
-    |> Customer.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Customer.Query.filter_by(filter)
-    |> Customer.Query.for_account(account.id)
-    |> Customer.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(Customer, fields, opts)
   end
 
   def count_customer(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    Customer.Query.default()
-    |> Customer.Query.search(fields[:search], opts[:locale], account.default_locale)
-    |> Customer.Query.filter_by(filter)
-    |> Customer.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(Customer, fields, opts)
   end
 
   def create_customer(fields, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %Customer{ account_id: account.id, account: account }
@@ -75,8 +48,8 @@ defmodule BlueJet.Crm.DefaultService do
   end
 
   def get_customer(identifiers, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
     primary_identifiers = Map.take(identifiers, [:id, :code, :user_id, :status])
 
     Customer.Query.default()
@@ -89,8 +62,8 @@ defmodule BlueJet.Crm.DefaultService do
   def update_customer(nil, _, _), do: {:error, :not_found}
 
   def update_customer(customer = %Customer{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ customer | account: account }
@@ -124,19 +97,15 @@ defmodule BlueJet.Crm.DefaultService do
     end
   end
 
-  def update_customer(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Customer
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_customer(identifiers, fields, opts) do
+    get_customer(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_customer(fields, opts)
   end
 
   def delete_customer(nil, _), do: {:error, :not_found}
 
   def delete_customer(customer = %Customer{}, opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     changeset =
       %{ customer | account: account }
@@ -160,79 +129,36 @@ defmodule BlueJet.Crm.DefaultService do
     end
   end
 
-  def delete_customer(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    Customer
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_customer(identifiers, opts) do
+    get_customer(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_customer(opts)
   end
 
-  def delete_all_customer(opts = %{ account: account = %{ mode: "test" } }) do
-    batch_size = opts[:batch_size] || 1000
-
-    customer_ids =
-      Customer.Query.default()
-      |> Customer.Query.for_account(account.id)
-      |> Customer.Query.paginate(size: batch_size, number: 1)
-      |> Customer.Query.id_only()
-      |> Repo.all()
-
-    Customer.Query.default()
-    |> Customer.Query.filter_by(%{ id: customer_ids })
-    |> Repo.delete_all()
-
-    if length(customer_ids) === batch_size do
-      delete_all_customer(opts)
-    else
-      :ok
-    end
+  def delete_all_customer(opts) do
+    delete_all(Customer, opts)
   end
 
   #
   # MARK: Point Account
   #
-  def get_point_account(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-
-    PointAccount.Query.default()
-    |> PointAccount.Query.for_account(account.id)
-    |> Repo.get_by(fields)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_point_account(identifiers, opts) do
+    get(PointAccount, identifiers, opts)
   end
 
   #
   # MARK: Point Transaction
   #
   def list_point_transaction(fields \\ %{}, opts) do
-    account = get_account(opts)
-    pagination = get_pagination(opts)
-    preloads = get_preloads(opts, account)
-    filter = get_filter(fields)
-
-    PointTransaction.Query.default()
-    |> PointTransaction.Query.filter_by(filter)
-    |> PointTransaction.Query.for_account(account.id)
-    |> PointTransaction.Query.paginate(size: pagination[:size], number: pagination[:number])
-    |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    list(PointTransaction, fields, opts)
   end
 
   def count_point_transaction(fields \\ %{}, opts) do
-    account = get_account(opts)
-    filter = get_filter(fields)
-
-    PointTransaction.Query.default()
-    |> PointTransaction.Query.filter_by(filter)
-    |> PointTransaction.Query.for_account(account.id)
-    |> Repo.aggregate(:count, :id)
+    count(PointTransaction, fields, opts)
   end
 
   def create_point_transaction(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %PointTransaction{ account_id: account.id, account: account }
@@ -255,22 +181,15 @@ defmodule BlueJet.Crm.DefaultService do
     end
   end
 
-  def get_point_transaction(fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
-    filter = Map.take(fields, [:id, :code])
-
-    PointTransaction.Query.default()
-    |> PointTransaction.Query.for_account(account.id)
-    |> Repo.get_by(filter)
-    |> preload(preloads[:path], preloads[:opts])
+  def get_point_transaction(identifiers, opts) do
+    get(PointTransaction, identifiers, opts)
   end
 
   def update_point_transaction(nil, _, _), do: {:error, :not_found}
 
   def update_point_transaction(point_transaction = %{}, fields, opts) do
-    account = get_account(opts)
-    preloads = get_preloads(opts, account)
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
 
     changeset =
       %{ point_transaction | account: account }
@@ -293,12 +212,8 @@ defmodule BlueJet.Crm.DefaultService do
     end
   end
 
-  def update_point_transaction(id, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    PointTransaction
-    |> Repo.get_by(id: id, account_id: account.id)
+  def update_point_transaction(identifiers, fields, opts) do
+    get_point_transaction(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> update_point_transaction(fields, opts)
   end
 
@@ -306,25 +221,11 @@ defmodule BlueJet.Crm.DefaultService do
   def delete_point_transaction(%PointTransaction{ status: "committed", amount: amount }, _) when amount != 0, do: {:error, :not_found}
 
   def delete_point_transaction(point_transaction = %PointTransaction{}, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %{ point_transaction | account: account }
-      |> PointTransaction.changeset(:delete)
-
-    with {:ok, point_transaction} <- Repo.delete(changeset) do
-      {:ok, point_transaction}
-    else
-      other -> other
-    end
+    delete(point_transaction, opts)
   end
 
-  def delete_point_transaction(id, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    PointTransaction
-    |> Repo.get_by(id: id, account_id: account.id)
+  def delete_point_transaction(identifiers, opts) do
+    get_point_transaction(identifiers, Map.merge(opts, %{ preloads: %{} }))
     |> delete_point_transaction(opts)
   end
 end
