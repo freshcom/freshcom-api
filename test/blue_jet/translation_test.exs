@@ -52,5 +52,28 @@ defmodule BlueJet.TranslationTest do
       assert translated.name == "苹果"
       assert translated.caption == "好苹果"
     end
+
+    test "when there is nested resource" do
+      product = %{
+        name: "Apple",
+        translations: %{
+          "zh-CN" => %{
+            "name" => "苹果"
+          }
+        }
+      }
+      membership = %{
+        product: product,
+      }
+
+      collection = %{
+        name: "Fruits",
+        memberships: [membership]
+      }
+
+      translated = Translation.translate(collection, "zh-CN", "en")
+
+      assert Enum.at(translated.memberships, 0).product.name == "苹果"
+    end
   end
 end

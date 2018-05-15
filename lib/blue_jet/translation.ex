@@ -40,9 +40,10 @@ defmodule BlueJet.Translation do
     translate_fields(value, locale, default_locale)
   end
 
-  defp translate_fields(struct = %{ translations: %{} }, locale, default_locale) do
+  defp translate_fields(struct = %{}, locale, default_locale) do
     # Translate each field recursively
     fnames = Map.keys(struct) -- [:__meta__, :__struct__]
+
     struct = Enum.reduce(fnames, struct, fn(field_name, acc) ->
       value = Map.get(struct, field_name)
       Map.put(acc, field_name, translate(value, locale, default_locale))
