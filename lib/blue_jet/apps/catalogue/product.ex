@@ -133,14 +133,16 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_status(changeset = %{ changes: %{ status: "active" } }, "simple") do
     id = get_field(changeset, :id)
 
-    active_price = if id do
-      Repo.get_by(Price, product_id: id, status: "active")
+    active_price_count = if id do
+      Price.Query.for_product(id)
+      |> Price.Query.with_status("active")
+      |> Repo.aggregate(:count, :id)
     else
-      nil
+      0
     end
 
-    case active_price do
-      nil -> add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+    case active_price_count do
+      0 -> add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
       _ -> changeset
     end
   end
