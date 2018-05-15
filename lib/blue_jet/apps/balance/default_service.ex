@@ -3,7 +3,6 @@ defmodule BlueJet.Balance.DefaultService do
   use BlueJet.EventEmitter, namespace: :balance
 
   alias Ecto.Multi
-  alias BlueJet.Balance.IdentityService
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
 
   @behaviour BlueJet.Balance.Service
