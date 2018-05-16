@@ -30,8 +30,6 @@ API references is avilable [here](https://github.com/freshcom/freshcom-api-refer
 Right now Freshcom API depends on the following third party services.
 
 - AWS S3 for file storage
-- AWS Cloudfront for CDN
-- AWS SES for account specific email
 - Postmark for global email
 - Stripe for payment processing
 - Sentry for error tracking
@@ -45,9 +43,9 @@ Right now Freshcom API depends on the following third party services.
 5. Install dependencies with `mix deps.get`
 6. Create and migrate your database with `mix ecto.create && mix ecto.migrate`
 7. Start Phoenix endpoint with `mix phx.server
-8. Add a test user `mix blue_jet.db.sample`
+8. Add sample data using `mix blue_jet.db.sample`
 9. You can now make API request to [`localhost:4000`](http://localhost:4000)
-10. If you have Freshcom Dashboard setup then you can now login using the test user with email `test@example.com` password `test1234`.
+10. If you have Freshcom Dashboard setup then you can now login using the test user with email `test@example.com` password `test1234`. To view sample data toggle view test data in the left nav bar.
 
 ## Documentation
 
@@ -64,4 +62,8 @@ To generate use the following command
 
 ## Questions?
 
-Feel free to message me (Roy Bao) in the Elixir Slack Channel, I am usually online after 10am PST
+Feel free to message me (Roy Bao) in the Elixir Slack Channel, I am usually online after 10am PST or feel free to open a github issue.
+
+## Contribute
+
+This project turns out to be much larger than I expected, any contribution is very welcome. Feel free to open issues, submit PRs or just suggestions.
