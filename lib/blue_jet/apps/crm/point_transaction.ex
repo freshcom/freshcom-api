@@ -61,7 +61,7 @@ defmodule BlueJet.Crm.PointTransaction do
     if get_field(changeset, :amount) == 0 do
       changeset
     else
-      add_error(changeset, :amount, {"must be zero", [validation: :must_be_zero]})
+      add_error(changeset, :amount, {"must be zero", code: :must_be_zero})
     end
   end
 

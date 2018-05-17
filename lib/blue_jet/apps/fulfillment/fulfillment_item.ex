@@ -104,7 +104,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     if package do
       changeset
     else
-      add_error(changeset, :package_id, "is invalid", validation: :must_exist)
+      add_error(changeset, :package_id, "is invalid", code: :invalid)
     end
   end
 

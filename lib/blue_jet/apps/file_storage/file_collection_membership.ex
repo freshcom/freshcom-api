@@ -38,7 +38,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     if collection && collection.account_id == account_id do
       changeset
     else
-      add_error(changeset, :collection, "is invalid", [validation: :must_exist])
+      add_error(changeset, :collection, "is invalid", code: :invalid)
     end
   end
 
@@ -51,7 +51,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     if file && file.account_id == account_id do
       changeset
     else
-      add_error(changeset, :file, "is invalid", [validation: :must_exist])
+      add_error(changeset, :file, "is invalid", code: :invalid)
     end
   end
 

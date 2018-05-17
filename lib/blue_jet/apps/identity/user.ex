@@ -152,7 +152,7 @@ defmodule BlueJet.Identity.User do
     if PhoneVerificationCode.exists?(pvc, phone_number) do
       changeset
     else
-      add_error(changeset, :phone_verification_code, "is invalid.", validation: :must_exist)
+      add_error(changeset, :phone_verification_code, "is invalid.", code: :invalid)
     end
   end
 

@@ -127,7 +127,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     if order && order.account_id == account_id do
       changeset
     else
-      add_error(changeset, :order, "is invalid", [validation: :must_exist])
+      add_error(changeset, :order, "is invalid", code: :invalid)
     end
   end
 
@@ -140,7 +140,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     if product && product.account_id == account.id do
       changeset
     else
-      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+      add_error(changeset, :product, "is invalid", code: :invalid)
     end
   end
 
@@ -154,7 +154,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     if price && price.account_id == account.id && price.product_id == product_id do
       changeset
     else
-      add_error(changeset, :price, "is invalid", [validation: :must_exist])
+      add_error(changeset, :price, "is invalid", code: :invalid)
     end
   end
 
