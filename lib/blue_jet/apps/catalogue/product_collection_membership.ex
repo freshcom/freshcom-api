@@ -37,7 +37,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     if collection && collection.account_id == account_id do
       changeset
     else
-      add_error(changeset, :collection, "is invalid", [validation: :must_exist])
+      add_error(changeset, :collection, "is invalid", code: :invalid)
     end
   end
 
@@ -50,7 +50,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     if product && product.account_id == account_id do
       changeset
     else
-      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+      add_error(changeset, :product, "is invalid", code: :invalid)
     end
   end
 
