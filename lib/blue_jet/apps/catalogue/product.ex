@@ -142,7 +142,7 @@ defmodule BlueJet.Catalogue.Product do
     end
 
     case active_price_count do
-      0 -> add_error(changeset, :status, "A Product must have a Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+      0 -> add_error(changeset, :status, "Product must have an active price in order to be marked active.", code: "require_active_price")
       _ -> changeset
     end
   end
@@ -157,7 +157,7 @@ defmodule BlueJet.Catalogue.Product do
     end
 
     case active_primary_item do
-      nil -> add_error(changeset, :status, "A Product with variants must have a Primary Active Variant in order to be marked Active.", [validation: "require_primary_active_variant", full_error_message: true])
+      nil -> add_error(changeset, :status, "Product with variants must have a primary active variant in order to be marked active.", code: "require_primary_active_variant")
       _ -> changeset
     end
   end
@@ -171,8 +171,8 @@ defmodule BlueJet.Catalogue.Product do
     active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
 
     cond do
-      item_count == 0 || active_item_count != item_count -> add_error(changeset, :status, "A Product combo must have all of its Item set to Active in order to be marked Active.", [validation: "require_active_item", full_error_message: true])
-      active_price_count == 0 -> add_error(changeset, :status, "A Product Combo require at least one Active Price in order to be marked Active.", [validation: "require_active_price", full_error_message: true])
+      item_count == 0 || active_item_count != item_count -> add_error(changeset, :status, "Product combo must have all of its items set to active in order to be marked active.", code: "require_active_item")
+      active_price_count == 0 -> add_error(changeset, :status, "Product combo require at least one active price in order to be marked active.", code: "require_active_price")
       true -> changeset
     end
   end
@@ -188,7 +188,7 @@ defmodule BlueJet.Catalogue.Product do
     if ai_price_count > 0 do
       changeset
     else
-      add_error(changeset, :status, "A Product must have a Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
+      add_error(changeset, :status, "Product must have a active/internal price in order to be marked internal.", code: "require_internal_price")
     end
   end
 
@@ -198,7 +198,7 @@ defmodule BlueJet.Catalogue.Product do
     aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
     case aiv_count do
-      0 -> add_error(changeset, :status, "A Product with variants must have at least one Active/Internal Variant in order to be marked Internal.", [validation: "require_internal_variant", full_error_message: true])
+      0 -> add_error(changeset, :status, "Product with variants must have at least one active/internal variant in order to be marked internal.", code: "require_internal_variant")
       _ -> changeset
     end
   end
@@ -212,8 +212,8 @@ defmodule BlueJet.Catalogue.Product do
     ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
 
     cond do
-      item_count == 0 || aip_count != item_count -> add_error(changeset, :status, "A Product combo must have all of its Item set to Active/Internal in order to be marked Internal.", [validation: "require_internal_item", full_error_message: true])
-      ai_price_count == 0 -> add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", [validation: "require_internal_price", full_error_message: true])
+      item_count == 0 || aip_count != item_count -> add_error(changeset, :status, "Product combo must have all of its item set to active/internal in order to be marked internal.", code: "require_internal_item")
+      ai_price_count == 0 -> add_error(changeset, :status, "A Product combo require at least one Active/Internal Price in order to be marked Internal.", code: "require_internal_price")
       true -> changeset
     end
   end
@@ -227,7 +227,7 @@ defmodule BlueJet.Catalogue.Product do
     if product && product.account_id == account_id do
       changeset
     else
-      add_error(changeset, :product, "is invalid", [validation: :must_exist])
+      add_error(changeset, :product, "is invalid", code: :invalid)
     end
   end
 

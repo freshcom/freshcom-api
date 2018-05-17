@@ -88,7 +88,7 @@ defmodule BlueJet.Catalogue.Price do
 
     case price do
       nil -> changeset
-      _ -> add_error(changeset, :status, "There is already an active price with the same minimum order quantity.", [validation: :minimum_order_quantity_taken, full_error_message: true])
+      _ -> add_error(changeset, :status, "An active price with the same minimum order quantity already exist.", code: :minimum_order_quantity_taken)
     end
   end
   def validate_status(changeset = %{ changes: %{ status: _ } }) do
@@ -109,7 +109,7 @@ defmodule BlueJet.Catalogue.Price do
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do
-      0 -> add_error(changeset, :status, "Can not change status of the only Active Price of a Active Product.", [validation: :active_product_depends_on_active_price, full_error_message: true])
+      0 -> add_error(changeset, :status, "Can not change status of the last active price of an active product.", code: :cannot_change_status_of_last_active_price)
       _ -> changeset
     end
   end
@@ -122,7 +122,7 @@ defmodule BlueJet.Catalogue.Price do
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
-      0 -> add_error(changeset, :status, "Can not change status of the only Active/Internal Price of a Internal Product.", [validation: :internal_product_depends_on_internal_price, full_error_message: true])
+      0 -> add_error(changeset, :status, "Can not change status of the last active/internal price of a internal product.", code: :cannot_change_status_of_last_internal_price)
       _ -> changeset
     end
   end
@@ -137,7 +137,7 @@ defmodule BlueJet.Catalogue.Price do
 
   def validate(changeset = %{ data: price }, :delete) do
     if price.status != "disabled" do
-      add_error(changeset, :status, "must be disabled", [validation: :must_be_disabled])
+      add_error(changeset, :status, "Only disabled price can be deleted", code: :must_be_disabled)
     else
       changeset
     end
