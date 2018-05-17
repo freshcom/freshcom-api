@@ -181,7 +181,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_internal_variant"
+      assert error_info[:code] == "require_internal_variant"
     end
 
     test "when given product with variants with valid internal status" do
@@ -222,7 +222,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_primary_active_variant"
+      assert error_info[:code] == "require_primary_active_variant"
     end
 
     test "when given product with variants with valid active status" do
@@ -277,7 +277,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_internal_item"
+      assert error_info[:code] == "require_internal_item"
     end
 
     test "when given product combo with invalid internal status due to missing internal price" do
@@ -306,7 +306,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_internal_price"
+      assert error_info[:code] == "require_internal_price"
     end
 
     test "when given product combo with valid internal status" do
@@ -356,7 +356,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_active_item"
+      assert error_info[:code] == "require_active_item"
     end
 
     test "when given product combo with invalid active status due to missing active price" do
@@ -385,7 +385,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_active_price"
+      assert error_info[:code] == "require_active_price"
     end
 
     test "when given product combo with valid active status" do
@@ -463,7 +463,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_internal_price"
+      assert error_info[:code] == "require_internal_price"
     end
 
     test "when given product varaint with valid internal status" do
@@ -532,7 +532,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == "require_active_price"
+      assert error_info[:code] == "require_active_price"
     end
 
     test "when given product varaint with valid active status" do

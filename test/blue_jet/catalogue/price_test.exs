@@ -140,7 +140,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == :minimum_order_quantity_taken
+      assert error_info[:code] == :minimum_order_quantity_taken
     end
 
     test "when given invalid draft status due to internal product require a internal price" do
@@ -167,7 +167,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       refute changeset.valid?
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == :internal_product_depends_on_internal_price
+      assert error_info[:code] == :cannot_change_status_of_last_internal_price
     end
 
     test "when given invalid draft status due to active product require an active price" do
@@ -194,7 +194,7 @@ defmodule BlueJet.Catalogue.PriceTest do
       refute changeset.valid?
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:validation] == :active_product_depends_on_active_price
+      assert error_info[:code] == :cannot_change_status_of_last_active_price
     end
   end
 

@@ -117,7 +117,7 @@ defmodule BlueJet.Balance.Payment do
   defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
     authorized_amount_cents = get_field(changeset, :amount_cents)
     case capture_amount_cents > authorized_amount_cents do
-      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", [validation: "lte_authorized_amount", full_error_message: true])
+      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", code: "cannot_be_gt_authorized_amount")
       _ -> changeset
     end
   end
@@ -127,7 +127,7 @@ defmodule BlueJet.Balance.Payment do
     gateway = get_field(changeset, :gateway)
 
     if gateway == "freshcom" do
-      add_error(changeset, :gateway, "must be custom", [validation: :must_be_custom])
+      add_error(changeset, :gateway, "must be custom", [code: :must_be_custom])
     else
       changeset
     end

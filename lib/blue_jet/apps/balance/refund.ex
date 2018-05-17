@@ -97,7 +97,7 @@ defmodule BlueJet.Balance.Refund do
     payment = Repo.get_by!(Payment, account_id: account_id, id: payment_id)
 
     case amount_cents > payment.gross_amount_cents do
-      true -> add_error(changeset, :amount_cents, "Amount cannot be greater than the payment's gross amount", [validation: "lte_payment_gross_amount", full_error_message: true])
+      true -> add_error(changeset, :amount_cents, "Amount cannot be greater than the payment's gross amount", code: "cannot_be_gt_payment_gross_amount")
       _ -> changeset
     end
   end
