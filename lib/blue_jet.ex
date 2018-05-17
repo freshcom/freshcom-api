@@ -59,6 +59,9 @@ defmodule BlueJet do
 
           {:ok, response}
         else
+          {:error, %{ errors: errors }} ->
+            {:error, %AccessResponse{ errors: errors }}
+
           other -> other
         end
       end
