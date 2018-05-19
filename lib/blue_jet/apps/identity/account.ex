@@ -15,7 +15,8 @@ defmodule BlueJet.Identity.Account do
   alias BlueJet.Identity.{User, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   schema "accounts" do
-    field :mode, :string
+    field :mode, :string, default: "live"
+    field :is_ready_for_live_transaction, :boolean
     field :test_account_id, Ecto.UUID, virtual: true
 
     field :name, :string
@@ -88,7 +89,8 @@ defmodule BlueJet.Identity.Account do
     |> Map.put(:action, :reset)
   end
 
-  def process(account, changeset = %{ action: :update }) do
+  # Live account changes should sync to test account
+  def process(account = %{ mode: "live" }, changeset = %{ action: :update }) do
     account = Repo.preload(account, :test_account)
 
     test_account =
@@ -99,6 +101,8 @@ defmodule BlueJet.Identity.Account do
 
     {:ok, account}
   end
+
+  def process(account, %{ action: :update }), do: {:ok, account}
 
   def process(account = %{ mode: "test" }, %{ action: :reset }) do
     AccountMembership.Query.default()

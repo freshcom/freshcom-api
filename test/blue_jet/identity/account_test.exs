@@ -5,6 +5,7 @@ defmodule BlueJet.Identity.AccountTest do
 
   test "writable_fields/0" do
     assert Account.writable_fields() == [
+      :is_ready_for_live_transaction,
       :name,
       :company_name,
       :default_locale,

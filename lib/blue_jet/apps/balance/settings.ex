@@ -1,8 +1,7 @@
 defmodule BlueJet.Balance.Settings do
   use BlueJet, :data
 
-  alias Ecto.Changeset
-  alias BlueJet.Balance.{IdentityService, OauthClient}
+  alias __MODULE__.Proxy
 
   schema "balance_settings" do
     field :account_id, Ecto.UUID
@@ -51,68 +50,37 @@ defmodule BlueJet.Balance.Settings do
   def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
-    |> sync_with_stripe_user_id()
+    |> put_stripe_data()
   end
 
-  defp sync_with_stripe_user_id(changeset = %{ changes: %{ stripe_user_id: _ } }) do
+  defp put_stripe_data(changeset = %{ changes: %{ stripe_auth_code: stripe_auth_code }}) do
+    account = Proxy.get_account(changeset.data)
+
+    with {:ok, stripe_data} <- Proxy.create_stripe_access_token(stripe_auth_code, mode: account.mode) do
+      sync_with_stripe_data(changeset, stripe_data)
+    else
+      {:error, errors} ->
+        add_error(changeset, :stripe_auth_code, errors["error_description"], code: errors["error"])
+    end
+  end
+
+  defp put_stripe_data(changeset = %{ changes: %{ stripe_user_id: _ } }) do
+    sync_with_stripe_data(changeset, %{})
+  end
+
+  defp put_stripe_data(changeset), do: changeset
+
+  defp sync_with_stripe_data(changeset, stripe_data) do
     changeset
-    |> put_change(:stripe_user_id, nil)
-    |> put_change(:stripe_livemode, nil)
-    |> put_change(:stripe_access_token, nil)
-    |> put_change(:stripe_refresh_token, nil)
-    |> put_change(:stripe_publishable_key, nil)
-    |> put_change(:stripe_scope, nil)
+    |> put_change(:stripe_user_id, stripe_data["stripe_user_id"])
+    |> put_change(:stripe_livemode, stripe_data["stripe_livemode"])
+    |> put_change(:stripe_access_token, stripe_data["stripe_access_token"])
+    |> put_change(:stripe_refresh_token, stripe_data["stripe_refresh_token"])
+    |> put_change(:stripe_publishable_key, stripe_data["stripe_publishable_key"])
+    |> put_change(:stripe_scope, stripe_data["stripe_scope"])
   end
-
-  defp sync_with_stripe_user_id(changeset), do: changeset
 
   def for_account(account_id) do
     Repo.get_by!(__MODULE__, account_id: account_id)
-  end
-
-  def get_account(settings) do
-    settings.account || IdentityService.get_account(settings)
-  end
-
-  @doc """
-  Process the given account.
-
-  This function may change data in the database.
-
-  Returns the processed account.
-
-  The given `account` should be a account that is just created/updated using the `changeset`.
-  """
-  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
-  def process(balance_settings, %{ data: %{ stripe_auth_code: nil }, changes: %{ stripe_auth_code: stripe_auth_code }}) do
-    account = get_account(balance_settings)
-
-    with {:ok, data} <- create_stripe_access_token(stripe_auth_code, mode: account.mode) do
-      changeset = change(balance_settings, %{
-        stripe_user_id: data["stripe_user_id"],
-        stripe_livemode: data["stripe_livemode"],
-        stripe_access_token: data["access_token"],
-        stripe_refresh_token: data["stripe_refresh_token"],
-        stripe_publishable_key: data["stripe_publishable_key"],
-        stripe_scope: data["scope"]
-      })
-
-      balance_settings = Repo.update!(changeset)
-      {:ok, balance_settings}
-    else
-      {:error, errors} -> {:error, [stripe_auth_code: { errors["error_description"], [code: errors["error"], full_error_message: true] }]}
-    end
-  end
-  def process(balance_settings, _), do: {:ok, balance_settings}
-
-  @spec create_stripe_access_token(String.t, Map.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_access_token(stripe_auth_code, options) do
-    key = if options[:mode] == "test" do
-      System.get_env("STRIPE_TEST_SECRET_KEY")
-    else
-      System.get_env("STRIPE_LIVE_SECRET_KEY")
-    end
-
-    OauthClient.post("https://connect.stripe.com/oauth/token", %{ client_secret: key, code: stripe_auth_code, grant_type: "authorization_code" })
   end
 end

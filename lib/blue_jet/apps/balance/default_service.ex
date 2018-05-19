@@ -4,6 +4,7 @@ defmodule BlueJet.Balance.DefaultService do
 
   alias Ecto.Multi
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
+  alias BlueJet.Balance.IdentityService
 
   @behaviour BlueJet.Balance.Service
 
@@ -35,12 +36,12 @@ defmodule BlueJet.Balance.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:settings, changeset)
-      |> Multi.run(:processed_settings, fn(%{ settings: settings }) ->
-          Settings.process(settings, changeset)
+      |> Multi.run(:account, fn(%{ settings: settings }) ->
+          Settings.Proxy.sync_to_account(settings)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_settings: settings }} ->
+      {:ok, %{ settings: settings }} ->
         {:ok, settings}
 
       {:error, _, changeset, _} -> {:error, changeset}

@@ -3,7 +3,7 @@ defmodule BlueJet.Balance.DefaultServiceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Settings, Card, Payment}
-  alias BlueJet.Balance.{StripeClientMock, OauthClientMock}
+  alias BlueJet.Balance.{StripeClientMock, OauthClientMock, IdentityServiceMock}
   alias BlueJet.Balance.DefaultService
 
   describe "get_settings/1" do
@@ -23,22 +23,34 @@ defmodule BlueJet.Balance.DefaultServiceTest do
       assert error == :not_found
     end
 
+    @tag :focus
     test "when given settings and valid fields" do
       account = Repo.insert!(%Account{})
       settings = Repo.insert!(%Settings{
         account_id: account.id
       })
 
+      stripe_response = %{
+        "stripe_user_id" => Faker.Lorem.word(),
+        "stripe_livemode" => true
+      }
       OauthClientMock
-      |> expect(:post, fn(_, _) -> {:ok, %{}} end)
+      |> expect(:post, fn(_, _) -> {:ok, stripe_response} end)
+
+      IdentityServiceMock
+      |> expect(:update_account, fn(account, fields, _) ->
+          assert account == account
+          assert fields[:is_ready_for_live_transaction]
+
+          {:ok, account}
+         end)
 
       fields = %{
         "stripe_auth_code" => Faker.String.base64(5)
       }
-
       {:ok, settings} = DefaultService.update_settings(settings, fields, %{ account: account })
 
-      assert settings
+      assert settings.stripe_user_id == stripe_response["stripe_user_id"]
     end
   end
 

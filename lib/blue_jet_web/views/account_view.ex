@@ -4,6 +4,8 @@ defmodule BlueJetWeb.AccountView do
 
   attributes [
     :name,
+    :mode,
+    :is_ready_for_live_transaction,
     :default_locale,
     :test_account_id,
     :caption,
