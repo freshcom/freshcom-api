@@ -136,10 +136,10 @@ defmodule BlueJet.Catalogue.Price do
   end
 
   def validate(changeset = %{ data: price }, :delete) do
-    if price.status != "disabled" do
-      add_error(changeset, :status, "Only disabled price can be deleted", code: :must_be_disabled)
-    else
+    if changeset(price, :update, %{ status: "disabled" }).valid? do
       changeset
+    else
+      add_error(changeset, :status, "Can not delete the last active/internal price of a active/internal product", code: :cannot_delete_last_active_price)
     end
   end
 
