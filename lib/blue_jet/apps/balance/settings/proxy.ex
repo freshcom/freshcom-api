@@ -7,6 +7,12 @@ defmodule BlueJet.Balance.Settings.Proxy do
     settings.account || IdentityService.get_account(settings)
   end
 
+  @doc """
+  Sync the apporiate settings to the associated `Account`.
+
+  Currently this function only changes the `is_ready_for_live_transaction`
+  attribuets of the `Account`.
+  """
   def sync_to_account(settings) do
     account = get_account(settings)
     sync_to_account(settings, account)

@@ -4,7 +4,6 @@ defmodule BlueJet.Balance.DefaultService do
 
   alias Ecto.Multi
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
-  alias BlueJet.Balance.IdentityService
 
   @behaviour BlueJet.Balance.Service
 
