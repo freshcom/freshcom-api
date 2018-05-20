@@ -1,13 +1,14 @@
 defmodule BlueJet.Storefront.Policy do
-  alias BlueJet.AccessRequest
+  use BlueJet, :policy
+
   alias BlueJet.Storefront.Service
-  alias BlueJet.Storefront.{IdentityService, CrmService}
+  alias BlueJet.Storefront.CrmService
 
   #
   # MARK: Order
   #
   def authorize(request = %{ role: role, account: account, user: user }, "list_order") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(request.filter, %{ customer_id: customer.id, status: ["opened", "closed"] })
@@ -18,7 +19,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_order") when role in ["support_specialist", "business_analyst", "developer", "administrator"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
     filter = if !authorized_args.filter[:status] do
       Map.merge(authorized_args.filter, %{ status: ["opened", "closed"] })
     else
@@ -32,7 +33,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "create_order") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :create)
+    authorized_args = from_access_request(request, :create)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     fields = Map.merge(authorized_args.fields, %{ customer_id: customer.id })
@@ -42,11 +43,11 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "create_order") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role }, "get_order") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :get)
+    authorized_args = from_access_request(request, :get)
 
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "cart", customer_id: nil })
     authorized_args = %{ authorized_args | identifiers: identifiers }
@@ -55,7 +56,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "get_order") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :get)
+    authorized_args = from_access_request(request, :get)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     identifiers = Map.merge(authorized_args.identifiers, %{ customer_id: customer.id })
@@ -65,11 +66,11 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_order") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_order") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :update)
+    authorized_args = from_access_request(request, :update)
     fields = authorized_args.fields
 
     fields = if fields[:status] != "opened" do
@@ -96,11 +97,11 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "update_order") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_order") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :delete)
+    authorized_args = from_access_request(request, :delete)
 
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "cart", customer_id: nil })
     authorized_args = %{ authorized_args | identifiers: identifiers }
@@ -109,7 +110,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "delete_order") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :delete)
+    authorized_args = from_access_request(request, :delete)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "cart", customer_id: customer.id })
@@ -119,14 +120,14 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "delete_order") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Order Line Item
   #
   def authorize(request = %{ role: role, account: account }, "create_order_line_item") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :create)
+    authorized_args = from_access_request(request, :create)
 
     order = Service.get_order(%{
       id: authorized_args.fields["order_id"],
@@ -142,7 +143,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "create_order_line_item") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :create)
+    authorized_args = from_access_request(request, :create)
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     order = Service.get_order(%{
       id: authorized_args.fields["order_id"],
@@ -158,11 +159,11 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "create_order_line_item") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role, account: account }, "update_order_line_item") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :update)
+    authorized_args = from_access_request(request, :update)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
     order = Service.get_order(%{
@@ -179,7 +180,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "update_order_line_item") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :update)
+    authorized_args = from_access_request(request, :update)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
@@ -197,11 +198,11 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "update_order_line_item") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role, account: account }, "delete_order_line_item") when role in ["guest"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :delete)
+    authorized_args = from_access_request(request, :delete)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
     order = Service.get_order(%{
@@ -218,7 +219,7 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role, account: account, user: user }, "delete_order_line_item") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :delete)
+    authorized_args = from_access_request(request, :delete)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
@@ -236,18 +237,12 @@ defmodule BlueJet.Storefront.Policy do
   end
 
   def authorize(request = %{ role: role }, "delete_order_line_item") when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Other
   #
-  def authorize(request = %{ role: nil }, endpoint) do
-    request
-    |> IdentityService.put_vas_data()
-    |> authorize(endpoint)
-  end
-
   def authorize(_, _) do
     {:error, :access_denied}
   end

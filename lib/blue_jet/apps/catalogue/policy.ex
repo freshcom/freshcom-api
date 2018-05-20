@@ -1,12 +1,11 @@
 defmodule BlueJet.Catalogue.Policy do
-  alias BlueJet.AccessRequest
-  alias BlueJet.Catalogue.{IdentityService}
+  use BlueJet, :policy
 
   #
   # MARK: Product
   #
   def authorize(request = %{ role: role }, "list_product") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ status: "active" })
     all_count_filter = Map.take(filter, [:status, :collection_id, :parent_id])
@@ -22,7 +21,7 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_product") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     all_count_filter = Map.take(authorized_args[:filter], [:collection_id, :parent_id])
     authorized_args = %{ authorized_args | all_count_filter: all_count_filter }
@@ -31,11 +30,11 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "create_product") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role }, "get_product") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :get)
+    authorized_args = from_access_request(request, :get)
 
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "active" })
     authorized_args = %{ authorized_args | identifiers: identifiers }
@@ -44,22 +43,22 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_product") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_product") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_product") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Product Collection
   #
   def authorize(request = %{ role: role }, "list_product_collection") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ status: "active" })
     all_count_filter = Map.take(filter, [:status])
@@ -73,15 +72,15 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_product_collection") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_product_collection") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role }, "get_product_collection") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :get)
+    authorized_args = from_access_request(request, :get)
 
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "active" })
     authorized_args = %{ authorized_args | identifiers: identifiers }
@@ -90,22 +89,22 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_product_collection") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_product_collection") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_product_collection") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Product Collection Membership
   #
   def authorize(request = %{ role: role }, "list_product_collection_membership") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ collection_id: request.params["collection_id"], product_status: "active" })
     all_count_filter = Map.take(filter, [:collection_id, :product_status])
@@ -119,7 +118,7 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_product_collection_membership") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ collection_id: request.params["collection_id"] })
     all_count_filter = Map.take(filter, [:collection_id])
@@ -129,18 +128,18 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "create_product_collection_membership") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role }, "delete_product_collection_membership") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Price
   #
   def authorize(request = %{ role: role }, "list_price") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ product_id: request.params["product_id"], status: "active" })
     all_count_filter = Map.take(filter, [:product_id, :status])
@@ -154,7 +153,7 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_price") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     filter = Map.merge(authorized_args[:filter], %{ product_id: request.params["product_id"] })
     all_count_filter = Map.take(filter, [:product_id])
@@ -164,7 +163,7 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "create_price") when role in ["marketing_specialist", "developer", "administrator"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :create)
+    authorized_args = from_access_request(request, :create)
 
     fields = Map.merge(authorized_args[:fields], %{ "product_id" => request.params["product_id"] })
     authorized_args = %{ authorized_args | fields: fields }
@@ -173,7 +172,7 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_price") when role in ["guest", "customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :get)
+    authorized_args = from_access_request(request, :get)
 
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "active" })
     authorized_args = %{ authorized_args | identifiers: identifiers }
@@ -182,26 +181,20 @@ defmodule BlueJet.Catalogue.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_price") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_price") when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_price") when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Other
   #
-  def authorize(request = %{ role: nil }, endpoint) do
-    request
-    |> IdentityService.put_vas_data()
-    |> authorize(endpoint)
-  end
-
   def authorize(_, _) do
     {:error, :access_denied}
   end

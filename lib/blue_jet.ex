@@ -6,6 +6,13 @@ defmodule BlueJet do
     end
   end
 
+  def policy do
+    quote do
+      import BlueJet.Policy.AuthorizedRequest
+      use BlueJet.Policy.Common
+    end
+  end
+
   def service do
     quote do
       import BlueJet.Service.{Option, Preload, Helper, Default}

@@ -1,12 +1,13 @@
 defmodule BlueJet.Fulfillment.Policy do
-  alias BlueJet.AccessRequest
-  alias BlueJet.Fulfillment.{IdentityService, CrmService}
+  use BlueJet, :policy
+
+  alias BlueJet.Fulfillment.CrmService
 
   #
   # MARK: Fulfillment Package
   #
   def authorize(request = %{ role: role, account: account, user: user }, "list_fulfillment_package") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(request.filter, %{ customer_id: customer.id })
@@ -16,7 +17,7 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_fulfillment_package") when role in ["support_specialist"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     if authorized_args[:filter][:order_id] || authorized_args[:filter][:customer_id] do
       authorized_args = %{ authorized_args | all_count_filter: Map.take(authorized_args[:filter], [:order_id, :customer_id]) }
@@ -27,22 +28,22 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_fulfillment_package") when role in ["business_analyst", "distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "get_fulfillment_package") when role in ["customer", "support_specialist", "business_analyst", "distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "delete_fulfillment_package") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Fulfillment Item
   #
   def authorize(request = %{ role: role }, "list_fulfillment_item") when role in ["customer", "support_specialist"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     if request.params["package_id"] do
       filter = Map.merge(authorized_args[:filter], %{ package_id: request.params["package_id"] })
@@ -56,22 +57,22 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_fulfillment_item") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_fulfillment_item") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(request = %{ role: role }, "update_fulfillment_item") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   #
   # MARK: Return Package
   #
   def authorize(request = %{ role: role, account: account, user: user }, "list_return_package") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(request.filter, %{ customer_id: customer.id })
@@ -81,7 +82,7 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_return_package") when role in ["support_specialist"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     if authorized_args[:filter][:order_id] || authorized_args[:filter][:customer_id] do
       authorized_args = %{ authorized_args | all_count_filter: Map.take(authorized_args[:filter], [:order_id, :customer_id]) }
@@ -92,21 +93,21 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_return_package") when role in ["business_analyst", "distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   #
   # MARK: Return Item
   #
   def authorize(request = %{ role: role }, "create_return_item") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   #
   # MARK: Unlock
   #
   def authorize(request = %{ role: role, account: account, user: user }, "list_unlock") when role in ["customer"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(request.filter, %{ customer_id: customer.id })
@@ -116,7 +117,7 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_unlock") when role in ["support_specialist"] do
-    authorized_args = AccessRequest.to_authorized_args(request, :list)
+    authorized_args = from_access_request(request, :list)
 
     if authorized_args[:filter][:customer_id] do
       authorized_args = %{ authorized_args | all_count_filter: Map.take(authorized_args[:filter], [:customer_id]) }
@@ -127,11 +128,11 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_unlock") when role in ["distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_unlock") when role in ["support_specialist", "distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(%{ role: role }, "get_unlock") when role in ["anonymous", "guest"] do
@@ -139,22 +140,16 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_unlock") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "delete_unlock") when role in ["support_specialist", "distribution_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Other
   #
-  def authorize(request = %{ role: nil }, endpoint) do
-    request
-    |> IdentityService.put_vas_data()
-    |> authorize(endpoint)
-  end
-
   def authorize(_, _) do
     {:error, :access_denied}
   end

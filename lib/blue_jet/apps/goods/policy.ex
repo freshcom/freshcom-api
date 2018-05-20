@@ -1,6 +1,5 @@
 defmodule BlueJet.Goods.Policy do
-  alias BlueJet.AccessRequest
-  alias BlueJet.Goods.IdentityService
+  use BlueJet, :policy
 
   #
   # MARK: Stockable
@@ -10,11 +9,11 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_stockable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_stockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(%{ role: role }, "get_stockable") when role in ["anonymous", "guest", "customer"] do
@@ -22,15 +21,15 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_stockable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_stockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_stockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
@@ -41,11 +40,11 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_unlockable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_unlockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(%{ role: role }, "get_unlockable") when role in ["anonymous", "guest", "customer"] do
@@ -53,15 +52,15 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_unlockable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_unlockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_unlockable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
@@ -72,11 +71,11 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "list_depositable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :list)}
+    {:ok, from_access_request(request, :list)}
   end
 
   def authorize(request = %{ role: role }, "create_depositable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :create)}
+    {:ok, from_access_request(request, :create)}
   end
 
   def authorize(%{ role: role }, "get_depositable") when role in ["anonymous", "guest", "customer"] do
@@ -84,26 +83,20 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(request = %{ role: role }, "get_depositable") when not is_nil(role) do
-    {:ok, AccessRequest.to_authorized_args(request, :get)}
+    {:ok, from_access_request(request, :get)}
   end
 
   def authorize(request = %{ role: role }, "update_depositable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :update)}
+    {:ok, from_access_request(request, :update)}
   end
 
   def authorize(request = %{ role: role }, "delete_depositable") when role in ["inventory_specialist", "developer", "administrator"] do
-    {:ok, AccessRequest.to_authorized_args(request, :delete)}
+    {:ok, from_access_request(request, :delete)}
   end
 
   #
   # MARK: Other
   #
-  def authorize(request = %{ role: nil }, endpoint) do
-    request
-    |> IdentityService.put_vas_data()
-    |> authorize(endpoint)
-  end
-
   def authorize(_, _) do
     {:error, :access_denied}
   end
