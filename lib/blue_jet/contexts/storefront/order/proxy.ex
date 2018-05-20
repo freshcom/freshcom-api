@@ -1,16 +1,8 @@
 defmodule BlueJet.Storefront.Order.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Storefront.{IdentityService, CrmService, FulfillmentService, BalanceService}
+  alias BlueJet.Storefront.{CrmService, FulfillmentService, BalanceService}
   alias BlueJet.Storefront.OrderLineItem
-
-  def get_account(order) do
-    order.account || IdentityService.get_account(order)
-  end
-
-  def put_account(order) do
-    %{ order | account: get_account(order) }
-  end
 
   def get_customer(%{ customer_id: nil }), do: nil
 

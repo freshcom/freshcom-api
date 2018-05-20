@@ -3,10 +3,6 @@ defmodule BlueJet.Balance.Settings.Proxy do
 
   alias BlueJet.Balance.{IdentityService, OauthClient}
 
-  def get_account(settings) do
-    settings.account || IdentityService.get_account(settings)
-  end
-
   @doc """
   Sync the apporiate settings to the associated `Account`.
 

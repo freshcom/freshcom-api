@@ -1,16 +1,8 @@
 defmodule BlueJet.Balance.Card.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Balance.{IdentityService, StripeClient}
+  alias BlueJet.Balance.StripeClient
   alias BlueJet.Card
-
-  def get_account(card) do
-    card.account || IdentityService.get_account(card)
-  end
-
-  def put_account(card) do
-    %{ card | account: get_account(card) }
-  end
 
   def update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
     account = get_account(card)

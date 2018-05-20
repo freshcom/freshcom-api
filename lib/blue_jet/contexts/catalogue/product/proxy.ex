@@ -1,15 +1,7 @@
 defmodule BlueJet.Catalogue.Product.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Catalogue.{IdentityService, GoodsService, FileStorageService}
-
-  def get_account(product) do
-    product.account || IdentityService.get_account(product)
-  end
-
-  def put_account(product) do
-    %{ product | account: get_account(product) }
-  end
+  alias BlueJet.Catalogue.{GoodsService, FileStorageService}
 
   def get_goods(product = %{ goods_type: "Stockable", goods_id: id }) do
     account = get_account(product)

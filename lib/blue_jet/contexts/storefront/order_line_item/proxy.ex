@@ -2,11 +2,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.{Repo, Translation}
-  alias BlueJet.Storefront.{CrmService, IdentityService, CatalogueService, GoodsService, FulfillmentService}
-
-  def get_account(oli) do
-    oli.account || IdentityService.get_account(oli)
-  end
+  alias BlueJet.Storefront.{CrmService, CatalogueService, GoodsService, FulfillmentService}
 
   def get_goods(oli = %{ product: %{ goods_type: "Stockable", goods_id: id }}) do
     account = get_account(oli)

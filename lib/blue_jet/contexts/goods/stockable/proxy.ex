@@ -1,15 +1,7 @@
 defmodule BlueJet.Goods.Stockable.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Goods.{IdentityService, FileStorageService}
-
-  def get_account(stockable) do
-    stockable.account || IdentityService.get_account(stockable)
-  end
-
-  def put_account(stockable) do
-    %{ stockable | account: get_account(stockable) }
-  end
+  alias BlueJet.Goods.FileStorageService
 
   def put(stockable = %{ avatar_id: nil }, {:avatar, nil}, _), do: stockable
 
