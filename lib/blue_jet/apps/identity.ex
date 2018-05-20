@@ -99,17 +99,17 @@ defmodule BlueJet.Identity do
   #
   # MARK: Email Verification Token
   #
-  def create_email_verification_token(req), do: create("email_verification_token", req)
+  def create_email_verification_token(req), do: create("email_verification_token", req, __MODULE__)
 
   #
   # MARK: Email Verification
   #
-  def create_email_verification(req), do: create("email_verification", req)
+  def create_email_verification(req), do: create("email_verification", req, __MODULE__)
 
   #
   # MARK: Phone Verification Code
   #
-  def create_phone_verification_code(req), do: create("phone_verification_code", req)
+  def create_phone_verification_code(req), do: create("phone_verification_code", req, __MODULE__)
 
   #
   # MARK: Password Reset Token
@@ -164,8 +164,8 @@ defmodule BlueJet.Identity do
   #
   # MARK: User
   #
-  def create_user(req), do: create("user", req)
-  def get_user(req), do: get("user", req)
-  def update_user(req), do: update("user", req)
-  def delete_user(req), do: delete("user", req)
+  def create_user(req), do: create("user", req, __MODULE__)
+  def get_user(req), do: get("user", req, __MODULE__)
+  def update_user(req), do: update("user", req, __MODULE__)
+  def delete_user(req), do: delete("user", req, __MODULE__)
 end

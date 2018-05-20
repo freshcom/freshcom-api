@@ -1,5 +1,5 @@
 defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
-  def create_data_import(req), do: create("data_import", req)
+  def create_data_import(req), do: create("data_import", req, __MODULE__)
 end
