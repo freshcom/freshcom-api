@@ -24,8 +24,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> Product.Query.in_collection(filter[:collection_id])
     |> root_only_if_no_parent_id(filter[:parent_id])
     |> default_order_if_no_collection_id(filter[:collection_id])
-    |> Product.Query.for_account(account.id)
-    |> Product.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> for_account(account.id)
+    |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
@@ -39,7 +39,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> Product.Query.filter_by(filter)
     |> Product.Query.in_collection(filter[:collection_id])
     |> root_only_if_no_parent_id(filter[:parent_id])
-    |> Product.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
 
@@ -186,9 +186,9 @@ defmodule BlueJet.Catalogue.DefaultService do
 
     product_ids =
       ProductCollection.Query.default()
-      |> ProductCollection.Query.for_account(account.id)
-      |> ProductCollection.Query.paginate(size: batch_size, number: 1)
-      |> ProductCollection.Query.id_only()
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
+      |> id_only()
       |> Repo.all()
 
     ProductCollection.Query.default()
@@ -220,8 +220,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
     |> with_product_status(filter[:product_status])
-    |> ProductCollectionMembership.Query.for_account(account.id)
-    |> ProductCollectionMembership.Query.paginate(size: pagination[:size], number: pagination[:number])
+    |> for_account(account.id)
+    |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
@@ -233,7 +233,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
     |> with_product_status(filter[:product_status])
-    |> ProductCollectionMembership.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
 
@@ -278,7 +278,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     clauses = extract_clauses(identifiers)
 
     Price.Query.default()
-    |> Price.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Price.Query.with_order_quantity(identifiers[:order_quantity])
     |> Price.Query.filter_by(filter)
     |> Repo.get_by(clauses)

@@ -26,10 +26,6 @@ defmodule BlueJet.Storefront.OrderLineItem.Query do
     from oli in query, where: oli.auto_fulfill == true
   end
 
-  def for_account(query, account_id) do
-    from oli in query, where: oli.account_id == ^account_id
-  end
-
   def root() do
     from oli in OrderLineItem, where: is_nil(oli.parent_id)
   end

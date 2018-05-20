@@ -39,10 +39,6 @@ defmodule BlueJet.Crm.PointTransaction.Query do
     from(pt in query, where: pt.point_account_id == ^point_account_id)
   end
 
-  def for_account(query, account_id) do
-    from(pt in query, where: pt.account_id == ^account_id)
-  end
-
   def preloads({:point_account, point_account_preloads}, options) do
     [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
   end

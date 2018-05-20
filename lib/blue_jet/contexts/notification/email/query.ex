@@ -19,10 +19,6 @@ defmodule BlueJet.Notification.Email.Query do
     from e in Email
   end
 
-  def for_account(query, account_id) do
-    from e in query, where: e.account_id == ^account_id
-  end
-
   def search(query, keyword) do
     search(query, @searchable_fields, keyword)
   end

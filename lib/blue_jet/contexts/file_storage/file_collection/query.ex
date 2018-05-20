@@ -31,10 +31,6 @@ defmodule BlueJet.FileStorage.FileCollection.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from fc in query, where: fc.account_id == ^account_id
-  end
-
   def for_owner_type(owner_type) do
     from fc in FileCollection, where: fc.owner_type == ^owner_type
   end

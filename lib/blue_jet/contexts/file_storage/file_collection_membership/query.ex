@@ -17,10 +17,6 @@ defmodule BlueJet.FileStorage.FileCollectionMembership.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from fcm in query, where: fcm.account_id == ^account_id
-  end
-
   def for_collection(query, collection_id) do
     from fcm in query, where: fcm.collection_id == ^collection_id
   end

@@ -313,7 +313,7 @@ defmodule BlueJet.Identity.DefaultService do
     clauses = extract_clauses(identifiers)
 
     User.Query.default()
-    |> User.Query.for_account(account.id)
+    |> for_account(account.id)
     |> User.Query.filter_by(filter)
     |> Repo.get_by(clauses)
     |> update_user(fields, opts)
@@ -332,7 +332,7 @@ defmodule BlueJet.Identity.DefaultService do
     clauses = extract_clauses(identifiers)
 
     User.Query.default()
-    |> User.Query.for_account(account.id)
+    |> for_account(account.id)
     |> User.Query.filter_by(filter)
     |> Repo.get_by(clauses)
     |> delete_user(opts)
@@ -397,7 +397,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   def create_email_verification(%{ "token" => token }, opts = %{ account: account }) when map_size(opts) == 1 do
     User.Query.default()
-    |> User.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.get_by(email_verification_token: token)
     |> create_email_verification()
   end
@@ -472,7 +472,7 @@ defmodule BlueJet.Identity.DefaultService do
   def update_password(%{ reset_token: reset_token }, new_password, opts = %{ account: account }) when map_size(opts) == 1 do
     password =
       Password.Query.default()
-      |> Password.Query.for_account(account.id)
+      |> for_account(account.id)
       |> Repo.get_by(reset_token: reset_token)
 
     if password do

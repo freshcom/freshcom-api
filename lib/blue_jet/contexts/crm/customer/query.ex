@@ -29,10 +29,6 @@ defmodule BlueJet.Crm.Customer.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from(c in query, where: c.account_id == ^account_id)
-  end
-
   def with_id_or_code(query, id_or_code) do
     case Ecto.UUID.dump(id_or_code) do
       :error -> from(c in query, where: c.code == ^id_or_code)

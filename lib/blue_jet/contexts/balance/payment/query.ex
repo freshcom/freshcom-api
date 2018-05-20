@@ -31,10 +31,6 @@ defmodule BlueJet.Balance.Payment.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from p in query, where: p.account_id == ^account_id
-  end
-
   def for_target(query, target_type, target_id) do
     from p in query,
       where: p.target_type == ^target_type,

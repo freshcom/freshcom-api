@@ -83,8 +83,8 @@ defmodule BlueJet.FileStorage.DefaultService do
 
     files =
       File.Query.default()
-      |> File.Query.for_account(account.id)
-      |> File.Query.paginate(size: batch_size, number: 1)
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
       |> Repo.all()
 
     file_ids = Enum.map(files, fn(file) -> file.id end)
@@ -187,9 +187,9 @@ defmodule BlueJet.FileStorage.DefaultService do
 
     file_collection_ids =
       FileCollection.Query.default()
-      |> FileCollection.Query.for_account(account.id)
-      |> FileCollection.Query.paginate(size: batch_size, number: 1)
-      |> FileCollection.Query.id_only()
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
+      |> id_only()
       |> Repo.all()
 
     FileCollection.Query.default()

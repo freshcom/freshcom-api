@@ -23,7 +23,6 @@ defmodule BlueJet.Balance.DefaultServiceTest do
       assert error == :not_found
     end
 
-    @tag :focus
     test "when given settings and valid fields" do
       account = Repo.insert!(%Account{})
       settings = Repo.insert!(%Settings{

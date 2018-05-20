@@ -165,10 +165,10 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_status(changeset = %{ changes: %{ status: "active" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = Ecto.assoc(changeset.data, :items) |> Repo.aggregate(:count, :id)
-    active_item_count = from(p in items, where: p.status == "active") |> Repo.aggregate(:count, :id)
+    active_item_count = Query.filter_by(items, %{ status: "active" }) |> Repo.aggregate(:count, :id)
 
     prices = Ecto.assoc(changeset.data, :prices)
-    active_price_count = from(p in prices, where: p.status == "active") |> Repo.aggregate(:count, :id)
+    active_price_count = Price.Query.filter_by(prices, %{ status: "active"}) |> Repo.aggregate(:count, :id)
 
     cond do
       item_count == 0 || active_item_count != item_count -> add_error(changeset, :status, "Product combo must have all of its items set to active in order to be marked active.", code: "require_active_item")
@@ -183,7 +183,7 @@ defmodule BlueJet.Catalogue.Product do
 
   defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "simple") do
     prices = Ecto.assoc(changeset.data, :prices)
-    ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+    ai_price_count = Price.Query.filter_by(prices, %{ status: ["active", "internal"]}) |> Repo.aggregate(:count, :id)
 
     if ai_price_count > 0 do
       changeset
@@ -194,7 +194,7 @@ defmodule BlueJet.Catalogue.Product do
 
   defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "with_variants") do
     variants = Ecto.assoc(changeset.data, :variants)
-    active_or_internal_variants = from(p in variants, where: p.status in ["active", "internal"])
+    active_or_internal_variants = Query.filter_by(variants, %{ status: ["active", "internal"]})
     aiv_count = Repo.aggregate(active_or_internal_variants, :count, :id)
 
     case aiv_count do
@@ -206,10 +206,10 @@ defmodule BlueJet.Catalogue.Product do
   defp validate_status(changeset = %{ changes: %{ status: "internal" } }, "combo") do
     items = Ecto.assoc(changeset.data, :items)
     item_count = items |> Repo.aggregate(:count, :id)
-    aip_count = from(p in items, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+    aip_count = Query.filter_by(items, %{ status: ["active", "internal"]}) |> Repo.aggregate(:count, :id)
 
     prices = Ecto.assoc(changeset.data, :prices)
-    ai_price_count = from(p in prices, where: p.status in ["active", "internal"]) |> Repo.aggregate(:count, :id)
+    ai_price_count = Price.Query.filter_by(prices, %{ status: ["active", "internal"]}) |> Repo.aggregate(:count, :id)
 
     cond do
       item_count == 0 || aip_count != item_count -> add_error(changeset, :status, "Product combo must have all of its item set to active/internal in order to be marked internal.", code: "require_internal_item")

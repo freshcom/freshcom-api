@@ -6,7 +6,8 @@ defmodule BlueJet.Catalogue.Price.Query do
   @filterable_fields [
     :status,
     :label,
-    :kind
+    :kind,
+    :product_id
   ]
 
   @searchable_fields [
@@ -18,16 +19,16 @@ defmodule BlueJet.Catalogue.Price.Query do
     from p in Price
   end
 
-  def for_account(query, account_id) do
-    from p in query, where: p.account_id == ^account_id
-  end
-
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end
 
   def search(query, keyword, locale, default_locale) do
     search(query, @searchable_fields, keyword, locale, default_locale, Price.translatable_fields())
+  end
+
+  def except_id(query, id) do
+    from p in query, where: p.id != ^id
   end
 
   def for_product(product_id) do

@@ -57,6 +57,7 @@ defmodule BlueJet.Identity.RefreshToken do
   end
 
   defmodule Query do
+    import Ecto.Query
     alias BlueJet.Identity.RefreshToken
 
     def default() do

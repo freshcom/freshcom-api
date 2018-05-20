@@ -16,6 +16,7 @@ defmodule BlueJet do
   def service do
     quote do
       import BlueJet.Service.{Option, Preload, Helper, Default}
+      import BlueJet.Query
       alias BlueJet.Repo
     end
   end
@@ -23,8 +24,8 @@ defmodule BlueJet do
   def data do
     quote do
       import Ecto
-      import Ecto.{Changeset, Query}
-      import BlueJet.Validation
+      import Ecto.Changeset
+      import BlueJet.{Query, Validation}
 
       use Ecto.Schema
 
@@ -38,9 +39,8 @@ defmodule BlueJet do
   def query do
     quote do
       import Ecto.Query
-      import BlueJet.Query.{Search, Helper}
+      import BlueJet.Query.Helper
 
-      use BlueJet.Query.Common
       use BlueJet.Query.Preloads
     end
   end

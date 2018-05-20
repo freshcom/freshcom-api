@@ -29,10 +29,6 @@ defmodule BlueJet.FileStorage.File.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from f in query, where: f.account_id == ^account_id
-  end
-
   def uploaded(query) do
     from f in query, where: f.status == "uploaded"
   end

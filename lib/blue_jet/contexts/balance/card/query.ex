@@ -19,10 +19,6 @@ defmodule BlueJet.Balance.Card.Query do
     from c in Card
   end
 
-  def for_account(query, account_id) do
-    from c in query, where: c.account_id == ^account_id
-  end
-
   def search(query, keyword, locale, default_locale) do
     search(query, @searchable_fields, keyword, locale, default_locale, Card.translatable_fields())
   end

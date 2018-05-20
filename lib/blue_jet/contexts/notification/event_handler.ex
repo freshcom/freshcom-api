@@ -3,6 +3,7 @@ defmodule BlueJet.Notification.EventHandler do
   alias BlueJet.Notification.Service
   alias BlueJet.GlobalMailer
   alias BlueJet.Notification.{Trigger, Email}
+  import BlueJet.Query
 
   @behaviour BlueJet.EventHandler
 
@@ -50,7 +51,7 @@ defmodule BlueJet.Notification.EventHandler do
   def handle_event(event, data = %{ account: account }) when not is_nil(account) do
     triggers =
       Trigger.Query.default()
-      |> Trigger.Query.for_account(account.id)
+      |> for_account(account.id)
       |> Trigger.Query.filter_by(%{ event: event })
       |> Repo.all()
 

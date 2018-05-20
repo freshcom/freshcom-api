@@ -18,10 +18,6 @@ defmodule BlueJet.Goods.Unlockable.Query do
     from u in Unlockable
   end
 
-  def for_account(query, account_id) do
-    from u in query, where: u.account_id == ^account_id
-  end
-
   def search(query, keyword, locale, default_locale) do
     search(query, @searchable_fields, keyword, locale, default_locale, Unlockable.translatable_fields())
   end

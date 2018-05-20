@@ -106,15 +106,15 @@ defmodule BlueJet.Identity.Account do
 
   def process(account = %{ mode: "test" }, %{ action: :reset }) do
     AccountMembership.Query.default()
-    |> AccountMembership.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.delete_all()
 
     User.Query.default()
-    |> User.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.delete_all()
 
     PhoneVerificationCode.Query.default()
-    |> PhoneVerificationCode.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.delete_all()
   end
 

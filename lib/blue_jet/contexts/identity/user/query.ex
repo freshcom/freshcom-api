@@ -20,14 +20,6 @@ defmodule BlueJet.Identity.User.Query do
     from u in query, where: is_nil(u.account_id)
   end
 
-  def for_account(query, nil) do
-    from u in query, where: is_nil(u.account_id)
-  end
-
-  def for_account(query, account_id) do
-    from u in query, where: u.account_id == ^account_id
-  end
-
   def member_of_account(query, account_id) do
     from u in query,
       join: ac in AccountMembership, on: ac.user_id == u.id,

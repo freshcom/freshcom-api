@@ -20,10 +20,6 @@ defmodule BlueJet.Catalogue.Product.Query do
     from p in Product
   end
 
-  def for_account(query, account_id) do
-    from p in query, where: p.account_id == ^account_id
-  end
-
   def default_order(query) do
     from p in query, order_by: [desc: p.updated_at]
   end

@@ -20,10 +20,6 @@ defmodule BlueJet.Notification.Trigger.Query do
     from t in Trigger
   end
 
-  def for_account(query, account_id) do
-    from t in query, where: t.account_id == ^account_id
-  end
-
   def search(query, keyword) do
     search(query, @searchable_fields, keyword)
   end

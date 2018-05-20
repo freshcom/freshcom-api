@@ -31,14 +31,10 @@ defmodule BlueJet.Storefront.Order.Query do
     filter_by(query, filter, @filterable_fields)
   end
 
-  def for_account(query, account_id) do
-    from o in query, where: o.account_id == ^account_id
-  end
-
   def preloads({:root_line_items, root_line_item_preloads}, options) do
     query =
     OrderLineItem.Query.root()
-    |> OrderLineItem.Query.order_by([desc: :sort_index, asc: :inserted_at])
+    |> order_by([desc: :sort_index, asc: :inserted_at])
 
     [root_line_items: {query, OrderLineItem.Query.preloads(root_line_item_preloads, options)}]
   end

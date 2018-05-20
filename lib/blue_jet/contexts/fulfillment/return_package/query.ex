@@ -17,10 +17,6 @@ defmodule BlueJet.Fulfillment.ReturnPackage.Query do
     from fp in ReturnPackage
   end
 
-  def for_account(query, account_id) do
-    from fp in query, where: fp.account_id == ^account_id
-  end
-
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end

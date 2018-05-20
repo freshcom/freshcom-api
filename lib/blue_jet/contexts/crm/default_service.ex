@@ -53,7 +53,7 @@ defmodule BlueJet.Crm.DefaultService do
     primary_identifiers = Map.take(identifiers, [:id, :code, :user_id, :status])
 
     Customer.Query.default()
-    |> Customer.Query.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.get_by(primary_identifiers)
     |> Customer.match_by(identifiers)
     |> preload(preloads[:path], preloads[:opts])

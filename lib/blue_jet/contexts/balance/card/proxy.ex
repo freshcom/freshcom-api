@@ -2,8 +2,9 @@ defmodule BlueJet.Balance.Card.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.Balance.StripeClient
-  alias BlueJet.Card
+  alias BlueJet.Balance.Card
 
+  @spec update_stripe_card(Card.t, map) :: {:ok, map} | {:error, map}
   def update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
     account = get_account(card)
     StripeClient.post("/customers/#{stripe_customer_id}/sources/#{stripe_card_id}", fields, mode: account.mode)
@@ -16,7 +17,7 @@ defmodule BlueJet.Balance.Card.Proxy do
 
     case response do
       {:error, stripe_errors} ->
-        response = %{ errors: [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }] }
+        response = %{ errors: [source: {stripe_errors["error"]["message"], code: stripe_errors["error"]["code"]}] }
         {:error, response}
 
       other -> other

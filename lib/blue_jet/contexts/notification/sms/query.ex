@@ -18,10 +18,6 @@ defmodule BlueJet.Notification.Sms.Query do
     from s in Sms
   end
 
-  def for_account(query, account_id) do
-    from s in query, where: s.account_id == ^account_id
-  end
-
   def search(query, keyword) do
     search(query, @searchable_fields, keyword)
   end

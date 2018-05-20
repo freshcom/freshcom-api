@@ -1,5 +1,6 @@
 defmodule BlueJet.Service.Default do
   alias BlueJet.Repo
+  import BlueJet.Query
   import BlueJet.Service.{Option, Preload, Helper}
 
   def list(type, fields, opts) do
@@ -12,9 +13,9 @@ defmodule BlueJet.Service.Default do
     query_module.default()
     |> query_module.search(fields[:search], opts[:locale], account.default_locale)
     |> query_module.filter_by(filter)
-    |> query_module.for_account(account.id)
-    |> query_module.paginate(size: pagination[:size], number: pagination[:number])
-    |> query_module.order_by(fields[:sort] || [desc: :updated_at])
+    |> for_account(account.id)
+    |> paginate(size: pagination[:size], number: pagination[:number])
+    |> sort_by(fields[:sort] || [desc: :updated_at])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])
   end
@@ -27,7 +28,7 @@ defmodule BlueJet.Service.Default do
     query_module.default()
     |> query_module.search(fields[:search], opts[:locale], account.default_locale)
     |> query_module.filter_by(filter)
-    |> query_module.for_account(account.id)
+    |> for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
 
@@ -55,7 +56,7 @@ defmodule BlueJet.Service.Default do
     query_module = Module.concat([type, Query])
 
     query_module.default()
-    |> query_module.for_account(account.id)
+    |> for_account(account.id)
     |> query_module.filter_by(filter)
     |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
@@ -97,8 +98,8 @@ defmodule BlueJet.Service.Default do
 
     data_ids =
       query_module.default()
-      |> query_module.for_account(account.id)
-      |> query_module.paginate(size: batch_size, number: 1)
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
       |> query_module.id_only()
       |> Repo.all()
 

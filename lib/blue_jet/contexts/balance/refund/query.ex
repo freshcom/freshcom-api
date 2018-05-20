@@ -23,10 +23,6 @@ defmodule BlueJet.Balance.Refund.Query do
     from r in Refund
   end
 
-  def for_account(query, account_id) do
-    from r in query, where: r.account_id == ^account_id
-  end
-
   def search(query, keyword, locale, default_locale) do
     search(query, @searchable_fields, keyword, locale, default_locale, Refund.translatable_fields())
   end

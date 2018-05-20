@@ -3,10 +3,6 @@ defmodule BlueJet.Crm.PointAccount.Query do
 
   alias BlueJet.Crm.{PointAccount, PointTransaction}
 
-  def for_account(query, account_id) do
-    from(pa in query, where: pa.account_id == ^account_id)
-  end
-
   def for_customer(query, customer_id) do
     from pa in query, where: pa.customer_id == ^customer_id
   end

@@ -12,7 +12,7 @@ defmodule BlueJet.Catalogue.Price do
 
   alias Decimal, as: D
   alias BlueJet.Catalogue.Product
-  alias __MODULE__.Proxy
+  alias __MODULE__.{Proxy, Query}
 
   schema "prices" do
     field :account_id, Ecto.UUID
@@ -103,8 +103,14 @@ defmodule BlueJet.Catalogue.Price do
     product_id = get_field(changeset, :product_id)
 
     other_active_prices = cond do
-      price_id && product_id -> from(p in __MODULE__, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status == "active")
-      !price_id && product_id -> from(p in __MODULE__, where: p.product_id == ^product_id, where: p.status == "active")
+      price_id && product_id ->
+        Query.default()
+        |> Query.filter_by(%{ product_id: product_id, status: "active" })
+        |> Query.except_id(price_id)
+
+      !price_id && product_id ->
+        Query.default()
+        |> Query.filter_by(%{ product_id: product_id, status: "active" })
     end
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
@@ -118,7 +124,11 @@ defmodule BlueJet.Catalogue.Price do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
-    other_active_or_internal_prices = from(p in __MODULE__, where: p.product_id == ^product_id, where: p.id != ^price_id, where: p.status in ["active", "internal"])
+    other_active_or_internal_prices =
+      Query.default()
+      |> Query.filter_by(%{ product_id: product_id, status: ["active", "internal"] })
+      |> Query.except_id(price_id)
+
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do

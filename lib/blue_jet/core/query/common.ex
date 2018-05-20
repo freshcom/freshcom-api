@@ -1,6 +1,10 @@
 defmodule BlueJet.Query.Common do
   def common do
     quote do
+      def for_account(query, account_id) do
+        from q in query, where: q.account_id == ^account_id
+      end
+
       def order_by(query, order) do
         from q in query, order_by: ^order
       end

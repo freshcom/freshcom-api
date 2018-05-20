@@ -12,10 +12,6 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
     from pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index]
   end
 
-  def for_account(query, account_id) do
-    from pcm in query, where: pcm.account_id == ^account_id
-  end
-
   def filter_by(query, filter) do
     filter_by(query, filter, @filterable_fields)
   end
