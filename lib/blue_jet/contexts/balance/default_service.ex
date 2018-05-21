@@ -24,7 +24,6 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def update_settings(nil, _, _), do: {:error, :not_found}
-
   def update_settings(settings, fields, opts) do
     account = extract_account(opts)
 
@@ -56,19 +55,19 @@ defmodule BlueJet.Balance.DefaultService do
     |> update_settings(fields, opts)
   end
 
+  def delete_settings(opts) do
+    account_id = extract_account_id(opts)
+
+    settings = Repo.get_by(Settings, account_id: account_id)
+    delete_settings(settings, opts)
+  end
+
   def delete_settings(settings = %Settings{}, _) do
     with {:ok, settings} <- Repo.delete(settings) do
       {:ok, settings}
     else
       other -> other
     end
-  end
-
-  def delete_settings(opts) do
-    account_id = extract_account_id(opts)
-
-    settings = Repo.get_by(Settings, account_id: account_id)
-    delete_settings(settings, opts)
   end
 
   #
@@ -83,7 +82,6 @@ defmodule BlueJet.Balance.DefaultService do
   end
 
   def update_card(nil, _, _), do: {:error, :not_found}
-
   def update_card(card = %Card{}, fields, opts) do
     account = extract_account(opts)
     preloads = extract_preloads(opts, account)
@@ -171,11 +169,11 @@ defmodule BlueJet.Balance.DefaultService do
 
     statements =
       Multi.new()
-      |> Multi.run(:before_create, fn(_)->
+      |> Multi.run(:before_create, fn(_) ->
           emit_event("balance.payment.create.before", %{ changeset: changeset })
          end)
       |> Multi.run(:changeset, fn(_) ->
-          Payment.preprocess(changeset)
+          Payment.put_stripe_customer_id(changeset)
          end)
       |> Multi.run(:payment, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)

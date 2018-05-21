@@ -94,7 +94,7 @@ defmodule BlueJet.Balance.PaymentTest do
     end
   end
 
-  describe "preprocess/1" do
+  describe "put_stripe_customer_id/1" do
     test "when source is changed" do
       account = %Account{}
       owner = %{
@@ -122,10 +122,10 @@ defmodule BlueJet.Balance.PaymentTest do
           owner
          end)
       |> expect(:update_customer, fn(_, _, _) ->
-          {:ok, owner}
+          {:ok, Map.merge(owner, %{ stripe_customer_id: stripe_customer["id"] })}
          end)
 
-      {:ok, changeset} = Payment.preprocess(changeset)
+      {:ok, changeset} = Payment.put_stripe_customer_id(changeset)
 
       assert changeset.changes[:stripe_customer_id] == stripe_customer["id"]
     end

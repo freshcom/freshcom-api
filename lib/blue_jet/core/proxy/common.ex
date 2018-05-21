@@ -12,6 +12,8 @@ defmodule BlueJet.Proxy.Common do
         Map.get(data, :account) || identity_service.get_account(data)
       end
 
+      def put_account(nil), do: nil
+
       def put_account(data) do
         %{ data | account: get_account(data) }
       end

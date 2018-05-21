@@ -16,8 +16,6 @@ defmodule BlueJet.Balance.Card.Proxy do
   end
 
   def sync_to_stripe_card(card) do
-    account = get_account(card)
-
     fields = %{
       exp_month: card.exp_month,
       exp_year: card.exp_year,

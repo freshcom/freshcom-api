@@ -26,14 +26,4 @@ defmodule BlueJet.Balance.Card.Query do
   def except_id(query, id) do
     from c in query, where: c.id != ^id
   end
-
-  def with_owner(query, owner_type, owner_id) do
-    from c in query,
-      where: c.owner_type == ^owner_type,
-      where: c.owner_id == ^owner_id
-  end
-
-  def with_status(query, status) do
-    from c in query, where: c.status == ^status
-  end
 end

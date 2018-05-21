@@ -151,7 +151,7 @@ defmodule BlueJet.Balance.Refund do
       refund = sync_with_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
 
       Repo.get(Payment, refund.payment_id)
-      |> Payment.sync_with_refund(refund)
+      |> Payment.sync_from_refund(refund)
 
       {:ok, refund}
     else
@@ -162,7 +162,7 @@ defmodule BlueJet.Balance.Refund do
   def process(refund, %{ action: :insert }) do
     refund = Repo.preload(refund, :payment)
     payment = refund.payment
-    Payment.sync_with_refund(payment, refund)
+    Payment.sync_from_refund(payment, refund)
 
     {:ok, refund}
   end

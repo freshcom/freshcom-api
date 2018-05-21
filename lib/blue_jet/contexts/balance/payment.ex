@@ -11,7 +11,6 @@ defmodule BlueJet.Balance.Payment do
   alias Ecto.Changeset
 
   alias BlueJet.Balance.{Card, Refund, Settings}
-  alias BlueJet.Balance.StripeClient
   alias BlueJet.Balance.Payment.Proxy
 
   schema "payments" do
@@ -29,6 +28,7 @@ defmodule BlueJet.Balance.Payment do
     field :amount_cents, :integer
     field :refunded_amount_cents, :integer, default: 0
     field :gross_amount_cents, :integer, default: 0
+    field :destination_amount_cents, :integer, virtual: true
 
     field :processor_fee_cents, :integer, default: 0
     field :refunded_processor_fee_cents, :integer, default: 0
@@ -98,7 +98,7 @@ defmodule BlueJet.Balance.Payment do
     __MODULE__.__trans__(:fields)
   end
 
-  defp required_fields(changeset) do
+  def required_fields(changeset) do
     status = get_field(changeset, :status)
     gateway = get_field(changeset, :gateway)
     common = [:status, :gateway, :amount_cents]
@@ -111,18 +111,7 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
-  #
-  # MARK: Validate
-  #
-  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
-    authorized_amount_cents = get_field(changeset, :amount_cents)
-    case capture_amount_cents > authorized_amount_cents do
-      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", code: "cannot_be_gt_authorized_amount")
-      _ -> changeset
-    end
-  end
-  defp validate_capture_amount_cents(changeset), do: changeset
-
+  @spec validate(Changeset.t) :: Changeset.t
   def validate(changeset = %{ action: :delete }) do
     gateway = get_field(changeset, :gateway)
 
@@ -139,29 +128,17 @@ defmodule BlueJet.Balance.Payment do
     |> validate_capture_amount_cents()
   end
 
-  #
-  # MARK: Changeset
-  #
-  defp put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
-    refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
-    put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
+  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
+    authorized_amount_cents = get_field(changeset, :amount_cents)
+    case capture_amount_cents > authorized_amount_cents do
+      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", code: "cannot_be_gt_authorized_amount")
+      _ -> changeset
+    end
   end
 
-  defp put_gross_amount_cents(changeset), do: changeset
+  defp validate_capture_amount_cents(changeset), do: changeset
 
-  defp put_net_amount_cents(changeset = %{ changes: %{ amount_cents: _ } }) do
-    gross_amount_cents = get_field(changeset, :gross_amount_cents)
-    processor_fee_cents = get_field(changeset, :processor_fee_cents)
-    refunded_processor_fee_cents = get_field(changeset, :refunded_processor_fee_cents)
-    freshcom_fee_cents = get_field(changeset, :freshcom_fee_cents)
-    refunded_freshcom_fee_cents = get_field(changeset, :refunded_freshcom_fee_cents)
-    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - freshcom_fee_cents + refunded_freshcom_fee_cents
-
-    put_change(changeset, :net_amount_cents, net_amount_cents)
-  end
-
-  defp put_net_amount_cents(changeset), do: changeset
-
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
   def changeset(payment, :insert, params) do
     payment
     |> cast(params, writable_fields())
@@ -189,28 +166,28 @@ defmodule BlueJet.Balance.Payment do
     |> validate()
   end
 
-  #
-  # MARK: Reader
-  #
-  def get_destination_amount_cents(payment, balance_settings) do
-    payment.amount_cents - get_processor_fee_cents(payment, balance_settings) - get_freshcom_fee_cents(payment, balance_settings)
+  defp put_gross_amount_cents(changeset = %{ changes: %{ amount_cents: amount_cents } }) do
+    refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
+    put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
   end
 
-  def get_processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, balance_settings) do
-    variable_rate = balance_settings.stripe_variable_fee_percentage |> D.div(D.new(100))
-    variable_fee_cents = D.new(amount_cents) |> D.mult(variable_rate) |> D.round() |> D.to_integer
-    variable_fee_cents + balance_settings.stripe_fixed_fee_cents
+  defp put_gross_amount_cents(changeset), do: changeset
+
+  defp put_net_amount_cents(changeset = %{ changes: %{ amount_cents: _ } }) do
+    gross_amount_cents = get_field(changeset, :gross_amount_cents)
+    processor_fee_cents = get_field(changeset, :processor_fee_cents)
+    refunded_processor_fee_cents = get_field(changeset, :refunded_processor_fee_cents)
+    freshcom_fee_cents = get_field(changeset, :freshcom_fee_cents)
+    refunded_freshcom_fee_cents = get_field(changeset, :refunded_freshcom_fee_cents)
+    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - freshcom_fee_cents + refunded_freshcom_fee_cents
+
+    put_change(changeset, :net_amount_cents, net_amount_cents)
   end
 
-  def get_freshcom_fee_cents(%{ amount_cents: amount_cents }, balance_settings) do
-    rate = balance_settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
-    D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
-  end
+  defp put_net_amount_cents(changeset), do: changeset
 
-  #
-  # MARK: Writer
-  #
-  def sync_with_refund(payment, refund) do
+  @spec sync_from_refund(__MODULE__.t, Refund.t) :: __MODULE__.t
+  def sync_from_refund(payment, refund) do
     refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
     refunded_processor_fee_cents = payment.refunded_processor_fee_cents + refund.processor_fee_cents
     refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
@@ -244,42 +221,44 @@ defmodule BlueJet.Balance.Payment do
     {:ok, payment}
   end
 
-  def put_stripe_customer_id(changeset, nil, nil), do: changeset
+  @doc """
+  Add the Stripe customer ID from the payment owner to the changeset.
 
-  def put_stripe_customer_id(changeset, owner_id, owner_type) do
+  If the owner does not have a corresponding Stripe customer ID yet, then a
+  Stripe customer will be created for the owner and the newly created
+  Stripe customer ID will be added.
+  """
+  @spec put_stripe_customer_id(Changeset.t) :: {:ok, Changeset.t} | {:error, map}
+  def put_stripe_customer_id(%{ changes: %{ source: _ } } = changeset) do
     account = get_field(changeset, :account)
-
-    owner =
-      Proxy.get_owner(%{ account: account, owner_id: owner_id, owner_type: owner_type })
-      |> Map.put(:account, account)
-
-    stripe_customer_id = if owner.stripe_customer_id do
-      owner.stripe_customer_id
-    else
-      {:ok, stripe_customer} = create_stripe_customer(owner, owner_type)
-      {:ok, _} = Proxy.update_owner(%{
-        owner_type: owner_type,
-        owner: owner,
-        account: account,
-      }, %{
-        stripe_customer_id: stripe_customer["id"]
-      })
-
-      stripe_customer["id"]
-    end
-
-    put_change(changeset, :stripe_customer_id, stripe_customer_id)
-  end
-
-  def preprocess(changeset = %{ changes: %{ source: _ } }) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 
-    changeset = put_stripe_customer_id(changeset, owner_id, owner_type)
+    owner =
+      %{ account: account, owner_id: owner_id, owner_type: owner_type }
+      |> Proxy.get_owner()
+
+    changeset = put_stripe_customer_id(changeset, owner)
     {:ok, changeset}
   end
 
-  def preprocess(changeset), do: {:ok, changeset}
+  def put_stripe_customer_id(changeset), do: changeset
+
+  defp put_stripe_customer_id(changeset, nil), do: changeset
+
+  defp put_stripe_customer_id(changeset, %{ stripe_customer_id: nil } = owner) do
+    owner_type = get_field(changeset, :owner_type)
+
+    with {:ok, stripe_customer} <- Proxy.create_stripe_customer(owner, owner_type),
+         {:ok, owner} <- Proxy.update_owner(owner_type, owner, %{ stripe_customer_id: stripe_customer["id"] })
+    do
+      put_change(changeset, :stripe_customer_id, owner.stripe_customer_id)
+    end
+  end
+
+  defp put_stripe_customer_id(changeset, owner) do
+    put_change(changeset, :stripe_customer_id, owner.stripe_customer_id)
+  end
 
   @doc """
   Process the given payment using the corresponding gateway and processor.
@@ -292,46 +271,27 @@ defmodule BlueJet.Balance.Payment do
   """
   @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, map}
   def process(
-    payment = %{ gateway: "freshcom", source: nil },
+    %{ gateway: "freshcom", source: nil } = payment,
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
     send_paylink(payment)
   end
 
   def process(
-    payment = %{ gateway: "freshcom", capture: false },
+    %{ gateway: "freshcom" } = payment,
     %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
   ) do
-    with {:ok, payment} <- charge(payment) do
-      changeset = change(payment, status: "authorized")
-      {:ok, Repo.update!(changeset)}
-    else
-      other -> other
-    end
+    charge(payment)
   end
 
   def process(
-    payment = %{ gateway: "freshcom", capture: true },
-    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
+    %{ gateway: "freshcom" } = payment,
+    %{
+       data: %{ status: "authorized", capture_amount_cents: nil },
+       changes: %{ capture_amount_cents: _ }
+    }
   ) do
-    with {:ok, payment} <- charge(payment) do
-      changeset = change(payment, status: "paid")
-      {:ok, Repo.update!(changeset)}
-    else
-      other -> other
-    end
-  end
-
-  def process(
-    payment = %{ gateway: "freshcom" },
-    %{ data: %{ status: "authorized", capture_amount_cents: nil }, changes: %{ capture_amount_cents: _ } }
-  ) do
-    with {:ok, payment} <- capture(payment) do
-      changeset = change(payment, status: "paid")
-      {:ok, Repo.update!(changeset)}
-    else
-      other -> other
-    end
+    capture(payment)
   end
 
   def process(payment, _) do
@@ -339,15 +299,14 @@ defmodule BlueJet.Balance.Payment do
   end
 
   @doc """
-  Charge the given payment using its online processor.
+  Charge the given payment using its processor. If this payment is associated
+  with a owner and was not saved previously, it will be saved for that owner.
 
-  This function may change the payment in database.
-
-  Returns the charged payment.
+  Returns `{:ok, processed_payment}` if successful.
   """
   @spec charge(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
   def charge(payment = %__MODULE__{ processor: "stripe" }) do
-    balance_settings = Settings.for_account(payment.account_id)
+    settings = Settings.for_account(payment.account_id)
 
     stripe_data = %{ source: payment.source, customer_id: payment.stripe_customer_id }
     card_status = if payment.save_source, do: "saved_by_owner", else: "kept_by_system"
@@ -356,34 +315,44 @@ defmodule BlueJet.Balance.Payment do
       owner_id: payment.owner_id,
       owner_type: payment.owner_type
     }
+    payment = put_destination_amount_cents(payment, settings)
 
-    with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields, %{ account_id: payment.account_id, account: payment.account }),
-         {:ok, stripe_charge} <- create_stripe_charge(payment, source, balance_settings)
+    with {:ok, source} <- Card.keep_stripe_source(stripe_data, card_fields, %{ account: payment.account }),
+         {:ok, stripe_charge} <- Proxy.create_stripe_charge(payment, source, settings.stripe_user_id)
     do
-      sync_with_stripe_charge(payment, stripe_charge)
+      sync_from_stripe_charge(payment, stripe_charge)
     else
-      {:error, errors = %{ errors: _ }} -> {:error, errors}
+      {:error, %{ errors: _ } = errors} ->
+        {:error, errors}
 
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
+      {:error, stripe_errors} ->
+        {:error, format_stripe_errors(stripe_errors)}
     end
   end
 
-  @doc """
-  This function capture an authorized payment. This function does not check
-  whether the payment is actually authorized, it is up to the caller to make
-  sure the payment is a valid authorized payment before passing it to this function.
-  """
-  @spec capture(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
-  def capture(payment = %__MODULE__{ processor: "stripe" }) do
-    with {:ok, _} <- capture_stripe_charge(payment) do
-      {:ok, payment}
-    else
-      {:error, stripe_errors} -> {:error, format_stripe_errors(stripe_errors)}
-    end
+  defp get_destination_amount_cents(payment, settings) do
+    payment.amount_cents - get_processor_fee_cents(payment, settings) - get_freshcom_fee_cents(payment, settings)
   end
 
-  @spec sync_with_stripe_charge(__MODULE__.t, map) :: {:ok, Payment.t}
-  defp sync_with_stripe_charge(payment, stripe_charge = %{ "captured" => true, "amount" => amount_cents }) do
+  defp put_destination_amount_cents(payment, settings) do
+    Map.put(payment, :destination_amount_cents, get_destination_amount_cents(payment, settings))
+  end
+
+  defp get_processor_fee_cents(%{ amount_cents: amount_cents, processor: "stripe" }, settings) do
+    variable_rate = settings.stripe_variable_fee_percentage |> D.div(D.new(100))
+    variable_fee_cents = D.new(amount_cents) |> D.mult(variable_rate) |> D.round() |> D.to_integer
+    variable_fee_cents + settings.stripe_fixed_fee_cents
+  end
+
+  defp get_freshcom_fee_cents(%{ amount_cents: amount_cents }, settings) do
+    rate = settings.freshcom_transaction_fee_percentage |> D.div(D.new(100))
+    D.new(amount_cents) |> D.mult(rate) |> D.round() |> D.to_integer
+  end
+
+  defp sync_from_stripe_charge(
+    payment,
+    %{ "captured" => true, "amount" => amount_cents } = stripe_charge
+  ) do
     processor_fee_cents = stripe_charge["balance_transaction"]["fee"]
     freshcom_fee_cents = stripe_charge["amount"] - stripe_charge["transfer"]["amount"] - processor_fee_cents
     gross_amount_cents = amount_cents - payment.refunded_amount_cents
@@ -406,57 +375,51 @@ defmodule BlueJet.Balance.Payment do
     {:ok, payment}
   end
 
-  defp sync_with_stripe_charge(payment, %{ "captured" => false, "id" => stripe_charge_id, "amount" => authorized_amount_cents }) do
+  defp sync_from_stripe_charge(
+    payment,
+    %{ "captured" => false, "id" => stripe_charge_id, "amount" => authorized_amount_cents }
+  ) do
     payment =
       payment
-      |> change(stripe_charge_id: stripe_charge_id, status: "authorized", authorized_amount_cents: authorized_amount_cents)
+      |> change(
+          stripe_charge_id: stripe_charge_id,
+          status: "authorized",
+          authorized_amount_cents: authorized_amount_cents
+         )
       |> Repo.update!()
 
     {:ok, payment}
   end
 
-  @spec create_stripe_customer(__MODULE__.t, String.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_customer(owner, owner_type) do
-    account = Proxy.get_account(owner)
-    StripeClient.post("/customers", %{ email: owner.email, metadata: %{ fc_id: owner.id, fc_type: owner_type, fc_name: owner.name } }, mode: account.mode)
-  end
+  @doc """
+  This function capture an authorized payment. This function does not check
+  whether the payment is actually authorized, it is up to the caller to make
+  sure the payment is a valid authorized payment before passing it to this function.
+  """
+  @spec capture(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
+  def capture(%{ processor: "stripe" } = payment) do
+    with {:ok, _} <- Proxy.capture_stripe_charge(payment) do
+      payment =
+        payment
+        |> change(status: "paid")
+        |> Repo.update!()
 
-  @spec create_stripe_charge(__MODULE__.t, String.t, Settings.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_charge(
-    payment = %{ capture: capture, stripe_customer_id: stripe_customer_id },
-    source,
-    balance_settings
-  ) do
-    destination_amount_cents = get_destination_amount_cents(payment, balance_settings)
-
-    stripe_request = %{
-      amount: payment.amount_cents,
-      source: source,
-      capture: capture,
-      currency: "CAD",
-      metadata: %{ fc_payment_id: payment.id, fc_account_id: payment.account_id },
-      destination: %{ account: balance_settings.stripe_user_id, amount: destination_amount_cents },
-      expand: ["transfer", "balance_transaction"]
-    }
-
-    stripe_request = if stripe_customer_id do
-      Map.put(stripe_request, :customer, stripe_customer_id)
+      {:ok, payment}
     else
-      stripe_request
+      {:error, stripe_errors} ->
+        {:error, format_stripe_errors(stripe_errors)}
+
+      other ->
+        other
     end
-
-    account = Proxy.get_account(payment)
-    StripeClient.post("/charges", stripe_request, mode: account.mode)
-  end
-
-  @spec capture_stripe_charge(__MODULE__.t) :: {:ok, map} | {:error, map}
-  defp capture_stripe_charge(payment) do
-    account = Proxy.get_account(payment)
-    StripeClient.post("/charges/#{payment.stripe_charge_id}/capture", %{ amount: payment.capture_amount_cents }, mode: account.mode)
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
-    %{ errors: [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }] }
+    %{
+      errors: [
+        source: {stripe_errors["error"]["message"], code: stripe_errors["error"]["code"]}
+      ]
+    }
   end
 
   defp format_stripe_errors(stripe_errors), do: stripe_errors
