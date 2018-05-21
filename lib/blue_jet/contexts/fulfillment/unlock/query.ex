@@ -1,24 +1,16 @@
 defmodule BlueJet.Fulfillment.Unlock.Query do
   use BlueJet, :query
-
-  alias BlueJet.Fulfillment.Unlock
-
-  @filterable_fields [
+  use BlueJet.Query.Search, for: []
+  use BlueJet.Query.Filter, for: [
     :id,
     :customer_id,
     :unlockable_id
   ]
 
+  alias BlueJet.Fulfillment.Unlock
+
   def default() do
     from u in Unlock
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, [], keyword, locale, default_locale, Unlock.translatable_fields())
   end
 
   def preloads(_, _) do

@@ -1,19 +1,14 @@
 defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
   use BlueJet, :query
-
-  alias BlueJet.Catalogue.{Product, ProductCollectionMembership}
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :collection_id,
     :product_id
   ]
 
+  alias BlueJet.Catalogue.{Product, ProductCollectionMembership}
+
   def default() do
     from pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index]
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def for_collection(query, collection_id) do

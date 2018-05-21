@@ -4,6 +4,31 @@ defmodule BlueJet.Balance.Card.Proxy do
   alias BlueJet.Balance.StripeClient
   alias BlueJet.Balance.Card
 
+  @spec sync_to_stripe_card(Card.t) :: {:ok, map} | {:error, map}
+  def sync_to_stripe_card(card = %{ stripe_card_id: nil, source: source }) when not is_nil(source) do
+    create_stripe_card(card, %{
+      status: card.status,
+      account_id: card.account_id,
+      card_id: card.id,
+      owner_id: card.owner_id,
+      owner_type: card.owner_type
+    })
+  end
+
+  def sync_to_stripe_card(card) do
+    account = get_account(card)
+
+    fields = %{
+      exp_month: card.exp_month,
+      exp_year: card.exp_year,
+      metadata: %{
+        status: card.status
+      }
+    }
+
+    update_stripe_card(card, fields)
+  end
+
   @spec update_stripe_card(Card.t, map) :: {:ok, map} | {:error, map}
   def update_stripe_card(card = %{ stripe_card_id: stripe_card_id, stripe_customer_id: stripe_customer_id }, fields) do
     account = get_account(card)

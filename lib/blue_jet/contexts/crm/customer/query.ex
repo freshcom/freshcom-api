@@ -1,32 +1,22 @@
 defmodule BlueJet.Crm.Customer.Query do
   use BlueJet, :query
-
-  alias BlueJet.Crm.{Customer, PointAccount}
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :code,
     :name,
     :email,
     :phone_number,
     :id
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :status,
     :label
   ]
 
+  alias BlueJet.Crm.{Customer, PointAccount}
+
   def default() do
     from c in Customer
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Customer.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def with_id_or_code(query, id_or_code) do

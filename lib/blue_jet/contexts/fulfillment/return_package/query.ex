@@ -1,28 +1,18 @@
 defmodule BlueJet.Fulfillment.ReturnPackage.Query do
   use BlueJet, :query
-
-  alias BlueJet.Fulfillment.{ReturnPackage, ReturnItem}
-
-  @filterable_fields [
+  use BlueJet.Query.Search, for: [
+    :name,
+    :caption
+  ]
+  use BlueJet.Query.Filter, for: [
     :id,
     :order_id
   ]
 
-  @searchable_fields [
-    :name,
-    :caption,
-  ]
+  alias BlueJet.Fulfillment.{ReturnPackage, ReturnItem}
 
   def default() do
     from fp in ReturnPackage
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, ReturnPackage.translatable_fields())
   end
 
   def preloads({:items, item_preloads}, options) do

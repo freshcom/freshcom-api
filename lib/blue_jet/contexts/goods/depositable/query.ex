@@ -1,29 +1,19 @@
 defmodule BlueJet.Goods.Depositable.Query do
   use BlueJet, :query
-
-  alias BlueJet.Goods.Depositable
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :code,
-    :name
+    :name,
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :status,
     :label
   ]
 
+  alias BlueJet.Goods.Depositable
+
   def default() do
     from d in Depositable
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Depositable.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def preloads(_, _) do

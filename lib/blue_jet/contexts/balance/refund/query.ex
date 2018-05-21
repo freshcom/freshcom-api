@@ -1,13 +1,9 @@
 defmodule BlueJet.Balance.Refund.Query do
   use BlueJet, :query
-
-  alias BlueJet.Balance.Refund
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :code
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :status,
     :gateway,
     :processor,
@@ -19,15 +15,9 @@ defmodule BlueJet.Balance.Refund.Query do
     :target_type
   ]
 
+  alias BlueJet.Balance.Refund
+
   def default() do
     from r in Refund
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Refund.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 end

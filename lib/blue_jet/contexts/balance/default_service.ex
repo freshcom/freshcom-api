@@ -95,12 +95,12 @@ defmodule BlueJet.Balance.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:card, changeset)
-      |> Multi.run(:processed_card, fn(%{ card: card }) ->
-          Card.process(card, changeset)
+      |> Multi.run(:stripe_card, fn(%{ card: card }) ->
+          Card.Proxy.sync_to_stripe_card(card)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_card: card }} ->
+      {:ok, %{ card: card }} ->
         card = preload(card, preloads[:path], preloads[:opts])
         {:ok, card}
 
@@ -125,12 +125,15 @@ defmodule BlueJet.Balance.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:card, changeset)
-      |> Multi.run(:processed_card, fn(%{ card: card }) ->
-          Card.process(card, changeset)
+      |> Multi.run(:primary_card, fn(%{ card: card }) ->
+          Card.set_new_primary(card)
+         end)
+      |> Multi.run(:stripe_card, fn(%{ card: card }) ->
+          Card.Proxy.delete_stripe_card(card)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_card: card }} ->
+      {:ok, %{ card: card }} ->
         {:ok, card}
 
       {:error, _, changeset, _} ->

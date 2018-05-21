@@ -613,7 +613,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
       |> Repo.preload(:order)
       |> __MODULE__.balance()
 
-    line_item.order
+    %{ line_item.order | account: line_item.account }
     |> Order.balance()
     |> Order.refresh_payment_status()
 

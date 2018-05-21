@@ -1,17 +1,13 @@
 defmodule BlueJet.Storefront.Order.Query do
   use BlueJet, :query
-
-  alias BlueJet.Storefront.{Order, OrderLineItem}
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :name,
     :email,
     :phone_number,
     :code,
     :id
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :status,
     :customer_id,
@@ -19,16 +15,10 @@ defmodule BlueJet.Storefront.Order.Query do
     :fulfillment_status
   ]
 
+  alias BlueJet.Storefront.{Order, OrderLineItem}
+
   def default() do
     from o in Order
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Order.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def preloads({:root_line_items, root_line_item_preloads}, options) do

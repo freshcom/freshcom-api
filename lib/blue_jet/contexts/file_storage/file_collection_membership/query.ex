@@ -1,20 +1,15 @@
 defmodule BlueJet.FileStorage.FileCollectionMembership.Query do
   use BlueJet, :query
-
-  alias BlueJet.FileStorage.{FileCollectionMembership, File}
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :file_id,
     :collection_id
   ]
 
+  alias BlueJet.FileStorage.{FileCollectionMembership, File}
+
   def default() do
     from fcm in FileCollectionMembership
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def for_collection(query, collection_id) do

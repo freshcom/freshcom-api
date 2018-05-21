@@ -1,27 +1,17 @@
 defmodule BlueJet.Notification.SmsTemplate.Query do
   use BlueJet, :query
-
-  alias BlueJet.Notification.SmsTemplate
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :name,
     :to
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id
   ]
 
+  alias BlueJet.Notification.SmsTemplate
+
   def default() do
     from st in SmsTemplate
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, SmsTemplate.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def preloads(_, _) do

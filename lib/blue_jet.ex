@@ -29,6 +29,7 @@ defmodule BlueJet do
 
       use Ecto.Schema
 
+      alias Ecto.Changeset
       alias BlueJet.{Repo, Translation}
 
       @primary_key {:id, :binary_id, autogenerate: true}

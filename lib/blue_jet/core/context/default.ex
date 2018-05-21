@@ -37,6 +37,7 @@ defmodule BlueJet.Context.Default do
     policy_module = Module.concat([module, Policy])
     service_module = Module.concat([module, Service])
 
+
     with {:ok, args} <- policy_module.authorize(request, "create_" <> type),
          {:ok, resource} <- apply(service_module, create_function, [args[:fields], args[:opts]])
     do

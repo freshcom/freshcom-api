@@ -1,14 +1,10 @@
 defmodule BlueJet.Catalogue.Product.Query do
   use BlueJet, :query
-
-  alias BlueJet.Catalogue.{Product, ProductCollectionMembership, Price}
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :code,
     :name
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :status,
     :label,
@@ -16,20 +12,14 @@ defmodule BlueJet.Catalogue.Product.Query do
     :kind
   ]
 
+  alias BlueJet.Catalogue.{Product, ProductCollectionMembership, Price}
+
   def default() do
     from p in Product
   end
 
   def default_order(query) do
     from p in query, order_by: [desc: p.updated_at]
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Product.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def in_collection(query, nil), do: query

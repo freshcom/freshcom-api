@@ -1,19 +1,14 @@
 defmodule BlueJet.Identity.User.Query do
   use BlueJet, :query
-
-  alias BlueJet.Identity.{User, AccountMembership}
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :code,
     :email
   ]
 
+  alias BlueJet.Identity.{User, AccountMembership}
+
   def default() do
     from u in User
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def global(query) do

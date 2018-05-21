@@ -1,9 +1,6 @@
 defmodule BlueJet.Fulfillment.ReturnItem.Query do
   use BlueJet, :query
-
-  alias BlueJet.Fulfillment.ReturnItem
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :source_type,
     :source_id,
@@ -13,12 +10,10 @@ defmodule BlueJet.Fulfillment.ReturnItem.Query do
     :status
   ]
 
+  alias BlueJet.Fulfillment.ReturnItem
+
   def default() do
     from fli in ReturnItem
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def preloads(_, _) do

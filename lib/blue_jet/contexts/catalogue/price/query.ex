@@ -1,30 +1,20 @@
 defmodule BlueJet.Catalogue.Price.Query do
   use BlueJet, :query
-
-  alias BlueJet.Catalogue.{Product, Price}
-
-  @filterable_fields [
+  use BlueJet.Query.Search, for: [
+    :name,
+    :caption
+  ]
+  use BlueJet.Query.Filter, for: [
     :status,
     :label,
     :kind,
     :product_id
   ]
 
-  @searchable_fields [
-    :name,
-    :caption
-  ]
+  alias BlueJet.Catalogue.{Product, Price}
 
   def default() do
     from p in Price
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Price.translatable_fields())
   end
 
   def except_id(query, id) do

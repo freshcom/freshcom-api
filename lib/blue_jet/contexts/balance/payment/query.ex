@@ -1,13 +1,9 @@
 defmodule BlueJet.Balance.Payment.Query do
   use BlueJet, :query
-
-  alias BlueJet.Balance.{Payment, Refund}
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :code
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :target_type,
     :target_id,
@@ -19,16 +15,10 @@ defmodule BlueJet.Balance.Payment.Query do
     :label
   ]
 
+  alias BlueJet.Balance.{Payment, Refund}
+
   def default() do
     from p in Payment
-  end
-
-  def search(query, keyword, locale, default_locale) do
-    search(query, @searchable_fields, keyword, locale, default_locale, Payment.translatable_fields())
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def for_target(query, target_type, target_id) do

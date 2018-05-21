@@ -7,6 +7,8 @@ defmodule BlueJet.Balance.CardTest do
   alias BlueJet.Balance.Card
   alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock}
 
+  setup :verify_on_exit!
+
   test "writable_fields/0" do
     assert Card.writable_fields() == [
       :label,
@@ -43,7 +45,6 @@ defmodule BlueJet.Balance.CardTest do
         owner_type: "Customer"
       })
 
-      verify!()
       assert changeset.changes[:primary] == true
     end
   end
@@ -96,8 +97,8 @@ defmodule BlueJet.Balance.CardTest do
         account_id: account.id
       })
 
-      verify!()
       card = Repo.get_by(Card, owner_id: owner_id, owner_type: "Customer")
+
       assert source == stripe_card_id
       assert card
       assert card.primary == true
@@ -142,9 +143,53 @@ defmodule BlueJet.Balance.CardTest do
       })
 
       card = Repo.get(Card, existing_card.id)
-      verify!()
+
       assert source == stripe_card_id
       assert card.status == "saved_by_owner"
+    end
+  end
+
+  describe "set_new_primary/1" do
+    test "when given card is not a primary card" do
+      card = %Card{ primary: false }
+      {:ok, result_card} = Card.set_new_primary(card)
+
+      assert result_card == card
+    end
+
+    test "when given card is primary and also the last card" do
+      account = Repo.insert!(%Account{})
+      card = Repo.insert!(%Card{
+        status: "saved_by_owner",
+        account_id: account.id,
+        primary: true
+      })
+
+      {:ok, result_card} = Card.set_new_primary(card)
+
+      assert result_card == card
+      assert result_card.primary
+    end
+
+    test "when given card is primary and not the last card" do
+      account = Repo.insert!(%Account{})
+      existing_primary = Repo.insert!(%Card{
+        status: "saved_by_owner",
+        account_id: account.id,
+        primary: true
+      })
+      new_primary = Repo.insert!(%Card{
+        status: "saved_by_owner",
+        account_id: account.id,
+        primary: false
+      })
+
+      {:ok, result_card} = Card.set_new_primary(existing_primary)
+      existing_primary = Repo.get(Card, existing_primary.id)
+
+      assert result_card.id == new_primary.id
+      assert result_card.primary
+      assert existing_primary.primary == false
     end
   end
 end

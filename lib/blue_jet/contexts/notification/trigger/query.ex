@@ -1,14 +1,10 @@
 defmodule BlueJet.Notification.Trigger.Query do
   use BlueJet, :query
-
-  alias BlueJet.Notification.Trigger
-
-  @searchable_fields [
+  use BlueJet.Query.Search, for: [
     :name,
     :event
   ]
-
-  @filterable_fields [
+  use BlueJet.Query.Filter, for: [
     :id,
     :status,
     :event,
@@ -16,20 +12,10 @@ defmodule BlueJet.Notification.Trigger.Query do
     :action_type
   ]
 
+  alias BlueJet.Notification.Trigger
+
   def default() do
     from t in Trigger
-  end
-
-  def search(query, keyword) do
-    search(query, @searchable_fields, keyword)
-  end
-
-  def search(query, keyword, _, _) do
-    search(query, @searchable_fields, keyword)
-  end
-
-  def filter_by(query, filter) do
-    filter_by(query, filter, @filterable_fields)
   end
 
   def preloads(_, _) do
