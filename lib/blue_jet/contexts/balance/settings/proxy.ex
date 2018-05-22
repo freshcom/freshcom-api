@@ -10,7 +10,7 @@ defmodule BlueJet.Balance.Settings.Proxy do
   Currently this function only changes the `is_ready_for_live_transaction`
   attribuets of the `Account`.
   """
-  @spec sync_to_account(Settings.t)
+  @spec sync_to_account(Settings.t) :: {:ok, map} | {:error, map}
   def sync_to_account(settings) do
     account = get_account(settings)
     sync_to_account(settings, account)

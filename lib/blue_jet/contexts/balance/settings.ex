@@ -47,7 +47,7 @@ defmodule BlueJet.Balance.Settings do
     (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:stripe_auth_code]
   end
 
-  @spec changeset(__MODULE__, action, map) :: Changeset.t
+  @spec changeset(__MODULE__, atom, map) :: Changeset.t
   def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
