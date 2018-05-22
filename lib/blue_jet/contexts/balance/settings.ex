@@ -26,7 +26,7 @@ defmodule BlueJet.Balance.Settings do
     timestamps()
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -47,25 +47,31 @@ defmodule BlueJet.Balance.Settings do
     (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:stripe_auth_code]
   end
 
-  @spec changeset(__MODULE__, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__, atom, map) :: Changeset.t()
   def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
     |> put_stripe_data()
   end
 
-  defp put_stripe_data(changeset = %{ changes: %{ stripe_auth_code: stripe_auth_code }}) do
+  defp put_stripe_data(changeset = %{changes: %{stripe_auth_code: stripe_auth_code}}) do
     account = Proxy.get_account(changeset.data)
 
-    with {:ok, stripe_data} <- Proxy.create_stripe_access_token(stripe_auth_code, mode: account.mode) do
+    with {:ok, stripe_data} <-
+           Proxy.create_stripe_access_token(stripe_auth_code, mode: account.mode) do
       sync_from_stripe_data(changeset, stripe_data)
     else
       {:error, errors} ->
-        add_error(changeset, :stripe_auth_code, errors["error_description"], code: errors["error"])
+        add_error(
+          changeset,
+          :stripe_auth_code,
+          errors["error_description"],
+          code: errors["error"]
+        )
     end
   end
 
-  defp put_stripe_data(changeset = %{ changes: %{ stripe_user_id: _ } }) do
+  defp put_stripe_data(changeset = %{changes: %{stripe_user_id: _}}) do
     sync_from_stripe_data(changeset, %{})
   end
 
@@ -81,7 +87,7 @@ defmodule BlueJet.Balance.Settings do
     |> put_change(:stripe_scope, stripe_data["stripe_scope"])
   end
 
-  @spec for_account(String.t) :: __MODULE__.t
+  @spec for_account(String.t()) :: __MODULE__.t()
   def for_account(account_id) do
     Repo.get_by!(__MODULE__, account_id: account_id)
   end

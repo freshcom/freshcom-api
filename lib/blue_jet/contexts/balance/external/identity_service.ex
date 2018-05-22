@@ -2,7 +2,7 @@ defmodule BlueJet.Balance.IdentityService do
   @identity_service Application.get_env(:blue_jet, :balance)[:identity_service]
 
   @callback put_vas_data(map) :: map
-  @callback get_account(String.t | map) :: map
+  @callback get_account(String.t() | map) :: map
   @callback update_account(map, map, map) :: map
 
   @callback get_user(map, map) :: map

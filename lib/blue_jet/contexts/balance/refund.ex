@@ -1,9 +1,7 @@
 defmodule BlueJet.Balance.Refund do
   use BlueJet, :data
 
-  alias Decimal, as: D
   alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.{StripeClient, IdentityService}
   alias __MODULE__.Proxy
 
   schema "refunds" do
@@ -43,7 +41,7 @@ defmodule BlueJet.Balance.Refund do
     belongs_to :payment, Payment
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -64,7 +62,7 @@ defmodule BlueJet.Balance.Refund do
     [:caption, :description, :custom_data]
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(refund, :insert, params) do
     refund
     |> cast(params, castable_fields(:insert))
@@ -92,7 +90,7 @@ defmodule BlueJet.Balance.Refund do
     writable_fields() -- [:amount_cents]
   end
 
-  @spec validate(Changeset.t) :: Changeset.t
+  @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
@@ -112,7 +110,7 @@ defmodule BlueJet.Balance.Refund do
     end
   end
 
-  defp validate_amount_cents(changeset = %{ valid?: true }) do
+  defp validate_amount_cents(changeset = %{valid?: true}) do
     amount_cents = get_field(changeset, :amount_cents)
     account_id = get_field(changeset, :account_id)
     payment_id = get_field(changeset, :payment_id)
@@ -120,7 +118,12 @@ defmodule BlueJet.Balance.Refund do
 
     case amount_cents > payment.gross_amount_cents do
       true ->
-        add_error(changeset, :amount_cents, "Amount cannot be greater than the payment's gross amount", code: "cannot_be_gt_payment_gross_amount")
+        add_error(
+          changeset,
+          :amount_cents,
+          "Amount cannot be greater than the payment's gross amount",
+          code: "cannot_be_gt_payment_gross_amount"
+        )
 
       _ ->
         changeset
@@ -134,17 +137,22 @@ defmodule BlueJet.Balance.Refund do
     changeset
   end
 
-  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error. map}
-  def process(
-    %{ gateway: "freshcom" } = refund,
-    %{ data: %{ amount_cents: nil }, changes: %{ amount_cents: _ } }
-  ) do
+  @spec process(__MODULE__.t(), Changeset.t()) :: {:ok, __MODULE__.t()} | {:error.map()}
+  def process(%{gateway: "freshcom"} = refund, %{
+        data: %{amount_cents: nil},
+        changes: %{amount_cents: _}
+      }) do
     refund = Proxy.put_account(refund)
 
     with {:ok, stripe_refund} <- Proxy.create_stripe_refund(refund),
-         {:ok, stripe_transfer_reversal} <- Proxy.create_stripe_transfer_reversal(refund, stripe_refund)
-    do
-      refund = sync_from_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
+         {:ok, stripe_transfer_reversal} <-
+           Proxy.create_stripe_transfer_reversal(refund, stripe_refund) do
+      refund =
+        sync_from_stripe_refund_and_transfer_reversal(
+          refund,
+          stripe_refund,
+          stripe_transfer_reversal
+        )
 
       Payment
       |> Repo.get(refund.payment_id)
@@ -160,7 +168,7 @@ defmodule BlueJet.Balance.Refund do
     end
   end
 
-  def process(refund, %{ action: :insert }) do
+  def process(refund, %{action: :insert}) do
     Payment
     |> Repo.get(refund.payment_id)
     |> Payment.sync_from_refund(refund)
@@ -170,23 +178,34 @@ defmodule BlueJet.Balance.Refund do
 
   def process(refund, _), do: {:ok, refund}
 
-  defp sync_from_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal) do
+  defp sync_from_stripe_refund_and_transfer_reversal(
+         refund,
+         stripe_refund,
+         stripe_transfer_reversal
+       ) do
     processor_fee_cents = -stripe_refund["balance_transaction"]["fee"]
-    freshcom_fee_cents = refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
+
+    freshcom_fee_cents =
+      refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
 
     refund
     |> change(
-        stripe_refund_id: stripe_refund["id"],
-        stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
-        processor_fee_cents: processor_fee_cents,
-        freshcom_fee_cents: freshcom_fee_cents,
-        status: stripe_refund["status"]
-       )
+      stripe_refund_id: stripe_refund["id"],
+      stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
+      processor_fee_cents: processor_fee_cents,
+      freshcom_fee_cents: freshcom_fee_cents,
+      status: stripe_refund["status"]
+    )
     |> Repo.update!()
   end
 
   defp format_stripe_errors(stripe_errors = %{}) do
-    [source: { stripe_errors["error"]["message"], [code: stripe_errors["error"]["code"], full_error_message: true] }]
+    [
+      source:
+        {stripe_errors["error"]["message"],
+         [code: stripe_errors["error"]["code"], full_error_message: true]}
+    ]
   end
+
   defp format_stripe_errors(stripe_errors), do: stripe_errors
 end

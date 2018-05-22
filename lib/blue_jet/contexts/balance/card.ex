@@ -30,7 +30,7 @@ defmodule BlueJet.Balance.Card do
     timestamps()
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -59,7 +59,7 @@ defmodule BlueJet.Balance.Card do
     writable_fields() -- [:cardholder_name, :label]
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(card, :insert, params) do
     card
     |> cast(params, writable_fields())
@@ -90,19 +90,21 @@ defmodule BlueJet.Balance.Card do
     |> validate_required(required_fields())
   end
 
-  defp put_primary(c = %{ changes: %{ primary: true } }), do: c
-  defp put_primary(c = %{ changes: %{ primary: false } }), do: delete_change(c, :primary)
+  defp put_primary(c = %{changes: %{primary: true}}), do: c
+  defp put_primary(c = %{changes: %{primary: false}}), do: delete_change(c, :primary)
 
   defp put_primary(changeset) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 
-    existing_primary_card = Repo.get_by(__MODULE__,
-      owner_id: owner_id,
-      owner_type: owner_type,
-      status: "saved_by_owner",
-      primary: true
-    )
+    existing_primary_card =
+      Repo.get_by(
+        __MODULE__,
+        owner_id: owner_id,
+        owner_type: owner_type,
+        status: "saved_by_owner",
+        primary: true
+      )
 
     if !existing_primary_card do
       put_change(changeset, :primary, true)
@@ -126,12 +128,13 @@ defmodule BlueJet.Balance.Card do
 
   Returns `{:ok, stripe_card_id}` if successful.
   """
-  @spec keep_stripe_source(map, map, map) :: {:ok, String.t} | {:error, map}
+  @spec keep_stripe_source(map, map, map) :: {:ok, String.t()} | {:error, map}
   def keep_stripe_source(
-    stripe_data = %{ source: source, customer_id: stripe_customer_id },
-    fields,
-    opts
-  ) when not is_nil(stripe_customer_id) do
+        %{source: source, customer_id: stripe_customer_id} = stripe_data,
+        fields,
+        opts
+      )
+      when not is_nil(stripe_customer_id) do
     prefix =
       source
       |> String.split("_")
@@ -143,19 +146,19 @@ defmodule BlueJet.Balance.Card do
     end
   end
 
-  def keep_stripe_source(%{ source: source }, _, _), do: {:ok, source}
+  def keep_stripe_source(%{source: source}, _, _), do: {:ok, source}
 
   defp keep_stripe_token_as_card(
-    %{ source: token, customer_id: stripe_customer_id },
-    fields,
-    opts
-  ) when not is_nil(stripe_customer_id) do
-    account = Proxy.get_account(%{ account_id: opts[:account_id], account: opts[:account] })
+         %{source: token, customer_id: stripe_customer_id},
+         fields,
+         opts
+       )
+       when not is_nil(stripe_customer_id) do
+    account = Proxy.get_account(%{account_id: opts[:account_id], account: opts[:account]})
 
     with {:ok, token_object} <- Proxy.retrieve_stripe_token(token, mode: account.mode),
-         stripe_data <- %{ token_object: token_object, customer_id: stripe_customer_id },
-         {:ok, card} <- create_or_update_card(stripe_data, fields, %{ account: account })
-    do
+         stripe_data <- %{token_object: token_object, customer_id: stripe_customer_id},
+         {:ok, card} <- create_or_update_card(stripe_data, fields, %{account: account}) do
       {:ok, card.stripe_card_id}
     else
       other -> other
@@ -165,31 +168,32 @@ defmodule BlueJet.Balance.Card do
   defp keep_stripe_token_as_card(_, _, _), do: {:error, :stripe_customer_id_is_nil}
 
   defp create_or_update_card(
-    %{ token_object: token_object, customer_id: stripe_customer_id },
-    %{ status: status } = fields,
-    %{ account: account }
-  ) do
-    existing_card = Repo.get_by(__MODULE__,
-      account_id: account.id,
-      owner_id: fields[:owner_id],
-      owner_type: fields[:owner_type],
-      fingerprint: token_object["card"]["fingerprint"]
-    )
+         %{token_object: token_object, customer_id: stripe_customer_id},
+         fields,
+         %{account: account}
+       ) do
+    existing_card =
+      Repo.get_by(
+        __MODULE__,
+        account_id: account.id,
+        owner_id: fields[:owner_id],
+        owner_type: fields[:owner_type],
+        fingerprint: token_object["card"]["fingerprint"]
+      )
 
-    card_fields = Map.merge(fields, %{
-      account_id: account.id,
-      account: account,
-      stripe_customer_id: stripe_customer_id,
-      source: token_object["id"],
-    })
+    card_fields =
+      Map.merge(fields, %{
+        account_id: account.id,
+        account: account,
+        stripe_customer_id: stripe_customer_id,
+        source: token_object["id"]
+      })
 
     create_or_update_card(existing_card, card_fields)
   end
 
-  defp create_or_update_card(
-    %{ status: src_status } = existing_card,
-    %{ status: target_status }
-  ) when src_status == target_status do
+  defp create_or_update_card(%{status: src_status} = existing_card, %{status: target_status})
+       when src_status == target_status do
     {:ok, existing_card}
   end
 
@@ -223,7 +227,7 @@ defmodule BlueJet.Balance.Card do
     end
   end
 
-  @spec sync_from_stripe_card(__MODULE__.t, map) :: {:ok, __MODULE__.t} | {:error, map}
+  @spec sync_from_stripe_card(__MODULE__.t(), map) :: {:ok, __MODULE__.t()} | {:error, map}
   def sync_from_stripe_card(card, stripe_card) do
     changes = %{
       last_four_digit: stripe_card["last4"],
@@ -257,8 +261,8 @@ defmodule BlueJet.Balance.Card do
   `card` will be the new primary card, if nothing is changed then `card` will
   be the given card.
   """
-  @spec set_new_primary(__MODULE__.t) :: {:ok, __MODULE__.t} | {:error, map}
-  def set_new_primary(card = %{ primary: true }) do
+  @spec set_new_primary(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:error, map}
+  def set_new_primary(card = %{primary: true}) do
     filter = %{
       status: "saved_by_owner",
       owner_type: card.owner_type,
@@ -277,12 +281,12 @@ defmodule BlueJet.Balance.Card do
     if last_inserted_card do
       Query.default()
       |> for_account(card.account_id)
-      |> Query.filter_by(%{ owner_type: card.owner_type, owner_id: card.owner_id })
+      |> Query.filter_by(%{owner_type: card.owner_type, owner_id: card.owner_id})
       |> Repo.update_all(set: [primary: false])
 
       new_primary_card =
         last_inserted_card
-        |> change(%{ primary: true })
+        |> change(%{primary: true})
         |> Repo.update!()
 
       {:ok, new_primary_card}
@@ -291,5 +295,5 @@ defmodule BlueJet.Balance.Card do
     end
   end
 
-  def set_new_primary(card = %{ primary: false }), do: {:ok, card}
+  def set_new_primary(card = %{primary: false}), do: {:ok, card}
 end
