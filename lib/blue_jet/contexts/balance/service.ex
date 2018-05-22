@@ -1,4 +1,6 @@
 defmodule BlueJet.Balance.Service do
+  alias BlueJet.Balance.{Settings, Card, Payment, Refund}
+
   @service Application.get_env(:blue_jet, :balance)[:service]
 
   @callback create_settings(map) :: {:ok, Settings.t} | {:error, any}

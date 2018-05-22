@@ -1,8 +1,6 @@
 defmodule BlueJet.Balance.Card do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
-
   alias __MODULE__.{Query, Proxy}
 
   schema "cards" do
@@ -54,7 +52,7 @@ defmodule BlueJet.Balance.Card do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [:custom_data]
   end
 
   def required_fields() do

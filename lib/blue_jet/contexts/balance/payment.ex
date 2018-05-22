@@ -1,12 +1,6 @@
 defmodule BlueJet.Balance.Payment do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias Decimal, as: D
   alias Ecto.Changeset
 
@@ -95,48 +89,8 @@ defmodule BlueJet.Balance.Payment do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [:caption, :description, :custom_data]
   end
-
-  def required_fields(changeset) do
-    status = get_field(changeset, :status)
-    gateway = get_field(changeset, :gateway)
-    common = [:status, :gateway, :amount_cents]
-
-    cond do
-      gateway == "online" -> common ++ [:processor]
-      status == "pending" -> common
-      gateway == "offline" && status == "paid" -> common ++ [:method]
-      true -> common
-    end
-  end
-
-  @spec validate(Changeset.t) :: Changeset.t
-  def validate(changeset = %{ action: :delete }) do
-    gateway = get_field(changeset, :gateway)
-
-    if gateway == "freshcom" do
-      add_error(changeset, :gateway, "must be custom", [code: :must_be_custom])
-    else
-      changeset
-    end
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_capture_amount_cents()
-  end
-
-  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
-    authorized_amount_cents = get_field(changeset, :amount_cents)
-    case capture_amount_cents > authorized_amount_cents do
-      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", code: "cannot_be_gt_authorized_amount")
-      _ -> changeset
-    end
-  end
-
-  defp validate_capture_amount_cents(changeset), do: changeset
 
   @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
   def changeset(payment, :insert, params) do
@@ -185,6 +139,46 @@ defmodule BlueJet.Balance.Payment do
   end
 
   defp put_net_amount_cents(changeset), do: changeset
+
+  @spec validate(Changeset.t) :: Changeset.t
+  def validate(changeset = %{ action: :delete }) do
+    gateway = get_field(changeset, :gateway)
+
+    if gateway == "freshcom" do
+      add_error(changeset, :gateway, "must be custom", [code: :must_be_custom])
+    else
+      changeset
+    end
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_capture_amount_cents()
+  end
+
+  defp required_fields(changeset) do
+    status = get_field(changeset, :status)
+    gateway = get_field(changeset, :gateway)
+    common = [:status, :gateway, :amount_cents]
+
+    cond do
+      gateway == "online" -> common ++ [:processor]
+      status == "pending" -> common
+      gateway == "offline" && status == "paid" -> common ++ [:method]
+      true -> common
+    end
+  end
+
+  defp validate_capture_amount_cents(changeset = %{ data: %{ status: "authorized", gateway: "freshcom" }, changes: %{ capture_amount_cents: capture_amount_cents } }) do
+    authorized_amount_cents = get_field(changeset, :amount_cents)
+    case capture_amount_cents > authorized_amount_cents do
+      true -> add_error(changeset, :capture_amount_cents, "Capture amount cannot be greater than authorized amount", code: "cannot_be_gt_authorized_amount")
+      _ -> changeset
+    end
+  end
+
+  defp validate_capture_amount_cents(changeset), do: changeset
 
   @spec sync_from_refund(__MODULE__.t, Refund.t) :: __MODULE__.t
   def sync_from_refund(payment, refund) do

@@ -47,6 +47,7 @@ defmodule BlueJet.Balance.Settings do
     (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:stripe_auth_code]
   end
 
+  @spec changeset(__MODULE__, action, map) :: Changeset.t
   def changeset(struct, :update, params \\ %{}) do
     struct
     |> cast(params, writable_fields())
@@ -57,7 +58,7 @@ defmodule BlueJet.Balance.Settings do
     account = Proxy.get_account(changeset.data)
 
     with {:ok, stripe_data} <- Proxy.create_stripe_access_token(stripe_auth_code, mode: account.mode) do
-      sync_with_stripe_data(changeset, stripe_data)
+      sync_from_stripe_data(changeset, stripe_data)
     else
       {:error, errors} ->
         add_error(changeset, :stripe_auth_code, errors["error_description"], code: errors["error"])
@@ -65,12 +66,12 @@ defmodule BlueJet.Balance.Settings do
   end
 
   defp put_stripe_data(changeset = %{ changes: %{ stripe_user_id: _ } }) do
-    sync_with_stripe_data(changeset, %{})
+    sync_from_stripe_data(changeset, %{})
   end
 
   defp put_stripe_data(changeset), do: changeset
 
-  defp sync_with_stripe_data(changeset, stripe_data) do
+  defp sync_from_stripe_data(changeset, stripe_data) do
     changeset
     |> put_change(:stripe_user_id, stripe_data["stripe_user_id"])
     |> put_change(:stripe_livemode, stripe_data["stripe_livemode"])
@@ -80,6 +81,7 @@ defmodule BlueJet.Balance.Settings do
     |> put_change(:stripe_scope, stripe_data["stripe_scope"])
   end
 
+  @spec for_account(String.t) :: __MODULE__.t
   def for_account(account_id) do
     Repo.get_by!(__MODULE__, account_id: account_id)
   end
