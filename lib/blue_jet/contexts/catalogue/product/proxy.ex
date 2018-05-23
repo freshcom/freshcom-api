@@ -20,7 +20,7 @@ defmodule BlueJet.Catalogue.Product.Proxy do
 
   def get_goods(_), do: nil
 
-  def delete_avatar(product = %{ avatar_id: nil }), do: product
+  def delete_avatar(%{ avatar_id: nil }), do: {:ok, nil}
 
   def delete_avatar(product) do
     account = get_account(product)

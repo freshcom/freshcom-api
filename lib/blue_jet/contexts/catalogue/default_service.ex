@@ -6,12 +6,6 @@ defmodule BlueJet.Catalogue.DefaultService do
 
   @behaviour BlueJet.Catalogue.Service
 
-  defp root_only_if_no_parent_id(query, nil), do: Product.Query.root(query)
-  defp root_only_if_no_parent_id(query, _), do: query
-
-  defp default_order_if_no_collection_id(query, nil), do: Product.Query.default_order(query)
-  defp default_order_if_no_collection_id(query, _), do: query
-
   def list_product(fields \\ %{}, opts) do
     account = extract_account(opts)
     pagination = extract_pagination(opts)
@@ -22,8 +16,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> Product.Query.search(fields[:search], opts[:locale], account.default_locale)
     |> Product.Query.filter_by(filter)
     |> Product.Query.in_collection(filter[:collection_id])
-    |> root_only_if_no_parent_id(filter[:parent_id])
-    |> default_order_if_no_collection_id(filter[:collection_id])
+    |> Product.Query.for_parent(filter[:parent_id])
+    |> sort_by(desc: :updated_at)
     |> for_account(account.id)
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
@@ -38,7 +32,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> Product.Query.search(fields[:search], opts[:locale], account.default_locale)
     |> Product.Query.filter_by(filter)
     |> Product.Query.in_collection(filter[:collection_id])
-    |> root_only_if_no_parent_id(filter[:parent_id])
+    |> Product.Query.for_parent(filter[:parent_id])
     |> for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
@@ -64,12 +58,12 @@ defmodule BlueJet.Catalogue.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:product, changeset)
-      |> Multi.run(:processed_product, fn(%{ product: product }) ->
-          Product.process(product, changeset)
+      |> Multi.run(:_, fn(%{ product: product }) ->
+          Product.reset_primary(product)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_product: product }} ->
+      {:ok, %{ product: product }} ->
         product = preload(product, preloads[:path], preloads[:opts])
         {:ok, product}
 
@@ -94,12 +88,12 @@ defmodule BlueJet.Catalogue.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:product, changeset)
-      |> Multi.run(:processed_product, fn(%{ product: product }) ->
-          Product.process(product, changeset)
+      |> Multi.run(:avatar, fn(%{ product: product }) ->
+          Product.Proxy.delete_avatar(product)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_product: product }} ->
+      {:ok, %{ product: product }} ->
         {:ok, product}
 
       {:error, _, changeset, _} ->
@@ -279,7 +273,7 @@ defmodule BlueJet.Catalogue.DefaultService do
 
     Price.Query.default()
     |> for_account(account.id)
-    |> Price.Query.with_order_quantity(identifiers[:order_quantity])
+    |> Price.Query.for_order_quantity(identifiers[:order_quantity])
     |> Price.Query.filter_by(filter)
     |> Repo.get_by(clauses)
     |> preload(preloads[:path], preloads[:opts])
@@ -298,8 +292,8 @@ defmodule BlueJet.Catalogue.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:price, changeset)
-      |> Multi.run(:processed_price, fn(%{ price: price }) ->
-          Price.process(price, changeset)
+      |> Multi.run(:parent, fn(%{ price: price }) ->
+          Price.balance_parent(price)
          end)
 
     case Repo.transaction(statements) do

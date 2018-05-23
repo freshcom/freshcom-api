@@ -27,22 +27,10 @@ defmodule BlueJet.Catalogue.Price.Query do
       order_by: [asc: :minimum_order_quantity]
   end
 
-  def with_order_quantity(query, nil), do: query
+  def for_order_quantity(query, nil), do: query
 
-  def with_order_quantity(query, order_quantity) do
+  def for_order_quantity(query, order_quantity) do
     from p in query, where: p.minimum_order_quantity <= ^order_quantity
-  end
-
-  def with_status(query, status) do
-    from p in query, where: p.status == ^status
-  end
-
-  def active_by_moq() do
-    from p in Price, where: p.status == "active", order_by: [asc: :minimum_order_quantity]
-  end
-
-  def active(query) do
-    from p in query, where: p.status == "active"
   end
 
   def preloads({:product, product_preloads}, options) do

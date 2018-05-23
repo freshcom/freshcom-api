@@ -181,7 +181,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_internal_variant"
+      assert error_info[:code] == "cannot_be_internal"
     end
 
     test "when given product with variants with valid internal status" do
@@ -222,7 +222,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_primary_active_variant"
+      assert error_info[:code] == "cannot_be_active"
     end
 
     test "when given product with variants with valid active status" do
@@ -277,7 +277,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_internal_item"
+      assert error_info[:code] == "cannot_be_internal"
     end
 
     test "when given product combo with invalid internal status due to missing internal price" do
@@ -356,7 +356,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_active_item"
+      assert error_info[:code] == "cannot_be_active"
     end
 
     test "when given product combo with invalid active status due to missing active price" do
@@ -463,7 +463,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_internal_price"
+      assert error_info[:code] == "cannot_be_internal"
     end
 
     test "when given product varaint with valid internal status" do
@@ -518,21 +518,21 @@ defmodule BlueJet.Catalogue.ProductTest do
       changeset =
         change(%Product{}, %{
           account_id: account.id,
-          status: "active",
+          status: "internal",
           kind: "variant",
           parent_id: product_with_variants.id,
           name: Faker.String.base64(5),
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
-        |> Map.put(:action, :update)
+        |> Map.put(:action, :insert)
         |> Product.validate()
 
       refute changeset.valid?
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "require_active_price"
+      assert error_info[:code] == "cannot_be_internal"
     end
 
     test "when given product varaint with valid active status" do
