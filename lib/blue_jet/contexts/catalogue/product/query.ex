@@ -47,28 +47,28 @@ defmodule BlueJet.Catalogue.Product.Query do
     filter = get_preload_filter(options, :items)
 
     query =
-      Product.Query.default()
-      |> Product.Query.filter_by(filter)
+      default()
+      |> filter_by(filter)
 
-    [items: {query, Product.Query.preloads(item_preloads, options)}]
+    [items: {query, preloads(item_preloads, options)}]
   end
 
   def preloads({:variants, item_preloads}, options) do
     filter = get_preload_filter(options, :variants)
 
     query =
-      Product.Query.default()
-      |> Product.Query.filter_by(filter)
+      default()
+      |> filter_by(filter)
 
-    [variants: {query, Product.Query.preloads(item_preloads, options)}]
+    [variants: {query, preloads(item_preloads, options)}]
   end
 
   def preloads({:children, item_preloads}, options) do
     filter = get_preload_filter(options, :children)
 
     query =
-      Product.Query.default()
-      |> Product.Query.filter_by(filter)
+      default()
+      |> filter_by(filter)
 
     [children: {query, Product.Query.preloads(item_preloads, options)}]
   end
