@@ -14,15 +14,7 @@ defmodule BlueJet.Crm.PointTransaction.Query do
   alias BlueJet.Crm.{PointTransaction, PointAccount}
 
   def default() do
-    from(pt in PointTransaction, order_by: [desc: pt.inserted_at])
-  end
-
-  def committed(query) do
-    from pt in query, where: pt.status == "committed"
-  end
-
-  def only(query, limit) do
-    from pt in query, limit: ^limit
+    from(pt in PointTransaction)
   end
 
   def for_point_account(query, point_account_id) do

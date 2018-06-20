@@ -1,17 +1,11 @@
 defmodule BlueJet.Crm.Customer do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.Utils
 
-  alias BlueJet.Crm.Customer.Proxy
+  alias __MODULE__.Proxy
   alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.{IdentityService, StripeClient}
+  alias BlueJet.Crm.IdentityService
 
   schema "customers" do
     field :account_id, Ecto.UUID
@@ -60,28 +54,14 @@ defmodule BlueJet.Crm.Customer do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def required_fields(changeset) do
-    status = get_field(changeset, :status)
-
-    case status do
-      "guest" -> [:status]
-      "internal" -> [:status]
-      "registered" -> [:status, :name, :email]
-      "suspended" -> [:status]
-    end
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields(changeset))
-    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
-    |> foreign_key_constraint(:account_id)
-    |> unique_constraint(:email, name: :customers_account_id_status_email_index)
-  end
-
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(customer, :insert, params) do
     customer
     |> cast(params, writable_fields())
@@ -91,6 +71,7 @@ defmodule BlueJet.Crm.Customer do
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(customer, :update, params, locale \\ nil, default_locale \\ nil) do
     customer = Proxy.put_account(customer)
     default_locale = default_locale || customer.account.default_locale
@@ -105,14 +86,15 @@ defmodule BlueJet.Crm.Customer do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(customer, :delete) do
     change(customer)
     |> Map.put(:action, :delete)
   end
 
-  def put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
 
-  def put_name(changeset) do
+  defp put_name(changeset) do
     first_name = get_field(changeset, :first_name)
     last_name = get_field(changeset, :last_name)
 
@@ -123,6 +105,27 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields(changeset))
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
+    |> foreign_key_constraint(:account_id)
+    |> unique_constraint(:email, name: :customers_account_id_status_email_index)
+  end
+
+  defp required_fields(changeset) do
+    status = get_field(changeset, :status)
+
+    case status do
+      "guest" -> [:status]
+      "internal" -> [:status]
+      "registered" -> [:status, :name, :email]
+      "suspended" -> [:status]
+    end
+  end
+
+  @spec match_by(__MODULE__.t() | nil, list) :: __MODULE__.t | nil
   def match_by(nil, _), do: nil
 
   def match_by(customer, matcher) do
@@ -130,9 +133,9 @@ defmodule BlueJet.Crm.Customer do
     do_match_by(customer, matcher)
   end
 
-  def do_match_by(customer, matcher) when map_size(matcher) == 0, do: customer
+  defp do_match_by(customer, matcher) when map_size(matcher) == 0, do: customer
 
-  def do_match_by(customer, matcher) do
+  defp do_match_by(customer, matcher) do
     leftover = Enum.reject(matcher, fn({k, v}) ->
       case k do
         :first_name ->
@@ -154,62 +157,38 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
-  def match?(nil, _) do
-    false
-  end
-
-  def match?(customer, params) do
-    params = Map.take(params, ["first_name", "last_name", "name", "phone_number"])
-    do_match?(customer, params)
-  end
-
-  def do_match?(_, params) when map_size(params) == 0, do: false
-
-  def do_match?(customer, params) do
-    params = Map.take(params, ["first_name", "last_name", "name", "phone_number"])
-
-    leftover = Enum.reject(params, fn({k, v}) ->
-      case k do
-        "first_name" ->
-          String.downcase(v) == remove_space(downcase(customer.first_name))
-        "last_name" ->
-          String.downcase(v) == remove_space(downcase(customer.last_name))
-        "name" ->
-          remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
-        "phone_number" ->
-          digit_only(v) == digit_only(customer.phone_number)
-        "email" ->
-          downcase(v) == downcase(customer.email)
-      end
-    end)
-
-    case length(leftover) do
-      0 -> true
-      _ -> false
-    end
-  end
   defp downcase(nil) do
     nil
   end
+
   defp downcase(value) do
     String.downcase(value)
   end
+
   defp digit_only(nil) do
     nil
   end
+
   defp digit_only(value) do
     String.replace(value, ~r/[^0-9]/, "")
   end
+
   defp remove_space(nil) do
     nil
   end
+
   defp remove_space(value) do
     String.replace(value, " ", "")
   end
 
-  def preprocess(fields, changeset = %{ data: customer, changes: %{ status: "registered" } }) do
+  @doc """
+  If customer is changing status to `registered` this function will create a user
+  and add its ID as `user_id` to the customer's changeset, otherwise does nothing.
+  """
+  @spec put_user_id(Changeset.t()) :: {:ok | :error, Changeset.t()}
+  def put_user_id(%{ data: customer, changes: %{ status: "registered" } = changes } = changeset) do
     account = Proxy.get_account(customer)
-    fields = Map.merge(fields, %{ "role" => "customer" })
+    fields = Map.merge(changes, %{ role: "customer" })
 
     with {:ok, user} <- IdentityService.create_user(fields, %{ account: account }) do
       changeset = put_change(changeset, :user_id, user.id)
@@ -220,77 +199,30 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
-  def preprocess(_, changeset), do: {:ok, changeset}
+  def put_user_id(changeset), do: {:ok, changeset}
 
-  def process(customer, %{ action: :insert }) do
-    Repo.insert(%PointAccount{
-      account_id: customer.account_id,
-      customer_id: customer.id
-    })
+  @spec sync_to_user(Customer.t(), map) :: {:ok, Customer.t()}
+  def sync_to_user(customer, opts \\ %{})
 
-    {:ok, customer}
-  end
+  def sync_to_user(%{user_id: nil} = customer, _), do: {:ok, customer}
 
-  def process(customer, changeset, opts \\ %{})
-  def process(customer, %{ changes: %{ status: "registered" } }, _), do: {:ok, customer}
-  def process(customer = %{ user_id: nil }, _, _), do: {:ok, customer}
-
-  def process(customer = %{ user_id: user_id }, %{ action: :update, changes: changes }, opts) do
-    account = Proxy.get_account(customer)
-    fields = Map.take(changes, [:email, :phone_number, :phone_verification_code, :name, :first_name, :last_name])
-
-    with {:ok, _} <- IdentityService.update_user(user_id, fields, %{ account: account, bypass_pvc_validation: !!opts[:bypass_user_pvc_validation] }) do
+  def sync_to_user(customer, opts) do
+    with {:ok, _} <- Proxy.sync_to_user(customer, opts) do
       {:ok, customer}
     else
       other -> other
     end
   end
 
-  def process(customer = %{ user_id: user_id }, %{ action: :delete }, _) do
+  @spec delete_user(Customer.t()) :: {:ok, Customer.t()}
+  def delete_user(%{user_id: nil} = customer, _), do: {:ok, customer}
+
+  def delete_user(customer) do
     account = Proxy.get_account(customer)
-    with {:ok, _} <- IdentityService.delete_user(user_id, %{ account: account }) do
+    with {:ok, _} <- IdentityService.delete_user(customer.user_id, %{ account: account }) do
       {:ok, customer}
     else
       other -> other
     end
   end
-
-  def process(customer, _, _), do: {:ok, customer}
-
-  @doc """
-  Preprocess the customer to be ready for its first payment
-  """
-  @spec ensure_stripe_customer(__MODULE__.t, Keyword.t) :: __MODULE__.t
-  def ensure_stripe_customer(customer = %__MODULE__{ stripe_customer_id: stripe_customer_id }, payment_processor: "stripe") when is_nil(stripe_customer_id) do
-    customer = Proxy.put_account(customer)
-    {:ok, stripe_customer} = create_stripe_customer(customer)
-
-    customer
-    |> change(stripe_customer_id: stripe_customer["id"])
-    |> Repo.update!()
-  end
-
-  def ensure_stripe_customer(customer, _), do: customer
-
-  # @spec get_stripe_card_by_fingerprint(Customer.t, String.t) :: map | nil
-  # defp get_stripe_card_by_fingerprint(customer = %Customer{ stripe_customer_id: stripe_customer_id }, target_fingerprint) when not is_nil(stripe_customer_id) do
-  #   customer = %{ customer | account: get_account(customer) }
-  #   with {:ok, %{ "data" => cards }} <- list_stripe_card(customer) do
-  #     Enum.find(cards, fn(card) -> card["fingerprint"] == target_fingerprint end)
-  #   else
-  #     other -> other
-  #   end
-  # end
-
-  @spec create_stripe_customer(__MODULE__.t) :: {:ok, map} | {:error, map}
-  defp create_stripe_customer(customer) do
-    account = Proxy.get_account(customer)
-    StripeClient.post("/customers", %{ email: customer.email, metadata: %{ fc_customer_id: customer.id } }, mode: account.mode)
-  end
-
-  # @spec list_stripe_card(Customer.t) :: {:ok, map} | {:error, map}
-  # defp list_stripe_card(customer = %Customer{ stripe_customer_id: stripe_customer_id }) when not is_nil(stripe_customer_id) do
-  #   account = get_account(customer)
-  #   StripeClient.get("/customers/#{stripe_customer_id}/sources?object=card&limit=100", mode: account.mode)
-  # end
 end

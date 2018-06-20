@@ -295,7 +295,7 @@ defmodule BlueJet.Catalogue.DefaultService do
       end)
 
     case Repo.transaction(statements) do
-      {:ok, %{processed_price: price}} ->
+      {:ok, %{price: price}} ->
         price = preload(price, preloads[:path], preloads[:opts])
         {:ok, price}
 

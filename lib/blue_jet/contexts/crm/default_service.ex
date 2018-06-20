@@ -27,13 +27,16 @@ defmodule BlueJet.Crm.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          Customer.preprocess(fields, changeset)
+          Customer.put_user_id(changeset)
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
           Repo.insert(changeset)
          end)
-      |> Multi.run(:processed_customer, fn(%{ customer: customer, changeset: changeset }) ->
-          Customer.process(customer, changeset)
+      |> Multi.run(:point_account, fn(%{ customer: customer }) ->
+          Repo.insert(%PointAccount{
+            account_id: customer.account_id,
+            customer_id: customer.id
+          })
          end)
 
     case Repo.transaction(statements) do
@@ -72,17 +75,13 @@ defmodule BlueJet.Crm.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          Customer.preprocess(fields, changeset)
+          Customer.put_user_id(changeset)
          end)
       |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
           Repo.update(changeset)
          end)
-      |> Multi.run(:processed_customer, fn(%{ customer: customer, changeset: changeset }) ->
-          if map_size(changeset.changes) > 0 do
-            Customer.process(customer, changeset, opts)
-          else
-            {:ok, customer}
-          end
+      |> Multi.run(:_, fn(%{ customer: customer }) ->
+          Customer.sync_to_user(customer, opts)
          end)
 
     case Repo.transaction(statements) do
@@ -114,8 +113,8 @@ defmodule BlueJet.Crm.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:customer, changeset)
-      |> Multi.run(:process, fn(%{ customer: customer }) ->
-          Customer.process(customer, changeset)
+      |> Multi.run(:_, fn(%{ customer: customer }) ->
+          Customer.delete_user(customer)
          end)
 
     case Repo.transaction(statements) do
