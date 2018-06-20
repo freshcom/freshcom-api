@@ -52,27 +52,28 @@ defmodule BlueJet.Catalogue.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %{ product | account: account }
+      %{product | account: account}
       |> Product.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
       |> Multi.update(:product, changeset)
-      |> Multi.run(:_, fn(%{ product: product }) ->
-          Product.reset_primary(product)
-         end)
+      |> Multi.run(:_, fn %{product: product} ->
+        Product.reset_primary(product)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ product: product }} ->
+      {:ok, %{product: product}} ->
         product = preload(product, preloads[:path], preloads[:opts])
         {:ok, product}
 
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
   def update_product(identifiers, fields, opts) do
-    get_product(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_product(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_product(fields, opts)
   end
 
@@ -82,18 +83,18 @@ defmodule BlueJet.Catalogue.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %{ product | account: account }
+      %{product | account: account}
       |> Product.changeset(:delete)
 
     statements =
       Multi.new()
       |> Multi.delete(:product, changeset)
-      |> Multi.run(:avatar, fn(%{ product: product }) ->
-          Product.Proxy.delete_avatar(product)
-         end)
+      |> Multi.run(:avatar, fn %{product: product} ->
+        Product.Proxy.delete_avatar(product)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ product: product }} ->
+      {:ok, %{product: product}} ->
         {:ok, product}
 
       {:error, _, changeset, _} ->
@@ -102,7 +103,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def delete_product(identifiers, opts) do
-    get_product(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_product(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_product(opts)
   end
 
@@ -115,7 +116,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   #
   def list_product_collection(fields \\ %{}, opts) do
     fields =
-      %{ sort: [desc: :sort_index] }
+      %{sort: [desc: :sort_index]}
       |> Map.merge(fields)
 
     list(ProductCollection, fields, opts)
@@ -141,7 +142,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def update_product_collection(identifiers, fields, opts) do
-    get_product_collection(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_product_collection(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_product_collection(fields, opts)
   end
 
@@ -151,18 +152,18 @@ defmodule BlueJet.Catalogue.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %{ product_collection | account: account }
+      %{product_collection | account: account}
       |> ProductCollection.changeset(:delete)
 
     statements =
       Multi.new()
       |> Multi.delete(:product_collection, changeset)
-      |> Multi.run(:processed_product_collection, fn(%{ product_collection: product_collection }) ->
-          ProductCollection.process(product_collection, changeset)
-         end)
+      |> Multi.run(:processed_product_collection, fn %{product_collection: product_collection} ->
+        ProductCollection.process(product_collection, changeset)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_product_collection: product_collection }} ->
+      {:ok, %{processed_product_collection: product_collection}} ->
         {:ok, product_collection}
 
       {:error, _, changeset, _} ->
@@ -171,11 +172,11 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def delete_product_collection(identifiers, opts) do
-    get_product_collection(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_product_collection(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_product_collection(opts)
   end
 
-  def delete_all_product_collection(opts = %{ account: account = %{ mode: "test" }}) do
+  def delete_all_product_collection(opts = %{account: account = %{mode: "test"}}) do
     batch_size = opts[:batch_size] || 1000
 
     product_ids =
@@ -186,7 +187,7 @@ defmodule BlueJet.Catalogue.DefaultService do
       |> Repo.all()
 
     ProductCollection.Query.default()
-    |> ProductCollection.Query.filter_by(%{ id: product_ids })
+    |> ProductCollection.Query.filter_by(%{id: product_ids})
     |> Repo.delete_all()
 
     if length(product_ids) === batch_size do
@@ -241,12 +242,15 @@ defmodule BlueJet.Catalogue.DefaultService do
 
   def delete_product_collection_membership(nil, _), do: {:error, :not_found}
 
-  def delete_product_collection_membership(product_collection_membership = %ProductCollectionMembership{}, opts) do
+  def delete_product_collection_membership(
+        product_collection_membership = %ProductCollectionMembership{},
+        opts
+      ) do
     delete(product_collection_membership, opts)
   end
 
   def delete_product_collection_membership(identifiers, opts) do
-    get_product_collection_membership(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_product_collection_membership(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_product_collection_membership(opts)
   end
 
@@ -286,18 +290,18 @@ defmodule BlueJet.Catalogue.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %{ price | account: account }
+      %{price | account: account}
       |> Price.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
       |> Multi.update(:price, changeset)
-      |> Multi.run(:parent, fn(%{ price: price }) ->
-          Price.balance_parent(price)
-         end)
+      |> Multi.run(:parent, fn %{price: price} ->
+        Price.balance_parent(price)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_price: price }} ->
+      {:ok, %{processed_price: price}} ->
         price = preload(price, preloads[:path], preloads[:opts])
         {:ok, price}
 
@@ -307,7 +311,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def update_price(identifiers, fields, opts) do
-    get_price(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_price(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_price(fields, opts)
   end
 
@@ -318,7 +322,7 @@ defmodule BlueJet.Catalogue.DefaultService do
   end
 
   def delete_price(identifiers, opts) do
-    get_price(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_price(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_price(opts)
   end
 end

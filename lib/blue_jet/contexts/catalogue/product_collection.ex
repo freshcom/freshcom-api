@@ -1,12 +1,14 @@
 defmodule BlueJet.Catalogue.ProductCollection do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
+  use Trans,
+    translates: [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ],
+    container: :translations
 
   alias __MODULE__.Proxy
   alias BlueJet.Catalogue.ProductCollectionMembership
@@ -37,7 +39,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     has_many :products, through: [:memberships, :product]
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -81,7 +83,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> Map.put(:action, :delete)
   end
 
-  def process(product_collection, %{ action: :delete }) do
+  def process(product_collection, %{action: :delete}) do
     Proxy.delete_avatar(product_collection)
 
     {:ok, product_collection}
@@ -89,7 +91,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
   def process(product_collection, _), do: {:ok, product_collection}
 
-  def product_count(%__MODULE__{ id: collection_id }) do
+  def product_count(%__MODULE__{id: collection_id}) do
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.for_collection(collection_id)
     |> Repo.aggregate(:count, :id)
@@ -98,12 +100,12 @@ defmodule BlueJet.Catalogue.ProductCollection do
   def put_product_count(nil), do: nil
 
   def put_product_count(product_collections) when is_list(product_collections) do
-    Enum.map(product_collections, fn(product_collection) ->
+    Enum.map(product_collections, fn product_collection ->
       put_product_count(product_collection)
     end)
   end
 
   def put_product_count(product_collection) do
-    %{ product_collection | product_count: product_count(product_collection) }
+    %{product_collection | product_count: product_count(product_collection)}
   end
 end

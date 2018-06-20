@@ -42,7 +42,7 @@ defmodule BlueJet.Catalogue.Price do
     has_many :children, __MODULE__, foreign_key: :parent_id, on_delete: :delete_all
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -66,7 +66,7 @@ defmodule BlueJet.Catalogue.Price do
     ]
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(price, :insert, params) do
     price
     |> cast(params, castable_fields(:insert))
@@ -104,7 +104,7 @@ defmodule BlueJet.Catalogue.Price do
     writable_fields() -- [:product_id]
   end
 
-  defp put_parent_fields(%{ changes: %{ parent_id: parent_id } } = changeset) do
+  defp put_parent_fields(%{changes: %{parent_id: parent_id}} = changeset) do
     parent = Repo.get(__MODULE__, parent_id)
 
     new_translations =
@@ -122,7 +122,7 @@ defmodule BlueJet.Catalogue.Price do
 
   defp put_parent_fields(changeset), do: changeset
 
-  defp put_order_unit(%{ changes: %{ charge_unit: charge_unit } } = changeset) do
+  defp put_order_unit(%{changes: %{charge_unit: charge_unit}} = changeset) do
     case get_field(changeset, :estimate_by_default) do
       false ->
         put_change(changeset, :order_unit, charge_unit)
@@ -132,14 +132,14 @@ defmodule BlueJet.Catalogue.Price do
     end
   end
 
-  defp put_order_unit(%{ changes: %{ estimate_by_default: false } } = changeset) do
+  defp put_order_unit(%{changes: %{estimate_by_default: false}} = changeset) do
     charge_unit = get_field(changeset, :charge_unit)
     put_change(changeset, :order_unit, charge_unit)
   end
 
   defp put_order_unit(changeset), do: changeset
 
-  @spec validate(Changeset.t) :: Changeset.t
+  @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset) do
     changeset
     |> validate_required(required_fields(changeset))
@@ -147,42 +147,66 @@ defmodule BlueJet.Catalogue.Price do
     |> validate_status()
   end
 
-  def validate(%{ data: price } = changeset, :delete) do
-    if changeset(price, :update, %{ status: "disabled" }).valid? do
+  def validate(%{data: price} = changeset, :delete) do
+    if changeset(price, :update, %{status: "disabled"}).valid? do
       changeset
     else
-      add_error(changeset, :status, "Can not delete the last active/internal price of a active/internal product", code: :cannot_delete_last_active_price)
+      add_error(
+        changeset,
+        :status,
+        "Can not delete the last active/internal price of a active/internal product",
+        code: :cannot_delete_last_active_price
+      )
     end
   end
 
   defp required_fields(changeset) do
-    common_required = [:name, :product_id, :status, :currency_code, :charge_amount_cents, :charge_unit]
+    common_required = [
+      :name,
+      :product_id,
+      :status,
+      :currency_code,
+      :charge_amount_cents,
+      :charge_unit
+    ]
 
     case get_field(changeset, :estimate_by_default) do
       true ->
-        common_required ++ [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
+        common_required ++
+          [:order_unit, :estimate_average_percentage, :estimate_maximum_percentage]
 
       _ ->
         common_required
     end
   end
 
-  defp validate_status(%{ changes: %{ status: "active" } } = changeset) do
+  defp validate_status(%{changes: %{status: "active"}} = changeset) do
     moq = get_field(changeset, :minimum_order_quantity)
     product_id = get_field(changeset, :product_id)
 
-    price = Repo.get_by(__MODULE__, product_id: product_id, minimum_order_quantity: moq, status: "active")
+    price =
+      Repo.get_by(
+        __MODULE__,
+        product_id: product_id,
+        minimum_order_quantity: moq,
+        status: "active"
+      )
 
     case price do
       nil ->
         changeset
 
       _ ->
-        add_error(changeset, :status, "An active price with the same minimum order quantity already exist.", code: :minimum_order_quantity_taken)
+        add_error(
+          changeset,
+          :status,
+          "An active price with the same minimum order quantity already exist.",
+          code: :minimum_order_quantity_taken
+        )
     end
   end
 
-  defp validate_status(%{ changes: %{ status: _ } } = changeset) do
+  defp validate_status(%{changes: %{status: _}} = changeset) do
     product_id = get_field(changeset, :product_id)
     product = Repo.get_by(Product, id: product_id)
 
@@ -191,44 +215,62 @@ defmodule BlueJet.Catalogue.Price do
 
   defp validate_status(changeset), do: changeset
 
-  defp validate_status(%{ changes: %{ status: _ } } = changeset, "active") do
+  defp validate_status(%{changes: %{status: _}} = changeset, "active") do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
-    other_active_prices = cond do
-      price_id && product_id ->
-        Query.default()
-        |> Query.filter_by(%{ product_id: product_id, status: "active" })
-        |> Query.except_id(price_id)
+    other_active_prices =
+      cond do
+        price_id && product_id ->
+          Query.default()
+          |> Query.filter_by(%{product_id: product_id, status: "active"})
+          |> Query.except_id(price_id)
 
-      !price_id && product_id ->
-        Query.default()
-        |> Query.filter_by(%{ product_id: product_id, status: "active" })
-    end
+        !price_id && product_id ->
+          Query.default()
+          |> Query.filter_by(%{product_id: product_id, status: "active"})
+      end
+
     oap_count = Repo.aggregate(other_active_prices, :count, :id)
 
     case oap_count do
-      0 -> add_error(changeset, :status, "Can not change status of the last active price of an active product.", code: :cannot_change_status_of_last_active_price)
-      _ -> changeset
+      0 ->
+        add_error(
+          changeset,
+          :status,
+          "Can not change status of the last active price of an active product.",
+          code: :cannot_change_status_of_last_active_price
+        )
+
+      _ ->
+        changeset
     end
   end
 
-  defp validate_status(%{ changes: %{ status: "internal" } } = changeset, "internal"), do: changeset
+  defp validate_status(%{changes: %{status: "internal"}} = changeset, "internal"), do: changeset
 
-  defp validate_status(%{ changes: %{ status: _ } } = changeset, "internal") do
+  defp validate_status(%{changes: %{status: _}} = changeset, "internal") do
     price_id = get_field(changeset, :id)
     product_id = get_field(changeset, :product_id)
 
     other_active_or_internal_prices =
       Query.default()
-      |> Query.filter_by(%{ product_id: product_id, status: ["active", "internal"] })
+      |> Query.filter_by(%{product_id: product_id, status: ["active", "internal"]})
       |> Query.except_id(price_id)
 
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 
     case oaip_count do
-      0 -> add_error(changeset, :status, "Can not change status of the last active/internal price of a internal product.", code: :cannot_change_status_of_last_internal_price)
-      _ -> changeset
+      0 ->
+        add_error(
+          changeset,
+          :status,
+          "Can not change status of the last active/internal price of a internal product.",
+          code: :cannot_change_status_of_last_internal_price
+        )
+
+      _ ->
+        changeset
     end
   end
 
@@ -244,12 +286,14 @@ defmodule BlueJet.Catalogue.Price do
 
   Returns the updated price.
   """
-  @spec balance(__MODULE__.t) :: __MODULE__.t
+  @spec balance(__MODULE__.t()) :: __MODULE__.t()
   def balance(price) do
     children = Ecto.assoc(price, :children) |> Repo.all()
-    charge_amount_cents = Enum.reduce(children, 0, fn(child, acc) ->
-      acc + child.charge_amount_cents
-    end)
+
+    charge_amount_cents =
+      Enum.reduce(children, 0, fn child, acc ->
+        acc + child.charge_amount_cents
+      end)
 
     price
     |> change(charge_amount_cents: charge_amount_cents)
@@ -263,7 +307,7 @@ defmodule BlueJet.Catalogue.Price do
   Returns `{:ok, price}` where price is the balanced parent if there is one,
   otherwise it will be nil.
   """
-  @spec balance_parent(__MODULE__.t) :: {:ok, __MODULE__.t} | {:ok, nil}
+  @spec balance_parent(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:ok, nil}
   def balance_parent(price) do
     price = Repo.preload(price, :parent)
 

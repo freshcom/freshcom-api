@@ -444,11 +444,11 @@ defmodule BlueJet.Catalogue.Product do
 
   Returns `{:ok, given_product}` if successful.
   """
-  @spec reset_primary(__MODULE__.t) :: {:ok, __MODULE__.t}
-  def reset_primary(%{ parent_id: nil } = product), do: {:ok, product}
-  def reset_primary(%{ primary: false } = product), do: {:ok, product}
+  @spec reset_primary(__MODULE__.t()) :: {:ok, __MODULE__.t()}
+  def reset_primary(%{parent_id: nil} = product), do: {:ok, product}
+  def reset_primary(%{primary: false} = product), do: {:ok, product}
 
-  def reset_primary(%{ id: id, parent_id: parent_id } = product) do
+  def reset_primary(%{id: id, parent_id: parent_id} = product) do
     Query.default()
     |> Query.filter_by(%{parent_id: parent_id})
     |> Query.except_id(id)

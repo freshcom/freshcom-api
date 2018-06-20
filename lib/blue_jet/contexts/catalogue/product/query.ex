@@ -1,24 +1,28 @@
 defmodule BlueJet.Catalogue.Product.Query do
   use BlueJet, :query
-  use BlueJet.Query.Search, for: [
-    :code,
-    :name
-  ]
-  use BlueJet.Query.Filter, for: [
-    :id,
-    :status,
-    :label,
-    :kind
-  ]
+
+  use BlueJet.Query.Search,
+    for: [
+      :code,
+      :name
+    ]
+
+  use BlueJet.Query.Filter,
+    for: [
+      :id,
+      :status,
+      :label,
+      :kind
+    ]
 
   alias BlueJet.Catalogue.{Product, ProductCollectionMembership, Price}
 
   def default() do
-    from p in Product
+    from(p in Product)
   end
 
   def root(query) do
-    from p in query, where: is_nil(p.parent_id)
+    from(p in query, where: is_nil(p.parent_id))
   end
 
   def for_parent(query, nil) do
@@ -26,21 +30,23 @@ defmodule BlueJet.Catalogue.Product.Query do
   end
 
   def for_parent(query, parent_id) do
-    from p in query, where: p.parent_id == ^parent_id
+    from(p in query, where: p.parent_id == ^parent_id)
   end
 
   def in_collection(query, nil), do: query
 
   def in_collection(query, collection_id) do
-    from p in query,
+    from(
+      p in query,
       join: pcm in ProductCollectionMembership,
       on: pcm.product_id == p.id,
       where: pcm.collection_id == ^collection_id,
       order_by: [desc: pcm.sort_index]
+    )
   end
 
   def except_id(query, product_id) do
-    from p in query, where: p.id != ^product_id
+    from(p in query, where: p.id != ^product_id)
   end
 
   def preloads({:items, item_preloads}, options) do
@@ -86,7 +92,7 @@ defmodule BlueJet.Catalogue.Product.Query do
   def preloads({:default_price, price_preloads}, options) do
     query =
       Price.Query.default()
-      |> Price.Query.filter_by(%{ status: "active" })
+      |> Price.Query.filter_by(%{status: "active"})
       |> order_by(desc: :minimum_order_quantity)
 
     [default_price: {query, Price.Query.preloads(price_preloads, options)}]

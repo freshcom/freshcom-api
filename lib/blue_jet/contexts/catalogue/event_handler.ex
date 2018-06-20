@@ -3,10 +3,10 @@ defmodule BlueJet.Catalogue.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity.account.reset.success", %{ account: account = %{ mode: "test" } }) do
+  def handle_event("identity.account.reset.success", %{account: account = %{mode: "test"}}) do
     Task.start(fn ->
-      Service.delete_all_product_collection(%{ account: account })
-      Service.delete_all_product(%{ account: account })
+      Service.delete_all_product_collection(%{account: account})
+      Service.delete_all_product(%{account: account})
     end)
 
     {:ok, nil}

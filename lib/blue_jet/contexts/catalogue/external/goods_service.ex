@@ -3,9 +3,9 @@ defmodule BlueJet.Catalogue.GoodsService do
 
   @goods_service Application.get_env(:blue_jet, :catalogue)[:goods_service]
 
-  @callback get_stockable(map, map) :: Stockable.t | nil
-  @callback get_unlockable(map, map) :: Unlockable.t | nil
-  @callback get_depositable(map, map) :: Depositable.t | nil
+  @callback get_stockable(map, map) :: Stockable.t() | nil
+  @callback get_unlockable(map, map) :: Unlockable.t() | nil
+  @callback get_depositable(map, map) :: Depositable.t() | nil
 
   defdelegate get_stockable(fileds, opts), to: @goods_service
   defdelegate get_unlockable(fileds, opts), to: @goods_service

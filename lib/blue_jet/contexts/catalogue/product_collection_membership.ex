@@ -14,7 +14,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     belongs_to :product, Product
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -30,7 +30,9 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
   #
   # MARK: Validation
   #
-  defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
+  defp validate_collection_id(
+         changeset = %{valid?: true, changes: %{collection_id: collection_id}}
+       ) do
     account_id = get_field(changeset, :account_id)
     collection = Repo.get(ProductCollection, collection_id)
 
@@ -43,7 +45,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
 
   defp validate_collection_id(changeset), do: changeset
 
-  defp validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+  defp validate_product_id(changeset = %{valid?: true, changes: %{product_id: product_id}}) do
     account_id = get_field(changeset, :account_id)
     product = Repo.get(Product, product_id)
 
@@ -59,7 +61,10 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
   def validate(changeset) do
     changeset
     |> validate_required([:collection_id, :product_id])
-    |> unique_constraint(:product_id, name: :product_collection_memberships_product_id_collection_id_index)
+    |> unique_constraint(
+      :product_id,
+      name: :product_collection_memberships_product_id_collection_id_index
+    )
     |> validate_collection_id()
     |> validate_product_id()
   end

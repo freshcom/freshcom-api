@@ -1,34 +1,41 @@
 defmodule BlueJet.Catalogue.Service do
   @service Application.get_env(:blue_jet, :catalogue)[:service]
 
-  @callback list_product(map, map) :: [Product.t]
+  @callback list_product(map, map) :: [Product.t()]
   @callback count_product(map, map) :: integer
-  @callback create_product(map, map) :: {:ok, Product.t} | {:error, any}
-  @callback get_product(map, map) :: Product.t | nil
-  @callback update_product(String.t | Product.t, map, map) :: {:ok, Product.t} | {:error, any}
-  @callback delete_product(Strint.t | Product.t, map) :: {:ok, Product.t} | {:error, any}
+  @callback create_product(map, map) :: {:ok, Product.t()} | {:error, any}
+  @callback get_product(map, map) :: Product.t() | nil
+  @callback update_product(String.t() | Product.t(), map, map) ::
+              {:ok, Product.t()} | {:error, any}
+  @callback delete_product(Strint.t() | Product.t(), map) :: {:ok, Product.t()} | {:error, any}
   @callback delete_all_product(map) :: :ok
 
-  @callback list_product_collection(map, map) :: [ProductCollection.t]
+  @callback list_product_collection(map, map) :: [ProductCollection.t()]
   @callback count_product_collection(map, map) :: integer
-  @callback create_product_collection(map, map) :: {:ok, ProductCollection.t} | {:error, any}
-  @callback get_product_collection(map, map) :: ProductCollection.t | nil
-  @callback update_product_collection(String.t | ProductCollection.t, map, map) :: {:ok, ProductCollection.t} | {:error, any}
-  @callback delete_product_collection(String.t | ProductCollection.t, map) :: {:ok, ProductCollection.t} | {:error, any}
+  @callback create_product_collection(map, map) :: {:ok, ProductCollection.t()} | {:error, any}
+  @callback get_product_collection(map, map) :: ProductCollection.t() | nil
+  @callback update_product_collection(String.t() | ProductCollection.t(), map, map) ::
+              {:ok, ProductCollection.t()} | {:error, any}
+  @callback delete_product_collection(String.t() | ProductCollection.t(), map) ::
+              {:ok, ProductCollection.t()} | {:error, any}
   @callback delete_all_product_collection(map) :: :ok
 
-  @callback list_product_collection_membership(map, map) :: [ProductCollectionMembership.t]
+  @callback list_product_collection_membership(map, map) :: [ProductCollectionMembership.t()]
   @callback count_product_collection_membership(map, map) :: integer
-  @callback create_product_collection_membership(map, map) :: {:ok, ProductCollectionMembership} | {:error, any}
-  @callback get_product_collection_membership(map, map) :: ProductCollectionMembership.t | nil
-  @callback delete_product_collection_membership(String.t | ProductCollectionMembership.t, map) :: {:ok, ProductCollectionMembership.t} | {:error, any}
+  @callback create_product_collection_membership(map, map) ::
+              {:ok, ProductCollectionMembership} | {:error, any}
+  @callback get_product_collection_membership(map, map) :: ProductCollectionMembership.t() | nil
+  @callback delete_product_collection_membership(
+              String.t() | ProductCollectionMembership.t(),
+              map
+            ) :: {:ok, ProductCollectionMembership.t()} | {:error, any}
 
-  @callback list_price(map, map) :: [Price.t]
+  @callback list_price(map, map) :: [Price.t()]
   @callback count_price(map, map) :: integer
-  @callback create_price(map, map) :: {:ok, Price.t} | {:error, any}
-  @callback get_price(map, map) :: Price.t | nil
-  @callback update_price(String.t | Price.t, map, map) :: {:ok, Price.t} | {:error, any}
-  @callback delete_price(map, map) :: {:ok, Price.t} | {:error, any}
+  @callback create_price(map, map) :: {:ok, Price.t()} | {:error, any}
+  @callback get_price(map, map) :: Price.t() | nil
+  @callback update_price(String.t() | Price.t(), map, map) :: {:ok, Price.t()} | {:error, any}
+  @callback delete_price(map, map) :: {:ok, Price.t()} | {:error, any}
 
   defdelegate list_product(params \\ %{}, opts), to: @service
   defdelegate count_product(params \\ %{}, opts), to: @service
