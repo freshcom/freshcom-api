@@ -1,17 +1,6 @@
 defmodule BlueJet.Catalogue.Product do
   use BlueJet, :data
 
-  use Trans,
-    translates: [
-      :name,
-      :print_name,
-      :short_name,
-      :caption,
-      :description,
-      :custom_data
-    ],
-    container: :translations
-
   alias BlueJet.Catalogue.Price
   alias __MODULE__.{Query, Proxy}
 

@@ -1,15 +1,6 @@
 defmodule BlueJet.Catalogue.ProductCollection do
   use BlueJet, :data
 
-  use Trans,
-    translates: [
-      :name,
-      :caption,
-      :description,
-      :custom_data
-    ],
-    container: :translations
-
   alias __MODULE__.Proxy
   alias BlueJet.Catalogue.ProductCollectionMembership
 
@@ -53,7 +44,12 @@ defmodule BlueJet.Catalogue.ProductCollection do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
   def validate(changeset) do
