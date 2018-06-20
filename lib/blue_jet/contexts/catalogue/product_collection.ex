@@ -79,13 +79,11 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> Map.put(:action, :delete)
   end
 
-  def process(product_collection, %{action: :delete}) do
+  def delete_avatar(product_collection) do
     Proxy.delete_avatar(product_collection)
 
     {:ok, product_collection}
   end
-
-  def process(product_collection, _), do: {:ok, product_collection}
 
   def product_count(%__MODULE__{id: collection_id}) do
     ProductCollectionMembership.Query.default()

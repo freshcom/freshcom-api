@@ -158,12 +158,12 @@ defmodule BlueJet.Catalogue.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:product_collection, changeset)
-      |> Multi.run(:processed_product_collection, fn %{product_collection: product_collection} ->
-        ProductCollection.process(product_collection, changeset)
+      |> Multi.run(:_, fn %{product_collection: product_collection} ->
+        ProductCollection.delete_avatar(product_collection)
       end)
 
     case Repo.transaction(statements) do
-      {:ok, %{processed_product_collection: product_collection}} ->
+      {:ok, %{product_collection: product_collection}} ->
         {:ok, product_collection}
 
       {:error, _, changeset, _} ->
