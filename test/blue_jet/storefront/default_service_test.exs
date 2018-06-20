@@ -165,7 +165,9 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
 
     test "when give customer_id does not match" do
       account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{})
+      customer = Repo.insert!(%Customer{
+        account_id: account.id
+      })
       Repo.insert!(%Order{
         account_id: account.id,
         customer_id: customer.id

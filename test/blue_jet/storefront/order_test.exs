@@ -24,6 +24,7 @@ defmodule BlueJet.OrderTest do
     test "when customer is deleted customer_id should be nilified" do
       account = Repo.insert!(%Account{})
       customer = Repo.insert!(%Customer{
+        account_id: account.id,
         name: Faker.String.base64(5)
       })
       order = Repo.insert!(%Order{

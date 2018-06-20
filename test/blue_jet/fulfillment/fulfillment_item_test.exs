@@ -222,7 +222,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
         name: Faker.Commerce.product_name()
       })
       customer = Repo.insert!(%Customer{
-        account: account,
+        account_id: account.id,
         name: Faker.Name.name()
       })
 
@@ -253,7 +253,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
         name: Faker.Commerce.product_name()
       })
       customer = Repo.insert!(%Customer{
-        account: account,
+        account_id: account.id,
         name: Faker.Name.name()
       })
       Repo.insert!(%Unlock{
