@@ -200,12 +200,6 @@ defmodule BlueJet.Catalogue.DefaultService do
   #
   # MARK: Product Collection Membership
   #
-  defp with_product_status(query, nil), do: query
-
-  defp with_product_status(query, product_status) do
-    ProductCollectionMembership.Query.with_product_status(query, product_status)
-  end
-
   def list_product_collection_membership(fields \\ %{}, opts) do
     account = extract_account(opts)
     pagination = extract_pagination(opts)
@@ -214,7 +208,7 @@ defmodule BlueJet.Catalogue.DefaultService do
 
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
-    |> with_product_status(filter[:product_status])
+    |> ProductCollectionMembership.Query.with_product_status(filter[:product_status])
     |> for_account(account.id)
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
@@ -227,7 +221,7 @@ defmodule BlueJet.Catalogue.DefaultService do
 
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.filter_by(filter)
-    |> with_product_status(filter[:product_status])
+    |> ProductCollectionMembership.Query.with_product_status(filter[:product_status])
     |> for_account(account.id)
     |> Repo.aggregate(:count, :id)
   end
