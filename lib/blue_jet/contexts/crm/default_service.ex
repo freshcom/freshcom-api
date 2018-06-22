@@ -21,32 +21,33 @@ defmodule BlueJet.Crm.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %Customer{ account_id: account.id, account: account }
+      %Customer{account_id: account.id, account: account}
       |> Customer.changeset(:insert, fields)
 
     statements =
       Multi.new()
-      |> Multi.run(:changeset, fn(_) ->
-          Customer.put_user_id(changeset)
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:point_account, fn(%{ customer: customer }) ->
-          Repo.insert(%PointAccount{
-            account_id: customer.account_id,
-            customer_id: customer.id
-          })
-         end)
+      |> Multi.run(:changeset, fn _ ->
+        Customer.put_user_id(changeset)
+      end)
+      |> Multi.run(:customer, fn %{changeset: changeset} ->
+        Repo.insert(changeset)
+      end)
+      |> Multi.run(:point_account, fn %{customer: customer} ->
+        Repo.insert(%PointAccount{
+          account_id: customer.account_id,
+          customer_id: customer.id
+        })
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
+      {:ok, %{customer: customer}} ->
         {:ok, customer}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
 
-      other -> other
+      other ->
+        other
     end
   end
 
@@ -69,35 +70,36 @@ defmodule BlueJet.Crm.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %{ customer | account: account }
+      %{customer | account: account}
       |> Customer.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
-      |> Multi.run(:changeset, fn(_) ->
-          Customer.put_user_id(changeset)
-         end)
-      |> Multi.run(:customer, fn(%{ changeset: changeset }) ->
-          Repo.update(changeset)
-         end)
-      |> Multi.run(:_, fn(%{ customer: customer }) ->
-          Customer.sync_to_user(customer, opts)
-         end)
+      |> Multi.run(:changeset, fn _ ->
+        Customer.put_user_id(changeset)
+      end)
+      |> Multi.run(:customer, fn %{changeset: changeset} ->
+        Repo.update(changeset)
+      end)
+      |> Multi.run(:_, fn %{customer: customer} ->
+        Customer.sync_to_user(customer, opts)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
+      {:ok, %{customer: customer}} ->
         customer = preload(customer, preloads[:path], preloads[:opts])
         {:ok, customer}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
 
-      other -> other
+      other ->
+        other
     end
   end
 
   def update_customer(identifiers, fields, opts) do
-    get_customer(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_customer(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_customer(fields, opts)
   end
 
@@ -107,29 +109,30 @@ defmodule BlueJet.Crm.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %{ customer | account: account }
+      %{customer | account: account}
       |> Customer.changeset(:delete)
 
     statements =
       Multi.new()
       |> Multi.delete(:customer, changeset)
-      |> Multi.run(:_, fn(%{ customer: customer }) ->
-          Customer.delete_user(customer)
-         end)
+      |> Multi.run(:_, fn %{customer: customer} ->
+        Customer.delete_user(customer)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ customer: customer }} ->
+      {:ok, %{customer: customer}} ->
         {:ok, customer}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
 
-      other -> other
+      other ->
+        other
     end
   end
 
   def delete_customer(identifiers, opts) do
-    get_customer(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_customer(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_customer(opts)
   end
 
@@ -160,18 +163,18 @@ defmodule BlueJet.Crm.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %PointTransaction{ account_id: account.id, account: account }
+      %PointTransaction{account_id: account.id, account: account}
       |> PointTransaction.changeset(:insert, fields)
 
     statements =
       Multi.new()
       |> Multi.insert(:point_transaction, changeset)
-      |> Multi.run(:_, fn(%{ point_transaction: point_transaction }) ->
-          PointTransaction.sync_to_point_account(point_transaction)
-         end)
+      |> Multi.run(:_, fn %{point_transaction: point_transaction} ->
+        PointTransaction.sync_to_point_account(point_transaction)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ point_transaction: point_transaction }} ->
+      {:ok, %{point_transaction: point_transaction}} ->
         point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
         {:ok, point_transaction}
 
@@ -191,18 +194,18 @@ defmodule BlueJet.Crm.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %{ point_transaction | account: account }
+      %{point_transaction | account: account}
       |> PointTransaction.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
       |> Multi.update(:point_transaction, changeset)
-      |> Multi.run(:_, fn(%{ point_transaction: point_transaction }) ->
-          PointTransaction.sync_to_point_account(point_transaction)
-         end)
+      |> Multi.run(:_, fn %{point_transaction: point_transaction} ->
+        PointTransaction.sync_to_point_account(point_transaction)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ point_transaction: point_transaction }} ->
+      {:ok, %{point_transaction: point_transaction}} ->
         point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
         {:ok, point_transaction}
 
@@ -212,19 +215,22 @@ defmodule BlueJet.Crm.DefaultService do
   end
 
   def update_point_transaction(identifiers, fields, opts) do
-    get_point_transaction(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_point_transaction(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_point_transaction(fields, opts)
   end
 
   def delete_point_transaction(nil, _), do: {:error, :not_found}
-  def delete_point_transaction(%PointTransaction{ status: "committed", amount: amount }, _) when amount != 0, do: {:error, :not_found}
+
+  def delete_point_transaction(%PointTransaction{status: "committed", amount: amount}, _)
+      when amount != 0,
+      do: {:error, :not_found}
 
   def delete_point_transaction(point_transaction = %PointTransaction{}, opts) do
     delete(point_transaction, opts)
   end
 
   def delete_point_transaction(identifiers, opts) do
-    get_point_transaction(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_point_transaction(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_point_transaction(opts)
   end
 end

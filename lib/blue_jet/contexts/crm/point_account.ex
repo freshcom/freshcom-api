@@ -44,11 +44,11 @@ defmodule BlueJet.Crm.PointAccount do
     |> Translation.put_change(translatable_fields(), locale)
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :built }}) do
+  defp castable_fields(%{__meta__: %{state: :built}}) do
     writable_fields()
   end
 
-  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+  defp castable_fields(%{__meta__: %{state: :loaded}}) do
     writable_fields() -- [:account_id]
   end
 

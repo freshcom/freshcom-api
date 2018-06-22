@@ -1,15 +1,19 @@
 defmodule BlueJet.Crm.PointTransaction.Query do
   use BlueJet, :query
-  use BlueJet.Query.Search, for: [
-    :name,
-    :caption
-  ]
-  use BlueJet.Query.Filter, for: [
-    :status,
-    :label,
-    :point_account_id,
-    :reason_label,
-  ]
+
+  use BlueJet.Query.Search,
+    for: [
+      :name,
+      :caption
+    ]
+
+  use BlueJet.Query.Filter,
+    for: [
+      :status,
+      :label,
+      :point_account_id,
+      :reason_label
+    ]
 
   alias BlueJet.Crm.{PointTransaction, PointAccount}
 
@@ -22,7 +26,11 @@ defmodule BlueJet.Crm.PointTransaction.Query do
   end
 
   def preloads({:point_account, point_account_preloads}, options) do
-    [point_account: {PointAccount.Query.default(), PointAccount.Query.preloads(point_account_preloads, options)}]
+    [
+      point_account:
+        {PointAccount.Query.default(),
+         PointAccount.Query.preloads(point_account_preloads, options)}
+    ]
   end
 
   def preloads(_, _) do

@@ -8,7 +8,7 @@ defmodule BlueJet.Crm.PointAccount.Query do
   end
 
   def for_customer(query, customer_id) do
-    from pa in query, where: pa.customer_id == ^customer_id
+    from(pa in query, where: pa.customer_id == ^customer_id)
   end
 
   def preloads({:transactions, transaction_preloads}, options) do

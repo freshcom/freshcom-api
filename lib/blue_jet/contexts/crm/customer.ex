@@ -40,7 +40,7 @@ defmodule BlueJet.Crm.Customer do
     belongs_to :sponsor, __MODULE__
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -92,7 +92,7 @@ defmodule BlueJet.Crm.Customer do
     |> Map.put(:action, :delete)
   end
 
-  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+  defp put_name(changeset = %{changes: %{name: _}}), do: changeset
 
   defp put_name(changeset) do
     first_name = get_field(changeset, :first_name)
@@ -125,7 +125,7 @@ defmodule BlueJet.Crm.Customer do
     end
   end
 
-  @spec match_by(__MODULE__.t() | nil, list) :: __MODULE__.t | nil
+  @spec match_by(__MODULE__.t() | nil, list) :: __MODULE__.t() | nil
   def match_by(nil, _), do: nil
 
   def match_by(customer, matcher) do
@@ -136,20 +136,25 @@ defmodule BlueJet.Crm.Customer do
   defp do_match_by(customer, matcher) when map_size(matcher) == 0, do: customer
 
   defp do_match_by(customer, matcher) do
-    leftover = Enum.reject(matcher, fn({k, v}) ->
-      case k do
-        :first_name ->
-          String.downcase(v) == remove_space(downcase(customer.first_name))
-        :last_name ->
-          String.downcase(v) == remove_space(downcase(customer.last_name))
-        :name ->
-          remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
-        :phone_number ->
-          digit_only(v) == digit_only(customer.phone_number)
-        :email ->
-          downcase(v) == downcase(customer.email)
-      end
-    end)
+    leftover =
+      Enum.reject(matcher, fn {k, v} ->
+        case k do
+          :first_name ->
+            String.downcase(v) == remove_space(downcase(customer.first_name))
+
+          :last_name ->
+            String.downcase(v) == remove_space(downcase(customer.last_name))
+
+          :name ->
+            remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
+
+          :phone_number ->
+            digit_only(v) == digit_only(customer.phone_number)
+
+          :email ->
+            downcase(v) == downcase(customer.email)
+        end
+      end)
 
     case length(leftover) do
       0 -> customer
@@ -186,11 +191,11 @@ defmodule BlueJet.Crm.Customer do
   and add its ID as `user_id` to the customer's changeset, otherwise does nothing.
   """
   @spec put_user_id(Changeset.t()) :: {:ok | :error, Changeset.t()}
-  def put_user_id(%{ data: customer, changes: %{ status: "registered" } = changes } = changeset) do
+  def put_user_id(%{data: customer, changes: %{status: "registered"} = changes} = changeset) do
     account = Proxy.get_account(customer)
-    fields = Map.merge(changes, %{ role: "customer" })
+    fields = Map.merge(changes, %{role: "customer"})
 
-    with {:ok, user} <- IdentityService.create_user(fields, %{ account: account }) do
+    with {:ok, user} <- IdentityService.create_user(fields, %{account: account}) do
       changeset = put_change(changeset, :user_id, user.id)
 
       {:ok, changeset}
@@ -219,7 +224,8 @@ defmodule BlueJet.Crm.Customer do
 
   def delete_user(customer) do
     account = Proxy.get_account(customer)
-    with {:ok, _} <- IdentityService.delete_user(customer.user_id, %{ account: account }) do
+
+    with {:ok, _} <- IdentityService.delete_user(customer.user_id, %{account: account}) do
       {:ok, customer}
     else
       other -> other

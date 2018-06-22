@@ -33,7 +33,7 @@ defmodule BlueJet.Crm.PointTransaction do
     belongs_to :point_account, PointAccount
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -90,21 +90,25 @@ defmodule BlueJet.Crm.PointTransaction do
     |> validate()
   end
 
-  defp put_committed_at(changeset = %{
-    valid?: true,
-    data: %{ status: "pending" },
-    changes: %{ status: "committed" }
-  }) do
+  defp put_committed_at(
+         changeset = %{
+           valid?: true,
+           data: %{status: "pending"},
+           changes: %{status: "committed"}
+         }
+       ) do
     put_change(changeset, :committed_at, Ecto.DateTime.utc())
   end
 
   defp put_committed_at(changeset), do: changeset
 
-  defp put_balance_after_commit(changeset = %{
-    valid?: true,
-    data: %{ status: "pending" },
-    changes: %{ status: "committed" }
-  }) do
+  defp put_balance_after_commit(
+         changeset = %{
+           valid?: true,
+           data: %{status: "pending"},
+           changes: %{status: "committed"}
+         }
+       ) do
     point_account_id = get_field(changeset, :point_account_id)
     point_account = Repo.get(PointAccount, point_account_id)
 
@@ -115,7 +119,7 @@ defmodule BlueJet.Crm.PointTransaction do
 
   defp put_balance_after_commit(changeset), do: changeset
 
-  defp validate(changeset = %{ action: :delete }) do
+  defp validate(changeset = %{action: :delete}) do
     if get_field(changeset, :amount) == 0 do
       changeset
     else
@@ -130,11 +134,13 @@ defmodule BlueJet.Crm.PointTransaction do
   end
 
   @spec sync_to_point_account(__MODULE__.t()) :: {:ok, __MODULE__.t()}
-  def sync_to_point_account(%{status: "committed", balance_after_commit: balance} = point_transaction) do
+  def sync_to_point_account(
+        %{status: "committed", balance_after_commit: balance} = point_transaction
+      ) do
     point_transaction = Repo.preload(point_transaction, :point_account)
     point_account = point_transaction.point_account
 
-    changeset = change(point_account, %{ balance: balance })
+    changeset = change(point_account, %{balance: balance})
     {:ok, _} = Repo.update(changeset)
 
     {:ok, point_transaction}
