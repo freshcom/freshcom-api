@@ -15,7 +15,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     belongs_to :file, File
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -64,7 +64,9 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     |> validate_file_id()
   end
 
-  defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
+  defp validate_collection_id(
+         changeset = %{valid?: true, changes: %{collection_id: collection_id}}
+       ) do
     account_id = get_field(changeset, :account_id)
     collection = Repo.get(FileCollection, collection_id)
 
@@ -77,7 +79,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
 
   defp validate_collection_id(changeset), do: changeset
 
-  defp validate_file_id(changeset = %{ valid?: true, changes: %{ file_id: file_id } }) do
+  defp validate_file_id(changeset = %{valid?: true, changes: %{file_id: file_id}}) do
     account_id = get_field(changeset, :account_id)
     file = Repo.get(File, file_id)
 

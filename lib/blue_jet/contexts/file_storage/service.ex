@@ -1,25 +1,30 @@
 defmodule BlueJet.FileStorage.Service do
   @service Application.get_env(:blue_jet, :file_storage)[:service]
 
-  @callback list_file(map, map) :: [File.t]
+  @callback list_file(map, map) :: [File.t()]
   @callback count_file(map, map) :: integer
-  @callback create_file(map, map) :: {:ok, File.t} | {:error, any}
-  @callback get_file(map, map) :: File.t | nil
-  @callback update_file(String.t | File.t, map, map) :: {:ok, File.t} | {:error, any}
-  @callback delete_file(String.t | File.t, map) :: {:ok, File.t} | {:error, any}
+  @callback create_file(map, map) :: {:ok, File.t()} | {:error, any}
+  @callback get_file(map, map) :: File.t() | nil
+  @callback update_file(String.t() | File.t(), map, map) :: {:ok, File.t()} | {:error, any}
+  @callback delete_file(String.t() | File.t(), map) :: {:ok, File.t()} | {:error, any}
   @callback delete_all_file(map) :: :ok
 
-  @callback list_file_collection(map, map) :: [FileCollection.t]
+  @callback list_file_collection(map, map) :: [FileCollection.t()]
   @callback count_file_collection(map, map) :: integer
-  @callback create_file_collection(map, map) :: {:ok, FileCollection.t} | {:error, any}
-  @callback get_file_collection(map, map) :: FileCollection.t | nil
-  @callback update_file_collection(String.t | FileCollection.t, map, map) :: {:ok, FileCollection.t} | {:error, any}
-  @callback delete_file_collection(String.t | FileCollection.t, map) :: {:ok, FileCollection.t} | {:error, any}
+  @callback create_file_collection(map, map) :: {:ok, FileCollection.t()} | {:error, any}
+  @callback get_file_collection(map, map) :: FileCollection.t() | nil
+  @callback update_file_collection(String.t() | FileCollection.t(), map, map) ::
+              {:ok, FileCollection.t()} | {:error, any}
+  @callback delete_file_collection(String.t() | FileCollection.t(), map) ::
+              {:ok, FileCollection.t()} | {:error, any}
   @callback delete_all_file_collection(map) :: :ok
 
-  @callback create_file_collection_membership(map, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
-  @callback update_file_collection_membership(String.t | FileCollectionMembership.t, map, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
-  @callback delete_file_collection_membership(String.t | FileCollectionMembership.t, map) :: {:ok, FileCollectionMembership.t} | {:error, any}
+  @callback create_file_collection_membership(map, map) ::
+              {:ok, FileCollectionMembership.t()} | {:error, any}
+  @callback update_file_collection_membership(String.t() | FileCollectionMembership.t(), map, map) ::
+              {:ok, FileCollectionMembership.t()} | {:error, any}
+  @callback delete_file_collection_membership(String.t() | FileCollectionMembership.t(), map) ::
+              {:ok, FileCollectionMembership.t()} | {:error, any}
 
   defdelegate list_file(params, opts), to: @service
   defdelegate count_file(params \\ %{}, opts), to: @service

@@ -19,11 +19,12 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def create_file(fields, opts) do
-    case create(File, fields, opts)  do
+    case create(File, fields, opts) do
       {:ok, file} ->
         {:ok, File.put_url(file)}
 
-      other -> other
+      other ->
+        other
     end
   end
 
@@ -35,16 +36,17 @@ defmodule BlueJet.FileStorage.DefaultService do
   def update_file(nil, _, _), do: {:error, :not_found}
 
   def update_file(file = %File{}, fields, opts) do
-    case update(file, fields, opts)  do
+    case update(file, fields, opts) do
       {:ok, file} ->
         {:ok, File.put_url(file)}
 
-      other -> other
+      other ->
+        other
     end
   end
 
   def update_file(identifiers, fields, opts) do
-    get(File, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(File, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_file(fields, opts)
   end
 
@@ -54,18 +56,18 @@ defmodule BlueJet.FileStorage.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %{ file | account: account }
+      %{file | account: account}
       |> File.changeset(:delete)
 
     statements =
       Multi.new()
       |> Multi.delete(:file, changeset)
-      |> Multi.run(:_, fn(%{ file: file }) ->
-          File.delete_s3_object(file)
-         end)
+      |> Multi.run(:_, fn %{file: file} ->
+        File.delete_s3_object(file)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ file: file }} ->
+      {:ok, %{file: file}} ->
         {:ok, file}
 
       {:error, _, changeset, _} ->
@@ -74,11 +76,11 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_file(identifiers, opts) do
-    get(File, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(File, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_file(opts)
   end
 
-  def delete_all_file(opts = %{ account: account = %{ mode: "test" } }) do
+  def delete_all_file(opts = %{account: account = %{mode: "test"}}) do
     batch_size = opts[:batch_size] || 500
 
     files =
@@ -87,10 +89,10 @@ defmodule BlueJet.FileStorage.DefaultService do
       |> paginate(size: batch_size, number: 1)
       |> Repo.all()
 
-    file_ids = Enum.map(files, fn(file) -> file.id end)
+    file_ids = Enum.map(files, fn file -> file.id end)
 
     File.Query.default()
-    |> File.Query.filter_by(%{ id: file_ids })
+    |> File.Query.filter_by(%{id: file_ids})
     |> Repo.delete_all()
 
     File.delete_s3_object(files)
@@ -120,18 +122,18 @@ defmodule BlueJet.FileStorage.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %FileCollection{ account_id: account.id, account: account }
+      %FileCollection{account_id: account.id, account: account}
       |> FileCollection.changeset(:insert, fields)
 
     statements =
       Multi.new()
       |> Multi.insert(:file_collection, changeset)
-      |> Multi.run(:_, fn(%{ file_collection: file_collection }) ->
-          FileCollection.create_memberships_for_file_ids(file_collection)
-         end)
+      |> Multi.run(:_, fn %{file_collection: file_collection} ->
+        FileCollection.create_memberships_for_file_ids(file_collection)
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ file_collection: file_collection }} ->
+      {:ok, %{file_collection: file_collection}} ->
         file_collection =
           file_collection
           |> preload(preloads[:path], preloads[:opts])
@@ -153,7 +155,7 @@ defmodule BlueJet.FileStorage.DefaultService do
   def update_file_collection(nil, _, _), do: {:error, :not_found}
 
   def update_file_collection(file_collection = %FileCollection{}, fields, opts) do
-    case update(file_collection, fields, opts)  do
+    case update(file_collection, fields, opts) do
       {:ok, file_collection} ->
         file_collection =
           file_collection
@@ -162,12 +164,13 @@ defmodule BlueJet.FileStorage.DefaultService do
 
         {:ok, file_collection}
 
-      other -> other
+      other ->
+        other
     end
   end
 
   def update_file_collection(identifiers, fields, opts) do
-    get(FileCollection, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(FileCollection, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_file_collection(fields, opts)
   end
 
@@ -178,11 +181,11 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_file_collection(identifiers, opts) do
-    get(FileCollection, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(FileCollection, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_file_collection(opts)
   end
 
-  def delete_all_file_collection(opts = %{ account: account = %{ mode: "test" } }) do
+  def delete_all_file_collection(opts = %{account: account = %{mode: "test"}}) do
     batch_size = opts[:batch_size] || 1000
 
     file_collection_ids =
@@ -193,7 +196,7 @@ defmodule BlueJet.FileStorage.DefaultService do
       |> Repo.all()
 
     FileCollection.Query.default()
-    |> FileCollection.Query.filter_by(%{ id: file_collection_ids })
+    |> FileCollection.Query.filter_by(%{id: file_collection_ids})
     |> Repo.delete_all()
 
     if length(file_collection_ids) === batch_size do
@@ -217,7 +220,7 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def update_file_collection_membership(identifiers, fields, opts) do
-    get(FileCollectionMembership, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(FileCollectionMembership, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_file_collection_membership(fields, opts)
   end
 
@@ -228,7 +231,7 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_file_collection_membership(identifiers, opts) do
-    get(FileCollectionMembership, identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get(FileCollectionMembership, identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_file_collection_membership(opts)
   end
 end

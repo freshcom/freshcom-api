@@ -31,7 +31,7 @@ defmodule BlueJet.FileStorage.FileCollection do
     has_many :files, through: [:memberships, :file]
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -66,7 +66,7 @@ defmodule BlueJet.FileStorage.FileCollection do
 
   @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(file_collection, :update, params, locale \\ nil, default_locale \\ nil) do
-    file_collection = %{ file_collection | account: Proxy.get_account(file_collection) }
+    file_collection = %{file_collection | account: Proxy.get_account(file_collection)}
     default_locale = default_locale || file_collection.account.default_locale
     locale = locale || default_locale
 
@@ -91,7 +91,7 @@ defmodule BlueJet.FileStorage.FileCollection do
   def put_file_urls(nil), do: nil
 
   def put_file_urls(file_collections) when is_list(file_collections) do
-    Enum.map(file_collections, fn(file_collection) ->
+    Enum.map(file_collections, fn file_collection ->
       put_file_urls(file_collection)
     end)
   end
@@ -104,7 +104,7 @@ defmodule BlueJet.FileStorage.FileCollection do
   def create_memberships_for_file_ids(file_collection) do
     sort_index_step = 10000
 
-    Enum.reduce(file_collection.file_ids, 10000, fn(file_id, acc) ->
+    Enum.reduce(file_collection.file_ids, 10000, fn file_id, acc ->
       Repo.insert!(%FileCollectionMembership{
         account_id: file_collection.account_id,
         collection_id: file_collection.id,
@@ -119,7 +119,7 @@ defmodule BlueJet.FileStorage.FileCollection do
   end
 
   @spec file_count(__MODULE__.t()) :: integer
-  def file_count(%__MODULE__{ id: collection_id }) do
+  def file_count(%__MODULE__{id: collection_id}) do
     FileCollectionMembership.Query.default()
     |> FileCollectionMembership.Query.for_collection(collection_id)
     |> FileCollectionMembership.Query.with_file_status("uploaded")
@@ -130,12 +130,12 @@ defmodule BlueJet.FileStorage.FileCollection do
   def put_file_count(nil), do: nil
 
   def put_file_count(file_collections) when is_list(file_collections) do
-    Enum.map(file_collections, fn(file_collection) ->
+    Enum.map(file_collections, fn file_collection ->
       put_file_count(file_collection)
     end)
   end
 
   def put_file_count(file_collection) do
-    %{ file_collection | file_count: file_count(file_collection) }
+    %{file_collection | file_count: file_count(file_collection)}
   end
 end

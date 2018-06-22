@@ -37,7 +37,7 @@ defmodule BlueJet.FileStorage.File do
     has_many :collection_memberships, FileCollectionMembership, foreign_key: :file_id
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -76,7 +76,7 @@ defmodule BlueJet.FileStorage.File do
 
   @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(file, :update, params, locale \\ nil, default_locale \\ nil) do
-    file = %{ file | account: Proxy.get_account(file) }
+    file = %{file | account: Proxy.get_account(file)}
     default_locale = default_locale || file.account.default_locale
     locale = locale || default_locale
 
@@ -116,22 +116,24 @@ defmodule BlueJet.FileStorage.File do
 
   @spec put_url(list | __MODULE__.t()) :: list | __MODULE__.t()
   def put_url(structs) when is_list(structs) do
-    Enum.map(structs, fn(ef) ->
+    Enum.map(structs, fn ef ->
       put_url(ef)
     end)
   end
 
-  def put_url(struct = %__MODULE__{}), do: %{ struct | url: get_url(struct) }
+  def put_url(struct = %__MODULE__{}), do: %{struct | url: get_url(struct)}
   def put_url(struct), do: struct
 
   @spec get_url(__MODULE__.t()) :: __MODULE__.t()
-  def get_url(file = %{ status: "pending" }) do
+  def get_url(file = %{status: "pending"}) do
     get_s3_key(file)
     |> S3Client.get_presigned_url(:put)
   end
 
   def get_url(file) do
-    is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
+    is_cdn_enabled =
+      System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
+
     key = get_s3_key(file)
 
     if is_cdn_enabled do
@@ -141,9 +143,9 @@ defmodule BlueJet.FileStorage.File do
     end
   end
 
-  @spec get_s3_key(list | __MODULE__.t) :: list | String.t()
+  @spec get_s3_key(list | __MODULE__.t()) :: list | String.t()
   def get_s3_key(files) when is_list(files) do
-    Enum.map(files, fn(file) ->
+    Enum.map(files, fn file ->
       get_s3_key(file)
     end)
   end
