@@ -60,12 +60,12 @@ defmodule BlueJet.FileStorage.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:file, changeset)
-      |> Multi.run(:processed_file, fn(%{ file: file }) ->
-          File.process(file, changeset)
+      |> Multi.run(:_, fn(%{ file: file }) ->
+          File.delete_s3_object(file)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_file: file }} ->
+      {:ok, %{ file: file }} ->
         {:ok, file}
 
       {:error, _, changeset, _} ->
@@ -126,12 +126,12 @@ defmodule BlueJet.FileStorage.DefaultService do
     statements =
       Multi.new()
       |> Multi.insert(:file_collection, changeset)
-      |> Multi.run(:processed_file_collection, fn(%{ file_collection: file_collection }) ->
-          FileCollection.process(file_collection, changeset)
+      |> Multi.run(:_, fn(%{ file_collection: file_collection }) ->
+          FileCollection.create_memberships_for_file_ids(file_collection)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_file_collection: file_collection }} ->
+      {:ok, %{ file_collection: file_collection }} ->
         file_collection =
           file_collection
           |> preload(preloads[:path], preloads[:opts])

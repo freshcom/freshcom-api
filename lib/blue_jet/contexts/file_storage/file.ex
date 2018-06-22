@@ -1,15 +1,7 @@
 defmodule BlueJet.FileStorage.File do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
-  alias BlueJet.FileStorage.S3Client
-  alias BlueJet.FileStorage.CloudfrontClient
+  alias BlueJet.FileStorage.{S3Client, CloudfrontClient}
   alias BlueJet.FileStorage.FileCollectionMembership
   alias __MODULE__.Proxy
 
@@ -63,21 +55,18 @@ defmodule BlueJet.FileStorage.File do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
-  end
-
-  defp required_fields do
-    [:status, :name, :content_type, :size_bytes]
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields())
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(file, :insert, params) do
     file
     |> cast(params, writable_fields())
@@ -85,6 +74,7 @@ defmodule BlueJet.FileStorage.File do
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(file, :update, params, locale \\ nil, default_locale \\ nil) do
     file = %{ file | account: Proxy.get_account(file) }
     default_locale = default_locale || file.account.default_locale
@@ -96,45 +86,45 @@ defmodule BlueJet.FileStorage.File do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(file, :delete) do
     change(file)
     |> Map.put(:action, :delete)
   end
 
+  defp required_fields do
+    [:status, :name, :content_type, :size_bytes]
+  end
+
+  defp validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+  end
+
+  @spec delete_s3_object(list | __MODULE__.t()) :: :ok | {:ok, __MODULE__.t()}
   def delete_s3_object(files) when is_list(files) do
     Proxy.delete_s3_object(files)
 
     :ok
   end
 
-  def process(file, %{ action: :delete }) do
+  def delete_s3_object(file) do
     Proxy.delete_s3_object(file)
 
     {:ok, file}
   end
 
-  def get_s3_key(files) when is_list(files) do
-    Enum.map(files, fn(file) ->
-      get_s3_key(file)
-    end)
-  end
-
-  def get_s3_key(file) do
-    prefix = Application.get_env(:blue_jet, :s3)[:prefix]
-    id = file.id
-    name = file.name
-    ext = Path.extname(name)
-    "#{prefix}/file/#{id}#{ext}"
-  end
-
+  @spec put_url(list | __MODULE__.t()) :: list | __MODULE__.t()
   def put_url(structs) when is_list(structs) do
     Enum.map(structs, fn(ef) ->
       put_url(ef)
     end)
   end
+
   def put_url(struct = %__MODULE__{}), do: %{ struct | url: get_url(struct) }
   def put_url(struct), do: struct
 
+  @spec get_url(__MODULE__.t()) :: __MODULE__.t()
   def get_url(file = %{ status: "pending" }) do
     get_s3_key(file)
     |> S3Client.get_presigned_url(:put)
@@ -149,5 +139,20 @@ defmodule BlueJet.FileStorage.File do
     else
       S3Client.get_presigned_url(key, :get)
     end
+  end
+
+  @spec get_s3_key(list | __MODULE__.t) :: list | String.t()
+  def get_s3_key(files) when is_list(files) do
+    Enum.map(files, fn(file) ->
+      get_s3_key(file)
+    end)
+  end
+
+  def get_s3_key(file) do
+    prefix = Application.get_env(:blue_jet, :s3)[:prefix]
+    id = file.id
+    name = file.name
+    ext = Path.extname(name)
+    "#{prefix}/file/#{id}#{ext}"
   end
 end

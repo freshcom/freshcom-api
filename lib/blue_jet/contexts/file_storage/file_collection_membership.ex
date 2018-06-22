@@ -28,9 +28,42 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  #
-  # MARK: Validate
-  #
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  def changeset(fcm, :delete) do
+    change(fcm)
+    |> Map.put(:action, :delete)
+  end
+
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  def changeset(fcm, :insert, params) do
+    fcm
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  def changeset(fcm, :update, params) do
+    fcm
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> validate()
+  end
+
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:collection_id, :file_id]
+  end
+
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:collection_id, :file_id])
+    |> validate_collection_id()
+    |> validate_file_id()
+  end
+
   defp validate_collection_id(changeset = %{ valid?: true, changes: %{ collection_id: collection_id } }) do
     account_id = get_field(changeset, :account_id)
     collection = Repo.get(FileCollection, collection_id)
@@ -56,41 +89,4 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
   end
 
   defp validate_file_id(changeset), do: changeset
-
-  def validate(changeset) do
-    changeset
-    |> validate_required([:collection_id, :file_id])
-    |> validate_collection_id()
-    |> validate_file_id()
-  end
-
-  #
-  # MARK: Changeset
-  #
-  def castable_fields(:insert) do
-    writable_fields()
-  end
-
-  def castable_fields(:update) do
-    writable_fields() -- [:collection_id, :file_id]
-  end
-
-  def changeset(fcm, :delete) do
-    change(fcm)
-    |> Map.put(:action, :delete)
-  end
-
-  def changeset(fcm, :insert, params) do
-    fcm
-    |> cast(params, castable_fields(:insert))
-    |> Map.put(:action, :insert)
-    |> validate()
-  end
-
-  def changeset(fcm, :update, params) do
-    fcm
-    |> cast(params, castable_fields(:update))
-    |> Map.put(:action, :update)
-    |> validate()
-  end
 end

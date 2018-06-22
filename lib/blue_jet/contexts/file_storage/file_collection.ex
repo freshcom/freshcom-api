@@ -1,13 +1,6 @@
 defmodule BlueJet.FileStorage.FileCollection do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.FileStorage.{File, FileCollectionMembership}
   alias __MODULE__.Proxy
 
@@ -52,28 +45,18 @@ defmodule BlueJet.FileStorage.FileCollection do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:name, :status])
-  end
-
-  def put_file_urls(nil), do: nil
-
-  def put_file_urls(file_collections) when is_list(file_collections) do
-    Enum.map(file_collections, fn(file_collection) ->
-      put_file_urls(file_collection)
-    end)
-  end
-
-  def put_file_urls(file_collection = %__MODULE__{}) do
-    Map.put(file_collection, :files, File.put_url(file_collection.files))
-  end
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(file_collection, :insert, params) do
     file_collection
     |> cast(params, writable_fields())
@@ -81,6 +64,7 @@ defmodule BlueJet.FileStorage.FileCollection do
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(file_collection, :update, params, locale \\ nil, default_locale \\ nil) do
     file_collection = %{ file_collection | account: Proxy.get_account(file_collection) }
     default_locale = default_locale || file_collection.account.default_locale
@@ -92,12 +76,32 @@ defmodule BlueJet.FileStorage.FileCollection do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(file_collection, :delete) do
     change(file_collection)
     |> Map.put(:action, :delete)
   end
 
-  def process(file_collection, %{ action: :insert }) do
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:name, :status])
+  end
+
+  @spec put_file_urls(list | __MODULE__.t() | nil) :: list | __MODULE__.t() | nil
+  def put_file_urls(nil), do: nil
+
+  def put_file_urls(file_collections) when is_list(file_collections) do
+    Enum.map(file_collections, fn(file_collection) ->
+      put_file_urls(file_collection)
+    end)
+  end
+
+  def put_file_urls(file_collection = %__MODULE__{}) do
+    Map.put(file_collection, :files, File.put_url(file_collection.files))
+  end
+
+  @spec create_memberships_for_file_ids(__MODULE__.t()) :: {:ok, __MODULE__.t()}
+  def create_memberships_for_file_ids(file_collection) do
     sort_index_step = 10000
 
     Enum.reduce(file_collection.file_ids, 10000, fn(file_id, acc) ->
@@ -114,6 +118,7 @@ defmodule BlueJet.FileStorage.FileCollection do
     {:ok, file_collection}
   end
 
+  @spec file_count(__MODULE__.t()) :: integer
   def file_count(%__MODULE__{ id: collection_id }) do
     FileCollectionMembership.Query.default()
     |> FileCollectionMembership.Query.for_collection(collection_id)
@@ -121,6 +126,7 @@ defmodule BlueJet.FileStorage.FileCollection do
     |> Repo.aggregate(:count, :id)
   end
 
+  @spec put_file_count(list | __MODULE__.t() | nil) :: list | __MODULE__.t() | nil
   def put_file_count(nil), do: nil
 
   def put_file_count(file_collections) when is_list(file_collections) do
