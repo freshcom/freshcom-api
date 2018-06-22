@@ -1,13 +1,7 @@
 defmodule BlueJet.Crm.PointAccount do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
-
-  alias BlueJet.Translation
-
-  alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.PointTransaction
-  alias BlueJet.Crm.Customer
+  alias BlueJet.Crm.{PointTransaction, Customer}
 
   schema "point_accounts" do
     field :account_id, Ecto.UUID
@@ -33,24 +27,11 @@ defmodule BlueJet.Crm.PointAccount do
   end
 
   def writable_fields do
-    PointAccount.__schema__(:fields) -- system_fields()
+    __MODULE__.__schema__(:fields) -- system_fields()
   end
 
   def translatable_fields do
-    PointAccount.__trans__(:fields)
-  end
-
-  def castable_fields(%{ __meta__: %{ state: :built }}) do
-    writable_fields()
-  end
-  def castable_fields(%{ __meta__: %{ state: :loaded }}) do
-    writable_fields() -- [:account_id]
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required([:account_id, :status, :balance])
-    |> foreign_key_constraint(:account_id)
+    [:custom_data]
   end
 
   @doc """
@@ -61,5 +42,19 @@ defmodule BlueJet.Crm.PointAccount do
     |> cast(params, castable_fields(struct))
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
+  end
+
+  defp castable_fields(%{ __meta__: %{ state: :built }}) do
+    writable_fields()
+  end
+
+  defp castable_fields(%{ __meta__: %{ state: :loaded }}) do
+    writable_fields() -- [:account_id]
+  end
+
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:account_id, :status, :balance])
+    |> foreign_key_constraint(:account_id)
   end
 end

@@ -1,15 +1,8 @@
 defmodule BlueJet.Crm.PointTransaction do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.PointTransaction.Proxy
+  alias __MODULE__.Proxy
 
   schema "point_transactions" do
     field :account_id, Ecto.UUID
@@ -40,6 +33,8 @@ defmodule BlueJet.Crm.PointTransaction do
     belongs_to :point_account, PointAccount
   end
 
+  @type t :: Ecto.Schema.t
+
   @system_fields [
     :id,
     :account_id,
@@ -54,28 +49,46 @@ defmodule BlueJet.Crm.PointTransaction do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def validate(changeset = %{ action: :delete }) do
-    if get_field(changeset, :amount) == 0 do
-      changeset
-    else
-      add_error(changeset, :amount, {"must be zero", code: :must_be_zero})
-    end
+  @doc """
+  Builds a changeset based on the `struct` and `params`.
+  """
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  def changeset(point_transaction, :insert, params) do
+    point_transaction
+    |> cast(params, writable_fields())
+    |> put_committed_at()
+    |> put_balance_after_commit()
+    |> validate()
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:status, :amount])
-    |> validate_number(:balance_after_commit, greater_than_or_equal_to: 0)
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
+  def changeset(point_transaction, :update, params, locale \\ nil, default_locale \\ nil) do
+    point_transaction = Proxy.put_account(point_transaction)
+    default_locale = default_locale || point_transaction.account.default_locale
+    locale = locale || default_locale
+
+    point_transaction
+    |> cast(params, writable_fields())
+    |> put_committed_at()
+    |> put_balance_after_commit()
+    |> validate()
+    |> Translation.put_change(translatable_fields(), locale)
   end
 
-  # def put_point_account_id(changeset = %{ changes: %{ customer_id: customer_id } }) do
-  #   point_account = Repo.get_by!(PointAccount, customer_id: customer_id)
-  #   put_change(changeset, :point_account_id, point_account.id)
-  # end
-  # def put_point_account_id(changeset), do: changeset
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  def changeset(point_transaction, :delete) do
+    change(point_transaction)
+    |> Map.put(:action, :delete)
+    |> validate()
+  end
 
   defp put_committed_at(changeset = %{
     valid?: true,
@@ -102,48 +115,30 @@ defmodule BlueJet.Crm.PointTransaction do
 
   defp put_balance_after_commit(changeset), do: changeset
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(point_transaction, :insert, params) do
-    point_transaction
-    |> cast(params, writable_fields())
-    |> put_committed_at()
-    |> put_balance_after_commit()
-    |> validate()
+  defp validate(changeset = %{ action: :delete }) do
+    if get_field(changeset, :amount) == 0 do
+      changeset
+    else
+      add_error(changeset, :amount, {"must be zero", code: :must_be_zero})
+    end
   end
 
-  def changeset(point_transaction, :update, params, locale \\ nil, default_locale \\ nil) do
-    point_transaction = Proxy.put_account(point_transaction)
-    default_locale = default_locale || point_transaction.account.default_locale
-    locale = locale || default_locale
-
-    point_transaction
-    |> cast(params, writable_fields())
-    |> put_committed_at()
-    |> put_balance_after_commit()
-    |> validate()
-    |> Translation.put_change(translatable_fields(), locale)
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:status, :amount])
+    |> validate_number(:balance_after_commit, greater_than_or_equal_to: 0)
   end
 
-  def changeset(point_transaction, :delete) do
-    change(point_transaction)
-    |> Map.put(:action, :delete)
-    |> validate()
-  end
-
-  def process(point_transaction, %{
-    data: %{ status: "pending" },
-    changes: %{ status: "committed" }
-  }) do
+  @spec sync_to_point_account(__MODULE__.t()) :: {:ok, __MODULE__.t()}
+  def sync_to_point_account(%{status: "committed", balance_after_commit: balance} = point_transaction) do
     point_transaction = Repo.preload(point_transaction, :point_account)
     point_account = point_transaction.point_account
 
-    changeset = change(point_account, %{ balance: point_transaction.balance_after_commit })
-    Repo.update(changeset)
+    changeset = change(point_account, %{ balance: balance })
+    {:ok, _} = Repo.update(changeset)
 
     {:ok, point_transaction}
   end
 
-  def process(point_transaction, _), do: {:ok, point_transaction}
+  def sync_to_point_account(point_transaction), do: {:ok, point_transaction}
 end

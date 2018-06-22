@@ -166,12 +166,12 @@ defmodule BlueJet.Crm.DefaultService do
     statements =
       Multi.new()
       |> Multi.insert(:point_transaction, changeset)
-      |> Multi.run(:processed_point_transaction, fn(%{ point_transaction: point_transaction }) ->
-          PointTransaction.process(point_transaction, changeset)
+      |> Multi.run(:_, fn(%{ point_transaction: point_transaction }) ->
+          PointTransaction.sync_to_point_account(point_transaction)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_point_transaction: point_transaction }} ->
+      {:ok, %{ point_transaction: point_transaction }} ->
         point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
         {:ok, point_transaction}
 
@@ -197,12 +197,12 @@ defmodule BlueJet.Crm.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:point_transaction, changeset)
-      |> Multi.run(:processed_point_transaction, fn(%{ point_transaction: point_transaction }) ->
-          PointTransaction.process(point_transaction, changeset)
+      |> Multi.run(:_, fn(%{ point_transaction: point_transaction }) ->
+          PointTransaction.sync_to_point_account(point_transaction)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_point_transaction: point_transaction }} ->
+      {:ok, %{ point_transaction: point_transaction }} ->
         point_transaction = preload(point_transaction, preloads[:path], preloads[:opts])
         {:ok, point_transaction}
 
