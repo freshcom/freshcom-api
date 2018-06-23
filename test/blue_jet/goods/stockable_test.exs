@@ -43,17 +43,6 @@ defmodule BlueJet.Goods.StockableTest do
     ]
   end
 
-  describe "validate/1" do
-    test "when missing required fields" do
-      changeset =
-        change(%Stockable{ account_id: Ecto.UUID.generate() }, %{})
-        |> Stockable.validate()
-
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :unit_of_measure]
-    end
-  end
-
   describe "changeset/4" do
     test "when given valid fields without locale" do
       account = %Account{

@@ -1,14 +1,6 @@
 defmodule BlueJet.Goods.Depositable do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :print_name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias __MODULE__.Proxy
 
   schema "depositables" do
@@ -51,22 +43,16 @@ defmodule BlueJet.Goods.Depositable do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :print_name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:status, :name, :amount, :gateway])
-  end
-
-  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
-
-  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
-    put_change(changeset, :print_name, get_field(changeset, :name))
-  end
-
-  def put_print_name(changeset), do: changeset
-
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(depositable, :insert, params) do
     depositable
     |> cast(params, writable_fields())
@@ -75,6 +61,7 @@ defmodule BlueJet.Goods.Depositable do
     |> put_print_name()
   end
 
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(depositable, :update, params, locale \\ nil, default_locale \\ nil) do
     depositable = Proxy.put_account(depositable)
     default_locale = default_locale || depositable.account.default_locale
@@ -88,8 +75,22 @@ defmodule BlueJet.Goods.Depositable do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(depositable, :delete) do
     change(depositable)
     |> Map.put(:action, :delete)
+  end
+
+  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  defp put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  defp put_print_name(changeset), do: changeset
+
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:status, :name, :amount, :gateway])
   end
 end

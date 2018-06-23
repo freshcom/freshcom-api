@@ -39,17 +39,6 @@ defmodule BlueJet.Goods.DepositableTest do
     ]
   end
 
-  describe "validate/1" do
-    test "when missing required fields" do
-      changeset =
-        change(%Depositable{ account_id: Ecto.UUID.generate() }, %{})
-        |> Depositable.validate()
-
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :amount, :gateway]
-    end
-  end
-
   describe "changeset/4" do
     test "when given valid fields without locale" do
       account = %Account{

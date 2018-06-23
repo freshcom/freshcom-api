@@ -52,22 +52,16 @@ defmodule BlueJet.Goods.Unlockable do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :print_name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:status, :name])
-  end
-
-  def put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
-
-  def put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
-    put_change(changeset, :print_name, get_field(changeset, :name))
-  end
-
-  def put_print_name(changeset), do: changeset
-
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(unlockable, :insert, params) do
     unlockable
     |> cast(params, writable_fields())
@@ -76,6 +70,7 @@ defmodule BlueJet.Goods.Unlockable do
     |> put_print_name()
   end
 
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(unlockable, :update, params, locale \\ nil, default_locale \\ nil) do
     unlockable = Proxy.put_account(unlockable)
     default_locale = default_locale || unlockable.account.default_locale
@@ -89,8 +84,22 @@ defmodule BlueJet.Goods.Unlockable do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(unlockable, :delete) do
     change(unlockable)
     |> Map.put(:action, :delete)
   end
+
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:status, :name])
+  end
+
+  defp put_print_name(changeset = %{ changes: %{ print_name: _ } }), do: changeset
+
+  defp put_print_name(changeset = %{ data: %{ print_name: nil }, valid?: true }) do
+    put_change(changeset, :print_name, get_field(changeset, :name))
+  end
+
+  defp put_print_name(changeset), do: changeset
 end
