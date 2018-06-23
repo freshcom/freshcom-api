@@ -19,27 +19,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackageTest do
     ]
   end
 
-  describe "validate/1" do
-    test "when missing order_id fields" do
-      changeset =
-        change(%FulfillmentPackage{}, %{})
-        |> Map.put(:action, :insert)
-        |> FulfillmentPackage.validate()
-
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:order_id]
-    end
-
-    test "when given valid fields" do
-      changeset =
-        change(%FulfillmentPackage{}, %{ order_id: Ecto.UUID.generate() })
-        |> Map.put(:action, :insert)
-        |> FulfillmentPackage.validate()
-
-      assert changeset.valid? == true
-    end
-  end
-
   describe "changeset/3" do
     test "action should be marked as insert" do
       changeset = FulfillmentPackage.changeset(%FulfillmentPackage{}, :insert, %{})

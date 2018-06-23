@@ -1,8 +1,6 @@
 defmodule BlueJet.Fulfillment.Unlock do
   use BlueJet, :data
 
-  use Trans, translates: [:custom_data], container: :translations
-
   schema "unlocks" do
     field :account_id, Ecto.UUID
     field :account, :map, virtual: true
@@ -24,10 +22,6 @@ defmodule BlueJet.Fulfillment.Unlock do
     timestamps()
   end
 
-  def source(struct) do
-    struct.stockable || struct.unlockable
-  end
-
   @system_fields [
     :id,
     :account_id,
@@ -35,27 +29,46 @@ defmodule BlueJet.Fulfillment.Unlock do
     :updated_at
   ]
 
+  @type t :: Ecto.Schema.t
+
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [:custom_data]
   end
 
-  def castable_fields(:insert) do
+  @doc """
+  Builds a changeset based on the `struct` and `params`.
+  """
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  def changeset(unlock, :insert, params) do
+    unlock
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  def changeset(unlock, :delete) do
+    change(unlock)
+    |> Map.put(:action, :delete)
+  end
+
+  defp castable_fields(:insert) do
     writable_fields()
   end
 
-  def castable_fields(:update) do
+  defp castable_fields(:update) do
     writable_fields() -- [:unlockable_id, :customer_id]
   end
 
-  def required_fields do
+  defp required_fields do
     [:unlockable_id, :customer_id]
   end
 
-  def validate(changeset) do
+  defp validate(changeset) do
     changeset
     |> validate_required(required_fields())
     |> validate_unlockable_id()
@@ -74,18 +87,7 @@ defmodule BlueJet.Fulfillment.Unlock do
 
   defp validate_unlockable_id(changeset), do: changeset
 
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(unlock, :insert, params) do
-    unlock
-    |> cast(params, castable_fields(:insert))
-    |> Map.put(:action, :insert)
-    |> validate()
-  end
-
-  def changeset(unlock, :delete) do
-    change(unlock)
-    |> Map.put(:action, :delete)
+  def source(struct) do
+    struct.stockable || struct.unlockable
   end
 end

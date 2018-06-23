@@ -94,13 +94,13 @@ defmodule BlueJet.Fulfillment.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          FulfillmentItem.preprocess(changeset)
+          FulfillmentItem.fulfill(changeset)
          end)
       |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset}) ->
           Repo.insert(changeset)
          end)
-      |> Multi.run(:processed_fulfillment_item, fn(%{ fulfillment_item: fulfillment_item, changeset: changeset }) ->
-          FulfillmentItem.process(fulfillment_item, changeset)
+      |> Multi.run(:_, fn(%{ fulfillment_item: fulfillment_item }) ->
+          FulfillmentItem.sync_to_package(fulfillment_item)
          end)
       |> Multi.run(:after_create, fn(%{ fulfillment_item: fulfillment_item }) ->
           emit_event("fulfillment.fulfillment_item.create.success", %{ fulfillment_item: fulfillment_item })
@@ -133,13 +133,13 @@ defmodule BlueJet.Fulfillment.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          FulfillmentItem.preprocess(changeset)
+          FulfillmentItem.fulfill(changeset)
          end)
       |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset }) ->
           Repo.update(changeset)
          end)
-      |> Multi.run(:processed_fulfillment_item, fn(%{ fulfillment_item: fulfillment_item, changeset: changeset }) ->
-          FulfillmentItem.process(fulfillment_item, changeset)
+      |> Multi.run(:_, fn(%{ fulfillment_item: fulfillment_item }) ->
+          FulfillmentItem.sync_to_package(fulfillment_item)
          end)
       |> Multi.run(:after_update, fn(%{ fulfillment_item: fulfillment_item }) ->
           emit_event("fulfillment.fulfillment_item.update.success", %{ fulfillment_item: fulfillment_item, changeset: changeset })
@@ -200,13 +200,13 @@ defmodule BlueJet.Fulfillment.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:changeset, fn(_) ->
-          ReturnItem.preprocess(changeset)
+          ReturnItem.return(changeset)
          end)
       |> Multi.run(:return_item, fn(%{ changeset: changeset}) ->
           Repo.insert(changeset)
          end)
-      |> Multi.run(:processed_return_item, fn(%{ return_item: return_item, changeset: changeset }) ->
-          ReturnItem.process(return_item, changeset)
+      |> Multi.run(:_, fn(%{ return_item: return_item, changeset: changeset }) ->
+          ReturnItem.sync_to_related_resources(return_item, changeset)
          end)
       |> Multi.run(:after_create, fn(%{ return_item: return_item }) ->
           emit_event("fulfillment.return_item.create.success", %{ return_item: return_item, changeset: changeset })

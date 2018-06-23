@@ -3,14 +3,6 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   """
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :print_name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.Fulfillment.CrmService
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, Unlock}
   alias __MODULE__.Proxy
@@ -67,52 +59,47 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     :updated_at
   ]
 
+  @type t :: Ecto.Schema.t
+
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :print_name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  defp validate_status(changeset = %{ data: %{ status: "pending" } }) do
-    changeset
-    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  def changeset(return_item, :insert, params) do
+    return_item
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> put_fulfillment_item()
+    |> put_order_id()
+    |> put_order_line_item_id()
+    |> put_target()
+    |> put_name()
+    |> put_translations()
+    |> validate()
   end
 
-  defp validate_status(changeset = %{ data: %{ status: "in_progress" } }) do
-    changeset
-    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  def changeset(return_item, :update, params, locale \\ nil, default_locale \\ nil) do
+    return_item = Proxy.put_account(return_item)
+    default_locale = default_locale || return_item.account.default_locale
+    locale = locale || default_locale
+
+    return_item
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
+    |> validate()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  defp validate_status(changeset = %{
-    data: %{ status: "returned" },
-    changes: %{ status: _ }
-  }) do
-    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
-  end
-
-  defp validate_status(changeset), do: changeset
-
-  def validate(changeset = %{ action: :insert }) do
-    changeset
-    |> validate_required([:fulfillment_item_id, :status])
-    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
-  end
-
-  def validate(changeset = %{ action: :update }) do
-    changeset
-    |> validate_status()
-  end
-
-  def validate(changeset = %{ action: :delete }) do
-    changeset
-    |> validate_inclusion(:status, ["pending", "in_progress"])
-  end
-
-  #
-  # MARK: Changeset
-  #
   defp get_fulfillment_item(changeset) do
     fulfillment_item_id = get_field(changeset, :fulfillment_item_id)
     get_field(changeset, :fulfillment_item) || Repo.get(FulfillmentItem, fulfillment_item_id)
@@ -157,34 +144,142 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_translations(changeset), do: changeset
 
-  def changeset(return_item, :insert, params) do
-    return_item
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :insert)
-    |> put_fulfillment_item()
-    |> put_order_id()
-    |> put_order_line_item_id()
-    |> put_target()
-    |> put_name()
-    |> put_translations()
-    |> validate()
+  defp validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:fulfillment_item_id, :status])
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
   end
 
-  def changeset(return_item, :update, params, locale \\ nil, default_locale \\ nil) do
-    return_item = Proxy.put_account(return_item)
-    default_locale = default_locale || return_item.account.default_locale
-    locale = locale || default_locale
-
-    return_item
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :update)
-    |> validate()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  defp validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_status()
   end
 
-  #
-  # MARK: Preprocess
-  #
+  defp validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress"])
+  end
+
+  defp validate_status(changeset = %{ data: %{ status: "pending" } }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  end
+
+  defp validate_status(changeset = %{ data: %{ status: "in_progress" } }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "returned" },
+    changes: %{ status: _ }
+  }) do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  defp validate_status(changeset), do: changeset
+
+  @spec return(Changeset.t(), __MODULE__.t) :: {:ok, Changeset.t()}
+  def return(changeset = %{
+      changes: %{ status: "returned" }
+    },
+    %{
+      source_type: "Unlock",
+      source_id: unlock_id
+    }
+  ) do
+    {:ok, _} = return_unlockable(unlock_id)
+    package = get_or_create_auto_return_package(changeset)
+    changeset = put_change(changeset, :package_id, package.id)
+
+    {:ok, changeset}
+  end
+
+  def return(changeset = %{
+      data: %{ account: account },
+      changes: %{ status: "returned", quantity: return_quantity }
+    },
+    %{
+      target_type: "Depositable",
+      source_type: "PointTransaction",
+      source_id: point_transaction_id,
+      quantity: fulfilled_quantity
+    }
+  ) do
+    opts = %{ account: account }
+
+    case return_depositable(point_transaction_id, fulfilled_quantity, return_quantity, opts) do
+      {:ok, nil} ->
+        {:ok, changeset}
+
+      {:ok, point_transaction} ->
+        package = get_or_create_auto_return_package(changeset)
+        changeset =
+          changeset
+          |> put_change(:package_id, package.id)
+          |> put_change(:source_type, "PointTransaction")
+          |> put_change(:source_id, point_transaction.id)
+        {:ok, changeset}
+
+      other -> other
+    end
+  end
+
+  def return(changeset = %{
+      data: %{ account: account },
+      changes: %{ status: "returned" }
+    },
+    %{
+      target_type: "PointTransaction",
+      target_id: point_transaction_id
+    }
+  ) do
+    opts = %{ account: account }
+
+    case return_point_transaction(point_transaction_id, opts) do
+      {:ok, point_transaction} ->
+        package = get_or_create_auto_return_package(changeset)
+        changeset =
+          changeset
+          |> put_change(:package_id, package.id)
+          |> put_change(:source_type, "PointTransaction")
+          |> put_change(:source_id, point_transaction.id)
+        {:ok, changeset}
+
+      other -> other
+    end
+  end
+
+  def return(changeset = %{ changes: %{ package_id: _ } }, _), do: changeset
+
+  def return(changeset, _) do
+    package = get_or_create_auto_return_package(changeset)
+    changeset =
+      changeset
+      |> put_change(:package_id, package.id)
+
+    {:ok, changeset}
+  end
+
+  def return(changeset = %{
+      action: :insert,
+      changes: %{ status: "returned" }
+    }
+  ) do
+    fulfillment_item = get_fulfillment_item(changeset)
+    return(changeset, fulfillment_item)
+  end
+
+  def return(changeset = %{
+      action: :update,
+      data: data,
+      changes: %{ status: "returned" }
+    }
+  ) do
+    data = Repo.preload(data, :fulfillment_item)
+    return(changeset, data.fulfillment_item)
+  end
+
   defp get_or_create_auto_return_package(changeset) do
     account_id = get_field(changeset, :account_id)
     order_id = get_field(changeset, :order_id)
@@ -226,110 +321,10 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     }, opts)
   end
 
-  def preprocess(changeset = %{
-      changes: %{ status: "returned" }
-    },
-    %{
-      source_type: "Unlock",
-      source_id: unlock_id
-    }
-  ) do
-    {:ok, _} = return_unlockable(unlock_id)
-    package = get_or_create_auto_return_package(changeset)
-    changeset = put_change(changeset, :package_id, package.id)
-
-    {:ok, changeset}
-  end
-
-  def preprocess(changeset = %{
-      data: %{ account: account },
-      changes: %{ status: "returned", quantity: return_quantity }
-    },
-    %{
-      target_type: "Depositable",
-      source_type: "PointTransaction",
-      source_id: point_transaction_id,
-      quantity: fulfilled_quantity
-    }
-  ) do
-    opts = %{ account: account }
-
-    case return_depositable(point_transaction_id, fulfilled_quantity, return_quantity, opts) do
-      {:ok, nil} ->
-        {:ok, changeset}
-
-      {:ok, point_transaction} ->
-        package = get_or_create_auto_return_package(changeset)
-        changeset =
-          changeset
-          |> put_change(:package_id, package.id)
-          |> put_change(:source_type, "PointTransaction")
-          |> put_change(:source_id, point_transaction.id)
-        {:ok, changeset}
-
-      other -> other
-    end
-  end
-
-  def preprocess(changeset = %{
-      data: %{ account: account },
-      changes: %{ status: "returned" }
-    },
-    %{
-      target_type: "PointTransaction",
-      target_id: point_transaction_id
-    }
-  ) do
-    opts = %{ account: account }
-
-    case return_point_transaction(point_transaction_id, opts) do
-      {:ok, point_transaction} ->
-        package = get_or_create_auto_return_package(changeset)
-        changeset =
-          changeset
-          |> put_change(:package_id, package.id)
-          |> put_change(:source_type, "PointTransaction")
-          |> put_change(:source_id, point_transaction.id)
-        {:ok, changeset}
-
-      other -> other
-    end
-  end
-
-  def preprocess(changeset = %{ changes: %{ package_id: _ } }, _), do: changeset
-
-  def preprocess(changeset, _) do
-    package = get_or_create_auto_return_package(changeset)
-    changeset =
-      changeset
-      |> put_change(:package_id, package.id)
-
-    {:ok, changeset}
-  end
-
-  def preprocess(changeset = %{
-      action: :insert,
-      changes: %{ status: "returned" }
-    }
-  ) do
-    fulfillment_item = get_fulfillment_item(changeset)
-    preprocess(changeset, fulfillment_item)
-  end
-
-  def preprocess(changeset = %{
-      action: :update,
-      data: data,
-      changes: %{ status: "returned" }
-    }
-  ) do
-    data = Repo.preload(data, :fulfillment_item)
-    preprocess(changeset, data.fulfillment_item)
-  end
-
   #
   # MARK: Process
   #
-  def process(return_item, %{
+  def sync_to_related_resources(return_item, %{
     changes: %{ status: "returned" }
   }) do
     return_item = Repo.preload(return_item, [:package, fulfillment_item: :package])

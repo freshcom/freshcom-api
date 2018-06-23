@@ -31,18 +31,6 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
     ]
   end
 
-  describe "validate/1" do
-    test "when missing required fields" do
-      changeset =
-        change(%FulfillmentItem{})
-        |> Map.put(:action, :insert)
-        |> FulfillmentItem.validate()
-
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:quantity, :order_line_item_id, :package_id]
-    end
-  end
-
   describe "changeset/3" do
     test "action should be marked as insert" do
       changeset = FulfillmentItem.changeset(%FulfillmentItem{}, :insert, %{})
@@ -214,7 +202,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
     end
   end
 
-  describe "preprocess/1" do
+  describe "fulfill/1" do
     test "when fulfilling unlockable" do
       account = Repo.insert!(%Account{})
       unlockable = Repo.insert!(%Unlockable{
@@ -238,7 +226,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
 
       {:ok, changeset} =
         change(fulfillment_item, changes)
-        |> FulfillmentItem.preprocess()
+        |> FulfillmentItem.fulfill()
 
       unlock = Repo.get_by(Unlock, customer_id: customer.id, unlockable_id: unlockable.id)
       assert unlock
@@ -274,7 +262,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
 
       {:error, _} =
         change(fulfillment_item, changes)
-        |> FulfillmentItem.preprocess()
+        |> FulfillmentItem.fulfill()
     end
 
     test "when fulfilling depositable" do
@@ -321,7 +309,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
 
       {:ok, changeset} =
         change(fulfillment_item, changes)
-        |> FulfillmentItem.preprocess()
+        |> FulfillmentItem.fulfill()
 
       verify!()
       assert changeset.changes[:source_type] == "PointTransaction"
@@ -351,7 +339,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
 
       {:ok, changeset} =
         change(fulfillment_item, changes)
-        |> FulfillmentItem.preprocess()
+        |> FulfillmentItem.fulfill()
 
       verify!()
       assert changeset.changes[:source_type] == "PointTransaction"

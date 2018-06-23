@@ -3,13 +3,6 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   """
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias __MODULE__.Proxy
   alias BlueJet.Fulfillment.ReturnItem
 
@@ -57,53 +50,18 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
-
-  def validate_status(changeset = %{
-    data: %{ status: "pending" },
-    changes: %{ status: status }
-  }) when status != "in_progress" do
-    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
-  end
-
-  def validate_status(changeset = %{
-    data: %{ status: "in_progress" },
-    changes: %{ status: status }
-  }) when status != "pending" do
-    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
-  end
-
-  def validate_status(changeset = %{
-    data: %{ status: status },
-    changes: %{ status: _ }
-  }) when status not in ["pending", "in_progress"] do
-    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
-  end
-
-  def validate_status(changeset), do: changeset
-
-  def validate(changeset = %{ action: :insert }) do
-    changeset
-    |> validate_required([:order_id])
-    |> validate_inclusion(:status, ["pending", "in_progress"])
-  end
-
-  def validate(changeset = %{ action: :update }) do
-    changeset
-    |> validate_status()
-  end
-
-  def validate(changeset = %{ action: :delete }) do
-    changeset
-    |> validate_inclusion(:status, ["pending", "in_progress"])
-  end
-
-  def validate(changeset), do: changeset
 
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
   def changeset(return_package, :insert, params) do
     return_package
     |> cast(params, writable_fields())
@@ -111,6 +69,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(return_package, :update, params, locale \\ nil, default_locale \\ nil) do
     return_package = Proxy.put_account(return_package)
     default_locale = default_locale || return_package.account.default_locale
@@ -123,12 +82,55 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t()
   def changeset(return_package, :delete) do
     return_package
     |> Map.put(:action, :delete)
     |> validate()
   end
 
+  defp validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:order_id])
+    |> validate_inclusion(:status, ["pending", "in_progress"])
+  end
+
+  defp validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_status()
+  end
+
+  defp validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress"])
+  end
+
+  defp validate(changeset), do: changeset
+
+  defp validate_status(changeset = %{
+    data: %{ status: "pending" },
+    changes: %{ status: status }
+  }) when status != "in_progress" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "in_progress" },
+    changes: %{ status: status }
+  }) when status != "pending" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: status },
+    changes: %{ status: _ }
+  }) when status not in ["pending", "in_progress"] do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  defp validate_status(changeset), do: changeset
+
+  @spec get_status(__MODULE__.t) :: String.t()
   def get_status(return_package) do
     return_package = Repo.preload(return_package, :items)
     items = return_package.items

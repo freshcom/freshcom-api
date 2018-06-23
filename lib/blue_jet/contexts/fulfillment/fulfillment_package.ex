@@ -3,13 +3,6 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   """
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias __MODULE__.Proxy
   alias BlueJet.Fulfillment.FulfillmentItem
 
@@ -59,46 +52,40 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  def validate_status(changeset = %{
-    data: %{ status: "pending" },
-    changes: %{ status: status }
-  }) when status != "in_progress" do
-    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
+  def changeset(fulfillment_package, :insert, params) do
+    fulfillment_package
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
   end
 
-  def validate_status(changeset = %{
-    data: %{ status: "in_progress" },
-    changes: %{ status: status }
-  }) when status != "pending" do
-    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
+  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t()) :: Changeset.t()
+  def changeset(fulfillment_package, :update, params, locale \\ nil, default_locale \\ nil) do
+    fulfillment_package = Proxy.put_account(fulfillment_package)
+    default_locale = default_locale || fulfillment_package.account.default_locale
+    locale = locale || default_locale
+
+    fulfillment_package
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> validate()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def validate_status(changeset = %{
-    data: %{ status: status },
-    changes: %{ status: _ }
-  }) when status not in ["pending", "in_progress"] do
-    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
-  end
-
-  def validate_status(changeset), do: changeset
-
-  def validate(changeset = %{ action: :insert }) do
-    changeset
-    |> validate_required([:order_id])
-    |> validate_inclusion(:status, ["pending", "in_progress"])
-  end
-
-  def validate(changeset = %{ action: :update }) do
-    changeset
-    |> validate_status()
-  end
-
-  def validate(changeset = %{ action: :delete }) do
-    changeset
-    |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t()
+  def changeset(fulfillment_package, :delete) do
+    change(fulfillment_package)
+    |> Map.put(:action, :delete)
+    |> validate()
   end
 
   defp castable_fields(:insert) do
@@ -109,9 +96,46 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     writable_fields() -- [:order_id, :customer_id]
   end
 
-  #
-  # MARK: Reader
-  #
+  defp validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:order_id])
+    |> validate_inclusion(:status, ["pending", "in_progress"])
+  end
+
+  defp validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_status()
+  end
+
+  defp validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "pending" },
+    changes: %{ status: status }
+  }) when status != "in_progress" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: "in_progress" },
+    changes: %{ status: status }
+  }) when status != "pending" do
+    add_error(changeset, :status, "is invalid", validation: :must_be_pending)
+  end
+
+  defp validate_status(changeset = %{
+    data: %{ status: status },
+    changes: %{ status: _ }
+  }) when status not in ["pending", "in_progress"] do
+    add_error(changeset, :status, "is not changeable", validation: :unchangeable)
+  end
+
+  defp validate_status(changeset), do: changeset
+
+  @spec get_status(__MODULE__.t) :: String.t()
   def get_status(fulfillment_package) do
     fulfillment_package = Repo.preload(fulfillment_package, :items)
     items = fulfillment_package.items
@@ -163,33 +187,5 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
       discarded_count >= fulfilled_count ->
         "discarded"
     end
-  end
-
-  #
-  # MARK: Changeset
-  #
-  def changeset(fulfillment_package, :insert, params) do
-    fulfillment_package
-    |> cast(params, castable_fields(:insert))
-    |> Map.put(:action, :insert)
-    |> validate()
-  end
-
-  def changeset(fulfillment_package, :update, params, locale \\ nil, default_locale \\ nil) do
-    fulfillment_package = Proxy.put_account(fulfillment_package)
-    default_locale = default_locale || fulfillment_package.account.default_locale
-    locale = locale || default_locale
-
-    fulfillment_package
-    |> cast(params, castable_fields(:update))
-    |> Map.put(:action, :update)
-    |> validate()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
-  end
-
-  def changeset(fulfillment_package, :delete) do
-    change(fulfillment_package)
-    |> Map.put(:action, :delete)
-    |> validate()
   end
 end
