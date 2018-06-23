@@ -3,7 +3,14 @@ defmodule BlueJet.Fulfillment.DefaultService do
   use BlueJet.EventEmitter, namespace: :fulfillment
 
   alias Ecto.Multi
-  alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, ReturnItem, Unlock}
+
+  alias BlueJet.Fulfillment.{
+    FulfillmentPackage,
+    FulfillmentItem,
+    ReturnPackage,
+    ReturnItem,
+    Unlock
+  }
 
   @behaviour BlueJet.Fulfillment.Service
 
@@ -23,7 +30,11 @@ defmodule BlueJet.Fulfillment.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %FulfillmentPackage{ account_id: account.id, account: account, system_label: opts[:system_label] }
+      %FulfillmentPackage{
+        account_id: account.id,
+        account: account,
+        system_label: opts[:system_label]
+      }
       |> FulfillmentPackage.changeset(:insert, fields)
 
     with {:ok, fulfillment_package} <- Repo.insert(changeset) do
@@ -44,18 +55,21 @@ defmodule BlueJet.Fulfillment.DefaultService do
     account = extract_account(opts)
 
     changeset =
-      %{ fulfillment_package | account: account }
+      %{fulfillment_package | account: account}
       |> FulfillmentPackage.changeset(:delete)
 
     statements =
       Multi.new()
       |> Multi.delete(:fulfillment_package, changeset)
-      |> Multi.run(:after_delete, fn(%{ fulfillment_package: fulfillment_package}) ->
-          emit_event("fulfillment.fulfillment_package.delete.success", %{ fulfillment_package: fulfillment_package, changeset: changeset })
-         end)
+      |> Multi.run(:after_delete, fn %{fulfillment_package: fulfillment_package} ->
+        emit_event("fulfillment.fulfillment_package.delete.success", %{
+          fulfillment_package: fulfillment_package,
+          changeset: changeset
+        })
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fulfillment_package: fulfillment_package }} ->
+      {:ok, %{fulfillment_package: fulfillment_package}} ->
         {:ok, fulfillment_package}
 
       {:error, _, changeset, _} ->
@@ -64,7 +78,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
   end
 
   def delete_fulfillment_package(identifiers, opts) do
-    get_fulfillment_package(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_fulfillment_package(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_fulfillment_package(opts)
   end
 
@@ -88,26 +102,28 @@ defmodule BlueJet.Fulfillment.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %FulfillmentItem{ account_id: account.id, account: account, package: opts[:package] }
+      %FulfillmentItem{account_id: account.id, account: account, package: opts[:package]}
       |> FulfillmentItem.changeset(:insert, fields)
 
     statements =
       Multi.new()
-      |> Multi.run(:changeset, fn(_) ->
-          FulfillmentItem.fulfill(changeset)
-         end)
-      |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset}) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:_, fn(%{ fulfillment_item: fulfillment_item }) ->
-          FulfillmentItem.sync_to_package(fulfillment_item)
-         end)
-      |> Multi.run(:after_create, fn(%{ fulfillment_item: fulfillment_item }) ->
-          emit_event("fulfillment.fulfillment_item.create.success", %{ fulfillment_item: fulfillment_item })
-         end)
+      |> Multi.run(:changeset, fn _ ->
+        FulfillmentItem.fulfill(changeset)
+      end)
+      |> Multi.run(:fulfillment_item, fn %{changeset: changeset} ->
+        Repo.insert(changeset)
+      end)
+      |> Multi.run(:_, fn %{fulfillment_item: fulfillment_item} ->
+        FulfillmentItem.sync_to_package(fulfillment_item)
+      end)
+      |> Multi.run(:after_create, fn %{fulfillment_item: fulfillment_item} ->
+        emit_event("fulfillment.fulfillment_item.create.success", %{
+          fulfillment_item: fulfillment_item
+        })
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fulfillment_item: fulfillment_item }} ->
+      {:ok, %{fulfillment_item: fulfillment_item}} ->
         fulfillment_item = preload(fulfillment_item, preloads[:path], preloads[:opts])
         {:ok, fulfillment_item}
 
@@ -127,26 +143,29 @@ defmodule BlueJet.Fulfillment.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %{ fulfillment_item | account: account }
+      %{fulfillment_item | account: account}
       |> FulfillmentItem.changeset(:update, fields, opts[:locale])
 
     statements =
       Multi.new()
-      |> Multi.run(:changeset, fn(_) ->
-          FulfillmentItem.fulfill(changeset)
-         end)
-      |> Multi.run(:fulfillment_item, fn(%{ changeset: changeset }) ->
-          Repo.update(changeset)
-         end)
-      |> Multi.run(:_, fn(%{ fulfillment_item: fulfillment_item }) ->
-          FulfillmentItem.sync_to_package(fulfillment_item)
-         end)
-      |> Multi.run(:after_update, fn(%{ fulfillment_item: fulfillment_item }) ->
-          emit_event("fulfillment.fulfillment_item.update.success", %{ fulfillment_item: fulfillment_item, changeset: changeset })
-         end)
+      |> Multi.run(:changeset, fn _ ->
+        FulfillmentItem.fulfill(changeset)
+      end)
+      |> Multi.run(:fulfillment_item, fn %{changeset: changeset} ->
+        Repo.update(changeset)
+      end)
+      |> Multi.run(:_, fn %{fulfillment_item: fulfillment_item} ->
+        FulfillmentItem.sync_to_package(fulfillment_item)
+      end)
+      |> Multi.run(:after_update, fn %{fulfillment_item: fulfillment_item} ->
+        emit_event("fulfillment.fulfillment_item.update.success", %{
+          fulfillment_item: fulfillment_item,
+          changeset: changeset
+        })
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ fulfillment_item: fulfillment_item }} ->
+      {:ok, %{fulfillment_item: fulfillment_item}} ->
         fulfillment_item = preload(fulfillment_item, preloads[:path], preloads[:opts])
         {:ok, fulfillment_item}
 
@@ -156,7 +175,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
   end
 
   def update_fulfillment_item(identifiers, fields, opts) do
-    get_fulfillment_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_fulfillment_item(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_fulfillment_item(fields, opts)
   end
 
@@ -167,7 +186,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
   end
 
   def delete_fulfillment_item(identifiers, opts) do
-    get_fulfillment_item(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_fulfillment_item(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_fulfillment_item(opts)
   end
 
@@ -194,26 +213,33 @@ defmodule BlueJet.Fulfillment.DefaultService do
     preloads = extract_preloads(opts, account)
 
     changeset =
-      %ReturnItem{ account_id: account.id, account: account, package: opts[:package] || %ReturnItem{}.package  }
+      %ReturnItem{
+        account_id: account.id,
+        account: account,
+        package: opts[:package] || %ReturnItem{}.package
+      }
       |> ReturnItem.changeset(:insert, fields)
 
     statements =
       Multi.new()
-      |> Multi.run(:changeset, fn(_) ->
-          ReturnItem.return(changeset)
-         end)
-      |> Multi.run(:return_item, fn(%{ changeset: changeset}) ->
-          Repo.insert(changeset)
-         end)
-      |> Multi.run(:_, fn(%{ return_item: return_item, changeset: changeset }) ->
-          ReturnItem.sync_to_related_resources(return_item, changeset)
-         end)
-      |> Multi.run(:after_create, fn(%{ return_item: return_item }) ->
-          emit_event("fulfillment.return_item.create.success", %{ return_item: return_item, changeset: changeset })
-         end)
+      |> Multi.run(:changeset, fn _ ->
+        ReturnItem.return(changeset)
+      end)
+      |> Multi.run(:return_item, fn %{changeset: changeset} ->
+        Repo.insert(changeset)
+      end)
+      |> Multi.run(:_, fn %{return_item: return_item, changeset: changeset} ->
+        ReturnItem.sync_to_related_resources(return_item, changeset)
+      end)
+      |> Multi.run(:after_create, fn %{return_item: return_item} ->
+        emit_event("fulfillment.return_item.create.success", %{
+          return_item: return_item,
+          changeset: changeset
+        })
+      end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ return_item: return_item }} ->
+      {:ok, %{return_item: return_item}} ->
         return_item = preload(return_item, preloads[:path], preloads[:opts])
         {:ok, return_item}
 
@@ -248,7 +274,7 @@ defmodule BlueJet.Fulfillment.DefaultService do
   end
 
   def delete_unlock(identifiers, opts) do
-    get_unlock(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_unlock(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_unlock(opts)
   end
 end

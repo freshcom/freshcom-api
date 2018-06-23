@@ -29,7 +29,7 @@ defmodule BlueJet.Fulfillment.Unlock do
     :updated_at
   ]
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
@@ -74,12 +74,18 @@ defmodule BlueJet.Fulfillment.Unlock do
     |> validate_unlockable_id()
   end
 
-  defp validate_unlockable_id(changeset = %{ valid?: true }) do
+  defp validate_unlockable_id(changeset = %{valid?: true}) do
     customer_id = get_field(changeset, :customer_id)
     unlockable_id = get_field(changeset, :unlockable_id)
 
     if Repo.get_by(__MODULE__, customer_id: customer_id, unlockable_id: unlockable_id) do
-      add_error(changeset, :unlockable_id, "Unlockable is already unlocked", [code: :already_unlocked, full_error_message: true])
+      add_error(
+        changeset,
+        :unlockable_id,
+        "Unlockable is already unlocked",
+        code: :already_unlocked,
+        full_error_message: true
+      )
     else
       changeset
     end

@@ -36,7 +36,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     has_many :items, ReturnItem, foreign_key: :package_id
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -61,7 +61,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
   @doc """
   Builds a changeset based on the `struct` and `params`.
   """
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(return_package, :insert, params) do
     return_package
     |> cast(params, writable_fields())
@@ -69,7 +69,7 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t()) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(return_package, :update, params, locale \\ nil, default_locale \\ nil) do
     return_package = Proxy.put_account(return_package)
     default_locale = default_locale || return_package.account.default_locale
@@ -82,72 +82,85 @@ defmodule BlueJet.Fulfillment.ReturnPackage do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  @spec changeset(__MODULE__.t, atom) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(return_package, :delete) do
     return_package
     |> Map.put(:action, :delete)
     |> validate()
   end
 
-  defp validate(changeset = %{ action: :insert }) do
+  defp validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:order_id])
     |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
-  defp validate(changeset = %{ action: :update }) do
+  defp validate(changeset = %{action: :update}) do
     changeset
     |> validate_status()
   end
 
-  defp validate(changeset = %{ action: :delete }) do
+  defp validate(changeset = %{action: :delete}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
   defp validate(changeset), do: changeset
 
-  defp validate_status(changeset = %{
-    data: %{ status: "pending" },
-    changes: %{ status: status }
-  }) when status != "in_progress" do
+  defp validate_status(
+         changeset = %{
+           data: %{status: "pending"},
+           changes: %{status: status}
+         }
+       )
+       when status != "in_progress" do
     add_error(changeset, :status, "is invalid", validation: :must_be_in_progress)
   end
 
-  defp validate_status(changeset = %{
-    data: %{ status: "in_progress" },
-    changes: %{ status: status }
-  }) when status != "pending" do
+  defp validate_status(
+         changeset = %{
+           data: %{status: "in_progress"},
+           changes: %{status: status}
+         }
+       )
+       when status != "pending" do
     add_error(changeset, :status, "is invalid", validation: :must_be_pending)
   end
 
-  defp validate_status(changeset = %{
-    data: %{ status: status },
-    changes: %{ status: _ }
-  }) when status not in ["pending", "in_progress"] do
+  defp validate_status(
+         changeset = %{
+           data: %{status: status},
+           changes: %{status: _}
+         }
+       )
+       when status not in ["pending", "in_progress"] do
     add_error(changeset, :status, "is not changeable", validation: :unchangeable)
   end
 
   defp validate_status(changeset), do: changeset
 
-  @spec get_status(__MODULE__.t) :: String.t()
+  @spec get_status(__MODULE__.t()) :: String.t()
   def get_status(return_package) do
     return_package = Repo.preload(return_package, :items)
     items = return_package.items
 
-    pending_count = Enum.reduce(items, 0, fn(item, acc) ->
-      if item.status in ["pending", "in_progress"], do: acc + 1, else: acc
-    end)
+    pending_count =
+      Enum.reduce(items, 0, fn item, acc ->
+        if item.status in ["pending", "in_progress"], do: acc + 1, else: acc
+      end)
 
-    returned_count = Enum.reduce(items, 0, fn(item, acc) ->
-      if item.status == "returned", do: acc + 1, else: acc
-    end)
+    returned_count =
+      Enum.reduce(items, 0, fn item, acc ->
+        if item.status == "returned", do: acc + 1, else: acc
+      end)
 
     cond do
       returned_count == 0 ->
-        if return_package.status in ["pending", "in_progress"], do: return_package.status, else: "pending"
+        if return_package.status in ["pending", "in_progress"],
+          do: return_package.status,
+          else: "pending"
 
-      (returned_count > 0) && (pending_count == 0) ->
+      returned_count > 0 && pending_count == 0 ->
         "returned"
 
       pending_count > 0 ->

@@ -59,7 +59,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     :updated_at
   ]
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
@@ -107,11 +107,11 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_fulfillment_item(changeset) do
     fulfillment_item = get_fulfillment_item(changeset)
-    data = %{ changeset.data | fulfillment_item: fulfillment_item }
-    %{ changeset | data: data }
+    data = %{changeset.data | fulfillment_item: fulfillment_item}
+    %{changeset | data: data}
   end
 
-  defp put_target(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item } }) do
+  defp put_target(changeset = %{action: :insert, data: %{fulfillment_item: fulfillment_item}}) do
     changeset
     |> put_change(:target_type, fulfillment_item.target_type)
     |> put_change(:target_id, fulfillment_item.target_id)
@@ -119,75 +119,82 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_target(changeset), do: changeset
 
-  defp put_order_id(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+  defp put_order_id(changeset = %{action: :insert, data: %{fulfillment_item: fulfillment_item}}) do
     put_change(changeset, :order_id, fulfillment_item.order_id)
   end
 
   defp put_order_id(changeset), do: changeset
 
-  defp put_order_line_item_id(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+  defp put_order_line_item_id(
+         changeset = %{action: :insert, data: %{fulfillment_item: fulfillment_item}}
+       ) do
     put_change(changeset, :order_line_item_id, fulfillment_item.order_line_item_id)
   end
 
   defp put_order_line_item_id(changeset), do: changeset
 
-  defp put_name(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+  defp put_name(changeset = %{action: :insert, data: %{fulfillment_item: fulfillment_item}}) do
     put_change(changeset, :name, fulfillment_item.name)
   end
 
   defp put_name(changeset), do: changeset
 
-  defp put_translations(changeset = %{ action: :insert, data: %{ fulfillment_item: fulfillment_item }}) do
+  defp put_translations(
+         changeset = %{action: :insert, data: %{fulfillment_item: fulfillment_item}}
+       ) do
     translations = Translation.merge_translations(%{}, fulfillment_item.translations, ["name"])
     put_change(changeset, :translations, translations)
   end
 
   defp put_translations(changeset), do: changeset
 
-  defp validate(changeset = %{ action: :insert }) do
+  defp validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:fulfillment_item_id, :status])
     |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
   end
 
-  defp validate(changeset = %{ action: :update }) do
+  defp validate(changeset = %{action: :update}) do
     changeset
     |> validate_status()
   end
 
-  defp validate(changeset = %{ action: :delete }) do
+  defp validate(changeset = %{action: :delete}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
-  defp validate_status(changeset = %{ data: %{ status: "pending" } }) do
+  defp validate_status(changeset = %{data: %{status: "pending"}}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
   end
 
-  defp validate_status(changeset = %{ data: %{ status: "in_progress" } }) do
+  defp validate_status(changeset = %{data: %{status: "in_progress"}}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
   end
 
-  defp validate_status(changeset = %{
-    data: %{ status: "returned" },
-    changes: %{ status: _ }
-  }) do
+  defp validate_status(
+         changeset = %{
+           data: %{status: "returned"},
+           changes: %{status: _}
+         }
+       ) do
     add_error(changeset, :status, "is not changeable", validation: :unchangeable)
   end
 
   defp validate_status(changeset), do: changeset
 
-  @spec return(Changeset.t(), __MODULE__.t) :: {:ok, Changeset.t()}
-  def return(changeset = %{
-      changes: %{ status: "returned" }
-    },
-    %{
-      source_type: "Unlock",
-      source_id: unlock_id
-    }
-  ) do
+  @spec return(Changeset.t(), __MODULE__.t()) :: {:ok, Changeset.t()}
+  def return(
+        changeset = %{
+          changes: %{status: "returned"}
+        },
+        %{
+          source_type: "Unlock",
+          source_id: unlock_id
+        }
+      ) do
     {:ok, _} = return_unlockable(unlock_id)
     package = get_or_create_auto_return_package(changeset)
     changeset = put_change(changeset, :package_id, package.id)
@@ -195,18 +202,19 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     {:ok, changeset}
   end
 
-  def return(changeset = %{
-      data: %{ account: account },
-      changes: %{ status: "returned", quantity: return_quantity }
-    },
-    %{
-      target_type: "Depositable",
-      source_type: "PointTransaction",
-      source_id: point_transaction_id,
-      quantity: fulfilled_quantity
-    }
-  ) do
-    opts = %{ account: account }
+  def return(
+        changeset = %{
+          data: %{account: account},
+          changes: %{status: "returned", quantity: return_quantity}
+        },
+        %{
+          target_type: "Depositable",
+          source_type: "PointTransaction",
+          source_id: point_transaction_id,
+          quantity: fulfilled_quantity
+        }
+      ) do
+    opts = %{account: account}
 
     case return_depositable(point_transaction_id, fulfilled_quantity, return_quantity, opts) do
       {:ok, nil} ->
@@ -214,46 +222,54 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
       {:ok, point_transaction} ->
         package = get_or_create_auto_return_package(changeset)
+
         changeset =
           changeset
           |> put_change(:package_id, package.id)
           |> put_change(:source_type, "PointTransaction")
           |> put_change(:source_id, point_transaction.id)
+
         {:ok, changeset}
 
-      other -> other
+      other ->
+        other
     end
   end
 
-  def return(changeset = %{
-      data: %{ account: account },
-      changes: %{ status: "returned" }
-    },
-    %{
-      target_type: "PointTransaction",
-      target_id: point_transaction_id
-    }
-  ) do
-    opts = %{ account: account }
+  def return(
+        changeset = %{
+          data: %{account: account},
+          changes: %{status: "returned"}
+        },
+        %{
+          target_type: "PointTransaction",
+          target_id: point_transaction_id
+        }
+      ) do
+    opts = %{account: account}
 
     case return_point_transaction(point_transaction_id, opts) do
       {:ok, point_transaction} ->
         package = get_or_create_auto_return_package(changeset)
+
         changeset =
           changeset
           |> put_change(:package_id, package.id)
           |> put_change(:source_type, "PointTransaction")
           |> put_change(:source_id, point_transaction.id)
+
         {:ok, changeset}
 
-      other -> other
+      other ->
+        other
     end
   end
 
-  def return(changeset = %{ changes: %{ package_id: _ } }, _), do: changeset
+  def return(changeset = %{changes: %{package_id: _}}, _), do: changeset
 
   def return(changeset, _) do
     package = get_or_create_auto_return_package(changeset)
+
     changeset =
       changeset
       |> put_change(:package_id, package.id)
@@ -261,21 +277,23 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     {:ok, changeset}
   end
 
-  def return(changeset = %{
-      action: :insert,
-      changes: %{ status: "returned" }
-    }
-  ) do
+  def return(
+        changeset = %{
+          action: :insert,
+          changes: %{status: "returned"}
+        }
+      ) do
     fulfillment_item = get_fulfillment_item(changeset)
     return(changeset, fulfillment_item)
   end
 
-  def return(changeset = %{
-      action: :update,
-      data: data,
-      changes: %{ status: "returned" }
-    }
-  ) do
+  def return(
+        changeset = %{
+          action: :update,
+          data: data,
+          changes: %{status: "returned"}
+        }
+      ) do
     data = Repo.preload(data, :fulfillment_item)
     return(changeset, data.fulfillment_item)
   end
@@ -283,11 +301,23 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   defp get_or_create_auto_return_package(changeset) do
     account_id = get_field(changeset, :account_id)
     order_id = get_field(changeset, :order_id)
-    case Repo.get_by(ReturnPackage, account_id: account_id, order_id: order_id, system_label: "auto") do
-      nil ->
-        Repo.insert!(%ReturnPackage{ account_id: account_id, order_id: order_id, system_label: "auto", status: "returned" })
 
-      other -> other
+    case Repo.get_by(
+           ReturnPackage,
+           account_id: account_id,
+           order_id: order_id,
+           system_label: "auto"
+         ) do
+      nil ->
+        Repo.insert!(%ReturnPackage{
+          account_id: account_id,
+          order_id: order_id,
+          system_label: "auto",
+          status: "returned"
+        })
+
+      other ->
+        other
     end
   end
 
@@ -300,40 +330,47 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   end
 
   defp return_depositable(pt_id, fulfilled_quantity, return_quantity, opts) do
-    point_transaction = CrmService.get_point_transaction(%{ id: pt_id }, opts)
-    return_amount = - div(point_transaction.amount, fulfilled_quantity) * return_quantity
+    point_transaction = CrmService.get_point_transaction(%{id: pt_id}, opts)
+    return_amount = -div(point_transaction.amount, fulfilled_quantity) * return_quantity
 
-    CrmService.create_point_transaction(%{
-      point_account_id: point_transaction.point_account_id,
-      status: "committed",
-      amount: return_amount,
-      reason_label: "return_depositable"
-    }, opts)
+    CrmService.create_point_transaction(
+      %{
+        point_account_id: point_transaction.point_account_id,
+        status: "committed",
+        amount: return_amount,
+        reason_label: "return_depositable"
+      },
+      opts
+    )
   end
 
   defp return_point_transaction(pt_id, opts) do
-    point_transaction = CrmService.get_point_transaction(%{ id: pt_id }, opts)
-    CrmService.create_point_transaction(%{
-      point_account_id: point_transaction.point_account_id,
-      status: "committed",
-      amount: -point_transaction.amount,
-      reason_label: "return"
-    }, opts)
+    point_transaction = CrmService.get_point_transaction(%{id: pt_id}, opts)
+
+    CrmService.create_point_transaction(
+      %{
+        point_account_id: point_transaction.point_account_id,
+        status: "committed",
+        amount: -point_transaction.amount,
+        reason_label: "return"
+      },
+      opts
+    )
   end
 
   #
   # MARK: Process
   #
   def sync_to_related_resources(return_item, %{
-    changes: %{ status: "returned" }
-  }) do
+        changes: %{status: "returned"}
+      }) do
     return_item = Repo.preload(return_item, [:package, fulfillment_item: :package])
     return_package = return_item.package
     fulfillment_item = return_item.fulfillment_item
     fulfillment_package = fulfillment_item.package
 
     # Return Package
-    change(return_item.package, %{ status: ReturnPackage.get_status(return_package) })
+    change(return_item.package, %{status: ReturnPackage.get_status(return_package)})
     |> Repo.update!()
 
     # Fulfillment Item
@@ -349,7 +386,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
     |> Repo.update!()
 
     # Fulfillment Package
-    change(fulfillment_package, %{ status: FulfillmentPackage.get_status(fulfillment_package) })
+    change(fulfillment_package, %{status: FulfillmentPackage.get_status(fulfillment_package)})
     |> Repo.update!()
 
     {:ok, return_item}

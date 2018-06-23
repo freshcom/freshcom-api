@@ -1,21 +1,25 @@
 defmodule BlueJet.Fulfillment.FulfillmentPackage.Query do
   use BlueJet, :query
-  use BlueJet.Query.Search, for: [
-    :name,
-    :caption
-  ]
-  use BlueJet.Query.Filter, for: [
-    :id,
-    :status,
-    :label,
-    :customer_id,
-    :order_id
-  ]
+
+  use BlueJet.Query.Search,
+    for: [
+      :name,
+      :caption
+    ]
+
+  use BlueJet.Query.Filter,
+    for: [
+      :id,
+      :status,
+      :label,
+      :customer_id,
+      :order_id
+    ]
 
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem}
 
   def default() do
-    from f in FulfillmentPackage
+    from(f in FulfillmentPackage)
   end
 
   def preloads({:items, item_preloads}, options) do

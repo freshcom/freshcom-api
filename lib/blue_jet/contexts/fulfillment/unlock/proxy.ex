@@ -4,25 +4,27 @@ defmodule BlueJet.Fulfillment.Unlock.Proxy do
   alias BlueJet.Fulfillment.{GoodsService, CrmService}
 
   def put(order, {:customer, customer_path}, opts) do
-    preloads = %{ path: customer_path, opts: opts }
+    preloads = %{path: customer_path, opts: opts}
+
     opts =
       opts
       |> Map.take([:account, :account_id])
-      |> Map.merge(%{ preloads: preloads })
+      |> Map.merge(%{preloads: preloads})
 
-    customer = CrmService.get_customer(%{ id: order.customer_id }, opts)
-    %{ order | customer: customer }
+    customer = CrmService.get_customer(%{id: order.customer_id}, opts)
+    %{order | customer: customer}
   end
 
   def put(order, {:unlockable, unlockable_path}, opts) do
-    preloads = %{ path: unlockable_path, opts: opts }
+    preloads = %{path: unlockable_path, opts: opts}
+
     opts =
       opts
       |> Map.take([:account, :account_id])
-      |> Map.merge(%{ preloads: preloads })
+      |> Map.merge(%{preloads: preloads})
 
-    unlockable = GoodsService.get_unlockable(%{ id: order.unlockable_id }, opts)
-    %{ order | unlockable: unlockable }
+    unlockable = GoodsService.get_unlockable(%{id: order.unlockable_id}, opts)
+    %{order | unlockable: unlockable}
   end
 
   def put(unlock, _, _), do: unlock
