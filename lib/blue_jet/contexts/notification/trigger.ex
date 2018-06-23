@@ -37,19 +37,7 @@ defmodule BlueJet.Notification.Trigger do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:name, :status, :event, :action_type, :action_target])
-  end
-
-  defp castable_fields(:insert) do
-    writable_fields()
-  end
-
-  defp castable_fields(:update) do
-    writable_fields() -- [:event, :action_type]
-  end
-
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
   def changeset(trigger, :insert, fields) do
     trigger
     |> cast(fields, castable_fields(:insert))
@@ -64,6 +52,7 @@ defmodule BlueJet.Notification.Trigger do
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t
   def changeset(trigger, :delete) do
     change(trigger)
     |> Map.put(:action, :delete)
@@ -71,6 +60,20 @@ defmodule BlueJet.Notification.Trigger do
 
   def changeset(trigger, :update, fields, _), do: changeset(trigger, :update, fields)
 
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:name, :status, :event, :action_type, :action_target])
+  end
+
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:event, :action_type]
+  end
+
+  @spec fire_action(__MODULE__.t, map) :: map
   def fire_action(
     trigger = %{ event: event, action_type: "send_email", action_target: template_id },
     data

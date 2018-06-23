@@ -1,13 +1,6 @@
 defmodule BlueJet.Notification.SmsTemplate do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :to,
-    :body,
-    :description
-  ], container: :translations
-
   alias BlueJet.Notification.Sms
   alias __MODULE__.Proxy
 
@@ -43,20 +36,22 @@ defmodule BlueJet.Notification.SmsTemplate do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :to,
+      :body,
+      :description
+    ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:name, :to, :body])
-  end
-
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
   def changeset(sms_template, :insert, params) do
     sms_template
     |> cast(params, writable_fields())
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t) :: Changeset.t
   def changeset(sms_template, :update, params, locale \\ nil, default_locale \\ nil) do
     sms_template = Proxy.put_account(sms_template)
     default_locale = default_locale || sms_template.account.default_locale
@@ -68,11 +63,18 @@ defmodule BlueJet.Notification.SmsTemplate do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t
   def changeset(sms_template, :delete) do
     change(sms_template)
     |> Map.put(:action, :delete)
   end
 
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:name, :to, :body])
+  end
+
+  @spec extract_variables(String.t, map) :: map
   def extract_variables("identity.phone_verification_code.create.success", %{ account: account, phone_verification_code: pvc }) do
     %{
       phone_number: pvc.phone_number,
@@ -89,10 +91,12 @@ defmodule BlueJet.Notification.SmsTemplate do
     }
   end
 
+  @spec render_body(__MODULE__.t, map) :: String.t()
   def render_body(%{ body: body }, variables) do
     :bbmustache.render(body, variables, key_type: :atom)
   end
 
+  @spec render_to(__MODULE__.t, map) :: String.t()
   def render_to(%{ to: to }, variables) do
     :bbmustache.render(to, variables, key_type: :atom)
   end

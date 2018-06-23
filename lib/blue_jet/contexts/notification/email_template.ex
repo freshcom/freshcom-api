@@ -1,16 +1,6 @@
 defmodule BlueJet.Notification.EmailTemplate do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :subject,
-    :to,
-    :reply_to,
-    :body_html,
-    :body_text,
-    :description
-  ], container: :translations
-
   alias BlueJet.Notification.Email
   alias __MODULE__.Proxy
 
@@ -50,20 +40,25 @@ defmodule BlueJet.Notification.EmailTemplate do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :subject,
+      :to,
+      :reply_to,
+      :body_html,
+      :body_text,
+      :description
+    ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:name, :to, :subject, :body_html])
-  end
-
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
   def changeset(email_template, :insert, params) do
     email_template
     |> cast(params, writable_fields())
     |> validate()
   end
 
+  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t) :: Changeset.t
   def changeset(email_template, :update, params, locale \\ nil, default_locale \\ nil) do
     email_template = Proxy.put_account(email_template)
     default_locale = default_locale || email_template.account.default_locale
@@ -75,21 +70,18 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t
   def changeset(email_template, :delete) do
     change(email_template)
     |> Map.put(:action, :delete)
   end
 
-  defp id_last_part(id) do
-    String.split(id, "-")
-    |> List.last()
-    |> String.upcase()
+  defp validate(changeset) do
+    changeset
+    |> validate_required([:name, :to, :subject, :body_html])
   end
 
-  defp dollar_string(cents) do
-    :erlang.float_to_binary(cents / 100, [decimals: 2])
-  end
-
+  @spec extract_variables(String.t, map) :: map
   def extract_variables("identity.password_reset_token.create.error.username_not_found", %{ account: account, username: username }) do
     %{
       username: username,
@@ -138,10 +130,22 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
+  defp id_last_part(id) do
+    String.split(id, "-")
+    |> List.last()
+    |> String.upcase()
+  end
+
+  defp dollar_string(cents) do
+    :erlang.float_to_binary(cents / 100, [decimals: 2])
+  end
+
+  @spec render_html(__MODULE__.t, map) :: String.t()
   def render_html(%{ body_html: body_html }, variables) do
     :bbmustache.render(body_html, variables, key_type: :atom)
   end
 
+  @spec render_text(__MODULE__.t, map) :: String.t()
   def render_text(%{ body_text: nil }, _) do
     nil
   end
@@ -150,10 +154,12 @@ defmodule BlueJet.Notification.EmailTemplate do
     :bbmustache.render(body_text, variables, key_type: :atom)
   end
 
+  @spec render_subject(__MODULE__.t, map) :: String.t()
   def render_subject(%{ subject: subject }, variables) do
     :bbmustache.render(subject, variables, key_type: :atom)
   end
 
+  @spec render_to(__MODULE__.t, map) :: String.t()
   def render_to(%{ to: to }, variables) do
     :bbmustache.render(to, variables, key_type: :atom)
   end
