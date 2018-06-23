@@ -309,7 +309,7 @@ defmodule BlueJet.OrderLineItemTest do
   describe "balance/1" do
     test "when is leaf and has no parent" do
       oli = %OrderLineItem{ is_leaf: true }
-      assert OrderLineItem.balance(oli) == oli
+      assert OrderLineItem.balance(oli) == {:ok, oli}
     end
 
     test "when oli is for simple product" do
@@ -353,7 +353,7 @@ defmodule BlueJet.OrderLineItemTest do
         authorization_total_cents: 1500
       })
 
-      OrderLineItem.balance(oli)
+      {:ok, oli} = OrderLineItem.balance(oli)
 
       verify!()
       child = Repo.get_by(OrderLineItem, parent_id: oli.id)

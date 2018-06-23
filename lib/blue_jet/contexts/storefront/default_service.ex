@@ -43,10 +43,10 @@ defmodule BlueJet.Storefront.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:order, changeset)
-      |> Multi.run(:processed_order, fn(%{ order: order}) ->
-          Order.process(order, changeset)
+      |> Multi.run(:auto_fulfilled_order, fn(%{ order: order}) ->
+          Order.auto_fulfill(order, changeset)
          end)
-      |> Multi.run(:after_update, fn(%{ processed_order: order }) ->
+      |> Multi.run(:after_update, fn(%{ auto_fulfilled_order: order }) ->
           emit_event("storefront.order.update.success", %{ order: order, changeset: changeset, account: account })
 
           if Changeset.get_change(changeset, :status) == "opened" do
@@ -65,7 +65,7 @@ defmodule BlueJet.Storefront.DefaultService do
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_order: order }} ->
+      {:ok, %{ auto_fulfilled_order: order }} ->
         order = preload(order, preloads[:path], preloads[:opts])
         {:ok, order}
 
@@ -107,12 +107,15 @@ defmodule BlueJet.Storefront.DefaultService do
     statements =
       Multi.new()
       |> Multi.insert(:oli, changeset)
-      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
-          OrderLineItem.process(oli, changeset)
+      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+          OrderLineItem.balance(oli)
+         end)
+      |> Multi.run(:synced_oli, fn(%{ balanced_oli: oli }) ->
+          OrderLineItem.sync_to_order(oli)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_oli: oli }} ->
+      {:ok, %{ synced_oli: oli }} ->
         oli = preload(oli, preloads[:path], preloads[:opts])
         {:ok, oli}
 
@@ -138,12 +141,15 @@ defmodule BlueJet.Storefront.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:oli, changeset)
-      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
-          OrderLineItem.process(oli, changeset)
+      |> Multi.run(:balanced_oli, fn(%{ oli: oli }) ->
+          OrderLineItem.balance(oli)
+         end)
+      |> Multi.run(:synced_oli, fn(%{ balanced_oli: oli }) ->
+          OrderLineItem.sync_to_order(oli)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_oli: oli }} ->
+      {:ok, %{ synced_oli: oli }} ->
         oli = preload(oli, preloads[:path], preloads[:opts])
         {:ok, oli}
 
@@ -169,12 +175,12 @@ defmodule BlueJet.Storefront.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:oli, changeset)
-      |> Multi.run(:processed_oli, fn(%{ oli: oli }) ->
-          OrderLineItem.process(oli, changeset)
+      |> Multi.run(:synced_oli, fn(%{ oli: oli }) ->
+          OrderLineItem.sync_to_order(oli)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_oli: oli }} ->
+      {:ok, %{ synced_oli: oli }} ->
         {:ok, oli}
 
       {:error, _, changeset, _} ->

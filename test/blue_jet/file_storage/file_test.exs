@@ -19,4 +19,15 @@ defmodule BlueJet.FileStorage.FileTest do
       :custom_data
     ]
   end
+
+  describe "validate/1" do
+    test "when missing required fields" do
+      changeset =
+        change(%File{}, %{})
+        |> File.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:name, :content_type, :size_bytes]
+    end
+  end
 end

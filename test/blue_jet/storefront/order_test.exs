@@ -620,7 +620,7 @@ defmodule BlueJet.OrderTest do
       |> expect(:create_fulfillment_item, fn(_, _) -> {:ok, fulfillment_item} end)
       |> expect(:list_fulfillment_item, fn(_, _) -> [fulfillment_item] end)
 
-      {:ok, _} = Order.process(order, changeset)
+      {:ok, _} = Order.auto_fulfill(order, changeset)
     end
   end
 end

@@ -31,6 +31,18 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
     ]
   end
 
+  describe "validate/1" do
+    test "when missing required fields" do
+      changeset =
+        change(%FulfillmentItem{})
+        |> Map.put(:action, :insert)
+        |> FulfillmentItem.validate()
+
+      assert changeset.valid? == false
+      assert Keyword.keys(changeset.errors) == [:quantity, :order_line_item_id, :package_id]
+    end
+  end
+
   describe "changeset/3" do
     test "action should be marked as insert" do
       changeset = FulfillmentItem.changeset(%FulfillmentItem{}, :insert, %{})

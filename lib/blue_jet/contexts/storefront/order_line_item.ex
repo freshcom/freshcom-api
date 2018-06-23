@@ -1,15 +1,6 @@
 defmodule BlueJet.Storefront.OrderLineItem do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :print_name,
-    :price_caption,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias Decimal, as: D
   alias BlueJet.Catalogue.Price
   alias BlueJet.Storefront.{CatalogueService, CrmService, FulfillmentService}
@@ -115,62 +106,65 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Returns a list of fields that can be translated.
   """
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :print_name,
+      :price_caption,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  defp required_fields, do: [:order_id, :name, :order_quantity, :charge_quantity, :sub_total_cents, :grand_total_cents, :authorization_total_cents, :auto_fulfill]
-
-  def validate_order_id(changeset = %{ valid?: true, changes: %{ order_id: order_id } }) do
-    account_id = get_field(changeset, :account_id)
-    order = Repo.get(Order, order_id)
-
-    if order && order.account_id == account_id do
-      changeset
-    else
-      add_error(changeset, :order, "is invalid", code: :invalid)
-    end
-  end
-
-  def validate_order_id(changeset), do: changeset
-
-  def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
-    account = Proxy.get_account(changeset.data)
-    product = CatalogueService.get_product(%{ id: product_id }, %{ account: account })
-
-    if product && product.account_id == account.id do
-      changeset
-    else
-      add_error(changeset, :product, "is invalid", code: :invalid)
-    end
-  end
-
-  def validate_product_id(changeset), do: changeset
-
-  def validate_price_id(changeset = %{ valid?: true, changes: %{ price_id: price_id } }) do
-    account = Proxy.get_account(changeset.data)
-    product_id = get_field(changeset, :product_id)
-    price = get_field(changeset, :price) || CatalogueService.get_price(%{ id: price_id }, %{ account: account })
-
-    if price && price.account_id == account.id && price.product_id == product_id do
-      changeset
-    else
-      add_error(changeset, :price, "is invalid", code: :invalid)
-    end
-  end
-
-  def validate_price_id(changeset), do: changeset
 
   @doc """
-  Returns the validated changeset.
+  Builds a changeset based on the `struct` and `params`.
   """
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields())
-    |> foreign_key_constraint(:order_id)
-    |> foreign_key_constraint(:parent_id)
-    |> validate_order_id()
-    |> validate_product_id()
-    |> validate_price_id()
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
+  def changeset(oli, :insert, params) do
+    castable_fields = castable_fields(oli, :insert)
+
+    oli
+    |> cast(params, castable_fields)
+    |> Map.put(:action, :insert)
+    |> put_is_leaf()
+    |> put_name()
+    |> put_print_name()
+    |> put_price_id()
+    |> put_price_fields()
+    |> put_is_estimate()
+    |> put_charge_quantity()
+    |> put_amount_fields()
+    |> put_auto_fulfill()
+    |> validate()
+  end
+
+  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t()) :: Changeset.t()
+  def changeset(oli, :update, params, locale \\ nil, default_locale \\ nil) do
+    oli = %{ oli | account: Proxy.get_account(oli) }
+    default_locale = default_locale || oli.account.default_locale
+    locale = locale || default_locale
+
+    oli
+    |> cast(params, castable_fields(oli))
+    |> Map.put(:action, :update)
+    |> put_is_leaf()
+    |> put_name()
+    |> put_print_name()
+    |> put_price_id()
+    |> put_price_fields()
+    |> put_is_estimate()
+    |> put_charge_quantity()
+    |> put_amount_fields()
+    |> put_auto_fulfill()
+    |> validate()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t()
+  def changeset(oli, :delete) do
+    change(oli)
+    |> Map.put(:action, :delete)
   end
 
   defp castable_fields(_, :insert), do: writable_fields()
@@ -444,51 +438,60 @@ defmodule BlueJet.Storefront.OrderLineItem do
   defp put_auto_fulfill(changeset), do: changeset
 
   @doc """
-  Builds a changeset based on the `struct` and `params`.
+  Returns the validated changeset.
   """
-  def changeset(oli, :insert, params) do
-    castable_fields = castable_fields(oli, :insert)
-
-    oli
-    |> cast(params, castable_fields)
-    |> Map.put(:action, :insert)
-    |> put_is_leaf()
-    |> put_name()
-    |> put_print_name()
-    |> put_price_id()
-    |> put_price_fields()
-    |> put_is_estimate()
-    |> put_charge_quantity()
-    |> put_amount_fields()
-    |> put_auto_fulfill()
-    |> validate()
+  @spec validate(Changeset.t) :: Changeset.t
+  def validate(changeset) do
+    changeset
+    |> validate_required(required_fields())
+    |> foreign_key_constraint(:order_id)
+    |> foreign_key_constraint(:parent_id)
+    |> validate_order_id()
+    |> validate_product_id()
+    |> validate_price_id()
   end
 
-  def changeset(oli, :update, params, locale \\ nil, default_locale \\ nil) do
-    oli = %{ oli | account: Proxy.get_account(oli) }
-    default_locale = default_locale || oli.account.default_locale
-    locale = locale || default_locale
+  defp required_fields, do: [:order_id, :name, :order_quantity, :charge_quantity, :sub_total_cents, :grand_total_cents, :authorization_total_cents, :auto_fulfill]
 
-    oli
-    |> cast(params, castable_fields(oli))
-    |> Map.put(:action, :update)
-    |> put_is_leaf()
-    |> put_name()
-    |> put_print_name()
-    |> put_price_id()
-    |> put_price_fields()
-    |> put_is_estimate()
-    |> put_charge_quantity()
-    |> put_amount_fields()
-    |> put_auto_fulfill()
-    |> validate()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  def validate_order_id(changeset = %{ valid?: true, changes: %{ order_id: order_id } }) do
+    account_id = get_field(changeset, :account_id)
+    order = Repo.get(Order, order_id)
+
+    if order && order.account_id == account_id do
+      changeset
+    else
+      add_error(changeset, :order, "is invalid", code: :invalid)
+    end
   end
 
-  def changeset(oli, :delete) do
-    change(oli)
-    |> Map.put(:action, :delete)
+  def validate_order_id(changeset), do: changeset
+
+  def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
+    account = Proxy.get_account(changeset.data)
+    product = CatalogueService.get_product(%{ id: product_id }, %{ account: account })
+
+    if product && product.account_id == account.id do
+      changeset
+    else
+      add_error(changeset, :product, "is invalid", code: :invalid)
+    end
   end
+
+  def validate_product_id(changeset), do: changeset
+
+  def validate_price_id(changeset = %{ valid?: true, changes: %{ price_id: price_id } }) do
+    account = Proxy.get_account(changeset.data)
+    product_id = get_field(changeset, :product_id)
+    price = get_field(changeset, :price) || CatalogueService.get_price(%{ id: price_id }, %{ account: account })
+
+    if price && price.account_id == account.id && price.product_id == product_id do
+      changeset
+    else
+      add_error(changeset, :price, "is invalid", code: :invalid)
+    end
+  end
+
+  def validate_price_id(changeset), do: changeset
 
   @doc """
   Balance the order line item by creating or updating its children.
@@ -502,22 +505,28 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   Returns the input order line item after its being balanced.
   """
-  def balance(oli = %__MODULE__{ is_leaf: true, parent_id: nil }), do: oli
+  @spec balance(__MODULE__.t) :: __MODULE__.t
+  def balance(oli) do
+    do_balance(oli)
 
-  def balance(oli = %__MODULE__{ is_leaf: true }) do
+    {:ok, oli}
+  end
+
+  defp do_balance(oli = %__MODULE__{ is_leaf: true, parent_id: nil }), do: oli
+
+  defp do_balance(oli = %__MODULE__{ is_leaf: true }) do
     parent = assoc(oli, :parent) |> Repo.one()
     balance(parent)
   end
 
-  def balance(oli = %__MODULE__{ product_id: product_id }) when not is_nil(product_id) do
+  defp do_balance(oli = %__MODULE__{ product_id: product_id }) when not is_nil(product_id) do
     account = Proxy.get_account(oli)
     product = oli.product || CatalogueService.get_product(%{ id: product_id }, %{ account: account })
     balance_by_product(oli, product)
   end
 
-  def balance(oli), do: oli
+  defp do_balance(oli), do: oli
 
-  ######
   defp balance_by_product(oli, product = %{ kind: kind }) when kind in ["simple", "item", "variant"] do
     target_order_quantity = product.goods_quantity * oli.order_quantity
     target_charge_quantity = if oli.price_estimate_by_default do
@@ -598,29 +607,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
     oli
   end
 
-  @doc """
-  Process the given order line item so that other related retarget can be created/updated.
-
-  This function may change the order line item in database.
-
-  External retargets maybe created/updated.
-
-  Returns the processed order line item.
-  """
-  def process(line_item, %{ action: action }) when action in [:insert, :update] do
-    line_item =
-      line_item
-      |> Repo.preload(:order)
-      |> __MODULE__.balance()
-
-    %{ line_item.order | account: line_item.account }
-    |> Order.balance()
-    |> Order.refresh_payment_status()
-
-    {:ok, line_item}
-  end
-
-  def process(line_item, %{ action: :delete }) do
+  def sync_to_order(line_item) do
     line_item = Repo.preload(line_item, :order)
 
     line_item.order
@@ -634,6 +621,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   Refresh the fulfillment status of the order line item. Returns the updated
   fulfillment status.
   """
+  @spec refresh_fulfillment_status(__MODULE__.t) :: __MODULE__.t
   def refresh_fulfillment_status(oli) do
     oli
     |> change(fulfillment_status: get_fulfillment_status(oli))
@@ -658,6 +646,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   It will always return the correct fulfillment status where as the `fulfillment_status`
   field of the order line item may not be up to date yet.
   """
+  @spec get_fulfillment_status(__MODULE__.t) :: String.t
   def get_fulfillment_status(oli = %{ is_leaf: true }) do
     fulfillment_items = FulfillmentService.list_fulfillment_item(%{ filter: %{ order_line_item_id: oli.id } }, %{ account_id: oli.account_id })
 

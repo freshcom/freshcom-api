@@ -434,7 +434,7 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  defp process_auto_fulfill(order, changeset) do
+  defp do_auto_fulfill(order, changeset) do
     af_line_items =
       OrderLineItem
       |> OrderLineItem.Query.for_order(order.id)
@@ -464,18 +464,13 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  @doc """
-  Process the given `order` so that other related resource can be created/updated.
-
-  This function may change the order in database.
-  """
-  @spec process(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, Changeset.t}
-  def process(order, changeset = %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+  @spec auto_fulfill(__MODULE__.t, Changeset.t) :: {:ok, __MODULE__.t} | {:error, Changeset.t}
+  def auto_fulfill(order, changeset = %{ action: :update, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
     order
     |> Proxy.put_account()
     |> Proxy.put_customer()
-    |> process_auto_fulfill(changeset)
+    |> do_auto_fulfill(changeset)
   end
 
-  def process(order, _), do: {:ok, order}
+  def auto_fulfill(order, _), do: {:ok, order}
 end

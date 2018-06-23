@@ -36,6 +36,17 @@ defmodule BlueJet.Goods.UnlockableTest do
     ]
   end
 
+  describe "validate/1" do
+    test "when missing required fields" do
+      changeset =
+        change(%Unlockable{ account_id: Ecto.UUID.generate() }, %{})
+        |> Unlockable.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:name]
+    end
+  end
+
   describe "changeset/4" do
     test "when given valid fields without locale" do
       account = %Account{

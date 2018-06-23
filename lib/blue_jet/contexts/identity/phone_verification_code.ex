@@ -54,7 +54,8 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
 
   defp put_expires_at(changeset), do: changeset
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required(:phone_number)
     |> validate_length(:phone_number, min: 9)

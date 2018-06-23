@@ -53,13 +53,14 @@ defmodule BlueJet.Identity.AccountMembership do
   defp castable_fields(:insert), do: writable_fields()
   defp castable_fields(:update), do: writable_fields() -- [:user_id]
 
-  defp validate(changeset = %{action: :insert}) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:user_id, :role])
     |> validate_inclusion(:role, @roles)
   end
 
-  defp validate(changeset = %{action: :update}) do
+  def validate(changeset = %{action: :update}) do
     changeset
     |> validate_required(:role)
     |> validate_inclusion(:role, @roles)

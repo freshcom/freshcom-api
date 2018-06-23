@@ -30,4 +30,15 @@ defmodule BlueJet.Notification.TriggerTest do
       :action_type
     ]
   end
+
+  describe "validate/1" do
+    test "when missing required fields" do
+      changeset =
+        change(%Trigger{ }, %{})
+        |> Trigger.validate()
+
+      refute changeset.valid?
+      assert Keyword.keys(changeset.errors) == [:name, :event, :action_type, :action_target]
+    end
+  end
 end
