@@ -14,6 +14,18 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     belongs_to :account, Account
   end
 
+  @type t :: Ecto.Schema.t
+
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  def changeset(pvc, :insert, params) do
+    pvc
+    |> cast(params, [:phone_number])
+    |> Map.put(:action, :insert)
+    |> validate()
+    |> put_value()
+    |> put_expires_at()
+  end
+
   defp generate_value(n, account_id) do
     value = Enum.reduce(1..n, "", fn(_, acc) ->
       char = Enum.random(0..9)
@@ -25,13 +37,6 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     else
       value
     end
-  end
-
-  def validate(changeset) do
-    changeset
-    |> validate_required(:phone_number)
-    |> validate_length(:phone_number, min: 9)
-    |> validate_format(:phone_number, Application.get_env(:blue_jet, :phone_regex))
   end
 
   defp put_value(changeset = %{ valid?: true }) do
@@ -48,13 +53,11 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
 
   defp put_expires_at(changeset), do: changeset
 
-  def changeset(pvc, :insert, params) do
-    pvc
-    |> cast(params, [:phone_number])
-    |> Map.put(:action, :insert)
-    |> validate()
-    |> put_value()
-    |> put_expires_at()
+  defp validate(changeset) do
+    changeset
+    |> validate_required(:phone_number)
+    |> validate_length(:phone_number, min: 9)
+    |> validate_format(:phone_number, Application.get_env(:blue_jet, :phone_regex))
   end
 
   def exists?(value, phone_number) do

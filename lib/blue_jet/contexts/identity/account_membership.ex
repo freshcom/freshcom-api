@@ -35,27 +35,7 @@ defmodule BlueJet.Identity.AccountMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  defp castable_fields(:insert), do: writable_fields()
-  defp castable_fields(:update), do: writable_fields() -- [:user_id]
-
-  #
-  # MARK: Validate
-  #
-  def validate(changeset = %{ action: :insert }) do
-    changeset
-    |> validate_required([:user_id, :role])
-    |> validate_inclusion(:role, @roles)
-  end
-
-  def validate(changeset = %{ action: :update }) do
-    changeset
-    |> validate_required(:role)
-    |> validate_inclusion(:role, @roles)
-  end
-
-  #
-  # MARK: Changeset
-  #
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
   def changeset(membership, :insert, params) do
     membership
     |> cast(params, castable_fields(:insert))
@@ -68,5 +48,20 @@ defmodule BlueJet.Identity.AccountMembership do
     |> cast(params, castable_fields(:update))
     |> Map.put(:action, :update)
     |> validate()
+  end
+
+  defp castable_fields(:insert), do: writable_fields()
+  defp castable_fields(:update), do: writable_fields() -- [:user_id]
+
+  defp validate(changeset = %{ action: :insert }) do
+    changeset
+    |> validate_required([:user_id, :role])
+    |> validate_inclusion(:role, @roles)
+  end
+
+  defp validate(changeset = %{ action: :update }) do
+    changeset
+    |> validate_required(:role)
+    |> validate_inclusion(:role, @roles)
   end
 end

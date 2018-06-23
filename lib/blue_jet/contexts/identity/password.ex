@@ -17,30 +17,11 @@ defmodule BlueJet.Identity.Password do
 
   @type t :: Ecto.Schema.t
 
-  @system_fields [
-    :encrypted_value,
-    :reset_token,
-    :reset_token_expires_at,
-    :updated_at
-  ]
-
-  @required_fields [
-    :value
-  ]
-
   def writable_fields do
     [:value]
   end
 
-  #
-  # MARK: Validate
-  #
-  def validate(changeset) do
-    changeset
-    |> validate_required(:value)
-    |> validate_length(:value, min: 8)
-  end
-
+  @spec changeset(String.t(), atom, map) :: Changeset.t()
   def changeset(password, :update, params) do
     password
     |> cast(params, writable_fields())
@@ -49,7 +30,13 @@ defmodule BlueJet.Identity.Password do
     |> validate()
   end
 
-  def encrypt_value(value) do
+  defp validate(changeset) do
+    changeset
+    |> validate_required(:value)
+    |> validate_length(:value, min: 8)
+  end
+
+  defp encrypt_value(value) do
     Comeonin.Bcrypt.hashpwsalt(value)
   end
 

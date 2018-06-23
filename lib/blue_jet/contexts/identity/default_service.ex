@@ -105,12 +105,12 @@ defmodule BlueJet.Identity.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:account, changeset)
-      |> Multi.run(:processed_account, fn(%{ account: account }) ->
-          Account.process(account, changeset)
+      |> Multi.run(:_, fn(%{ account: account }) ->
+          Account.sync_to_test_account(account, changeset)
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_account: account }} ->
+      {:ok, %{ _: account }} ->
         {:ok, account}
 
       {:error, _, changeset, _} -> {:error, changeset}
@@ -118,8 +118,7 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def reset_account(account = %Account{ mode: "test" }) do
-    changeset = Account.changeset(account, :reset)
-    Account.process(account, changeset)
+    Account.reset(account)
 
     emit_event("identity.account.reset.success", %{ account: account })
 
@@ -226,10 +225,10 @@ defmodule BlueJet.Identity.DefaultService do
             {:ok, nil}
           end
          end)
-      |> Multi.run(:processed_user, fn(%{ user: user }) ->
-          User.process(user, changeset)
+      |> Multi.run(:_, fn(%{ user: user }) ->
+          User.delete_all_pvc(user)
          end)
-      |> Multi.run(:after_create, fn(%{ processed_user: user }) ->
+      |> Multi.run(:after_create, fn(%{ user: user }) ->
           emit_event("identity.user.create.success", %{ user: user, account: account })
 
           if user.email do
@@ -282,13 +281,13 @@ defmodule BlueJet.Identity.DefaultService do
     statements =
       Multi.new()
       |> Multi.update(:user, changeset)
-      |> Multi.run(:processed_user, fn(%{ user: user}) ->
-          User.process(user, changeset)
+      |> Multi.run(:_, fn(%{ user: user}) ->
+          User.delete_all_pvc(user)
          end)
-      |> Multi.run(:after_update, fn(%{ processed_user: user }) ->
+      |> Multi.run(:after_update, fn(%{ user: user }) ->
           emit_event("identity.user.update.success", %{ user: user, changeset: changeset, account: account })
          end)
-      |> Multi.run(:after_evt_create, fn(%{ processed_user: user }) ->
+      |> Multi.run(:after_evt_create, fn(%{ user: user }) ->
           if changeset.changes[:email_verification_token] do
             emit_event("identity.email_verification_token.create.success", %{ user: user, account: account })
           else
@@ -297,7 +296,7 @@ defmodule BlueJet.Identity.DefaultService do
          end)
 
     case Repo.transaction(statements) do
-      {:ok, %{ processed_user: user }} ->
+      {:ok, %{ user: user }} ->
         user = preload(user, preloads[:path], preloads[:opts])
         {:ok, user}
 

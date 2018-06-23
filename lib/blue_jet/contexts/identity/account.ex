@@ -1,17 +1,6 @@
 defmodule BlueJet.Identity.Account do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :name,
-    :company_name,
-    :website_url,
-    :support_email,
-    :tech_email,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.Identity.{User, AccountMembership, RefreshToken, PhoneVerificationCode}
 
   schema "accounts" do
@@ -58,12 +47,19 @@ defmodule BlueJet.Identity.Account do
   end
 
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :name,
+      :company_name,
+      :website_url,
+      :support_email,
+      :tech_email,
+      :caption,
+      :description,
+      :custom_data
+    ]
   end
 
-  defp castable_fields(:insert), do: writable_fields()
-  defp castable_fields(:update), do: writable_fields() -- [:default_locale]
-
+  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
   def changeset(account, :insert, params) do
     account
     |> cast(params, castable_fields(:insert))
@@ -71,6 +67,7 @@ defmodule BlueJet.Identity.Account do
     |> validate_required([:name, :default_locale])
   end
 
+  @spec changeset(__MODULE__.t, atom, map, String.t()) :: Changeset.t()
   def changeset(account, :update, params, locale \\ nil) do
     changeset =
       account
@@ -84,13 +81,10 @@ defmodule BlueJet.Identity.Account do
     Translation.put_change(changeset, translatable_fields(), locale, default_locale)
   end
 
-  def changeset(account, :reset) do
-    change(account)
-    |> Map.put(:action, :reset)
-  end
+  defp castable_fields(:insert), do: writable_fields()
+  defp castable_fields(:update), do: writable_fields() -- [:default_locale]
 
-  # Live account changes should sync to test account
-  def process(account = %{ mode: "live" }, changeset = %{ action: :update }) do
+  def sync_to_test_account(account = %{ mode: "live" }, changeset = %{ action: :update }) do
     account = Repo.preload(account, :test_account)
 
     test_account =
@@ -102,9 +96,9 @@ defmodule BlueJet.Identity.Account do
     {:ok, account}
   end
 
-  def process(account, %{ action: :update }), do: {:ok, account}
+  def sync_to_test_account(account), do: {:ok, account}
 
-  def process(account = %{ mode: "test" }, %{ action: :reset }) do
+  def reset(account = %{ mode: "test" }) do
     AccountMembership.Query.default()
     |> for_account(account.id)
     |> Repo.delete_all()
@@ -116,7 +110,11 @@ defmodule BlueJet.Identity.Account do
     PhoneVerificationCode.Query.default()
     |> for_account(account.id)
     |> Repo.delete_all()
+
+    :ok
   end
+
+  def reset(_), do: :ok
 
   @doc """
   Return the account with `test_account_id` fields added. If given account does not

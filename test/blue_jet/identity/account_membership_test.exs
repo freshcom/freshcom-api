@@ -50,38 +50,38 @@ defmodule BlueJet.Identity.AccountMembershipTest do
     assert AccountMembership.writable_fields() == [:role, :user_id]
   end
 
-  describe "validate/1" do
-    test "when missing required fields" do
-      changeset =
-        change(%AccountMembership{})
-        |> Map.put(:action, :insert)
+  # describe "validate/1" do
+  #   test "when missing required fields" do
+  #     changeset =
+  #       change(%AccountMembership{})
+  #       |> Map.put(:action, :insert)
 
-      changeset = AccountMembership.validate(changeset)
+  #     changeset = AccountMembership.validate(changeset)
 
-      assert changeset.valid? == false
-      assert changeset.errors[:user_id]
-      assert changeset.errors[:role]
-    end
+  #     assert changeset.valid? == false
+  #     assert changeset.errors[:user_id]
+  #     assert changeset.errors[:role]
+  #   end
 
-    test "when role is not valid" do
-      changeset =
-        change(%AccountMembership{}, %{ role: "invalid" })
-        |> Map.put(:action, :insert)
+  #   test "when role is not valid" do
+  #     changeset =
+  #       change(%AccountMembership{}, %{ role: "invalid" })
+  #       |> Map.put(:action, :insert)
 
-      changeset = AccountMembership.validate(changeset)
+  #     changeset = AccountMembership.validate(changeset)
 
-      assert changeset.valid? == false
-      assert changeset.errors[:role]
-    end
+  #     assert changeset.valid? == false
+  #     assert changeset.errors[:role]
+  #   end
 
-    test "when changeset is valid" do
-      changeset =
-        change(%AccountMembership{}, %{ id: Ecto.UUID.generate(), role: "invalid" })
-        |> Map.put(:action, :insert)
+  #   test "when changeset is valid" do
+  #     changeset =
+  #       change(%AccountMembership{}, %{ id: Ecto.UUID.generate(), role: "invalid" })
+  #       |> Map.put(:action, :insert)
 
-      assert changeset.valid?
-    end
-  end
+  #     assert changeset.valid?
+  #   end
+  # end
 
   describe "changeset/2" do
     test "when action is insert" do

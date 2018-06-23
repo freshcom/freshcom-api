@@ -36,278 +36,278 @@ defmodule BlueJet.Identity.UserTest do
     end
   end
 
-  describe "validate/1" do
-    test "when action is insert and missing required fields" do
-      changeset =
-        change(%User{}, %{})
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  # describe "validate/1" do
+  #   test "when action is insert and missing required fields" do
+  #     changeset =
+  #       change(%User{}, %{})
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:password, :username]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:password, :username]
+  #   end
 
-    test "when action is insert and  given username less than 5 characters" do
-      changeset =
-        change(%User{}, %{ username: "abcd", password: "test1234" })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert and  given username less than 5 characters" do
+  #     changeset =
+  #       change(%User{}, %{ username: "abcd", password: "test1234" })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:username]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:username]
+  #   end
 
-    test "when action is insert and given global username already exist" do
-      account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      user = Repo.insert!(%User{
-        username: Faker.String.base64(5),
-        password: "test1234",
-        default_account_id: account1.id
-      })
-      Repo.insert!(%AccountMembership{
-        role: "developer",
-        account_id: account1.id,
-        user_id: user.id
-      })
+  #   test "when action is insert and given global username already exist" do
+  #     account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     user = Repo.insert!(%User{
+  #       username: Faker.String.base64(5),
+  #       password: "test1234",
+  #       default_account_id: account1.id
+  #     })
+  #     Repo.insert!(%AccountMembership{
+  #       role: "developer",
+  #       account_id: account1.id,
+  #       user_id: user.id
+  #     })
 
-      # Creating non related account user
-      {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          account_id: account2.id,
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating non related account user
+  #     {:ok, _} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         account_id: account2.id,
+  #         default_account_id: account2.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      # Creating related account user
-      {:error, au_changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating related account user
+  #     {:error, au_changeset} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         account_id: account1.id,
+  #         default_account_id: account1.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      # Creating global user
-      {:error, gu_changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating global user
+  #     {:error, gu_changeset} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         default_account_id: account2.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      assert au_changeset.valid? == false
-      assert gu_changeset.valid? == false
-      assert Keyword.keys(au_changeset.errors) == [:username]
-      assert Keyword.keys(gu_changeset.errors) == [:username]
-    end
+  #     assert au_changeset.valid? == false
+  #     assert gu_changeset.valid? == false
+  #     assert Keyword.keys(au_changeset.errors) == [:username]
+  #     assert Keyword.keys(gu_changeset.errors) == [:username]
+  #   end
 
-    test "when action is insert and given account username already exist" do
-      account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      user = Repo.insert!(%User{
-        username: Faker.String.base64(5),
-        password: "test1234",
-        account_id: account1.id,
-        default_account_id: account1.id
-      })
+  #   test "when action is insert and given account username already exist" do
+  #     account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     user = Repo.insert!(%User{
+  #       username: Faker.String.base64(5),
+  #       password: "test1234",
+  #       account_id: account1.id,
+  #       default_account_id: account1.id
+  #     })
 
-      # Creating global user should pass
-      {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating global user should pass
+  #     {:ok, _} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         default_account_id: account2.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      # Creating non related account user should pass
-      {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          account_id: account2.id,
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating non related account user should pass
+  #     {:ok, _} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         account_id: account2.id,
+  #         default_account_id: account2.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      # Creating related account user should error
-      {:error, changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating related account user should error
+  #     {:error, changeset} =
+  #       change(%User{}, %{
+  #         username: user.username,
+  #         password: "test1234",
+  #         account_id: account1.id,
+  #         default_account_id: account1.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:username]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:username]
+  #   end
 
-    test "when action is insert and given invalid email" do
-      changeset =
-        change(%User{}, %{ username: Faker.String.base64(5), email: "invalid", password: "test1234" })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert and given invalid email" do
+  #     changeset =
+  #       change(%User{}, %{ username: Faker.String.base64(5), email: "invalid", password: "test1234" })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:email]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:email]
+  #   end
 
-    test "when action is insert and given global email already exist" do
-      account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      user = Repo.insert!(%User{
-        username: Faker.String.base64(5),
-        password: "test1234",
-        email: Faker.Internet.email(),
-        default_account_id: account1.id
-      })
+  #   test "when action is insert and given global email already exist" do
+  #     account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
+  #     user = Repo.insert!(%User{
+  #       username: Faker.String.base64(5),
+  #       password: "test1234",
+  #       email: Faker.Internet.email(),
+  #       default_account_id: account1.id
+  #     })
 
-      # Creating account user should pass
-      {:ok, _} =
-        change(%User{}, %{
-          username: Faker.String.base64(5),
-          password: "test1234",
-          email: user.email,
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating account user should pass
+  #     {:ok, _} =
+  #       change(%User{}, %{
+  #         username: Faker.String.base64(5),
+  #         password: "test1234",
+  #         email: user.email,
+  #         account_id: account1.id,
+  #         default_account_id: account1.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      # Creating global user should error
-      {:error, changeset} =
-        change(%User{}, %{
-          username: "username2",
-          password: "test1234",
-          email: user.email,
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
+  #     # Creating global user should error
+  #     {:error, changeset} =
+  #       change(%User{}, %{
+  #         username: "username2",
+  #         password: "test1234",
+  #         email: user.email,
+  #         default_account_id: account2.id
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
+  #       |> Repo.insert()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:email]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:email]
+  #   end
 
-    test "when action is insert and given password less than 8 characters" do
-      changeset =
-        change(%User{}, %{ username: "username", password: "abc" })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert and given password less than 8 characters" do
+  #     changeset =
+  #       change(%User{}, %{ username: "username", password: "abc" })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:password]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:password]
+  #   end
 
-    test "when action is insert, auth_method is tfa_sms and missing required fields" do
-      changeset =
-        change(%User{}, %{ auth_method: "tfa_sms", username: Faker.Internet.user_name(), password: "test1234" })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert, auth_method is tfa_sms and missing required fields" do
+  #     changeset =
+  #       change(%User{}, %{ auth_method: "tfa_sms", username: Faker.Internet.user_name(), password: "test1234" })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:phone_verification_code, :phone_number]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:phone_verification_code, :phone_number]
+  #   end
 
-    test "when action is insert, auth_method is tfa_sms and phone_verification_code is invalid" do
-      changeset =
-        change(%User{}, %{
-          auth_method: "tfa_sms",
-          username: Faker.Internet.user_name(),
-          password: "test1234",
-          phone_number: "+11234567890",
-          phone_verification_code: "123456"
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert, auth_method is tfa_sms and phone_verification_code is invalid" do
+  #     changeset =
+  #       change(%User{}, %{
+  #         auth_method: "tfa_sms",
+  #         username: Faker.Internet.user_name(),
+  #         password: "test1234",
+  #         phone_number: "+11234567890",
+  #         phone_verification_code: "123456"
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:phone_verification_code]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:phone_verification_code]
+  #   end
 
-    test "when action is insert, auth_method is tfa_sms and all changes are valid" do
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
-      pvc = Repo.insert!(%PhoneVerificationCode{
-        account_id: account.id,
-        phone_number: "+11234567890",
-        value: "123456",
-        expires_at: Timex.shift(Timex.now(), minutes: 5)
-      })
-      changeset =
-        change(%User{}, %{
-          auth_method: "tfa_sms",
-          username: Faker.Internet.user_name(),
-          password: "test1234",
-          phone_number: pvc.phone_number,
-          phone_verification_code: pvc.value
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
+  #   test "when action is insert, auth_method is tfa_sms and all changes are valid" do
+  #     account = Repo.insert!(%Account{
+  #       name: Faker.Company.name()
+  #     })
+  #     pvc = Repo.insert!(%PhoneVerificationCode{
+  #       account_id: account.id,
+  #       phone_number: "+11234567890",
+  #       value: "123456",
+  #       expires_at: Timex.shift(Timex.now(), minutes: 5)
+  #     })
+  #     changeset =
+  #       change(%User{}, %{
+  #         auth_method: "tfa_sms",
+  #         username: Faker.Internet.user_name(),
+  #         password: "test1234",
+  #         phone_number: pvc.phone_number,
+  #         phone_verification_code: pvc.value
+  #       })
+  #       |> Map.put(:action, :insert)
+  #       |> User.validate()
 
-      assert changeset.valid? == true
-    end
+  #     assert changeset.valid? == true
+  #   end
 
-    test "when action is update but missing required fields" do
-      user = %User{ username: "username" }
+  #   test "when action is update but missing required fields" do
+  #     user = %User{ username: "username" }
 
-      changeset =
-        user
-        |> change(%{ password: "newpassword" })
-        |> Map.put(:action, :update)
-        |> User.validate()
+  #     changeset =
+  #       user
+  #       |> change(%{ password: "newpassword" })
+  #       |> Map.put(:action, :update)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:current_password]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:current_password]
+  #   end
 
-    test "when action is update and password is changed but provided wrong current password" do
-      user = %User{ username: "username" }
+  #   test "when action is update and password is changed but provided wrong current password" do
+  #     user = %User{ username: "username" }
 
-      changeset =
-        user
-        |> change(%{ password: "newpassword", current_password: "wrongpassword" })
-        |> Map.put(:action, :update)
-        |> User.validate()
+  #     changeset =
+  #       user
+  #       |> change(%{ password: "newpassword", current_password: "wrongpassword" })
+  #       |> Map.put(:action, :update)
+  #       |> User.validate()
 
-      assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:current_password]
-    end
+  #     assert changeset.valid? == false
+  #     assert Keyword.keys(changeset.errors) == [:current_password]
+  #   end
 
-    test "when action is update" do
-      user = %User{ username: Faker.String.base64(5) }
+  #   test "when action is update" do
+  #     user = %User{ username: Faker.String.base64(5) }
 
-      changeset =
-        user
-        |> change(%{})
-        |> Map.put(:action, :update)
-        |> User.validate()
+  #     changeset =
+  #       user
+  #       |> change(%{})
+  #       |> Map.put(:action, :update)
+  #       |> User.validate()
 
-      assert changeset.valid?
-    end
-  end
+  #     assert changeset.valid?
+  #   end
+  # end
 
   describe "changeset/3" do
     test "when action is insert" do
@@ -354,7 +354,7 @@ defmodule BlueJet.Identity.UserTest do
     end
   end
 
-  describe "process/2" do
+  describe "delete_all_pvc/1" do
     test "when user has phone verification code" do
       account = Repo.insert!(%Account{})
       pvc = Repo.insert!(%PhoneVerificationCode{
@@ -365,7 +365,7 @@ defmodule BlueJet.Identity.UserTest do
       })
       user = %User{ phone_number: pvc.phone_number, phone_verification_code: pvc.value }
 
-      User.process(user, nil)
+      User.delete_all_pvc(user)
 
       refute Repo.get(PhoneVerificationCode, pvc.id)
     end

@@ -74,18 +74,116 @@ defmodule BlueJet.Identity.User do
     (__MODULE__.__schema__(:fields) -- @system_fields()) ++ [:password, :current_password, :phone_verification_code]
   end
 
-  #
-  # MARK: Validate
-  #
-  defp username_unique_within_account?(_, nil), do: true
+  @spec changeset(__MODULE__.t, atom, map, map) :: Changeset.t()
+  def changeset(user, action, params, opts \\ %{})
 
-  defp username_unique_within_account?(username, account_id) do
-    existing_user =
-      Query.default()
-      |> Query.member_of_account(account_id)
-      |> Repo.get_by(username: username)
+  def changeset(user, :insert, params, opts) do
+    user
+    |> Repo.preload(:account)
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> put_name()
+    |> Utils.put_parameterized([:email, :username])
+    |> put_auth_method()
+    |> put_tfa_code()
+    |> put_email_fields()
+    |> put_encrypted_password()
+    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
+  end
 
-    !existing_user
+  def changeset(user, :update, params, opts) do
+    user
+    |> Repo.preload(:account)
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :update)
+    |> put_name()
+    |> Utils.put_parameterized([:email, :username])
+    |> put_email_fields()
+    |> put_encrypted_password()
+    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
+  end
+
+  @spec changeset(__MODULE__.t, atom) :: Changeset.t()
+  def changeset(user, :delete) do
+    change(user)
+    |> Map.put(:action, :delete)
+  end
+
+  @spec encrypt_password(String.t()) :: Changeset.t()
+  def encrypt_password(password) do
+    Comeonin.Bcrypt.hashpwsalt(password)
+  end
+
+  @spec put_encrypted_password(Changeset.t()) :: Changeset.t()
+  def put_encrypted_password(changeset = %{ changes: %{ password: password } })  do
+    put_change(changeset, :encrypted_password, encrypt_password(password))
+  end
+
+  def put_encrypted_password(changeset), do: changeset
+
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  defp put_name(changeset) do
+    first_name = get_field(changeset, :first_name)
+    last_name = get_field(changeset, :last_name)
+
+    if first_name && last_name do
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
+    end
+  end
+
+  defp put_auth_method(changeset = %{ changes: %{ auth_method: _ } }), do: changeset
+
+  defp put_auth_method(changeset = %{ data: %{ account: %{ default_auth_method: default_auth_method } } }) do
+    put_change(changeset, :auth_method, default_auth_method)
+  end
+
+  defp put_auth_method(changeset), do: changeset
+
+  defp put_tfa_code(changeset = %{ action: :insert }) do
+    pvc = get_field(changeset, :phone_verification_code)
+    changeset
+    |> put_change(:tfa_code, pvc)
+    |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
+  end
+
+  defp put_email_fields(changeset = %{ changes: %{ email: _ } }) do
+    changeset
+    |> put_change(:email_verified, false)
+    |> put_change(:email_verification_token, generate_email_verification_token())
+  end
+
+  defp put_email_fields(changeset), do: changeset
+
+  defp validate(changeset, opts \\ %{})
+
+  defp validate(changeset = %{ action: :insert }, opts) do
+    changeset
+    |> validate_required(@required_fields)
+
+    |> validate_username()
+    |> validate_email()
+
+    |> validate_phone_number()
+    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
+
+    |> validate_password()
+  end
+
+  defp validate(changeset = %{ action: :update }, opts) do
+    changeset
+    |> validate_required(@required_fields)
+
+    |> validate_username()
+    |> validate_email()
+
+    |> validate_phone_number()
+    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
+
+    |> validate_current_password()
+    |> validate_password()
   end
 
   # This function is needed in additional to the constraint. The constraints
@@ -103,6 +201,17 @@ defmodule BlueJet.Identity.User do
   end
 
   defp validate_username_unique_within_account(changeset), do: changeset
+
+  defp username_unique_within_account?(_, nil), do: true
+
+  defp username_unique_within_account?(username, account_id) do
+    existing_user =
+      Query.default()
+      |> Query.member_of_account(account_id)
+      |> Repo.get_by(username: username)
+
+    !existing_user
+  end
 
   defp validate_username(changeset = %{ valid?: true, changes: %{ username: _ } }) do
     changeset
@@ -190,142 +299,25 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  def validate(changeset, opts \\ %{})
+  @spec delete_all_pvc(__MODULE__.t) :: {:ok, __MODULE__.t}
+  def delete_all_pvc(%{ phone_verification_code: nil } = user), do: {:ok, user}
 
-  def validate(changeset = %{ action: :insert }, opts) do
-    changeset
-    |> validate_required(@required_fields)
-
-    |> validate_username()
-    |> validate_email()
-
-    |> validate_phone_number()
-    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
-
-    |> validate_password()
-  end
-
-  def validate(changeset = %{ action: :update }, opts) do
-    changeset
-    |> validate_required(@required_fields)
-
-    |> validate_username()
-    |> validate_email()
-
-    |> validate_phone_number()
-    |> validate_phone_verification_code(%{ bypass: !!opts[:bypass_pvc] })
-
-    |> validate_current_password()
-    |> validate_password()
-  end
-
-  #
-  # MARK: Changeset
-  #
-  def encrypt_password(password) do
-    Comeonin.Bcrypt.hashpwsalt(password)
-  end
-
-  def put_encrypted_password(changeset = %{ changes: %{ password: password } })  do
-    put_change(changeset, :encrypted_password, encrypt_password(password))
-  end
-
-  def put_encrypted_password(changeset), do: changeset
-
-  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
-
-  defp put_name(changeset) do
-    first_name = get_field(changeset, :first_name)
-    last_name = get_field(changeset, :last_name)
-
-    if first_name && last_name do
-      put_change(changeset, :name, "#{first_name} #{last_name}")
-    else
-      changeset
-    end
-  end
-
-  defp put_auth_method(changeset = %{ changes: %{ auth_method: _ } }), do: changeset
-
-  defp put_auth_method(changeset = %{ data: %{ account: %{ default_auth_method: default_auth_method } } }) do
-    put_change(changeset, :auth_method, default_auth_method)
-  end
-
-  defp put_auth_method(changeset), do: changeset
-
-  defp put_tfa_code(changeset = %{ action: :insert }) do
-    pvc = get_field(changeset, :phone_verification_code)
-    changeset
-    |> put_change(:tfa_code, pvc)
-    |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
-  end
-
-  defp put_email_fields(changeset = %{ changes: %{ email: _ } }) do
-    changeset
-    |> put_change(:email_verified, false)
-    |> put_change(:email_verification_token, generate_email_verification_token())
-  end
-
-  defp put_email_fields(changeset), do: changeset
-
-  def changeset(user, action, params, opts \\ %{})
-
-  def changeset(user, :insert, params, opts) do
-    user
-    |> Repo.preload(:account)
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :insert)
-    |> put_name()
-    |> Utils.put_parameterized([:email, :username])
-    |> put_auth_method()
-    |> put_tfa_code()
-    |> put_email_fields()
-    |> put_encrypted_password()
-    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
-  end
-
-  def changeset(user, :update, params, opts) do
-    user
-    |> Repo.preload(:account)
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :update)
-    |> put_name()
-    |> Utils.put_parameterized([:email, :username])
-    |> put_email_fields()
-    |> put_encrypted_password()
-    |> validate(%{ bypass_pvc: !!opts[:bypass_pvc_validation] })
-  end
-
-  def changeset(user, :delete) do
-    change(user)
-    |> Map.put(:action, :delete)
-  end
-
-  #
-  # MARK: Process
-  #
-  def process(user, _) do
-    if user.phone_verification_code do
-      PhoneVerificationCode.Query.default()
-      |> PhoneVerificationCode.Query.filter_by(%{ phone_number: user.phone_number })
-      |> Repo.delete_all()
-    end
+  def delete_all_pvc(user) do
+    PhoneVerificationCode.Query.default()
+    |> PhoneVerificationCode.Query.filter_by(%{ phone_number: user.phone_number })
+    |> Repo.delete_all()
 
     {:ok, user}
   end
 
-  #
-  # MARK: Pure
-  #
+  @spec put_role(__MODULE__.t | nil, String.t()) :: __MODULE__.t | nil
   def put_role(nil, _), do: nil
 
   def put_role(user, account_id) do
     %{ user | role: get_role(user, account_id) }
   end
 
-  #
-  # MARK: Reader
-  #
+  @spec get_tfa_code(__MODULE__.t) :: String.t()
   def get_tfa_code(user) do
     if user.tfa_code && Timex.before?(Timex.now, user.tfa_code_expires_at) do
       user.tfa_code
@@ -334,6 +326,7 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  @spec get_role(__MODULE__.t, String.t()) :: String.t()
   def get_role(user, account_id) do
     membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account_id)
 
@@ -344,22 +337,29 @@ defmodule BlueJet.Identity.User do
     end
   end
 
-  #
-  # MARK: Writer
-  #
+  @spec verify_email(__MODULE__.t) :: __MODULE__.t
   def verify_email(user) do
     user
     |> change(email_verification_token: nil, email_verified: true, email_verified_at: Ecto.DateTime.utc())
     |> Repo.update!()
   end
 
+  @spec generate_email_verification_token() :: String.t
   def generate_email_verification_token() do
     Ecto.UUID.generate()
   end
 
+  @spec refresh_email_verification_token(__MODULE__.t) :: __MODULE__.t
   def refresh_email_verification_token(user) do
     user
     |> change(email_verification_token: generate_email_verification_token(), email_verified: false)
+    |> Repo.update!()
+  end
+
+  @spec refresh_tfa_code(__MODULE__.t) :: __MODULE__.t
+  def refresh_tfa_code(user) do
+    user
+    |> change(%{ tfa_code: generate_tfa_code(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
     |> Repo.update!()
   end
 
@@ -370,24 +370,21 @@ defmodule BlueJet.Identity.User do
     end)
   end
 
-  def refresh_tfa_code(user) do
-    user
-    |> change(%{ tfa_code: generate_tfa_code(6), tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5) })
-    |> Repo.update!()
-  end
-
+  @spec clear_tfa_code(__MODULE__.t) :: __MODULE__.t
   def clear_tfa_code(user) do
     user
     |> change(%{ tfa_code: nil, tfa_code_expires_at: nil })
     |> Repo.update!()
   end
 
+  @spec refresh_password_reset_token(__MODULE__.t) :: __MODULE__.t
   def refresh_password_reset_token(user) do
     user
     |> change(password_reset_token: Ecto.UUID.generate())
     |> Repo.update!()
   end
 
+  @spec update_password(__MODULE__.t, String.t()) :: __MODULE__.t
   def update_password(user, new_password) do
     user
     |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))

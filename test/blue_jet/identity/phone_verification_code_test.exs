@@ -21,34 +21,34 @@ defmodule BlueJet.Identity.PhoneVerificationCodeTest do
     end
   end
 
-  describe "validate/1" do
-    test "when missing required fields" do
-      changeset = change(%PhoneVerificationCode{})
+  # describe "validate/1" do
+  #   test "when missing required fields" do
+  #     changeset = change(%PhoneVerificationCode{})
 
-      changeset = PhoneVerificationCode.validate(changeset)
+  #     changeset = PhoneVerificationCode.validate(changeset)
 
-      assert changeset.valid? == false
-      assert changeset.errors[:phone_number]
-    end
+  #     assert changeset.valid? == false
+  #     assert changeset.errors[:phone_number]
+  #   end
 
-    test "when phone number is no long enough" do
-      changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123" })
+  #   test "when phone number is no long enough" do
+  #     changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123" })
 
-      changeset = PhoneVerificationCode.validate(changeset)
+  #     changeset = PhoneVerificationCode.validate(changeset)
 
-      assert changeset.valid? == false
-      assert changeset.errors[:phone_number]
-    end
+  #     assert changeset.valid? == false
+  #     assert changeset.errors[:phone_number]
+  #   end
 
-    test "when phone number format is invalid" do
-      changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123ab123123" })
+  #   test "when phone number format is invalid" do
+  #     changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123ab123123" })
 
-      changeset = PhoneVerificationCode.validate(changeset)
+  #     changeset = PhoneVerificationCode.validate(changeset)
 
-      assert changeset.valid? == false
-      assert changeset.errors[:phone_number]
-    end
-  end
+  #     assert changeset.valid? == false
+  #     assert changeset.errors[:phone_number]
+  #   end
+  # end
 
   describe "changeset/3" do
     test "value and expires_at should be automatically generated" do
