@@ -14,7 +14,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     belongs_to :account, Account
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(pvc, :insert, params) do
@@ -27,10 +27,11 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   end
 
   defp generate_value(n, account_id) do
-    value = Enum.reduce(1..n, "", fn(_, acc) ->
-      char = Enum.random(0..9)
-      acc <> Integer.to_string(char)
-    end)
+    value =
+      Enum.reduce(1..n, "", fn _, acc ->
+        char = Enum.random(0..9)
+        acc <> Integer.to_string(char)
+      end)
 
     if Repo.get_by(__MODULE__, value: value, account_id: account_id) do
       generate_value(n, account_id)
@@ -39,7 +40,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     end
   end
 
-  defp put_value(changeset = %{ valid?: true }) do
+  defp put_value(changeset = %{valid?: true}) do
     account = get_field(changeset, :account)
     value = generate_value(6, account.id)
     put_change(changeset, :value, value)
@@ -47,7 +48,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
 
   defp put_value(changeset), do: changeset
 
-  defp put_expires_at(changeset = %{ valid?: true }) do
+  defp put_expires_at(changeset = %{valid?: true}) do
     put_change(changeset, :expires_at, Timex.shift(Timex.now(), minutes: 30))
   end
 
@@ -63,7 +64,7 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   def exists?(value, phone_number) do
     count =
       Query.default()
-      |> Query.filter_by(%{ value: value, phone_number: phone_number })
+      |> Query.filter_by(%{value: value, phone_number: phone_number})
       |> Repo.aggregate(:count, :id)
 
     count > 0

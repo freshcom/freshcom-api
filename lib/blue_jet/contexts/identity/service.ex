@@ -4,30 +4,31 @@ defmodule BlueJet.Identity.Service do
   @callback get_vas_data(map) :: map
   @callback put_vas_data(map) :: map
 
-  @callback get_account(map | String.t) :: Account.t | nil
-  @callback create_account(map) :: {:ok, Account.t} | {:error, any}
-  @callback update_account(Account.t, map, map) :: {:ok, Account.t} | {:error, any}
-  @callback reset_account(Account.t) :: {:ok, Account.t} | {:error, any}
+  @callback get_account(map | String.t()) :: Account.t() | nil
+  @callback create_account(map) :: {:ok, Account.t()} | {:error, any}
+  @callback update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, any}
+  @callback reset_account(Account.t()) :: {:ok, Account.t()} | {:error, any}
 
-  @callback create_user(map, map) :: {:ok, User.t} | {:error, any}
-  @callback get_user(map, map) :: User.t | nil
-  @callback update_user(String.t | User.t, map, map) :: {:ok, User.t} | {:error, any}
-  @callback delete_user(String.t | User.t, map) :: {:ok, User.t} | {:error, any}
+  @callback create_user(map, map) :: {:ok, User.t()} | {:error, any}
+  @callback get_user(map, map) :: User.t() | nil
+  @callback update_user(String.t() | User.t(), map, map) :: {:ok, User.t()} | {:error, any}
+  @callback delete_user(String.t() | User.t(), map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_email_verification_token(User.t) :: {:ok, User.t} | {:error, any}
-  @callback create_email_verification_token(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification_token(User.t()) :: {:ok, User.t()} | {:error, any}
+  @callback create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_email_verification(User.t) :: {:ok, User.t} | {:error, any}
-  @callback create_email_verification(map, map) :: {:ok, User.t} | {:error, any}
+  @callback create_email_verification(User.t()) :: {:ok, User.t()} | {:error, any}
+  @callback create_email_verification(map, map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_password_reset_token(String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback create_password_reset_token(String.t(), map) :: {:ok, User.t()} | {:error, any}
 
-  @callback update_password(Password.t, String.t) :: {:ok, User.t} | {:error, any}
-  @callback update_password(map, String.t, map) :: {:ok, User.t} | {:error, any}
+  @callback update_password(Password.t(), String.t()) :: {:ok, User.t()} | {:error, any}
+  @callback update_password(map, String.t(), map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_phone_verification_code(map, map) :: {:ok, PhoneVerificationCode.t} | {:error, any}
+  @callback create_phone_verification_code(map, map) ::
+              {:ok, PhoneVerificationCode.t()} | {:error, any}
 
-  @callback get_refresh_token(map) :: {:ok, RefreshToken.t} | {:error, any}
+  @callback get_refresh_token(map) :: {:ok, RefreshToken.t()} | {:error, any}
 
   defdelegate get_vas_data(map), to: @service
   defdelegate put_vas_data(map), to: @service

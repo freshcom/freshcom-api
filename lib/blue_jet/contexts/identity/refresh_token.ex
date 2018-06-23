@@ -32,20 +32,20 @@ defmodule BlueJet.Identity.RefreshToken do
     belongs_to :user, User
   end
 
-  def get_prefixed_id(refresh_token = %{ id: id, user_id: nil }) do
+  def get_prefixed_id(refresh_token = %{id: id, user_id: nil}) do
     refresh_token = Repo.preload(refresh_token, :account)
     mode = refresh_token.account.mode
     "prt-#{mode}-#{id}"
   end
 
-  def get_prefixed_id(refresh_token = %{ id: id }) do
+  def get_prefixed_id(refresh_token = %{id: id}) do
     refresh_token = Repo.preload(refresh_token, :account)
     mode = refresh_token.account.mode
     "urt-#{mode}-#{id}"
   end
 
   def put_prefixed_id(refresh_token) do
-    %{ refresh_token | prefixed_id: get_prefixed_id(refresh_token) }
+    %{refresh_token | prefixed_id: get_prefixed_id(refresh_token)}
   end
 
   def unprefix_id(id) do
@@ -61,19 +61,19 @@ defmodule BlueJet.Identity.RefreshToken do
     alias BlueJet.Identity.RefreshToken
 
     def default() do
-      from rt in RefreshToken
+      from(rt in RefreshToken)
     end
 
     def for_user(user_id) do
-      from rt in RefreshToken, where: rt.user_id == ^user_id
+      from(rt in RefreshToken, where: rt.user_id == ^user_id)
     end
 
     def for_account(query, account_id) do
-      from rt in query, where: rt.account_id == ^account_id
+      from(rt in query, where: rt.account_id == ^account_id)
     end
 
     def publishable() do
-      from rt in RefreshToken, where: is_nil(rt.user_id)
+      from(rt in RefreshToken, where: is_nil(rt.user_id))
     end
   end
 end

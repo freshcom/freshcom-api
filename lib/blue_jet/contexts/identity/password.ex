@@ -15,7 +15,7 @@ defmodule BlueJet.Identity.Password do
     belongs_to :account, Account
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   def writable_fields do
     [:value]
@@ -40,7 +40,7 @@ defmodule BlueJet.Identity.Password do
     Comeonin.Bcrypt.hashpwsalt(value)
   end
 
-  defp put_encrypted_value(changeset = %{ changes: %{ value: value } })  do
+  defp put_encrypted_value(changeset = %{changes: %{value: value}}) do
     put_change(changeset, :encrypted_value, encrypt_value(value))
   end
 

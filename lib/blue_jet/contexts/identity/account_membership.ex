@@ -12,7 +12,7 @@ defmodule BlueJet.Identity.AccountMembership do
     belongs_to :user, User
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -35,7 +35,7 @@ defmodule BlueJet.Identity.AccountMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(membership, :insert, params) do
     membership
     |> cast(params, castable_fields(:insert))
@@ -53,13 +53,13 @@ defmodule BlueJet.Identity.AccountMembership do
   defp castable_fields(:insert), do: writable_fields()
   defp castable_fields(:update), do: writable_fields() -- [:user_id]
 
-  defp validate(changeset = %{ action: :insert }) do
+  defp validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:user_id, :role])
     |> validate_inclusion(:role, @roles)
   end
 
-  defp validate(changeset = %{ action: :update }) do
+  defp validate(changeset = %{action: :update}) do
     changeset
     |> validate_required(:role)
     |> validate_inclusion(:role, @roles)
