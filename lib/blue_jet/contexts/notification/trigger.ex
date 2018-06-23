@@ -18,12 +18,13 @@ defmodule BlueJet.Notification.Trigger do
     field :description, :string
 
     field :action_target, :string
-    field :action_type, :string # send_email, invoke_webhook, send_sms
+    # send_email, invoke_webhook, send_sms
+    field :action_type, :string
 
     timestamps()
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -37,7 +38,7 @@ defmodule BlueJet.Notification.Trigger do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(trigger, :insert, fields) do
     trigger
     |> cast(fields, castable_fields(:insert))
@@ -52,7 +53,7 @@ defmodule BlueJet.Notification.Trigger do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t, atom) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(trigger, :delete) do
     change(trigger)
     |> Map.put(:action, :delete)
@@ -73,11 +74,11 @@ defmodule BlueJet.Notification.Trigger do
     writable_fields() -- [:event, :action_type]
   end
 
-  @spec fire_action(__MODULE__.t, map) :: map
+  @spec fire_action(__MODULE__.t(), map) :: map
   def fire_action(
-    trigger = %{ event: event, action_type: "send_email", action_target: template_id },
-    data
-  ) do
+        trigger = %{event: event, action_type: "send_email", action_target: template_id},
+        data
+      ) do
     account = data[:account]
 
     template = Repo.get_by(EmailTemplate, account_id: account.id, id: template_id)
@@ -112,9 +113,9 @@ defmodule BlueJet.Notification.Trigger do
   end
 
   def fire_action(
-    trigger = %{ event: event, action_type: "send_sms", action_target: template_id },
-    data
-  ) do
+        trigger = %{event: event, action_type: "send_sms", action_target: template_id},
+        data
+      ) do
     account = data[:account]
 
     template = Repo.get_by(SmsTemplate, account_id: account.id, id: template_id)

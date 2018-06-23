@@ -21,7 +21,7 @@ defmodule BlueJet.Notification.Sms do
     belongs_to :template, SmsTemplate
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,

@@ -25,7 +25,7 @@ defmodule BlueJet.Notification.Email do
     belongs_to :template, EmailTemplate
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -45,15 +45,15 @@ defmodule BlueJet.Notification.Email do
     def password_reset_not_registered_email(email) do
       E.new_email()
       |> Postmark.template("4758663", %{
-          brand_name: "Freshcom",
-          brand_url: System.get_env("MARKETING_WEBSITE_URL"),
-          email: email,
-          signup_url: System.get_env("SIGNUP_URL"),
-          forgot_password_url: System.get_env("FORGOT_PASSWORD_URL"),
-          support_url: System.get_env("SUPPORT_WEBSITE_URL"),
-          company_name: System.get_env("COMPANY_NAME"),
-          company_address: System.get_env("COMPANY_ADDRESS")
-         })
+        brand_name: "Freshcom",
+        brand_url: System.get_env("MARKETING_WEBSITE_URL"),
+        email: email,
+        signup_url: System.get_env("SIGNUP_URL"),
+        forgot_password_url: System.get_env("FORGOT_PASSWORD_URL"),
+        support_url: System.get_env("SUPPORT_WEBSITE_URL"),
+        company_name: System.get_env("COMPANY_NAME"),
+        company_address: System.get_env("COMPANY_ADDRESS")
+      })
       |> E.to(email)
       |> E.from(sender())
     end
@@ -61,14 +61,14 @@ defmodule BlueJet.Notification.Email do
     def password_reset_email(user) do
       E.new_email()
       |> Postmark.template("4561302", %{
-          brand_name: "Freshcom",
-          brand_url: System.get_env("MARKETING_WEBSITE_URL"),
-          name: user.first_name || user.name,
-          action_url: password_reset_url(user.password_reset_token),
-          support_url: System.get_env("SUPPORT_WEBSITE_URL"),
-          company_name: System.get_env("COMPANY_NAME"),
-          company_address: System.get_env("COMPANY_ADDRESS")
-         })
+        brand_name: "Freshcom",
+        brand_url: System.get_env("MARKETING_WEBSITE_URL"),
+        name: user.first_name || user.name,
+        action_url: password_reset_url(user.password_reset_token),
+        support_url: System.get_env("SUPPORT_WEBSITE_URL"),
+        company_name: System.get_env("COMPANY_NAME"),
+        company_address: System.get_env("COMPANY_ADDRESS")
+      })
       |> E.to(user.email)
       |> E.from(sender())
     end

@@ -25,7 +25,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     has_many :email, Email, foreign_key: :template_id
   end
 
-  @type t :: Ecto.Schema.t
+  @type t :: Ecto.Schema.t()
 
   @system_fields [
     :id,
@@ -51,14 +51,14 @@ defmodule BlueJet.Notification.EmailTemplate do
     ]
   end
 
-  @spec changeset(__MODULE__.t, atom, map) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(email_template, :insert, params) do
     email_template
     |> cast(params, writable_fields())
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t, atom, map, String.t(), String.t) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
   def changeset(email_template, :update, params, locale \\ nil, default_locale \\ nil) do
     email_template = Proxy.put_account(email_template)
     default_locale = default_locale || email_template.account.default_locale
@@ -70,7 +70,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  @spec changeset(__MODULE__.t, atom) :: Changeset.t
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
   def changeset(email_template, :delete) do
     change(email_template)
     |> Map.put(:action, :delete)
@@ -81,8 +81,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> validate_required([:name, :to, :subject, :body_html])
   end
 
-  @spec extract_variables(String.t, map) :: map
-  def extract_variables("identity.password_reset_token.create.error.username_not_found", %{ account: account, username: username }) do
+  @spec extract_variables(String.t(), map) :: map
+  def extract_variables("identity.password_reset_token.create.error.username_not_found", %{
+        account: account,
+        username: username
+      }) do
     %{
       username: username,
       account: Map.take(account, [:name]),
@@ -90,7 +93,10 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.password_reset_token.create.success", %{ account: account, user: user }) do
+  def extract_variables("identity.password_reset_token.create.success", %{
+        account: account,
+        user: user
+      }) do
     %{
       user: Map.take(user, [:id, :password_reset_token, :first_name, :last_name, :name, :email]),
       account: Map.take(account, [:name]),
@@ -98,7 +104,10 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.email_verification_token.create.success", %{ account: account, user: user }) do
+  def extract_variables("identity.email_verification_token.create.success", %{
+        account: account,
+        user: user
+      }) do
     %{
       user: Map.take(user, [:id, :email_verification_token, :first_name, :last_name, :email]),
       account: Map.take(account, [:name]),
@@ -106,19 +115,24 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("storefront.order.opened.success", %{ account: account, order: order }) do
-    line_items = Enum.map(order.root_line_items, fn(line_item) ->
-      %{
-        name: line_item.name,
-        order_quantity: line_item.order_quantity,
-        sub_total: dollar_string(line_item.sub_total_cents)
-      }
-    end)
+  def extract_variables("storefront.order.opened.success", %{account: account, order: order}) do
+    line_items =
+      Enum.map(order.root_line_items, fn line_item ->
+        %{
+          name: line_item.name,
+          order_quantity: line_item.order_quantity,
+          sub_total: dollar_string(line_item.sub_total_cents)
+        }
+      end)
 
     {:ok, opened_date} = Timex.format(order.opened_at, "%Y-%m-%d", :strftime)
+
     order =
       order
-      |> Map.put(:tax_total, dollar_string(order.tax_one_cents + order.tax_two_cents + order.tax_three_cents))
+      |> Map.put(
+        :tax_total,
+        dollar_string(order.tax_one_cents + order.tax_two_cents + order.tax_three_cents)
+      )
       |> Map.put(:grand_total, dollar_string(order.grand_total_cents))
       |> Map.put(:opened_date, opened_date)
 
@@ -137,30 +151,30 @@ defmodule BlueJet.Notification.EmailTemplate do
   end
 
   defp dollar_string(cents) do
-    :erlang.float_to_binary(cents / 100, [decimals: 2])
+    :erlang.float_to_binary(cents / 100, decimals: 2)
   end
 
-  @spec render_html(__MODULE__.t, map) :: String.t()
-  def render_html(%{ body_html: body_html }, variables) do
+  @spec render_html(__MODULE__.t(), map) :: String.t()
+  def render_html(%{body_html: body_html}, variables) do
     :bbmustache.render(body_html, variables, key_type: :atom)
   end
 
-  @spec render_text(__MODULE__.t, map) :: String.t()
-  def render_text(%{ body_text: nil }, _) do
+  @spec render_text(__MODULE__.t(), map) :: String.t()
+  def render_text(%{body_text: nil}, _) do
     nil
   end
 
-  def render_text(%{ body_text: body_text }, variables) do
+  def render_text(%{body_text: body_text}, variables) do
     :bbmustache.render(body_text, variables, key_type: :atom)
   end
 
-  @spec render_subject(__MODULE__.t, map) :: String.t()
-  def render_subject(%{ subject: subject }, variables) do
+  @spec render_subject(__MODULE__.t(), map) :: String.t()
+  def render_subject(%{subject: subject}, variables) do
     :bbmustache.render(subject, variables, key_type: :atom)
   end
 
-  @spec render_to(__MODULE__.t, map) :: String.t()
-  def render_to(%{ to: to }, variables) do
+  @spec render_to(__MODULE__.t(), map) :: String.t()
+  def render_to(%{to: to}, variables) do
     :bbmustache.render(to, variables, key_type: :atom)
   end
 
@@ -168,8 +182,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     alias BlueJet.Notification.EmailTemplate
 
     def password_reset(account) do
-      password_reset_html = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.html")
-      password_reset_text = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.txt")
+      password_reset_html =
+        File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.html")
+
+      password_reset_text =
+        File.read!("lib/blue_jet/apps/notification/email_templates/password_reset.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -183,8 +200,15 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def password_reset_not_registered(account) do
-      password_reset_not_registered_html = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.html")
-      password_reset_not_registered_text = File.read!("lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.txt")
+      password_reset_not_registered_html =
+        File.read!(
+          "lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.html"
+        )
+
+      password_reset_not_registered_text =
+        File.read!(
+          "lib/blue_jet/apps/notification/email_templates/password_reset_not_registered.txt"
+        )
 
       %EmailTemplate{
         account_id: account.id,
@@ -198,8 +222,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def email_verification(account) do
-      email_verification_html = File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.html")
-      email_verification_text = File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.txt")
+      email_verification_html =
+        File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.html")
+
+      email_verification_text =
+        File.read!("lib/blue_jet/apps/notification/email_templates/email_verification.txt")
 
       %EmailTemplate{
         account_id: account.id,
@@ -213,8 +240,11 @@ defmodule BlueJet.Notification.EmailTemplate do
     end
 
     def order_confirmation(account) do
-      order_confirmation_html = File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.html")
-      order_confirmation_text = File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.txt")
+      order_confirmation_html =
+        File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.html")
+
+      order_confirmation_text =
+        File.read!("lib/blue_jet/apps/notification/email_templates/order_confirmation.txt")
 
       %EmailTemplate{
         account_id: account.id,

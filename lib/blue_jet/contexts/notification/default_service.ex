@@ -20,12 +20,13 @@ defmodule BlueJet.Notification.DefaultService do
     create(Trigger, fields, opts)
   end
 
-  def create_system_default_trigger(%{ account: account }) do
+  def create_system_default_trigger(%{account: account}) do
     # Password Reset
     email_template =
       account
       |> EmailTemplate.AccountDefault.password_reset()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_password_reset_email(email_template)
     |> Repo.insert!()
@@ -34,6 +35,7 @@ defmodule BlueJet.Notification.DefaultService do
       account
       |> EmailTemplate.AccountDefault.password_reset_not_registered()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_password_reset_not_registered_email(email_template)
     |> Repo.insert!()
@@ -43,6 +45,7 @@ defmodule BlueJet.Notification.DefaultService do
       account
       |> EmailTemplate.AccountDefault.email_verification()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_email_verification_email(email_template)
     |> Repo.insert!()
@@ -52,6 +55,7 @@ defmodule BlueJet.Notification.DefaultService do
       account
       |> EmailTemplate.AccountDefault.order_confirmation()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_order_confirmation_email(email_template)
     |> Repo.insert!()
@@ -61,6 +65,7 @@ defmodule BlueJet.Notification.DefaultService do
       account
       |> SmsTemplate.AccountDefault.phone_verification_code()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_phone_verification_code_sms(sms_template)
     |> Repo.insert!()
@@ -70,6 +75,7 @@ defmodule BlueJet.Notification.DefaultService do
       account
       |> SmsTemplate.AccountDefault.tfa_code()
       |> Repo.insert!()
+
     account
     |> Trigger.AccountDefault.send_tfa_code_sms(sms_template)
     |> Repo.insert!()
@@ -88,7 +94,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def update_trigger(identifiers, fields, opts) do
-    get_trigger(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_trigger(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_trigger(fields, opts)
   end
 
@@ -99,7 +105,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def delete_trigger(identifiers, opts) do
-    get_trigger(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_trigger(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_trigger(opts)
   end
 
@@ -130,7 +136,7 @@ defmodule BlueJet.Notification.DefaultService do
   # MARK: Email Template
   #
   def list_email_template(fields \\ %{}, opts) do
-   list(EmailTemplate, fields, opts)
+    list(EmailTemplate, fields, opts)
   end
 
   def count_email_template(fields \\ %{}, opts) do
@@ -152,7 +158,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def update_email_template(identifiers, fields, opts) do
-    get_email_template(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_email_template(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_email_template(fields, opts)
   end
 
@@ -163,7 +169,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def delete_email_template(identifiers, opts) do
-    get_email_template(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_email_template(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_email_template(opts)
   end
 
@@ -216,7 +222,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def update_sms_template(identifiers, fields, opts) do
-    get_sms_template(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_sms_template(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> update_sms_template(fields, opts)
   end
 
@@ -227,7 +233,7 @@ defmodule BlueJet.Notification.DefaultService do
   end
 
   def delete_sms_template(identifiers, opts) do
-    get_sms_template(identifiers, Map.merge(opts, %{ preloads: %{} }))
+    get_sms_template(identifiers, Map.merge(opts, %{preloads: %{}}))
     |> delete_sms_template(opts)
   end
 
