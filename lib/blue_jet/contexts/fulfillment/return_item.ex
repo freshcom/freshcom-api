@@ -148,18 +148,19 @@ defmodule BlueJet.Fulfillment.ReturnItem do
 
   defp put_translations(changeset), do: changeset
 
-  defp validate(changeset = %{action: :insert}) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:fulfillment_item_id, :status])
     |> validate_inclusion(:status, ["pending", "in_progress", "returned"])
   end
 
-  defp validate(changeset = %{action: :update}) do
+  def validate(changeset = %{action: :update}) do
     changeset
     |> validate_status()
   end
 
-  defp validate(changeset = %{action: :delete}) do
+  def validate(changeset = %{action: :delete}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress"])
   end

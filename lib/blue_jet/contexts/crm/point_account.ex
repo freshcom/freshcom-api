@@ -52,7 +52,8 @@ defmodule BlueJet.Crm.PointAccount do
     writable_fields() -- [:account_id]
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required([:account_id, :status, :balance])
     |> foreign_key_constraint(:account_id)

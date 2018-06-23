@@ -96,7 +96,8 @@ defmodule BlueJet.FileStorage.File do
     [:status, :name, :content_type, :size_bytes]
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required(required_fields())
   end

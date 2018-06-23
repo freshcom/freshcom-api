@@ -96,18 +96,19 @@ defmodule BlueJet.Fulfillment.FulfillmentPackage do
     writable_fields() -- [:order_id, :customer_id]
   end
 
-  defp validate(changeset = %{action: :insert}) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:order_id])
     |> validate_inclusion(:status, ["pending", "in_progress"])
   end
 
-  defp validate(changeset = %{action: :update}) do
+  def validate(changeset = %{action: :update}) do
     changeset
     |> validate_status()
   end
 
-  defp validate(changeset = %{action: :delete}) do
+  def validate(changeset = %{action: :delete}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
   end

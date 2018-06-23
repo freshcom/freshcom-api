@@ -40,8 +40,11 @@ defmodule BlueJet.DataTrading.DataImport do
     []
   end
 
-  def required_fields() do
-    [:data_url, :data_type]
+  def changeset(struct, :insert, params \\ %{}) do
+    struct
+    |> cast(params, writable_fields())
+    |> Map.put(:action, :insert)
+    |> validate()
   end
 
   def validate(changeset) do
@@ -49,11 +52,8 @@ defmodule BlueJet.DataTrading.DataImport do
     |> validate_required(required_fields())
   end
 
-  def changeset(struct, :insert, params \\ %{}) do
-    struct
-    |> cast(params, writable_fields())
-    |> Map.put(:action, :insert)
-    |> validate()
+  defp required_fields() do
+    [:data_url, :data_type]
   end
 
   #

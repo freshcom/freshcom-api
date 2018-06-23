@@ -61,7 +61,8 @@ defmodule BlueJet.Notification.Trigger do
 
   def changeset(trigger, :update, fields, _), do: changeset(trigger, :update, fields)
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required([:name, :status, :event, :action_type, :action_target])
   end

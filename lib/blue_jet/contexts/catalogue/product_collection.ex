@@ -52,11 +52,6 @@ defmodule BlueJet.Catalogue.ProductCollection do
     ]
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required([:status, :name])
-  end
-
   def changeset(product_collection, :insert, params) do
     product_collection
     |> cast(params, writable_fields())
@@ -77,6 +72,12 @@ defmodule BlueJet.Catalogue.ProductCollection do
   def changeset(product_collection, :delete) do
     change(product_collection)
     |> Map.put(:action, :delete)
+  end
+
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
+    changeset
+    |> validate_required([:status, :name])
   end
 
   def delete_avatar(product_collection) do

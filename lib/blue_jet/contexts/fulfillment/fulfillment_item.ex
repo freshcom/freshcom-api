@@ -141,19 +141,20 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     package
   end
 
-  defp validate(changeset = %{action: :insert}) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset = %{action: :insert}) do
     changeset
     |> validate_required([:status, :quantity, :order_line_item_id, :package_id])
     |> validate_inclusion(:status, ["pending", "fulfilled"])
     |> validate_package_id()
   end
 
-  defp validate(changeset = %{action: :update}) do
+  def validate(changeset = %{action: :update}) do
     changeset
     |> validate_status()
   end
 
-  defp validate(changeset = %{action: :delete}) do
+  def validate(changeset = %{action: :delete}) do
     changeset
     |> validate_inclusion(:status, ["pending", "in_progress", "discarded"])
   end

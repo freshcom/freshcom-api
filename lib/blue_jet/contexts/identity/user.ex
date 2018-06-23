@@ -158,9 +158,10 @@ defmodule BlueJet.Identity.User do
 
   defp put_email_fields(changeset), do: changeset
 
-  defp validate(changeset, opts \\ %{})
+  @spec validate(Changeset.t(), map) :: Changeset.t()
+  def validate(changeset, opts \\ %{})
 
-  defp validate(changeset = %{action: :insert}, opts) do
+  def validate(changeset = %{action: :insert}, opts) do
     changeset
     |> validate_required(@required_fields)
     |> validate_username()
@@ -170,7 +171,7 @@ defmodule BlueJet.Identity.User do
     |> validate_password()
   end
 
-  defp validate(changeset = %{action: :update}, opts) do
+  def validate(changeset = %{action: :update}, opts) do
     changeset
     |> validate_required(@required_fields)
     |> validate_username()

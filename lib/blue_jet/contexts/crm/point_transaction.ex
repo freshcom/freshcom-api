@@ -119,7 +119,8 @@ defmodule BlueJet.Crm.PointTransaction do
 
   defp put_balance_after_commit(changeset), do: changeset
 
-  defp validate(changeset = %{action: :delete}) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset = %{action: :delete}) do
     if get_field(changeset, :amount) == 0 do
       changeset
     else
@@ -127,7 +128,7 @@ defmodule BlueJet.Crm.PointTransaction do
     end
   end
 
-  defp validate(changeset) do
+  def validate(changeset) do
     changeset
     |> validate_required([:status, :amount])
     |> validate_number(:balance_after_commit, greater_than_or_equal_to: 0)

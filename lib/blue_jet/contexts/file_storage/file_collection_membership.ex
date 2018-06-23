@@ -57,7 +57,8 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     writable_fields() -- [:collection_id, :file_id]
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required([:collection_id, :file_id])
     |> validate_collection_id()

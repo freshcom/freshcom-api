@@ -90,7 +90,8 @@ defmodule BlueJet.Goods.Unlockable do
     |> Map.put(:action, :delete)
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required([:status, :name])
   end

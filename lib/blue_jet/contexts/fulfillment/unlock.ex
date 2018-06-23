@@ -68,7 +68,8 @@ defmodule BlueJet.Fulfillment.Unlock do
     [:unlockable_id, :customer_id]
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required(required_fields())
     |> validate_unlockable_id()
