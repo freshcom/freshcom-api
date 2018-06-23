@@ -1,12 +1,6 @@
 defmodule BlueJet.Storefront.Order do
   use BlueJet, :data
 
-  use Trans, translates: [
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
-
   alias BlueJet.Utils
 
   alias BlueJet.Storefront.OrderLineItem
@@ -112,7 +106,90 @@ defmodule BlueJet.Storefront.Order do
   Returns a list of fields that can be translated.
   """
   def translatable_fields do
-    __MODULE__.__trans__(:fields)
+    [
+      :caption,
+      :description,
+      :custom_data
+    ]
+  end
+
+  @doc """
+  Builds a changeset based on the `struct` and `params`.
+  """
+  def changeset(order, :insert, params) do
+    castable_fields = castable_fields(order, :insert)
+
+    order
+    |> cast(params, castable_fields)
+    |> Map.put(:action, :insert)
+    |> put_name()
+    |> Utils.put_clean_email()
+    |> validate()
+  end
+
+  def changeset(order, :update, params, locale \\ nil, default_locale \\ nil) do
+    order = %{ order | account: Proxy.get_account(order) }
+    default_locale = default_locale || order.account.default_locale
+    locale = locale || default_locale
+
+    order
+    |> cast(params, castable_fields(order, :update))
+    |> Map.put(:action, :update)
+    |> put_name()
+    |> Utils.put_clean_email()
+    |> validate()
+    |> put_opened_at()
+    |> Translation.put_change(translatable_fields(), locale, default_locale)
+  end
+
+  def changeset(order, :delete) do
+    change(order)
+    |> Map.put(:action, :delete)
+    |> validate()
+  end
+
+  defp castable_fields(_, :insert), do: writable_fields() -- [:status]
+  defp castable_fields(_, :update), do: writable_fields()
+
+  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
+
+  defp put_name(changeset) do
+    first_name = get_change(changeset, :first_name)
+    last_name = get_change(changeset, :last_name)
+
+    if first_name || last_name do
+      first_name = get_field(changeset, :first_name)
+      last_name = get_field(changeset, :last_name)
+      put_change(changeset, :name, "#{first_name} #{last_name}")
+    else
+      changeset
+    end
+  end
+
+  defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
+    put_change(changeset, :opened_at, Ecto.DateTime.utc())
+  end
+
+  defp put_opened_at(changeset), do: changeset
+
+  @spec validate(Changeset.t()) :: Changeset.t
+  def validate(changeset = %{ action: :insert }) do
+    changeset
+  end
+
+  def validate(changeset = %{ action: :update }) do
+    required_fields = required_fields(changeset)
+
+    changeset
+    |> validate_required(required_fields)
+    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
+    |> validate_inventory()
+    |> validate_customer_id()
+  end
+
+  def validate(changeset = %{ action: :delete }) do
+    changeset
+    |> validate_no_payment()
   end
 
   defp required_fields(%{ action: :insert }), do: required_fields()
@@ -160,7 +237,7 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
-  def validate_no_payment(changeset = %{ data: order }) do
+  defp validate_no_payment(changeset = %{ data: order }) do
     payment_count = Proxy.count_payment(order)
 
     if payment_count == 0 do
@@ -172,91 +249,11 @@ defmodule BlueJet.Storefront.Order do
   end
 
   @doc """
-  Returns the validated changeset.
-  """
-  def validate(changeset = %{ action: :insert }) do
-    changeset
-  end
-
-  def validate(changeset = %{ action: :update }) do
-    required_fields = required_fields(changeset)
-
-    changeset
-    |> validate_required(required_fields)
-    |> validate_format(:email, Application.get_env(:blue_jet, :email_regex))
-    |> validate_inventory()
-    |> validate_customer_id()
-  end
-
-  def validate(changeset = %{ action: :delete }) do
-    changeset
-    |> validate_no_payment()
-  end
-
-  defp castable_fields(_, :insert), do: writable_fields() -- [:status]
-  defp castable_fields(_, :update), do: writable_fields()
-
-  @doc """
-  Builds a changeset based on the `struct` and `params`.
-  """
-  def changeset(order, :insert, params) do
-    castable_fields = castable_fields(order, :insert)
-
-    order
-    |> cast(params, castable_fields)
-    |> Map.put(:action, :insert)
-    |> put_name()
-    |> Utils.put_clean_email()
-    |> validate()
-  end
-
-  def changeset(order, :update, params, locale \\ nil, default_locale \\ nil) do
-    order = %{ order | account: Proxy.get_account(order) }
-    default_locale = default_locale || order.account.default_locale
-    locale = locale || default_locale
-
-    order
-    |> cast(params, castable_fields(order, :update))
-    |> Map.put(:action, :update)
-    |> put_name()
-    |> Utils.put_clean_email()
-    |> validate()
-    |> put_opened_at()
-    |> Translation.put_change(translatable_fields(), locale, default_locale)
-  end
-
-  def changeset(order, :delete) do
-    change(order)
-    |> Map.put(:action, :delete)
-    |> validate()
-  end
-
-  defp put_name(changeset = %{ changes: %{ name: _ } }), do: changeset
-
-  defp put_name(changeset) do
-    first_name = get_change(changeset, :first_name)
-    last_name = get_change(changeset, :last_name)
-
-    if first_name || last_name do
-      first_name = get_field(changeset, :first_name)
-      last_name = get_field(changeset, :last_name)
-      put_change(changeset, :name, "#{first_name} #{last_name}")
-    else
-      changeset
-    end
-  end
-
-  defp put_opened_at(changeset = %{ valid?: true, data: %{ status: "cart" }, changes: %{ status: "opened" } }) do
-    put_change(changeset, :opened_at, Ecto.DateTime.utc())
-  end
-
-  defp put_opened_at(changeset), do: changeset
-
-  @doc """
   Balance the order base on the root line items.
 
   Returns the balanced order.
   """
+  @spec balance(__MODULE__.t) :: __MODULE__.t
   def balance(struct) do
     query =
       struct
@@ -301,6 +298,7 @@ defmodule BlueJet.Storefront.Order do
   @doc """
   Refresh the payment status of the order. Returns the updated order.
   """
+  @spec refresh_payment_status(__MODULE__.t) :: __MODULE__.t
   def refresh_payment_status(order) do
     order
     |> change(payment_status: get_payment_status(order))
@@ -313,6 +311,7 @@ defmodule BlueJet.Storefront.Order do
   It will always return the correct payment status where as the `payment_status`
   field of the order may not be up to date yet.
   """
+  @spec get_payment_status(__MODULE__.t) :: __MODULE__.t
   def get_payment_status(order) do
     payments = Proxy.list_payment(order)
 
@@ -366,12 +365,14 @@ defmodule BlueJet.Storefront.Order do
     end
   end
 
+  @spec refresh_fulfillment_status(__MODULE__.t) :: __MODULE__.t
   def refresh_fulfillment_status(order) do
     order
     |> change(fulfillment_status: get_fulfillment_status(order))
     |> Repo.update!()
   end
 
+  @spec get_fulfillment_status(__MODULE__.t) :: __MODULE__.t
   def get_fulfillment_status(order) do
     root_line_items =
       OrderLineItem
