@@ -119,6 +119,14 @@ defmodule BlueJet.Catalogue.Product do
       get_field(changeset, :goods) ||
         Proxy.get_goods(%{goods_type: goods_type, goods_id: goods_id, account: account})
 
+    put_name(changeset, goods)
+  end
+
+  defp put_name(changeset), do: changeset
+
+  defp put_name(changeset, nil), do: changeset
+
+  defp put_name(changeset, goods) do
     new_translations =
       changeset
       |> get_field(:translations)
@@ -130,7 +138,6 @@ defmodule BlueJet.Catalogue.Product do
     |> put_change(:translations, new_translations)
   end
 
-  defp put_name(changeset), do: changeset
 
   @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset = %{action: :insert}) do
