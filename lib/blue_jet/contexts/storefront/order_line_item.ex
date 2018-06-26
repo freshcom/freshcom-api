@@ -609,8 +609,9 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def sync_to_order(line_item) do
     line_item = Repo.preload(line_item, :order)
+    order = %{ line_item.order | account: line_item.account }
 
-    line_item.order
+    order
     |> Order.balance()
     |> Order.refresh_payment_status()
 
