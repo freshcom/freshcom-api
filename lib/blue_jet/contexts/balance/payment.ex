@@ -261,7 +261,7 @@ defmodule BlueJet.Balance.Payment do
     {:ok, changeset}
   end
 
-  def put_stripe_customer_id(changeset), do: changeset
+  def put_stripe_customer_id(changeset), do: {:ok, changeset}
 
   defp put_stripe_customer_id(changeset, nil), do: changeset
 
