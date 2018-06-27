@@ -42,7 +42,9 @@ defmodule BlueJet.Crm.CustomerTest do
       :stripe_customer_id,
       :user_id,
       :enroller_id,
-      :sponsor_id
+      :sponsor_id,
+      :username,
+      :password
     ]
   end
 

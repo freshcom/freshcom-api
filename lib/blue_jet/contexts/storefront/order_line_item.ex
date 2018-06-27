@@ -468,7 +468,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   def validate_product_id(changeset = %{ valid?: true, changes: %{ product_id: product_id } }) do
     account = Proxy.get_account(changeset.data)
-    product = CatalogueService.get_product(%{ id: product_id }, %{ account: account })
+    product = get_field(changeset, :product) || CatalogueService.get_product(%{ id: product_id }, %{ account: account })
 
     if product && product.account_id == account.id do
       changeset
@@ -572,37 +572,83 @@ defmodule BlueJet.Storefront.OrderLineItem do
   end
 
   defp balance_by_product(oli, product = %{ kind: kind }) when kind == "combo" do
-    price = Repo.get!(Price, oli.price_id) |> Repo.preload(:children)
-    items = assoc(product, :items) |> Repo.all()
+    account = oli.account
+    items = CatalogueService.list_product(%{ filter: %{ parent_id: product.id } }, %{ account: account })
+    total_ppi = Enum.reduce(items, 0, fn(item, acc) -> acc + item.price_proportion_index end) |> D.new()
 
-    Enum.each(items, fn(item) ->
-      existing_child = Repo.get_by(__MODULE__, parent_id: oli.id, product_id: item.id)
-      child = case existing_child do
-        nil -> %__MODULE__{ account_id: oli.account_id }
+    # The last item need special care because there could be rounding errors
+    {last_item, ppi_items} = List.pop_at(items, -1)
 
-        _ -> existing_child
-      end
-
-      target_price = Enum.find(price.children, fn(child_price) ->
-        child_price.product_id == item.id
-      end)
-      changeset = __MODULE__.changeset(child, %{
+    ppi_line_items = Enum.map(ppi_items, fn(item) ->
+      # Calculate the amount fields
+      ppr = item.price_proportion_index |> D.new() |> D.div(total_ppi)
+      sub_total_cents = ppr |> D.mult(D.new(oli.sub_total_cents)) |> D.round() |> D.to_integer()
+      tax_one_cents = ppr |> D.mult(D.new(oli.tax_one_cents)) |> D.round() |> D.to_integer()
+      tax_two_cents = ppr |> D.mult(D.new(oli.tax_two_cents)) |> D.round() |> D.to_integer()
+      tax_three_cents = ppr |> D.mult(D.new(oli.tax_three_cents)) |> D.round() |> D.to_integer()
+      fields = %{
         "auto_fulfill" => oli.auto_fulfill,
         "order_id" => oli.order_id,
         "product_id" => item.id,
-        "order_quantity" => oli.order_quantity,
         "parent_id" => oli.id,
-        "price_id" => target_price.id
-      })
+        "order_quantity" => oli.order_quantity,
+        "sub_total_cents" => sub_total_cents,
+        "tax_one_cents" => tax_one_cents,
+        "tax_two_cents" => tax_two_cents,
+        "tax_three_cents" => tax_three_cents,
+      }
 
+      # Insert or update the child
+      existing_child = Repo.get_by(__MODULE__, parent_id: oli.id, product_id: item.id)
       updated_child = case existing_child do
-        nil -> Repo.insert!(changeset)
+        nil ->
+          %__MODULE__{ account_id: account.id, account: account, product: item }
+          |> changeset(:insert, fields)
+          |> Repo.insert!()
 
-        _ -> Repo.update!(changeset)
+        _ ->
+          %{ existing_child | account: account, product: item }
+          |> changeset(:update, fields)
+          |> Repo.update!()
       end
 
-      __MODULE__.balance(updated_child)
+      # Balance the child
+      do_balance(updated_child)
     end)
+
+    # Last Item
+    remaining_sub_total_cents = oli.sub_total_cents - Enum.reduce(ppi_line_items, 0, fn(ppi_line_item, acc) -> ppi_line_item.sub_total_cents + acc end)
+    remaining_tax_one_cents = oli.tax_one_cents - Enum.reduce(ppi_line_items, 0, fn(ppi_line_item, acc) -> ppi_line_item.tax_one_cents + acc end)
+    remaining_tax_two_cents = oli.tax_two_cents - Enum.reduce(ppi_line_items, 0, fn(ppi_line_item, acc) -> ppi_line_item.tax_two_cents + acc end)
+    remaining_tax_three_cents = oli.tax_three_cents - Enum.reduce(ppi_line_items, 0, fn(ppi_line_item, acc) -> ppi_line_item.tax_three_cents + acc end)
+    fields = %{
+      "auto_fulfill" => oli.auto_fulfill,
+      "order_id" => oli.order_id,
+      "product_id" => last_item.id,
+      "parent_id" => oli.id,
+      "order_quantity" => oli.order_quantity,
+      "sub_total_cents" => remaining_sub_total_cents,
+      "tax_one_cents" => remaining_tax_one_cents,
+      "tax_two_cents" => remaining_tax_two_cents,
+      "tax_three_cents" => remaining_tax_three_cents,
+    }
+
+    # Insert or update the child
+    existing_child = Repo.get_by(__MODULE__, parent_id: oli.id, product_id: last_item.id)
+    updated_child = case existing_child do
+      nil ->
+        %__MODULE__{ account_id: account.id, account: account, product: last_item }
+        |> changeset(:insert, fields)
+        |> Repo.insert!()
+
+      _ ->
+        %{ existing_child | account: account, product: last_item }
+        |> changeset(:update, fields)
+        |> Repo.update!()
+    end
+
+    # Balance the child
+    do_balance(updated_child)
 
     oli
   end

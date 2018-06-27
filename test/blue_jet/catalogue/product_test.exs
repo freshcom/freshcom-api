@@ -85,6 +85,7 @@ defmodule BlueJet.Catalogue.ProductTest do
       :sort_index,
       :goods_quantity,
       :maximum_public_order_quantity,
+      :price_proportion_index,
       :primary,
       :auto_fulfill,
       :caption,

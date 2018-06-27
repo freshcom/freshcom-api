@@ -273,7 +273,7 @@ defmodule BlueJet.Catalogue.DefaultService do
     |> for_account(account.id)
     |> Price.Query.for_order_quantity(identifiers[:order_quantity])
     |> Price.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    |> Repo.get_by(Map.drop(clauses, [:order_quantity]))
     |> preload(preloads[:path], preloads[:opts])
   end
 

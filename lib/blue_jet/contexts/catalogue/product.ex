@@ -21,6 +21,7 @@ defmodule BlueJet.Catalogue.Product do
     field :sort_index, :integer, default: 1000
     field :goods_quantity, :integer, default: 1
     field :maximum_public_order_quantity, :integer, default: 999
+    field :price_proportion_index, :integer, default: 10
     field :primary, :boolean, default: false
     field :auto_fulfill, :boolean, null: false, default: false
 

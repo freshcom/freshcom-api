@@ -373,8 +373,94 @@ defmodule BlueJet.OrderLineItemTest do
       assert child.charge_quantity == oli.charge_quantity
     end
 
-    # TODO:
     test "when oli is for product combo" do
+      account = Repo.insert!(%Account{})
+
+      stockable1 = %Stockable{
+        id: Ecto.UUID.generate(),
+        name: Faker.String.base64(5)
+      }
+
+      stockable2 = %Stockable{
+        id: Ecto.UUID.generate(),
+        name: Faker.String.base64(5)
+      }
+
+      product = Repo.insert!(%Product{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        kind: "combo",
+        name: Faker.String.base64(5)
+      })
+
+      item1 = Repo.insert!(%Product{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        kind: "item",
+        price_proportion_index: 20,
+        name: Faker.String.base64(5),
+        parent_id: product.id,
+        goods_type: "Stockable",
+        goods_id: stockable1.id
+      })
+
+      item2 = Repo.insert!(%Product{
+        id: Ecto.UUID.generate(),
+        account_id: account.id,
+        kind: "item",
+        price_proportion_index: 30,
+        name: Faker.String.base64(5),
+        parent_id: product.id,
+        goods_type: "Stockable",
+        goods_id: stockable1.id
+      })
+
+      order = Repo.insert!(%Order{
+        account_id: account.id
+      })
+
+      CatalogueServiceMock
+      |> expect(:get_product, fn(_, _) -> product end)
+      |> expect(:list_product, fn(_, _) -> [item1, item2] end)
+      |> expect(:get_price, fn(_, _) -> nil end)
+      |> expect(:get_price, fn(_, _) -> nil end)
+
+      GoodsServiceMock
+      |> expect(:get_stockable, fn(_, _) -> stockable1 end)
+      |> expect(:get_stockable, fn(_, _) -> stockable2 end)
+
+
+      oli = Repo.insert!(%OrderLineItem{
+        account: account,
+        account_id: account.id,
+        product_id: product.id,
+        order_id: order.id,
+        name: Faker.String.base64(5),
+        is_leaf: false,
+        auto_fulfill: false,
+        charge_quantity: Decimal.new(2),
+        sub_total_cents: 500,
+        tax_one_cents: 200,
+        tax_two_cents: 500,
+        tax_three_cents: 300,
+        grand_total_cents: 1500,
+        authorization_total_cents: 1500
+      })
+
+      {:ok, _} = OrderLineItem.balance(oli)
+
+      parent_id = oli.id
+      children =
+        from(q in OrderLineItem, where: q.parent_id == ^parent_id)
+        |> Repo.all()
+
+      verify!()
+      assert length(children) == 2
+      assert Enum.reduce(children, 0, fn(child, acc) -> child.sub_total_cents + acc end) == 500
+      assert Enum.reduce(children, 0, fn(child, acc) -> child.tax_one_cents + acc end) == 200
+      assert Enum.reduce(children, 0, fn(child, acc) -> child.tax_two_cents + acc end) == 500
+      assert Enum.reduce(children, 0, fn(child, acc) -> child.tax_three_cents + acc end) == 300
+      assert Enum.reduce(children, 0, fn(child, acc) -> child.grand_total_cents + acc end) == 1500
     end
   end
 
