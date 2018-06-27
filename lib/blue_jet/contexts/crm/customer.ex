@@ -30,6 +30,8 @@ defmodule BlueJet.Crm.Customer do
 
     field :user_id, Ecto.UUID
     field :user, :map, virtual: true
+    field :username, :string, virtual: true
+    field :password, :string, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
 
@@ -50,7 +52,7 @@ defmodule BlueJet.Crm.Customer do
   ]
 
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- @system_fields
+    (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:username, :password]
   end
 
   def translatable_fields do

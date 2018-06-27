@@ -10,7 +10,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
   def run(args) do
     alias BlueJet.Repo
 
-    alias BlueJet.{Identity, Goods, Catalogue}
+    alias BlueJet.{Identity, Goods, Catalogue, Crm}
     alias BlueJet.Identity.Account
     alias BlueJet.AccessRequest
 
@@ -32,6 +32,44 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
       account = Repo.get_by(Account, id: user.default_account_id)
       test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
+
+      #
+      # MARK: Customer
+      #
+      {:ok, _} = Crm.create_customer(%AccessRequest{
+        vas: %{ user_id: user.id, account_id: test_account.id },
+        fields: %{
+          "status" => "guest",
+          "first_name" => "Roy",
+          "last_name" => "Bao"
+        }
+      })
+
+      email = Faker.Internet.safe_email()
+      {:ok, _} = Crm.create_customer(%AccessRequest{
+        vas: %{ user_id: user.id, account_id: test_account.id },
+        fields: %{
+          "status" => "registered",
+          "username" => email,
+          "password" => "test1234",
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "email" => email
+        }
+      })
+
+      email = Faker.Internet.safe_email()
+      {:ok, _} = Crm.create_customer(%AccessRequest{
+        vas: %{ user_id: user.id, account_id: test_account.id },
+        fields: %{
+          "status" => "registered",
+          "username" => email,
+          "password" => "test1234",
+          "first_name" => Faker.Name.first_name(),
+          "last_name" => Faker.Name.last_name(),
+          "email" => email
+        }
+      })
 
       #
       # MARK: $50 Gift Card

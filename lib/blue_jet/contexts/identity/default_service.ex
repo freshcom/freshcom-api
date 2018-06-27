@@ -231,7 +231,7 @@ defmodule BlueJet.Identity.DefaultService do
         Repo.insert(%AccountMembership{
           account_id: account.id,
           user_id: user.id,
-          role: Map.get(fields, "role")
+          role: Map.get(fields, "role") || Map.get(fields, :role)
         })
       end)
       |> Multi.run(:urt_live, fn %{user: user} ->
