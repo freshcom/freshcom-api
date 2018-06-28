@@ -93,7 +93,7 @@ defmodule BlueJet.Catalogue.Product.Query do
     query =
       Price.Query.default()
       |> Price.Query.filter_by(%{status: "active"})
-      |> order_by(desc: :minimum_order_quantity)
+      |> order_by(asc: :minimum_order_quantity)
 
     [default_price: {query, Price.Query.preloads(price_preloads, options)}]
   end

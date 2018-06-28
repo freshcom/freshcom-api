@@ -38,6 +38,10 @@ defmodule BlueJet.Notification.Email do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
+  def translatable_fields do
+    []
+  end
+
   defmodule Factory do
     alias Bamboo.Email, as: E
     alias Bamboo.PostmarkHelper, as: Postmark

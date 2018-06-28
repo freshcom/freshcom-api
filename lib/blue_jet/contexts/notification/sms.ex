@@ -33,4 +33,8 @@ defmodule BlueJet.Notification.Sms do
   def writable_fields do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
+
+  def translatable_fields do
+    []
+  end
 end

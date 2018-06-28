@@ -38,6 +38,10 @@ defmodule BlueJet.Notification.Trigger do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
+  def translatable_fields do
+    []
+  end
+
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(trigger, :insert, fields) do
     trigger
