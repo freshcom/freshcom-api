@@ -20,12 +20,10 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     Repo.transaction(fn ->
       {:ok, %{ data: user }} = Identity.create_user(%AccessRequest{
         fields: %{
-          "first_name" => "Test",
-          "last_name" => "User",
+          "name" => "Test User",
           "username" => "test@example.com",
           "email" => "test@example.com",
           "password" => "test1234",
-          "account_name" => "Example Account",
           "default_locale" => "en"
         }
       })

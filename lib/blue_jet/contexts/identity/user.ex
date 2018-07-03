@@ -64,7 +64,8 @@ defmodule BlueJet.Identity.User do
   ]
 
   @required_fields [
-    :username
+    :username,
+    :name
   ]
 
   def writable_fields do

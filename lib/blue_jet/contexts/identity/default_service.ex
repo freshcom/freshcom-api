@@ -148,7 +148,6 @@ defmodule BlueJet.Identity.DefaultService do
     account_fields =
       fields
       |> Map.take(["default_locale"])
-      |> Map.put("name", fields["account_name"])
 
     statements =
       Multi.new()

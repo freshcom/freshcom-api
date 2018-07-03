@@ -8,7 +8,7 @@ defmodule BlueJet.Identity.Account do
     field :is_ready_for_live_transaction, :boolean
     field :test_account_id, Ecto.UUID, virtual: true
 
-    field :name, :string
+    field :name, :string, default: "Unnamed Account"
     field :company_name, :string
     field :default_locale, :string, default: "en"
     # simple, tfa_sms
