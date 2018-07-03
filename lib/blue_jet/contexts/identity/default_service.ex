@@ -459,8 +459,6 @@ defmodule BlueJet.Identity.DefaultService do
       Changeset.change(%User{}, %{username: fields["username"]})
       |> Changeset.validate_required(:username)
 
-    IO.inspect fields
-    IO.inspect changeset
     with true <- changeset.valid?,
          user = %User{} <- get_user(%{username: fields["username"]}, opts) do
       user = User.refresh_password_reset_token(user)
