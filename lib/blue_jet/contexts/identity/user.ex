@@ -183,7 +183,17 @@ defmodule BlueJet.Identity.User do
     |> validate_password()
   end
 
-  # This function is needed in additional to the constraint. The constraints
+  defp validate_username(changeset = %{valid?: true, changes: %{username: _}}) do
+    changeset
+    |> validate_length(:username, min: 5)
+    |> validate_username_unique_within_account()
+    |> unique_constraint(:username)
+    |> unique_constraint(:username, name: :users_account_id_username_index)
+  end
+
+  defp validate_username(changeset), do: changeset
+
+  # This function is needed in addition to the constraint. The constraints
   # only checks account user and global user seperately. In addition to that
   # we also need to check them together. Username must be unique within an
   # account regardless of whether they are global user or account user.
@@ -211,16 +221,6 @@ defmodule BlueJet.Identity.User do
 
     !existing_user
   end
-
-  defp validate_username(changeset = %{valid?: true, changes: %{username: _}}) do
-    changeset
-    |> validate_length(:username, min: 5)
-    |> validate_username_unique_within_account()
-    |> unique_constraint(:username)
-    |> unique_constraint(:username, name: :users_account_id_username_index)
-  end
-
-  defp validate_username(changeset), do: changeset
 
   defp validate_email(changeset) do
     changeset
