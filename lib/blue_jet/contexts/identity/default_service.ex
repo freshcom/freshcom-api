@@ -164,7 +164,8 @@ defmodule BlueJet.Identity.DefaultService do
           Repo.insert!(%AccountMembership{
             account_id: account.id,
             user_id: user.id,
-            role: "administrator"
+            role: "administrator",
+            is_owner: true
           })
 
         {:ok, account_membership}

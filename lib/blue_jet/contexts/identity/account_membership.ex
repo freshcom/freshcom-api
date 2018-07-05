@@ -5,6 +5,7 @@ defmodule BlueJet.Identity.AccountMembership do
 
   schema "account_memberships" do
     field :role, :string
+    field :is_owner, :boolean, default: false
 
     timestamps()
 
