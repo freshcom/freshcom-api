@@ -37,17 +37,6 @@ defmodule BlueJet.Identity.AccountTest do
   end
 
   describe "changeset/3" do
-    test "when require fields is missing" do
-      params = %{}
-
-      changeset =
-        %Account{}
-        |> Account.changeset(:insert, params)
-
-      assert changeset.valid? == false
-      assert changeset.errors[:name]
-    end
-
     test "when default_locale is set to nil" do
       params = %{ default_locale: nil }
 

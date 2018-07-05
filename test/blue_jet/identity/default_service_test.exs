@@ -135,6 +135,12 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "create_user/2" do
     test "when fields given is invalid and account is nil" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity.account.create.success"
+          {:ok, nil}
+         end)
+
       {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })
 
       assert changeset.valid? == false
@@ -172,6 +178,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{
         "account_name" => Faker.Name.name(),
         "username" => Faker.Internet.user_name(),
+        "name" => Faker.Name.name(),
         "password" => "test1234"
       }
 
@@ -206,6 +213,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "username" => Faker.Internet.user_name(),
         "email" => Faker.Internet.safe_email(),
         "password" => "test1234",
+        "name" => Faker.Name.name(),
         "role" => "customer"
       }
 
@@ -232,6 +240,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         account_id: account.id,
         default_account_id: account.id,
         username: Faker.Internet.user_name(),
+        name: Faker.Name.name(),
         password: "test1234",
         email: Faker.Internet.safe_email()
       })
@@ -262,7 +271,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         account_id: account.id,
         default_account_id: account.id,
         username: Faker.Internet.user_name(),
-        password: "test1234"
+        password: "test1234",
+        name: Faker.Name.name()
       })
       fields = %{
         phone_number: pvc.phone_number,

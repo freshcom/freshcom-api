@@ -148,6 +148,7 @@ defmodule BlueJet.Identity.DefaultService do
     account_fields =
       fields
       |> Map.take(["default_locale"])
+      |> Map.merge(%{"name" => "Unnamed Account"})
 
     statements =
       Multi.new()

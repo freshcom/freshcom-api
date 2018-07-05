@@ -44,12 +44,12 @@ defmodule BlueJet.Identity.UserTest do
         |> User.validate()
 
       assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:password, :username]
+      assert Keyword.keys(changeset.errors) == [:password, :username, :name]
     end
 
     test "when action is insert and  given username less than 5 characters" do
       changeset =
-        change(%User{}, %{ username: "abcd", password: "test1234" })
+        change(%User{}, %{ username: "abcd", password: "test1234", name: Faker.Name.name() })
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -63,6 +63,7 @@ defmodule BlueJet.Identity.UserTest do
       user = Repo.insert!(%User{
         username: Faker.String.base64(5),
         password: "test1234",
+        name: Faker.Name.name(),
         default_account_id: account1.id
       })
       Repo.insert!(%AccountMembership{
@@ -76,6 +77,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           account_id: account2.id,
           default_account_id: account2.id
         })
@@ -88,6 +90,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           account_id: account1.id,
           default_account_id: account1.id
         })
@@ -100,6 +103,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           default_account_id: account2.id
         })
         |> Map.put(:action, :insert)
@@ -118,6 +122,7 @@ defmodule BlueJet.Identity.UserTest do
       user = Repo.insert!(%User{
         username: Faker.String.base64(5),
         password: "test1234",
+        name: Faker.Name.name(),
         account_id: account1.id,
         default_account_id: account1.id
       })
@@ -127,6 +132,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           default_account_id: account2.id
         })
         |> Map.put(:action, :insert)
@@ -138,6 +144,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           account_id: account2.id,
           default_account_id: account2.id
         })
@@ -150,6 +157,7 @@ defmodule BlueJet.Identity.UserTest do
         change(%User{}, %{
           username: user.username,
           password: "test1234",
+          name: Faker.Name.name(),
           account_id: account1.id,
           default_account_id: account1.id
         })
@@ -163,7 +171,12 @@ defmodule BlueJet.Identity.UserTest do
 
     test "when action is insert and given invalid email" do
       changeset =
-        change(%User{}, %{ username: Faker.String.base64(5), email: "invalid", password: "test1234" })
+        change(%User{}, %{
+          username: Faker.String.base64(5),
+          name: Faker.Name.name(),
+          email: "invalid",
+          password: "test1234"
+        })
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -187,6 +200,7 @@ defmodule BlueJet.Identity.UserTest do
           username: Faker.String.base64(5),
           password: "test1234",
           email: user.email,
+          name: Faker.Name.name(),
           account_id: account1.id,
           default_account_id: account1.id
         })
@@ -200,6 +214,7 @@ defmodule BlueJet.Identity.UserTest do
           username: "username2",
           password: "test1234",
           email: user.email,
+          name: Faker.Name.name(),
           default_account_id: account2.id
         })
         |> Map.put(:action, :insert)
@@ -212,7 +227,7 @@ defmodule BlueJet.Identity.UserTest do
 
     test "when action is insert and given password less than 8 characters" do
       changeset =
-        change(%User{}, %{ username: "username", password: "abc" })
+        change(%User{}, %{ username: "username", password: "abc", name: Faker.Name.name() })
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -222,7 +237,12 @@ defmodule BlueJet.Identity.UserTest do
 
     test "when action is insert, auth_method is tfa_sms and missing required fields" do
       changeset =
-        change(%User{}, %{ auth_method: "tfa_sms", username: Faker.Internet.user_name(), password: "test1234" })
+        change(%User{}, %{
+          auth_method: "tfa_sms",
+          username: Faker.Internet.user_name(),
+          password: "test1234",
+          name: Faker.Name.name()
+        })
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -236,6 +256,7 @@ defmodule BlueJet.Identity.UserTest do
           auth_method: "tfa_sms",
           username: Faker.Internet.user_name(),
           password: "test1234",
+          name: Faker.Name.name(),
           phone_number: "+11234567890",
           phone_verification_code: "123456"
         })
@@ -261,6 +282,7 @@ defmodule BlueJet.Identity.UserTest do
           auth_method: "tfa_sms",
           username: Faker.Internet.user_name(),
           password: "test1234",
+          name: Faker.Name.name(),
           phone_number: pvc.phone_number,
           phone_verification_code: pvc.value
         })
@@ -271,7 +293,7 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update but missing required fields" do
-      user = %User{ username: "username" }
+      user = %User{ username: "username", name: Faker.Name.name() }
 
       changeset =
         user
@@ -284,7 +306,7 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update and password is changed but provided wrong current password" do
-      user = %User{ username: "username" }
+      user = %User{ username: "username", name: Faker.Name.name() }
 
       changeset =
         user
@@ -297,7 +319,7 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update" do
-      user = %User{ username: Faker.String.base64(5) }
+      user = %User{ username: Faker.String.base64(5), name: Faker.Name.name() }
 
       changeset =
         user

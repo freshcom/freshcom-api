@@ -47,7 +47,7 @@ defmodule BlueJet.Identity.AccountMembershipTest do
   end
 
   test "writable_fields/0" do
-    assert AccountMembership.writable_fields() == [:role, :user_id]
+    assert AccountMembership.writable_fields() == [:role, :is_owner, :user_id]
   end
 
   describe "validate/1" do
