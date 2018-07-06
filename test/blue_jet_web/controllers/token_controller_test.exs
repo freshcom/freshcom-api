@@ -9,7 +9,7 @@ defmodule BlueJetWeb.TokenControllerTest do
         "name" => Faker.Name.name(),
         "username" => "standard_user1@example.com",
         "email" => "standard_user1@example.com",
-        "password" => "global1234",
+        "password" => "standard1234",
         "default_locale" => "en"
       }
     })
@@ -28,7 +28,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "lol",
         "username" => "standard_user1@example.com",
-        "password" => "global1234"
+        "password" => "standard1234"
       })
 
       response = json_response(conn, 400)
@@ -50,7 +50,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "standard_user1@example.com",
-        "password" => "global1234",
+        "password" => "standard1234",
         "scope" => "yoyoyo"
       })
 
@@ -65,7 +65,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "standard_user1@example.com",
-        "password" => "global1234"
+        "password" => "standard1234"
       })
 
       response = json_response(conn, 400)
@@ -74,13 +74,13 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["error"] == "invalid_grant"
     end
 
-    test "with valid global user credentials and invalid scope", %{conn: conn} do
+    test "with valid standard user credentials and invalid scope", %{conn: conn} do
       {:ok, _} = create_standard_user()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "standard_user1@example.com",
-        "password" => "global1234",
+        "password" => "standard1234",
         "scope" => "aid:#{Ecto.UUID.generate()}"
       })
 
@@ -90,13 +90,13 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["error"] == "invalid_grant"
     end
 
-    test "with valid global user credentials and no scope", %{conn: conn} do
+    test "with valid standard user credentials and no scope", %{conn: conn} do
       {:ok, _} = create_standard_user()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "standard_user1@example.com",
-        "password" => "global1234"
+        "password" => "standard1234"
       })
 
       response = json_response(conn, 200)
@@ -106,13 +106,13 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["refresh_token"]
     end
 
-    test "with valid global user credentials and valid scope", %{conn: conn} do
+    test "with valid standard user credentials and valid scope", %{conn: conn} do
       {:ok, %{ data: user }} = create_standard_user()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "standard_user1@example.com",
-        "password" => "global1234",
+        "password" => "standard1234",
         "scope" => "aid:#{user.default_account_id}"
       })
 
@@ -131,7 +131,7 @@ defmodule BlueJetWeb.TokenControllerTest do
           "name" => Faker.Name.name(),
           "username" => "managed_user1@example.com",
           "email" => "managed_user1@example.com",
-          "password" => "account1234",
+          "password" => "managed1234",
           "role" => "developer",
           "default_locale" => "en"
         },
@@ -141,7 +141,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "managed_user1@example.com",
-        "password" => "account1234",
+        "password" => "managed1234",
         "scope" => "aid:invalid"
       })
 
@@ -159,7 +159,7 @@ defmodule BlueJetWeb.TokenControllerTest do
           "name" => Faker.Name.name(),
           "username" => "managed_user1@example.com",
           "email" => "managed_user1@example.com",
-          "password" => "account1234",
+          "password" => "managed1234",
           "role" => "developer",
           "default_locale" => "en"
         },
@@ -169,7 +169,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "managed_user1@example.com",
-        "password" => "account1234"
+        "password" => "managed1234"
       })
 
       response = json_response(conn, 200)
@@ -187,7 +187,7 @@ defmodule BlueJetWeb.TokenControllerTest do
           "name" => Faker.Name.name(),
           "username" => "managed_user1@example.com",
           "email" => "managed_user1@example.com",
-          "password" => "account1234",
+          "password" => "managed1234",
           "role" => "developer",
           "default_locale" => "en"
         },
@@ -197,7 +197,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
         "username" => "managed_user1@example.com",
-        "password" => "account1234",
+        "password" => "managed1234",
         "scope" => "aid:#{account_id}"
       })
 

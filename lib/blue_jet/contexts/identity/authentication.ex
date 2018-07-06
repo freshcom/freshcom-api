@@ -33,7 +33,7 @@ defmodule BlueJet.Identity.Authentication do
   alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}
 
   def create_token(%{"grant_type" => grant_type}) when grant_type not in ["refresh_token", "password"] do
-    {:error, %{error: :unsupported_grant_type, error_description: "'grant_type' must be one of 'password' or 'refresh_token'"}}
+    {:error, %{error: :unsupported_grant_type, error_description: "\"grant_type\" must be one of \"password\" or \"refresh_token\""}}
   end
 
   def create_token(
