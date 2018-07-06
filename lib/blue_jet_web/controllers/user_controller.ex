@@ -22,7 +22,10 @@ defmodule BlueJetWeb.UserController do
     }
 
     case Identity.create_user(request) do
-      {:ok, %{ data: user, meta: meta }} ->
+      {:ok, %{data: %{account_id: nil}}} ->
+        send_resp(conn, :no_content, "")
+
+      {:ok, %{data: user, meta: meta}} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: user, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
