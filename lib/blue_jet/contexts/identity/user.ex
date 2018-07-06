@@ -194,9 +194,9 @@ defmodule BlueJet.Identity.User do
   defp validate_username(changeset), do: changeset
 
   # This function is needed in addition to the constraint. The constraints
-  # only checks account user and global user seperately. In addition to that
+  # only checks managed user and standard user seperately. In addition to that
   # we also need to check them together. Username must be unique within an
-  # account regardless of whether they are global user or account user.
+  # account regardless of whether they are standard user or managed user.
   defp validate_username_unique_within_account(
          changeset = %{valid?: true, changes: %{username: username}}
        ) do
@@ -298,8 +298,8 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  @spec is_account_user?(__MODULE__.t()) :: boolean
-  def is_account_user?(user), do: !!user.account_id
+  @spec is_managed_user?(__MODULE__.t()) :: boolean
+  def is_managed_user?(user), do: !!user.account_id
 
   @spec delete_all_pvc(__MODULE__.t()) :: {:ok, __MODULE__.t()}
   def delete_all_pvc(%{phone_verification_code: nil} = user), do: {:ok, user}

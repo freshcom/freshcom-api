@@ -13,7 +13,7 @@ defmodule BlueJet.Identity.User.Query do
     from(u in User)
   end
 
-  def global(query) do
+  def standard(query) do
     from(u in query, where: is_nil(u.account_id))
   end
 

@@ -295,7 +295,7 @@ defmodule BlueJet.Identity.DefaultService do
       |> User.put_role(account_id)
     else
       User.Query.default()
-      |> User.Query.global()
+      |> User.Query.standard()
       |> User.Query.filter_by(filter)
       |> Repo.get_by(clauses)
     end
@@ -432,7 +432,7 @@ defmodule BlueJet.Identity.DefaultService do
   def create_email_verification(%{"token" => token}, opts = %{account: nil})
       when map_size(opts) == 1 do
     User.Query.default()
-    |> User.Query.global()
+    |> User.Query.standard()
     |> Repo.get_by(email_verification_token: token)
     |> create_email_verification()
   end
@@ -453,7 +453,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   @doc """
   When an account is provided in `opts`, this function will only search for account
-  user otherwise this function will only search for global user.
+  user otherwise this function will only search for standard user.
   """
   def create_password_reset_token(fields, opts) do
     changeset =
@@ -501,7 +501,7 @@ defmodule BlueJet.Identity.DefaultService do
       when map_size(opts) == 1 do
     password =
       Password.Query.default()
-      |> Password.Query.global()
+      |> Password.Query.standard()
       |> Repo.get_by(reset_token: reset_token)
 
     if password do

@@ -7,7 +7,7 @@ defmodule BlueJet.Identity.Password.Query do
     from(p in Password)
   end
 
-  def global(query) do
+  def standard(query) do
     from(p in query, where: is_nil(p.account_id))
   end
 end
