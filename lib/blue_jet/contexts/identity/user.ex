@@ -298,6 +298,9 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
+  @spec is_account_user?(__MODULE__.t()) :: boolean
+  def is_account_user?(user), do: !!user.account_id
+
   @spec delete_all_pvc(__MODULE__.t()) :: {:ok, __MODULE__.t()}
   def delete_all_pvc(%{phone_verification_code: nil} = user), do: {:ok, user}
 

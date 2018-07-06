@@ -7,6 +7,7 @@ defmodule BlueJet.Mixfile do
       version: "0.0.1",
       elixir: "~> 1.6",
       elixirc_paths: elixirc_paths(Mix.env),
+      test_paths: test_paths(Mix.env),
       compilers: [:phoenix, :gettext] ++ Mix.compilers,
       start_permanent: Mix.env == :prod,
       aliases: aliases(),
@@ -26,8 +27,12 @@ defmodule BlueJet.Mixfile do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(_),     do: ["lib"]
+  defp elixirc_paths(:test),        do: ["lib", "test/blue_jet/support"]
+  defp elixirc_paths(:integration), do: ["lib", "test/blue_jet_web/support"]
+  defp elixirc_paths(_),            do: ["lib"]
+
+  defp test_paths(:integration), do: ["test/blue_jet_web"]
+  defp test_paths(_), do: ["test/blue_jet"]
 
   # Specifies your project dependencies.
   #
@@ -63,7 +68,7 @@ defmodule BlueJet.Mixfile do
       {:bamboo_smtp, "~> 1.4.0"},
       {:sentry, "~> 6.1.0"},
       {:excoveralls, "~> 0.8", only: :test},
-      {:mox, "~> 0.3.1", only: :test}
+      {:mox, "~> 0.3.1", only: [:test, :integration]}
     ]
   end
 
@@ -77,7 +82,8 @@ defmodule BlueJet.Mixfile do
     [
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      "test": ["ecto.create --quiet", "ecto.migrate", "test"]
+      "test": ["ecto.create --quiet", "ecto.migrate", "test"],
+      "test.web": ["ecto.create --quiet", "ecto.migrate", "test"]
     ]
   end
 end

@@ -30,6 +30,7 @@ defmodule BlueJetWeb.ConnCase do
       import Ecto.Query
 
       alias BlueJet.Repo
+      alias BlueJet.AccessRequest
       alias BlueJet.Identity
     end
   end

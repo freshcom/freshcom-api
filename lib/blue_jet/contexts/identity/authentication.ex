@@ -2,6 +2,10 @@ defmodule BlueJet.Identity.Authentication do
   use BlueJet.EventEmitter, namespace: :identity
 
   @token_expiry_seconds 3600
+  @errors [
+    invalid_password_grant: {:error, %{error: :invalid_grant, error_description: "Username and password does not match."}},
+    invalid_refresh_token_grant: {:error, %{error: :invalid_grant, error_description: "Refresh token is invalid."}}
+  ]
 
   @moduledoc """
   Publishable Refresh Token
@@ -27,6 +31,10 @@ defmodule BlueJet.Identity.Authentication do
 
   alias BlueJet.Repo
   alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}
+
+  def create_token(%{"grant_type" => grant_type}) when grant_type not in ["refresh_token", "password"] do
+    {:error, %{error: :unsupported_grant_type, error_description: "'grant_type' must be one of 'password' or 'refresh_token'"}}
+  end
 
   def create_token(
         fields = %{
@@ -82,11 +90,19 @@ defmodule BlueJet.Identity.Authentication do
       ) do
     user = User |> User.Query.member_of_account(account_id) |> Repo.get_by(username: username)
     create_token_by_password(user, password, fields[:otp], account_id)
+  rescue
+    Ecto.Query.CastError ->
+      @errors[:invalid_password_grant]
   end
 
   def create_token(fields = %{grant_type: "password", username: username, password: password}) do
-    user = User |> User.Query.global() |> Repo.get_by(username: username)
-    create_token_by_password(user, password, fields[:otp])
+    user = Repo.get_by(User, username: username)
+
+    if user && User.is_account_user?(user) && User.get_role(user, user.account_id) == "customer" do
+      @errors[:invalid_password_grant]
+    else
+      create_token_by_password(user, password, fields[:otp])
+    end
   end
 
   def create_token(%{
@@ -97,24 +113,39 @@ defmodule BlueJet.Identity.Authentication do
     target_account = Repo.get!(Account, account_id)
     refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
 
-    if refresh_token.account_id == target_account.live_account_id do
-      target_refresh_token =
-        Repo.get_by(RefreshToken, account_id: target_account.id, user_id: refresh_token.user_id)
+    cond do
+      refresh_token.account_id == account_id ->
+        create_token_by_refresh_token(refresh_token)
 
-      create_token_by_refresh_token(target_refresh_token)
-    else
-      create_token_by_refresh_token(nil)
+      refresh_token.account_id == target_account.live_account_id ->
+        target_refresh_token =
+          Repo.get_by(RefreshToken, account_id: target_account.id, user_id: refresh_token.user_id)
+
+        create_token_by_refresh_token(target_refresh_token)
+
+      true ->
+        create_token_by_refresh_token(nil)
     end
+  rescue
+    Ecto.Query.CastError ->
+      @errors[:invalid_refresh_token_grant]
   end
 
   def create_token(%{grant_type: "refresh_token", refresh_token: refresh_token_id}) do
     refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
     create_token_by_refresh_token(refresh_token)
+  rescue
+    Ecto.Query.CastError ->
+      @errors[:invalid_password_grant]
+  end
+
+  def create_token(_) do
+    {:error, %{error: :invalid_request, error_description: "Your request is missing required parameters or is otherwise malformed."}}
   end
 
   # No scope
   defp create_token_by_password(nil, _, _) do
-    {:error, %{error: :invalid_grant, error_description: "Username and password does not match."}}
+    @errors[:invalid_password_grant]
   end
 
   defp create_token_by_password(user, password, otp) do
@@ -165,7 +196,7 @@ defmodule BlueJet.Identity.Authentication do
   end
 
   defp create_token_by_password(nil, _, _, _) do
-    {:error, %{error: :invalid_grant, error_description: "Username and password does not match."}}
+    @errors[:invalid_password_grant]
   end
 
   defp create_token_by_password(user, password, otp, account_id) do
@@ -202,8 +233,7 @@ defmodule BlueJet.Identity.Authentication do
          }}
 
       !password_valid ->
-        {:error,
-         %{error: :invalid_grant, error_description: "Username and password does not match."}}
+        @errors[:invalid_password_grant]
 
       !otp_provided ->
         user = User.refresh_tfa_code(user)
@@ -217,7 +247,7 @@ defmodule BlueJet.Identity.Authentication do
   end
 
   defp create_token_by_refresh_token(nil) do
-    {:error, %{error: :invalid_grant, error_description: "Refresh Token is invalid."}}
+    @errors[:invalid_refresh_token_grant]
   end
 
   defp create_token_by_refresh_token(
