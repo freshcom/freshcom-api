@@ -474,7 +474,7 @@ defmodule BlueJet.Identity.DefaultService do
       nil ->
         event_data = Map.merge(opts, %{username: fields["username"]})
         emit_event("identity.password_reset_token.create.error.username_not_found", event_data)
-        {:error, :not_found}
+        {:error, %{errors: [username: {"Username not found", [code: :not_found]}]}}
     end
   end
 

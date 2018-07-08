@@ -35,9 +35,9 @@ defmodule BlueJet.Plugs.Authentication do
   end
 
   def extract_authorization_scope(%{ "prn" => user_id, "aud" => account_id, "typ" => "user" }) do
-    {:ok, %{ user_id: user_id, account_id: account_id,  }}
+    {:ok, %{ user_id: user_id, account_id: account_id }}
   end
   def extract_authorization_scope(%{ "prn" => account_id, "typ" => "publishable" }) do
-    {:ok, %{ account_id: account_id }}
+    {:ok, %{ user_id: nil, account_id: account_id }}
   end
 end

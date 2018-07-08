@@ -120,9 +120,6 @@ defmodule BlueJet.Identity do
     do
       {:ok, %AccessResponse{}}
     else
-      {:error, :not_found} ->
-        {:ok, %AccessResponse{}}
-
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}
 
