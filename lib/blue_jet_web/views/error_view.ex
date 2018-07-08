@@ -41,6 +41,16 @@ defmodule BlueJetWeb.ErrorView do
     }
   end
 
+  def render("404.json-api", _) do
+    %{
+      errors: [%{
+        code: "not_found",
+        title: "Not Found",
+        detail: "The resource you are trying to access does not exist."
+      }]
+    }
+  end
+
   def render("403.json-api", _) do
     %{
       errors: [%{

@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.EmailTemplateControllerTest do
+defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   use BlueJetWeb.ConnCase
 
   alias BlueJet.AccessRequest

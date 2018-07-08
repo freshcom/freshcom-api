@@ -6,7 +6,7 @@ defmodule BlueJetWeb.Router do
   pipeline :api do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
-    plug BlueJet.Plugs.Authentication, ["/v1/token", "/v1/password_reset_tokens", "/v1/users"]
+    plug BlueJet.Plugs.Authentication, ["/v1/token", "/v1/password_reset_tokens", "/v1/users", "/v1/password"]
     plug BlueJet.Plugs.Locale, nil
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields

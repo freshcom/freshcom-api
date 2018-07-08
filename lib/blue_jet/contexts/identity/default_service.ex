@@ -474,7 +474,7 @@ defmodule BlueJet.Identity.DefaultService do
       nil ->
         event_data = Map.merge(opts, %{username: fields["username"]})
         emit_event("identity.password_reset_token.create.error.username_not_found", event_data)
-        {:error, %{errors: [username: {"Username not found", [code: :not_found]}]}}
+        {:error, %{errors: [username: {"Username not found", code: :not_found}]}}
     end
   end
 
@@ -497,8 +497,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_password(nil, _, _), do: {:error, :not_found}
 
-  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: nil})
-      when map_size(opts) == 1 do
+  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: nil}) do
     password =
       Password.Query.default()
       |> Password.Query.standard()
@@ -507,12 +506,11 @@ defmodule BlueJet.Identity.DefaultService do
     if password do
       update_password(password, new_password)
     else
-      {:error, :not_found}
+      {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
     end
   end
 
-  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: account})
-      when map_size(opts) == 1 do
+  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: account}) do
     password =
       Password.Query.default()
       |> for_account(account.id)
@@ -521,7 +519,7 @@ defmodule BlueJet.Identity.DefaultService do
     if password do
       update_password(password, new_password)
     else
-      {:error, :not_found}
+      {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
     end
   end
 
