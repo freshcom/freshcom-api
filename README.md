@@ -2,7 +2,7 @@
 
 ## This is a work in process
 
-I don't recommend using this in production just yet. I am aiming for a stable release by early August 2018.
+I don't recommend using this in production just yet. I am aiming for a stable release by end of Oct 2018.
 
 Make sure you use the develop branch, all the instruction here is base on the develop branch.
 
