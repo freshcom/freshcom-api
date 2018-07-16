@@ -501,6 +501,7 @@ defmodule BlueJet.Identity.DefaultService do
     password =
       Password.Query.default()
       |> Password.Query.standard()
+      |> Password.Query.with_valid_reset_token()
       |> Repo.get_by(reset_token: reset_token)
 
     if password do
@@ -514,6 +515,7 @@ defmodule BlueJet.Identity.DefaultService do
     password =
       Password.Query.default()
       |> for_account(account.id)
+      |> Password.Query.with_valid_reset_token()
       |> Repo.get_by(reset_token: reset_token)
 
     if password do

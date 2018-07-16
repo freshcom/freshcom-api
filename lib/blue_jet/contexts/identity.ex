@@ -116,9 +116,9 @@ defmodule BlueJet.Identity do
   #
   def create_password_reset_token(request) do
     with {:ok, args} <- Policy.authorize(request, "create_password_reset_token"),
-         {:ok, _} <- Service.create_password_reset_token(args[:fields], args[:opts])
+         {:ok, user} <- Service.create_password_reset_token(args[:fields], args[:opts])
     do
-      {:ok, %AccessResponse{}}
+      {:ok, %AccessResponse{data: user}}
     else
       {:error, %{ errors: errors }} ->
         {:error, %AccessResponse{ errors: errors }}

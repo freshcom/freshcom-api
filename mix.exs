@@ -57,7 +57,7 @@ defmodule BlueJet.Mixfile do
       {:sweet_xml, "~> 0.6"},
       {:comeonin, "~> 3.0"},
       {:jose, "~> 1.8.3"},
-      {:timex_ecto, "~> 3.2"},
+      {:timex_ecto, "~> 3.3"},
       {:httpoison, "~> 0.13"},
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
       {:uri_query, "~> 0.1.2"},

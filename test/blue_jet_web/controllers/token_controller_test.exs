@@ -125,15 +125,13 @@ defmodule BlueJetWeb.TokenControllerTest do
 
     test "with valid account user credentials and invalid scope", %{conn: conn} do
       {:ok, %{data: %{id: gu_id, default_account_id: account_id}}} = create_standard_user()
-
       {:ok, _} = Identity.create_user(%AccessRequest{
         fields: %{
           "name" => Faker.Name.name(),
           "username" => "managed_user1@example.com",
           "email" => "managed_user1@example.com",
           "password" => "managed1234",
-          "role" => "developer",
-          "default_locale" => "en"
+          "role" => "developer"
         },
         vas: %{account_id: account_id, user_id: gu_id}
       })

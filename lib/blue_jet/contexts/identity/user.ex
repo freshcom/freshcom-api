@@ -27,7 +27,7 @@ defmodule BlueJet.Identity.User do
     field :email_verified_at, :utc_datetime
 
     field :password_reset_token, :string
-    field :password_reset_token_expires_at, :utc_datetime
+    field :password_reset_token_expires_at, Timex.Ecto.DateTime
     field :password_updated_at, :utc_datetime
 
     field :phone_verification_code, :string, virtual: true
@@ -393,6 +393,7 @@ defmodule BlueJet.Identity.User do
   def refresh_password_reset_token(user) do
     user
     |> change(password_reset_token: Ecto.UUID.generate())
+    |> change(password_reset_token_expires_at: Timex.shift(Timex.now(), hours: 24))
     |> Repo.update!()
   end
 
