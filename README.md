@@ -53,7 +53,7 @@ Please see documentation at [https://docs.freshcom.io](https://docs.freshcom.io)
 
 ## Generate RSA key pairs
 
-To generate use the following command
+Freshcom API uses RSA key pairs to sign tokens used for authentication so here is the command to generate the key pairs
 
 ```
 > openssl genrsa -out private.pem 2048
