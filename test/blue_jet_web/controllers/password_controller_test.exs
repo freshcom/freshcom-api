@@ -3,7 +3,6 @@ defmodule BlueJetWeb.PasswordControllerTest do
 
   alias BlueJet.AccessRequest
   alias BlueJet.Identity
-  alias BlueJet.Identity.RefreshToken
 
   def create_standard_user() do
     Identity.create_user(%AccessRequest{

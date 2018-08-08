@@ -27,7 +27,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   end
 
   describe "POST /v1/password_reset_tokens" do
-    test "without PRT and given a non existing standard user's username", %{conn: conn} do
+    test "without PAT and given a non existing standard user's username", %{conn: conn} do
       {:ok, %{data: user}} = create_standard_user()
       {:ok, _} = Identity.create_user(%AccessRequest{
         fields: %{
@@ -49,12 +49,12 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
         }
       })
 
-      # Without a PRT we only look for standard user to create the token
+      # Without a PAT we only look for standard user to create the token
       response = json_response(conn, 422)
       assert length(response["errors"]) == 1
     end
 
-    test "without PRT and given a existing standard user's username", %{conn: conn} do
+    test "without PAT and given a existing standard user's username", %{conn: conn} do
       {:ok, %{data: user}} = create_standard_user()
 
       conn = post(conn, "/v1/password_reset_tokens", %{
@@ -69,7 +69,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
       assert conn.status == 204
     end
 
-    test "with PRT and given a existing managed user's username", %{conn: conn} do
+    test "with PAT and given a existing managed user's username", %{conn: conn} do
       {:ok, %{data: standard_user}} = create_standard_user()
       {:ok, %{data: managed_user}} = Identity.create_user(%AccessRequest{
         fields: %{
@@ -100,7 +100,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
       assert conn.status == 204
     end
 
-    test "with PRT and given a existing standard user's username that is a member of target account", %{conn: conn} do
+    test "with PAT and given a existing standard user's username that is a member of target account", %{conn: conn} do
       {:ok, %{data: standard_user}} = create_standard_user()
 
       %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: standard_user.default_account_id)
@@ -121,7 +121,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
       assert conn.status == 204
     end
 
-    test "with PRT and given a existing standard user's username that is not a member of target account", %{conn: conn} do
+    test "with PAT and given a existing standard user's username that is not a member of target account", %{conn: conn} do
       {:ok, %{data: standard_user}} = create_standard_user()
       Identity.create_user(%AccessRequest{
         fields: %{

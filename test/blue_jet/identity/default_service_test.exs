@@ -244,6 +244,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         password: "test1234",
         email: Faker.Internet.safe_email()
       })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
       fields = %{
         email: nil
       }
@@ -273,6 +278,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         username: Faker.Internet.user_name(),
         password: "test1234",
         name: Faker.Name.name()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
       })
       fields = %{
         phone_number: pvc.phone_number,

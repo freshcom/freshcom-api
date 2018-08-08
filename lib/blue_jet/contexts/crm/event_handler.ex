@@ -17,9 +17,13 @@ defmodule BlueJet.Crm.EventHandler do
         account: account
       }) do
     customer = Repo.get_by(Customer, user_id: user.id)
-    fields = Map.take(changeset.changes, [:email, :phone_number, :name, :first_name, :last_name])
 
-    Service.update_customer(customer, fields, %{account: account})
+    if customer do
+      fields = Map.take(changeset.changes, [:email, :phone_number, :name, :first_name, :last_name])
+      Service.update_customer(customer, fields, %{account: account})
+    else
+      {:ok, nil}
+    end
   end
 
   def handle_event(_, _) do

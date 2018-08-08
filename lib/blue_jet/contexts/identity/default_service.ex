@@ -287,17 +287,26 @@ defmodule BlueJet.Identity.DefaultService do
     filter = extract_nil_filter(identifiers)
     clauses = extract_clauses(identifiers)
 
-    if account_id do
-      User.Query.default()
-      |> User.Query.member_of_account(account_id)
-      |> User.Query.filter_by(filter)
-      |> Repo.get_by(clauses)
-      |> User.put_role(account_id)
-    else
-      User.Query.default()
-      |> User.Query.standard()
-      |> User.Query.filter_by(filter)
-      |> Repo.get_by(clauses)
+    cond do
+      account_id && opts[:type] == :managed ->
+        user = User.Query.default()
+        |> for_account(account_id)
+        |> User.Query.filter_by(filter)
+        |> Repo.get_by(clauses)
+        |> User.put_role(account_id)
+
+      account_id ->
+        user = User.Query.default()
+        |> User.Query.member_of_account(account_id)
+        |> User.Query.filter_by(filter)
+        |> Repo.get_by(clauses)
+        |> User.put_role(account_id)
+
+      true ->
+        User.Query.default()
+        |> User.Query.standard()
+        |> User.Query.filter_by(filter)
+        |> Repo.get_by(clauses)
     end
   end
 
@@ -347,14 +356,8 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_user(identifiers, fields, opts) do
     opts = put_account(opts)
-    account = opts[:account]
-    filter = extract_nil_filter(identifiers)
-    clauses = extract_clauses(identifiers)
 
-    User.Query.default()
-    |> for_account(account.id)
-    |> User.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_user(identifiers, opts)
     |> update_user(fields, opts)
   end
 

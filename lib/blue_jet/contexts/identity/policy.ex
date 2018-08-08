@@ -121,8 +121,10 @@ defmodule BlueJet.Identity.Policy do
     authorized_args = from_access_request(request, :get)
 
     id = authorized_args[:identifiers][:id] || user.id
+    type = if id == user.id, do: :standard, else: :managed
     identifiers = %{authorized_args[:identifiers] | id: id}
-    authorized_args = %{authorized_args | identifiers: identifiers}
+    opts = Map.put(authorized_args[:opts], :type, type)
+    authorized_args = %{authorized_args | identifiers: identifiers, opts: opts}
 
     {:ok, authorized_args}
   end
@@ -144,15 +146,20 @@ defmodule BlueJet.Identity.Policy do
       when role in ["developer", "administrator"] do
     authorized_args = from_access_request(request, :update)
 
-    id = authorized_args[:id] || user.id
-    authorized_args = %{authorized_args | id: id}
+    id = authorized_args[:identifiers][:id] || user.id
+    type = if id == user.id, do: :standard, else: :managed
+    identifiers = %{authorized_args[:identifiers] | id: id}
+    opts = Map.put(authorized_args[:opts], :type, type)
+    authorized_args = %{authorized_args | identifiers: identifiers, opts: opts}
 
     {:ok, authorized_args}
   end
 
   def authorize(request = %{role: role, user: user}, "update_user") when not is_nil(role) do
     authorized_args = from_access_request(request, :update)
-    authorized_args = %{authorized_args | id: user.id}
+
+    identifiers = Map.merge(authorized_args[:identifiers], %{id: user.id})
+    authorized_args = %{authorized_args | identifiers: identifiers}
 
     {:ok, authorized_args}
   end
