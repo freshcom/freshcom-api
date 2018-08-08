@@ -492,7 +492,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:error, :not_found} = DefaultService.create_password_reset_token(%{ "username" => Faker.Internet.safe_email() }, %{})
+      {:error, _} = DefaultService.create_password_reset_token(%{ "username" => Faker.Internet.safe_email() }, %{})
     end
 
     test "when username belongs to a user" do
@@ -528,7 +528,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} = DefaultService.update_password(%{ reset_token: "invalid" }, "test1234", %{ account: account })
+      {:error, _} = DefaultService.update_password(%{ reset_token: "invalid" }, "test1234", %{ account: account })
     end
 
     test "when password_reset_token is valid" do
@@ -539,6 +539,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         username: Faker.Internet.user_name(),
         email: Faker.Internet.safe_email(),
         password_reset_token: "token",
+        password_reset_token_expires_at: Timex.shift(Timex.now(), hours: 24),
         encrypted_password: "original"
       })
 
@@ -554,6 +555,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         username: Faker.Internet.user_name(),
         email: Faker.Internet.safe_email(),
         password_reset_token: "token",
+        password_reset_token_expires_at: Timex.shift(Timex.now(), hours: 24),
         encrypted_password: "original"
       })
 

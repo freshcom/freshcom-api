@@ -256,10 +256,10 @@ defmodule BlueJet.Identity.IdentityTest do
           assert fields == request.fields
           assert opts[:account] == account
 
-          {:error, :not_found}
+          {:error, %{ errors: "errors" }}
          end)
 
-      {:ok, _} = Identity.create_password_reset_token(request)
+      {:error, _} = Identity.create_password_reset_token(request)
     end
 
     test "when request is invalid" do
