@@ -164,9 +164,16 @@ defmodule BlueJet.Identity.Policy do
     {:ok, authorized_args}
   end
 
-  def authorize(request = %{role: role}, "delete_user")
+  def authorize(request = %{role: role, user: user}, "delete_user")
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    authorized_args = from_access_request(request, :delete)
+
+    id = authorized_args[:identifiers][:id] || user.id
+    identifiers = %{authorized_args[:identifiers] | id: id}
+    opts = Map.put(authorized_args[:opts], :type, :managed)
+    authorized_args = %{authorized_args | identifiers: identifiers, opts: opts}
+
+    {:ok, authorized_args}
   end
 
   #

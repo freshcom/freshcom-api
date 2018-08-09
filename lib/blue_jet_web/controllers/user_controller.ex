@@ -9,12 +9,6 @@ defmodule BlueJetWeb.UserController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  # Not Implemented Yet
-  def index(conn, _params) do
-    users = Repo.all(User)
-    render(conn, "index.json-api", data: users)
-  end
-
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "User" } }) do
     request = %AccessRequest{
       vas: assigns[:vas],
@@ -40,7 +34,6 @@ defmodule BlueJetWeb.UserController do
     end
   end
 
-  # TODO: allow user_id from params
   def show(conn = %{ assigns: assigns }, params) do
     request = %AccessRequest{
       vas: assigns[:vas],

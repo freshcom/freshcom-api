@@ -332,6 +332,11 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         username: Faker.Internet.user_name(),
         password: "test1234"
       })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
 
       {:ok, user} = DefaultService.delete_user(%{ id: user.id }, %{ account: account })
 

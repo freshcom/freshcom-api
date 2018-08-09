@@ -58,6 +58,7 @@ defmodule BlueJetWeb.UserControllerTest do
     %{ conn: conn }
   end
 
+  # Create a user
   describe "POST /v1/users" do
     test "with no attributes", %{conn: conn} do
       conn = post(conn, "/v1/users", %{
@@ -110,6 +111,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
   end
 
+  # Retrieve a standard user
   describe "GET /v1/user" do
     test "without UAT", %{conn: conn} do
       conn = get(conn, "/v1/user")
@@ -129,7 +131,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
   end
 
-
+  # Retrieve a managed user
   describe "GET /v1/users/:id" do
     test "without UAT", %{conn: conn} do
       conn = get(conn, "/v1/users/#{Ecto.UUID.generate()}")
@@ -163,6 +165,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
   end
 
+  # Update a standard user
   describe "PATCH /v1/user" do
     test "without UAT", %{conn: conn} do
       conn = patch(conn, "/v1/user", %{
@@ -197,7 +200,93 @@ defmodule BlueJetWeb.UserControllerTest do
     end
   end
 
-  # TODO
+  # Update a managed user
   describe "PATCH /v1/users/:id" do
+    test "without UAT", %{conn: conn} do
+      conn = patch(conn, "/v1/users/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => Faker.Name.name()
+          }
+        }
+      })
+
+      assert conn.status == 401
+    end
+
+    test "with UAT targeting a standard user", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(2)
+      join_account(standard_user1.default_account_id, standard_user2.id)
+      uat = get_uat(standard_user1)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/users/#{standard_user2.id}", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => Faker.Name.name()
+          }
+        }
+      })
+
+      # This endpoint should not expose standard user
+      assert conn.status == 404
+    end
+
+    test "with UAT targeting a managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user)
+
+      new_name = Faker.Name.name()
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/users/#{managed_user.id}", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => new_name
+          }
+        }
+      })
+
+      response = json_response(conn, 200)
+      assert response["data"]["id"] == managed_user.id
+      assert response["data"]["attributes"]["name"] == new_name
+    end
+  end
+
+  # Delete a managed user
+  describe "DELETE /v1/users/:id" do
+    test "without UAT", %{conn: conn} do
+      conn = delete(conn, "/v1/users/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 401
+    end
+
+    test "with UAT targeting a standard user", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(2)
+      join_account(standard_user1.default_account_id, standard_user2.id)
+      uat = get_uat(standard_user1)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = delete(conn, "/v1/users/#{standard_user2.id}")
+
+      # This endpoint should not expose standard user
+      assert conn.status == 404
+    end
+
+    test "with UAT targeting a managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = delete(conn, "/v1/users/#{managed_user.id}")
+
+      assert conn.status == 204
+    end
   end
 end

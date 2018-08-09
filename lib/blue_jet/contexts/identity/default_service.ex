@@ -289,14 +289,14 @@ defmodule BlueJet.Identity.DefaultService do
 
     cond do
       account_id && opts[:type] == :managed ->
-        user = User.Query.default()
+        User.Query.default()
         |> for_account(account_id)
         |> User.Query.filter_by(filter)
         |> Repo.get_by(clauses)
         |> User.put_role(account_id)
 
       account_id ->
-        user = User.Query.default()
+        User.Query.default()
         |> User.Query.member_of_account(account_id)
         |> User.Query.filter_by(filter)
         |> Repo.get_by(clauses)
@@ -369,14 +369,8 @@ defmodule BlueJet.Identity.DefaultService do
 
   def delete_user(identifiers, opts) do
     opts = put_account(opts)
-    account = opts[:account]
-    filter = extract_nil_filter(identifiers)
-    clauses = extract_clauses(identifiers)
 
-    User.Query.default()
-    |> for_account(account.id)
-    |> User.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    get_user(identifiers, opts)
     |> delete_user(opts)
   end
 
@@ -500,7 +494,7 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_password(nil, _, _), do: {:error, :not_found}
 
-  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: nil}) do
+  def update_password(%{reset_token: reset_token}, new_password, %{account: nil}) do
     password =
       Password.Query.default()
       |> Password.Query.standard()
@@ -514,7 +508,7 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def update_password(%{reset_token: reset_token}, new_password, opts = %{account: account}) do
+  def update_password(%{reset_token: reset_token}, new_password, %{account: account}) do
     password =
       Password.Query.default()
       |> for_account(account.id)
