@@ -6,7 +6,7 @@ defmodule BlueJetWeb.Router do
   pipeline :api do
     plug :accepts, ["json-api"]
     plug BlueJet.Plugs.CORS
-    plug BlueJet.Plugs.Authentication, ["/v1/token", "/v1/password_reset_tokens", "/v1/users", "/v1/password"]
+    plug BlueJet.Plugs.Authentication, ["/v1/token", "/v1/users", "/v1/password_reset_tokens", "/v1/email_verifications", "/v1/password"]
     plug BlueJet.Plugs.Locale, nil
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
@@ -28,7 +28,6 @@ defmodule BlueJetWeb.Router do
     #
     resources "/token", TokenController, only: [:create]
 
-    resources "/accounts", AccountController, except: [:new, :edit]
     get "/account", AccountController, :show
     patch "/account", AccountController, :update
     post "/account_resets", AccountResetController, :create

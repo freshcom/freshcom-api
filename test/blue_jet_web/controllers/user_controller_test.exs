@@ -13,7 +13,7 @@ defmodule BlueJetWeb.UserControllerTest do
   end
 
   # Create a user
-  # - Without UAT this endpoint create a standard user
+  # - Without UAT this endpoint create a standard user (internal)
   # - With UAT this endpoint create a managed user
   describe "POST /v1/users" do
     test "with no attributes", %{conn: conn} do

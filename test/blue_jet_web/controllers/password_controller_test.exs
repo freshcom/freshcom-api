@@ -33,7 +33,7 @@ defmodule BlueJetWeb.PasswordControllerTest do
   end
 
   # Update a password
-  # - Without PAT this endpoint only update standard user's password
+  # - Without PAT this endpoint only update standard user's password (internal)
   # - With PAT this endpoint only update managed user's password
   describe "PATCH /v1/password" do
     test "given invalid password reset token", %{conn: conn} do

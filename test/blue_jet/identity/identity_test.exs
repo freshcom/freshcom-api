@@ -144,16 +144,6 @@ defmodule BlueJet.Identity.IdentityTest do
   # MARK: Email Verification
   #
   describe "create_email_verification/1" do
-    test "when role is not authorized" do
-      request = %AccessRequest{
-        account: %Account{},
-        user: nil,
-        role: "guest"
-      }
-
-      {:error, :access_denied} = Identity.create_email_verification(request)
-    end
-
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
       request = %AccessRequest{

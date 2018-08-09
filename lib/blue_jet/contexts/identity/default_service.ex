@@ -426,16 +426,14 @@ defmodule BlueJet.Identity.DefaultService do
 
   def create_email_verification(%{"token" => nil}, _), do: {:error, :not_found}
 
-  def create_email_verification(%{"token" => token}, opts = %{account: nil})
-      when map_size(opts) == 1 do
+  def create_email_verification(%{"token" => token}, opts = %{account: nil}) do
     User.Query.default()
     |> User.Query.standard()
     |> Repo.get_by(email_verification_token: token)
     |> create_email_verification()
   end
 
-  def create_email_verification(%{"token" => token}, opts = %{account: account})
-      when map_size(opts) == 1 do
+  def create_email_verification(%{"token" => token}, opts = %{account: account}) do
     User.Query.default()
     |> for_account(account.id)
     |> Repo.get_by(email_verification_token: token)

@@ -44,10 +44,6 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Email Verification
   #
-  def authorize(%{role: role}, "create_email_verification") when role in ["anonymous", "guest"] do
-    {:error, :access_denied}
-  end
-
   def authorize(request = %{role: role}, "create_email_verification") when not is_nil(role) do
     {:ok, from_access_request(request, :create)}
   end

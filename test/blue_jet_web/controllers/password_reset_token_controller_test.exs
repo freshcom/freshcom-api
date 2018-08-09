@@ -13,7 +13,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   end
 
   # Create a password reset token
-  # - Without PAT this endpoint only create the token for standard user
+  # - Without PAT this endpoint only create the token for standard user (internal)
   # - With PAT this endpoint can create the token for any standard and managed user that is
   #   a member of the target account
   describe "POST /v1/password_reset_tokens" do

@@ -33,6 +33,7 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
+  # Standard user should not use account trigger
   def handle_event("identity.email_verification_token.create.success", %{user: %{account_id: nil}}) do
     {:ok, nil}
   end

@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.TestHelper do
   alias BlueJet.AccessRequest
   alias BlueJet.Repo
   alias BlueJet.Identity
-  alias BlueJet.Identity.{RefreshToken, AccountMembership}
+  alias BlueJet.Identity.{Account, RefreshToken, AccountMembership}
 
   def create_standard_user(opts \\ []) do
     n = opts[:n] || 1
@@ -38,8 +38,24 @@ defmodule BlueJet.Identity.TestHelper do
     managed_user
   end
 
-  def get_uat(user) do
-    %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: user.default_account_id)
+  def get_urt(user, opts \\ []) do
+    mode = opts[:mode] || :live
+
+    if mode == :live do
+      %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: user.default_account_id)
+
+      urt
+    else
+      %{ id: test_account_id } = Repo.get_by(Account, mode: "test", live_account_id: user.default_account_id)
+      %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: test_account_id)
+
+      urt
+    end
+  end
+
+  def get_uat(user, opts \\ []) do
+    urt = get_urt(user, opts)
+
     {:ok, %{data: %{access_token: uat}}} = Identity.create_token(%{
       fields: %{ grant_type: "refresh_token", refresh_token: urt }
     })

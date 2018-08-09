@@ -5,21 +5,6 @@ defmodule BlueJetWeb.TokenControllerTest do
 
   alias BlueJet.Identity.{Account, RefreshToken}
 
-  def get_urt(user, opts \\ []) do
-    mode = opts[:mode] || :live
-
-    if mode == :live do
-      %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: user.default_account_id)
-
-      urt
-    else
-      %{ id: test_account_id } = Repo.get_by(Account, mode: "test", live_account_id: user.default_account_id)
-      %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: test_account_id)
-
-      urt
-    end
-  end
-
   def get_prt(user) do
     %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: user.default_account_id)
 
