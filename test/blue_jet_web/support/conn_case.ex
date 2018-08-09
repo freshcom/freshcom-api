@@ -14,6 +14,8 @@ defmodule BlueJetWeb.ConnCase do
   """
 
   use ExUnit.CaseTemplate
+  alias BlueJet.Identity
+  alias BlueJet.AccessRequest
 
   using do
     quote do
@@ -42,5 +44,4 @@ defmodule BlueJetWeb.ConnCase do
     end
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
-
 end

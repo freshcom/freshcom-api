@@ -1,53 +1,7 @@
 defmodule BlueJetWeb.UserControllerTest do
   use BlueJetWeb.ConnCase
 
-  alias BlueJet.Identity.{RefreshToken, AccountMembership}
-
-  def create_standard_user(n \\ 1) do
-    {:ok, %{data: standard_user}} = Identity.create_user(%AccessRequest{
-      fields: %{
-        "name" => Faker.Name.name(),
-        "username" => "standard_user#{n}@example.com",
-        "email" => "standard_user#{n}@example.com",
-        "password" => "standard1234",
-        "default_locale" => "en"
-      }
-    })
-
-    standard_user
-  end
-
-  def create_managed_user(standard_user, n \\ 1) do
-    {:ok, %{data: managed_user}} = Identity.create_user(%AccessRequest{
-      fields: %{
-        "name" => Faker.Name.name(),
-        "username" => "managed_user#{n}@example.com",
-        "email" => "managed_user#{n}@example.com",
-        "password" => "managed1234",
-        "role" => "developer"
-      },
-      vas: %{ account_id: standard_user.default_account_id, user_id: standard_user.id }
-    })
-
-    managed_user
-  end
-
-  def get_uat(user) do
-    %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: user.default_account_id)
-    {:ok, %{data: %{access_token: uat}}} = Identity.create_token(%{
-      fields: %{ grant_type: "refresh_token", refresh_token: urt }
-    })
-
-    uat
-  end
-
-  def join_account(account_id, user_id) do
-    Repo.insert!(%AccountMembership{
-      account_id: account_id,
-      user_id: user_id,
-      role: "developer"
-    })
-  end
+  import BlueJet.Identity.TestHelper
 
   setup do
     conn =
@@ -59,6 +13,8 @@ defmodule BlueJetWeb.UserControllerTest do
   end
 
   # Create a user
+  # - Without UAT this endpoint create a standard user
+  # - With UAT this endpoint create a managed user
   describe "POST /v1/users" do
     test "with no attributes", %{conn: conn} do
       conn = post(conn, "/v1/users", %{
@@ -141,7 +97,7 @@ defmodule BlueJetWeb.UserControllerTest do
 
     test "with UAT targeting a standard user", %{conn: conn} do
       standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(2)
+      standard_user2 = create_standard_user(n: 2)
       join_account(standard_user1.default_account_id, standard_user2.id)
       uat = get_uat(standard_user1)
 
@@ -217,7 +173,7 @@ defmodule BlueJetWeb.UserControllerTest do
 
     test "with UAT targeting a standard user", %{conn: conn} do
       standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(2)
+      standard_user2 = create_standard_user(n: 2)
       join_account(standard_user1.default_account_id, standard_user2.id)
       uat = get_uat(standard_user1)
 
@@ -267,7 +223,7 @@ defmodule BlueJetWeb.UserControllerTest do
 
     test "with UAT targeting a standard user", %{conn: conn} do
       standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(2)
+      standard_user2 = create_standard_user(n: 2)
       join_account(standard_user1.default_account_id, standard_user2.id)
       uat = get_uat(standard_user1)
 

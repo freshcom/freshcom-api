@@ -1,7 +1,6 @@
 defmodule BlueJetWeb.UserController do
   use BlueJetWeb, :controller
 
-  alias BlueJet.Identity.User
   alias BlueJet.Identity
   alias JaSerializer.Params
 

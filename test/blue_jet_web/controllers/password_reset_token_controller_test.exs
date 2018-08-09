@@ -1,21 +1,7 @@
 defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   use BlueJetWeb.ConnCase
 
-  alias BlueJet.AccessRequest
-  alias BlueJet.Identity
-  alias BlueJet.Identity.RefreshToken
-
-  def create_standard_user() do
-    Identity.create_user(%AccessRequest{
-      fields: %{
-        "name" => Faker.Name.name(),
-        "username" => "standard_user1@example.com",
-        "email" => "standard_user1@example.com",
-        "password" => "standard1234",
-        "default_locale" => "en"
-      }
-    })
-  end
+  import BlueJet.Identity.TestHelper
 
   setup do
     conn =
@@ -26,25 +12,20 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     %{conn: conn}
   end
 
+  # Create a password reset token
+  # - Without PAT this endpoint only create the token for standard user
+  # - With PAT this endpoint can create the token for any standard and managed user that is
+  #   a member of the target account
   describe "POST /v1/password_reset_tokens" do
     test "without PAT and given a non existing standard user's username", %{conn: conn} do
-      {:ok, %{data: user}} = create_standard_user()
-      {:ok, _} = Identity.create_user(%AccessRequest{
-        fields: %{
-          "name" => Faker.Name.name(),
-          "username" => "managed_user1@example.com",
-          "email" => "managed_user1@example.com",
-          "password" => "managed1234",
-          "role" => "developer"
-        },
-        vas: %{ account_id: user.default_account_id, user_id: user.id }
-      })
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
 
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
           "type" => "PasswordResetToken",
           "attributes" => %{
-            "username" => "managed_user1@example.com"
+            "username" => managed_user.username
           }
         }
       })
@@ -55,7 +36,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "without PAT and given a existing standard user's username", %{conn: conn} do
-      {:ok, %{data: user}} = create_standard_user()
+      user = create_standard_user()
 
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
@@ -70,22 +51,9 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "with PAT and given a existing managed user's username", %{conn: conn} do
-      {:ok, %{data: standard_user}} = create_standard_user()
-      {:ok, %{data: managed_user}} = Identity.create_user(%AccessRequest{
-        fields: %{
-          "name" => Faker.Name.name(),
-          "username" => "managed_user1@example.com",
-          "email" => "managed_user1@example.com",
-          "password" => "managed1234",
-          "role" => "developer"
-        },
-        vas: %{ account_id: standard_user.default_account_id, user_id: standard_user.id }
-      })
-
-      %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: standard_user.default_account_id)
-      {:ok, %{data: %{access_token: pat}}} = Identity.create_token(%{
-        fields: %{ grant_type: "refresh_token", refresh_token: prt }
-      })
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      pat = get_pat(standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/password_reset_tokens", %{
@@ -101,12 +69,8 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "with PAT and given a existing standard user's username that is a member of target account", %{conn: conn} do
-      {:ok, %{data: standard_user}} = create_standard_user()
-
-      %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: standard_user.default_account_id)
-      {:ok, %{data: %{access_token: pat}}} = Identity.create_token(%{
-        fields: %{ grant_type: "refresh_token", refresh_token: prt }
-      })
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/password_reset_tokens", %{
@@ -122,28 +86,16 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "with PAT and given a existing standard user's username that is not a member of target account", %{conn: conn} do
-      {:ok, %{data: standard_user}} = create_standard_user()
-      Identity.create_user(%AccessRequest{
-        fields: %{
-          "name" => Faker.Name.name(),
-          "username" => "standard_user2@example.com",
-          "email" => "standard_user2@example.com",
-          "password" => "standard1234",
-          "default_locale" => "en"
-        }
-      })
-
-      %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: standard_user.default_account_id)
-      {:ok, %{data: %{access_token: pat}}} = Identity.create_token(%{
-        fields: %{ grant_type: "refresh_token", refresh_token: prt }
-      })
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+      pat = get_pat(standard_user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
           "type" => "PasswordResetToken",
           "attributes" => %{
-            "username" => "standard_user2@example.com"
+            "username" => standard_user2.username
           }
         }
       })

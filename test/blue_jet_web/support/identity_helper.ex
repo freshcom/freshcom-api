@@ -1,0 +1,66 @@
+defmodule BlueJet.Identity.TestHelper do
+  alias BlueJet.AccessRequest
+  alias BlueJet.Repo
+  alias BlueJet.Identity
+  alias BlueJet.Identity.{RefreshToken, AccountMembership}
+
+  def create_standard_user(opts \\ []) do
+    n = opts[:n] || 1
+
+    {:ok, %{data: standard_user}} = Identity.create_user(%AccessRequest{
+      fields: %{
+        "name" => Faker.Name.name(),
+        "username" => "standard_user#{n}@example.com",
+        "email" => "standard_user#{n}@example.com",
+        "password" => "standard1234",
+        "default_locale" => "en"
+      }
+    })
+
+    standard_user
+  end
+
+  def create_managed_user(standard_user, opts \\ []) do
+    n = opts[:n] || 1
+    role = opts[:role] || "developer"
+
+    {:ok, %{data: managed_user}} = Identity.create_user(%AccessRequest{
+      fields: %{
+        "name" => Faker.Name.name(),
+        "username" => "managed_user#{n}@example.com",
+        "email" => "managed_user#{n}@example.com",
+        "password" => "managed1234",
+        "role" => role
+      },
+      vas: %{ account_id: standard_user.default_account_id, user_id: standard_user.id }
+    })
+
+    managed_user
+  end
+
+  def get_uat(user) do
+    %{ id: urt } = Repo.get_by(RefreshToken, user_id: user.id, account_id: user.default_account_id)
+    {:ok, %{data: %{access_token: uat}}} = Identity.create_token(%{
+      fields: %{ grant_type: "refresh_token", refresh_token: urt }
+    })
+
+    uat
+  end
+
+  def get_pat(user) do
+    %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: user.default_account_id)
+    {:ok, %{data: %{access_token: pat}}} = Identity.create_token(%{
+      fields: %{ grant_type: "refresh_token", refresh_token: prt }
+    })
+
+    pat
+  end
+
+  def join_account(account_id, user_id) do
+    Repo.insert!(%AccountMembership{
+      account_id: account_id,
+      user_id: user_id,
+      role: "developer"
+    })
+  end
+end
