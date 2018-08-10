@@ -9,6 +9,10 @@ defmodule BlueJet.Identity.Service do
   @callback update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, any}
   @callback reset_account(Account.t()) :: {:ok, Account.t()} | {:error, any}
 
+  @callback list_account_membership(map, map) :: [AccountMembership.t]
+  @callback count_account_membership(map, map) :: integer
+  @callback update_account_membership(String.t() | AccountMembership.t(), map, map) :: {:ok, AccountMembership.t()} | {:error, any}
+
   @callback create_user(map, map) :: {:ok, User.t()} | {:error, any}
   @callback get_user(map, map) :: User.t() | nil
   @callback update_user(String.t() | User.t(), map, map) :: {:ok, User.t()} | {:error, any}
@@ -37,6 +41,10 @@ defmodule BlueJet.Identity.Service do
   defdelegate create_account(fields), to: @service
   defdelegate update_account(account, fields, opts), to: @service
   defdelegate reset_account(account), to: @service
+
+  defdelegate list_account_membership(params, opts), to: @service
+  defdelegate count_account_membership(params \\ %{}, opts), to: @service
+  defdelegate update_account_membership(id_or_membership \\ %{}, fields, opts), to: @service
 
   defdelegate create_user(fields, opts), to: @service
   defdelegate get_user(fields, opts), to: @service

@@ -32,8 +32,10 @@ defmodule BlueJetWeb.Router do
     patch "/account", AccountController, :update
     post "/account_resets", AccountResetController, :create
 
+    resources "/account_memberships", AccountMembershipController, only: [:index, :update]
+
     resources "/members", AccountMemberController, except: [:new, :edit]
-    resources "/users", UserController, except: [:index, :new, :edit]
+    resources "/users", UserController, only: [:create, :show, :update, :delete]
 
     get "/user", UserController, :show
     patch "/user", UserController, :update

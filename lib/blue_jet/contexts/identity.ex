@@ -97,6 +97,12 @@ defmodule BlueJet.Identity do
   end
 
   #
+  # MARK: Account Membership
+  #
+  def list_account_membership(req), do: list("account_membership", req, __MODULE__)
+  def update_account_membership(req), do: update("account_membership", req, __MODULE__)
+
+  #
   # MARK: Email Verification Token
   #
   def create_email_verification_token(req), do: create("email_verification_token", req, __MODULE__)

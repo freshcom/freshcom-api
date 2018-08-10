@@ -29,6 +29,31 @@ defmodule BlueJet.Identity.Policy do
   end
 
   #
+  # MARK: Account Membership
+  #
+  def authorize(request = %{role: role, user: user, params: %{"target" => "user"}}, "list_account_membership") when not is_nil(role) do
+    authorized_args = from_access_request(request, :list)
+
+    filter = Map.merge(authorized_args[:filter], %{user_id: user.id})
+    authorized_args = %{authorized_args | filter: filter, all_count_filter: Map.take(filter, [:user_id])}
+
+    {:ok, authorized_args}
+  end
+
+  def authorize(request = %{role: role, account: account}, "list_account_membership") when role in ["administrator"] do
+    authorized_args = from_access_request(request, :list)
+
+    filter = Map.merge(authorized_args[:filter], %{account_id: account.id})
+    authorized_args = %{authorized_args | filter: filter, all_count_filter: Map.take(filter, [:account_id])}
+
+    {:ok, authorized_args}
+  end
+
+  def authorize(request = %{role: role}, "update_account_membership") when role in ["administrator"] do
+    {:ok, from_access_request(request, :update)}
+  end
+
+  #
   # MARK: Email Verification Token
   #
   def authorize(%{role: role}, "create_email_verification_token")

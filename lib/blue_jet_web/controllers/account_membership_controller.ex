@@ -1,58 +1,52 @@
-defmodule BlueJetWeb.AccountMembershipshipController do
+defmodule BlueJetWeb.AccountMembershipController do
   use BlueJetWeb, :controller
 
-  alias BlueJet.Identity.AccountMembership
   alias JaSerializer.Params
+  alias BlueJet.Identity
+
+  action_fallback BlueJetWeb.FallbackController
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  # def index(conn, _params) do
-  #   account_members = Repo.all(AccountMembership)
-  #   render(conn, "index.json-api", data: account_members)
-  # end
+  def index(conn = %{ assigns: assigns }, params) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: Map.take(params, ["target"]),
+      search: params["search"],
+      filter: assigns[:filter],
+      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+      preloads: [:user, :account],
+      locale: assigns[:locale]
+    }
 
-  # def create(conn, %{"data" => data = %{"type" => "account_member", "attributes" => _account_member_params}}) do
-  #   changeset = AccountMembership.changeset(%AccountMembership{}, Params.to_attributes(data))
+    case Identity.list_account_membership(request) do
+      {:ok, %AccessResponse{ data: memberships, meta: meta }} ->
+        render(conn, "index.json-api", data: memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-  #   case Repo.insert(changeset) do
-  #     {:ok, account_member} ->
-  #       conn
-  #       |> put_status(:created)
-  #       |> render("show.json-api", data: account_member)
-  #     {:error, changeset} ->
-  #       conn
-  #       |> put_status(:unprocessable_entity)
-  #       |> render(:errors, data: changeset)
-  #   end
-  # end
+      other -> other
+    end
+  end
 
-  # def show(conn, %{"id" => id}) do
-  #   account_member = Repo.get!(AccountMembership, id)
-  #   render(conn, "show.json-api", data: account_member)
-  # end
+  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "AccountMembership" } }) do
+    request = %AccessRequest{
+      vas: assigns[:vas],
+      params: %{ "id" => id },
+      fields: Params.to_attributes(data),
+      preloads: [:user, :account],
+      locale: assigns[:locale]
+    }
 
-  # def update(conn, %{"id" => id, "data" => data = %{"type" => "account_member", "attributes" => _account_member_params}}) do
-  #   account_member = Repo.get!(AccountMembership, id)
-  #   changeset = AccountMembership.changeset(account_member, Params.to_attributes(data))
+    case Identity.update_account_membership(request) do
+      {:ok, %AccessResponse{ data: membership, meta: meta }} ->
+        render(conn, "show.json-api", data: membership, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-  #   case Repo.update(changeset) do
-  #     {:ok, account_member} ->
-  #       render(conn, "show.json-api", data: account_member)
-  #     {:error, changeset} ->
-  #       conn
-  #       |> put_status(:unprocessable_entity)
-  #       |> render(:errors, data: changeset)
-  #   end
-  # end
+      {:error, %AccessResponse{ errors: errors }} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:errors, data: extract_errors(errors))
 
-  # def delete(conn, %{"id" => id}) do
-  #   account_member = Repo.get!(AccountMembership, id)
-
-  #   # Here we use delete! (with a bang) because we expect
-  #   # it to always work (and if it does not, it will raise).
-  #   Repo.delete!(account_member)
-
-  #   send_resp(conn, :no_content, "")
-  # end
+      other -> other
+    end
+  end
 
 end

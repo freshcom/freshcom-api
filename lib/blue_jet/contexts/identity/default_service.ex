@@ -142,6 +142,58 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   #
+  # MARK: Account Memebership
+  #
+  def list_account_membership(fields \\ %{}, opts) do
+    account = extract_account(opts)
+    pagination = extract_pagination(opts)
+    preloads = extract_preloads(opts, account)
+    filter = extract_filter(fields)
+
+    AccountMembership.Query.default()
+    |> AccountMembership.Query.filter_by(filter)
+    |> paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preloads[:path], preloads[:opts])
+  end
+
+  def count_account_membership(fields \\ %{}, opts) do
+    account = extract_account(opts)
+    filter = extract_filter(fields)
+
+    AccountMembership.Query.default()
+    |> AccountMembership.Query.filter_by(filter)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def get_account_membership(identifiers, opts) do
+    get(AccountMembership, identifiers, opts)
+  end
+
+  def update_account_membership(nil, _, _), do: {:error, :not_found}
+
+  def update_account_membership(membership = %AccountMembership{}, fields, opts) do
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
+
+    changeset =
+      %{ membership | account: account }
+      |> AccountMembership.changeset(:update, fields)
+
+    with {:ok, membership} <- Repo.update(changeset) do
+      membership = preload(membership, preloads[:path], preloads[:opts])
+      {:ok, membership}
+    else
+      other -> other
+    end
+  end
+
+  def update_account_membership(identifiers, fields, opts) do
+    get_account_membership(identifiers, opts)
+    |> update_account_membership(fields, opts)
+  end
+
+  #
   # MARK: User
   #
   def create_user(fields, %{account: nil}) do
