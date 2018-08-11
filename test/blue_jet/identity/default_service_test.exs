@@ -4,6 +4,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   alias BlueJet.Identity.DefaultService
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
 
+  #
+  # MARK: Account
+  #
   describe "get_account/1" do
     test "when only account_id is given" do
       account = Repo.insert!(%Account{})
@@ -133,6 +136,104 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     refute Repo.get(User, user.id)
   end
 
+  #
+  # Mark: Account Membership
+  #
+  describe "list_account_membership/2" do
+    test "should respect the given filter" do
+      account1 = Repo.insert!(%Account{})
+      account2 = Repo.insert!(%Account{})
+      user1 = Repo.insert!(%User{
+        default_account_id: account1.id,
+        username: Faker.Internet.user_name()
+      })
+
+      Repo.insert!(%AccountMembership{
+        account_id: account1.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account2.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+
+      memberships = DefaultService.list_account_membership(%{filter: %{user_id: user1.id}}, %{})
+      assert length(memberships) == 2
+
+      memberships = DefaultService.list_account_membership(%{filter: %{account_id: account1.id}}, %{})
+      assert length(memberships) == 1
+    end
+  end
+
+  describe "count_account_membership/2" do
+    test "should respect the given filter" do
+      account1 = Repo.insert!(%Account{})
+      account2 = Repo.insert!(%Account{})
+      user1 = Repo.insert!(%User{
+        default_account_id: account1.id,
+        username: Faker.Internet.user_name()
+      })
+
+      Repo.insert!(%AccountMembership{
+        account_id: account1.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account2.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+
+      count = DefaultService.count_account_membership(%{filter: %{user_id: user1.id}}, %{})
+      assert count == 2
+
+      count = DefaultService.count_account_membership(%{filter: %{account_id: account1.id}}, %{})
+      assert count == 1
+    end
+  end
+
+  describe "update_account_membership/2" do
+    test "with given fields are invalid" do
+      account1 = Repo.insert!(%Account{})
+      user1 = Repo.insert!(%User{
+        default_account_id: account1.id,
+        username: Faker.Internet.user_name()
+      })
+      membership = Repo.insert!(%AccountMembership{
+        account_id: account1.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+
+      {:error, changeset} = DefaultService.update_account_membership(%{id: membership.id}, %{"role" => "invalid"}, %{account: account1})
+
+      assert changeset.valid? == false
+    end
+
+    test "with given fields are valid" do
+      account1 = Repo.insert!(%Account{})
+      user1 = Repo.insert!(%User{
+        default_account_id: account1.id,
+        username: Faker.Internet.user_name()
+      })
+      membership = Repo.insert!(%AccountMembership{
+        account_id: account1.id,
+        user_id: user1.id,
+        role: "administrator"
+      })
+
+      {:ok, membership} = DefaultService.update_account_membership(%{id: membership.id}, %{"role" => "developer"}, %{account: account1})
+
+      assert membership.role == "developer"
+    end
+  end
+
+  #
+  # MARK: User
+  #
   describe "create_user/2" do
     test "when fields given is invalid and account is nil" do
       EventHandlerMock
@@ -344,6 +445,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Email Verification Token
+  #
   describe "create_email_verification_token/1" do
     test "when user is nil" do
       assert DefaultService.create_email_verification_token(nil) == {:error, :not_found}
@@ -434,6 +538,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Email Verification
+  #
   describe "create_email_verification/2" do
     test "when token is nil" do
       assert DefaultService.create_email_verification(%{ "token" => nil }, %{}) == {:error, :not_found}
@@ -492,6 +599,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Password Reset Token
+  #
   describe "create_password_reset_token/2" do
     test "when username is not provided" do
       {:error, changeset} = DefaultService.create_password_reset_token(%{ "username" => "" }, %{})
@@ -539,6 +649,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Password
+  #
   describe "update_password/3" do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
@@ -581,6 +694,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Phone Verification Code
+  #
   describe "create_phone_verification_code/2" do
     test "when given invalid fields" do
       {:error, changeset} = DefaultService.create_phone_verification_code(%{}, %{ account: %Account{} })
@@ -605,6 +721,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
   end
 
+  #
+  # MARK: Refresh Token
+  #
   test "get_refresh_token/1" do
     account = Repo.insert!(%Account{})
     target_refresh_token = Repo.insert!(%RefreshToken{ account_id: account.id })

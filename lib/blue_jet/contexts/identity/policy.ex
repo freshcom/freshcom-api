@@ -31,6 +31,10 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Account Membership
   #
+  def authorize(%{role: role, params: %{"target" => "user"}}, "list_account_membership") when role in ["anonymous", "guest", "customer"] do
+    {:error, :access_denied}
+  end
+
   def authorize(request = %{role: role, user: user, params: %{"target" => "user"}}, "list_account_membership") when not is_nil(role) do
     authorized_args = from_access_request(request, :list)
 

@@ -15,26 +15,6 @@ defmodule BlueJet.Identity do
   #
   # MARK: Account
   #
-  # def list_account(request) do
-  #   with {:ok, request} <- preprocess_request(request, "identity.list_account") do
-  #     request
-  #     |> do_list_account()
-  #   else
-  #     {:error, _} -> {:error, :access_denied}
-  #   end
-  # end
-
-  # def do_list_account(request = %{ account: account, vas: %{ user_id: user_id } }) do
-  #   accounts =
-  #     Account
-  #     |> Account.Query.has_member(user_id)
-  #     |> Account.Query.live()
-  #     |> Repo.all()
-  #     |> Translation.translate(request.locale, account.default_locale)
-
-  #   {:ok, %AccessResponse{ data: accounts, meta: %{ locale: request.locale } }}
-  # end
-
   def get_account(request) do
     with {:ok, authorized_args} <- Policy.authorize(request, "get_account") do
       do_get_account(authorized_args)

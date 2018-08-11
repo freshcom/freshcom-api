@@ -104,7 +104,116 @@ defmodule BlueJet.Identity.IdentityTest do
   end
 
   #
-  # MARK: Email Verificatino Token
+  # MARK: Account Membership
+  #
+  describe "list_account_membership/1" do
+    test "when no params and role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        role: "developer"
+      }
+
+      {:error, :access_denied} = Identity.list_account_membership(request)
+    end
+
+    test "when target is user and role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: %User{},
+        params: %{"target" => "user"},
+        role: "customer"
+      }
+
+      {:error, :access_denied} = Identity.list_account_membership(request)
+    end
+
+    test "when no params" do
+      account = %Account{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: account,
+        user: %User{},
+        role: "administrator"
+      }
+
+      ServiceMock
+      |> expect(:list_account_membership, fn(fields, _) ->
+          assert fields[:filter][:account_id] == account.id
+
+          {:ok, nil}
+         end)
+      |> expect(:count_account_membership, fn(_, _) ->
+          2
+         end)
+      |> expect(:count_account_membership, fn(_, _) ->
+          2
+         end)
+
+      {:ok, _} = Identity.list_account_membership(request)
+    end
+
+    test "when target=user" do
+      user = %User{ id: Ecto.UUID.generate() }
+      request = %AccessRequest{
+        account: %Account{},
+        user: user,
+        params: %{"target" => "user"},
+        role: "developer"
+      }
+
+      ServiceMock
+      |> expect(:list_account_membership, fn(fields, _) ->
+          assert fields[:filter][:user_id] == user.id
+
+          {:ok, nil}
+         end)
+      |> expect(:count_account_membership, fn(_, _) ->
+          2
+         end)
+      |> expect(:count_account_membership, fn(_, _) ->
+          2
+         end)
+
+      {:ok, _} = Identity.list_account_membership(request)
+    end
+  end
+
+  describe "update_account_membership/1" do
+    test "when role is not authorized" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "developer"
+      }
+
+      {:error, :access_denied} = Identity.update_account_membership(request)
+    end
+
+    test "when request is valid" do
+      request = %AccessRequest{
+        account: %Account{},
+        user: nil,
+        role: "administrator",
+        params: %{ "id" => Ecto.UUID.generate() },
+        fields: %{
+          "role" => "developer"
+        }
+      }
+
+      ServiceMock
+      |> expect(:update_account_membership, fn(identifiers, fields, _) ->
+          assert identifiers[:id] == request.params["id"]
+          assert fields == request.fields
+
+          {:ok, nil}
+         end)
+
+      {:ok, _} = Identity.update_account_membership(request)
+    end
+  end
+
+  #
+  # MARK: Email Verification Token
   #
   describe "create_email_verification_token/1" do
     test "when role is not authorized" do
@@ -124,7 +233,7 @@ defmodule BlueJet.Identity.IdentityTest do
         user: %User{},
         role: "administrator",
         fields: %{
-          "email" => Faker.Internet.safe_email()
+          "user_id" => Ecto.UUID.generate()
         }
       }
 

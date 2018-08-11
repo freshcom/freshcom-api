@@ -158,7 +158,6 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def count_account_membership(fields \\ %{}, opts) do
-    account = extract_account(opts)
     filter = extract_filter(fields)
 
     AccountMembership.Query.default()
@@ -478,14 +477,14 @@ defmodule BlueJet.Identity.DefaultService do
 
   def create_email_verification(%{"token" => nil}, _), do: {:error, :not_found}
 
-  def create_email_verification(%{"token" => token}, opts = %{account: nil}) do
+  def create_email_verification(%{"token" => token}, %{account: nil}) do
     User.Query.default()
     |> User.Query.standard()
     |> Repo.get_by(email_verification_token: token)
     |> create_email_verification()
   end
 
-  def create_email_verification(%{"token" => token}, opts = %{account: account}) do
+  def create_email_verification(%{"token" => token}, %{account: account}) do
     User.Query.default()
     |> for_account(account.id)
     |> Repo.get_by(email_verification_token: token)
@@ -499,7 +498,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
 
   @doc """
-  When an account is provided in `opts`, this function will only search for account
+  When an account is provided in `opts`, this function will only search for managed
   user otherwise this function will only search for standard user.
   """
   def create_password_reset_token(fields, opts) do
