@@ -21,7 +21,7 @@ defmodule BlueJetWeb.AccountMembershipController do
 
     case Identity.list_account_membership(request) do
       {:ok, %AccessResponse{ data: memberships, meta: meta }} ->
-        render(conn, "index.json-api", data: memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+        render(conn, "index.json-api", data: memberships, opts: [meta: camelize_map(meta)])
 
       other -> other
     end

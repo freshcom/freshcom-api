@@ -157,7 +157,7 @@ defmodule BlueJet.Identity.DefaultService do
     |> preload(preloads[:path], preloads[:opts])
   end
 
-  def count_account_membership(fields \\ %{}, opts) do
+  def count_account_membership(fields \\ %{}, _) do
     filter = extract_filter(fields)
 
     AccountMembership.Query.default()
@@ -280,11 +280,15 @@ defmodule BlueJet.Identity.DefaultService do
       Multi.new()
       |> Multi.insert(:user, changeset)
       |> Multi.run(:account_membership, fn %{user: user} ->
-        Repo.insert(%AccountMembership{
-          account_id: account.id,
-          user_id: user.id,
-          role: Map.get(fields, "role") || Map.get(fields, :role)
-        })
+          %AccountMembership{ account_id: account.id, user_id: user.id }
+          |> AccountMembership.changeset(:insert, %{ role: Map.get(fields, "role") || Map.get(fields, :role) })
+          |> Repo.insert()
+
+        # Repo.insert(%AccountMembership{
+        #   account_id: account.id,
+        #   user_id: user.id,
+        #   role: Map.get(fields, "role") || Map.get(fields, :role)
+        # })
       end)
       |> Multi.run(:urt_live, fn %{user: user} ->
         if live_account_id do

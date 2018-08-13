@@ -39,7 +39,7 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{role: role}, "list_fulfillment_package")
-      when role in ["business_analyst", "distribution_specialist", "developer", "administrator"] do
+      when role in ["read_only", "distribution_specialist", "developer", "administrator"] do
     {:ok, from_access_request(request, :list)}
   end
 
@@ -47,7 +47,7 @@ defmodule BlueJet.Fulfillment.Policy do
       when role in [
              "customer",
              "support_specialist",
-             "business_analyst",
+             "read_only",
              "distribution_specialist",
              "developer",
              "administrator"
@@ -129,7 +129,7 @@ defmodule BlueJet.Fulfillment.Policy do
   end
 
   def authorize(request = %{role: role}, "list_return_package")
-      when role in ["business_analyst", "distribution_specialist", "developer", "administrator"] do
+      when role in ["read_only", "distribution_specialist", "developer", "administrator"] do
     {:ok, from_access_request(request, :list)}
   end
 

@@ -120,7 +120,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["refresh_token"]
     end
 
-    test "with valid account user credentials and invalid scope", %{conn: conn} do
+    test "with valid managed user credentials and invalid scope", %{conn: conn} do
       standard_user = create_standard_user()
       managed_user = create_managed_user(standard_user)
 
@@ -137,7 +137,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["error"] == "invalid_grant"
     end
 
-    test "with valid account user credentials and no scope", %{conn: conn} do
+    test "with valid managed user credentials and no scope", %{conn: conn} do
       standard_user = create_standard_user()
       managed_user = create_managed_user(standard_user)
 
@@ -154,7 +154,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["refresh_token"]
     end
 
-    test "with valid account user credentials and valid scope", %{conn: conn} do
+    test "with valid managed user credentials and valid scope", %{conn: conn} do
       standard_user = create_standard_user()
       managed_user = create_managed_user(standard_user)
 

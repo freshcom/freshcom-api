@@ -18,7 +18,7 @@ defmodule BlueJet.Storefront.Policy do
     {:ok, authorized_args}
   end
 
-  def authorize(request = %{ role: role }, "list_order") when role in ["support_specialist", "business_analyst", "developer", "administrator"] do
+  def authorize(request = %{ role: role }, "list_order") when role in ["support_specialist", "read_only", "developer", "administrator"] do
     authorized_args = from_access_request(request, :list)
     filter = if !authorized_args.filter[:status] do
       Map.merge(authorized_args.filter, %{ status: ["opened", "closed"] })

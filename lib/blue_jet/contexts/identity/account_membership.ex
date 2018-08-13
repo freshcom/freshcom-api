@@ -24,10 +24,11 @@ defmodule BlueJet.Identity.AccountMembership do
 
   @roles [
     "customer",
-    "business_analyst",
+    "read_only",
     "support_specialist",
     "marketing_specialist",
     "goods_specialist",
+    "manager",
     "developer",
     "administrator"
   ]
