@@ -375,9 +375,15 @@ defmodule BlueJet.Identity.DefaultService do
       %{user | account: account}
       |> User.changeset(:update, fields, opts)
 
+    membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)
+    membership_changeset =
+      %{membership | account: account}
+      |> AccountMembership.changeset(:update, fields)
+
     statements =
       Multi.new()
       |> Multi.update(:user, changeset)
+      |> Multi.update(:membership, membership_changeset)
       |> Multi.run(:_, fn %{user: user} ->
         User.delete_all_pvc(user)
       end)

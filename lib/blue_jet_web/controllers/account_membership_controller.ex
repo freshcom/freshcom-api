@@ -28,10 +28,17 @@ defmodule BlueJetWeb.AccountMembershipController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "AccountMembership" } }) do
+    fields = Params.to_attributes(data)
+    fields = if fields["role"] do
+      Map.put(fields, "role", Inflex.underscore(fields["role"]))
+    else
+      fields
+    end
+
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
-      fields: Params.to_attributes(data),
+      fields: fields,
       preloads: [:user, :account],
       locale: assigns[:locale]
     }

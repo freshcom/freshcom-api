@@ -57,10 +57,17 @@ defmodule BlueJetWeb.UserController do
   end
 
   def update(conn = %{ assigns: assigns }, params = %{ "data" => data = %{ "type" => "User" } }) do
+    fields = Params.to_attributes(data)
+    fields = if fields["role"] do
+      Map.put(fields, "role", Inflex.underscore(fields["role"]))
+    else
+      fields
+    end
+
     request = %AccessRequest{
       vas: assigns[:vas],
       params: %{ "id" => params["id"] },
-      fields: Params.to_attributes(data),
+      fields: fields,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }

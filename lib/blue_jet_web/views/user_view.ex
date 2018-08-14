@@ -21,6 +21,10 @@ defmodule BlueJetWeb.UserView do
     "User"
   end
 
+  def role(user) do
+    Inflex.camelize(user.role, :lower)
+  end
+
   def account(%{ account_id: nil }, _) do
     nil
   end
