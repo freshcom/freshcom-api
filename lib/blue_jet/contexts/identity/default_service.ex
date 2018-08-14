@@ -543,7 +543,7 @@ defmodule BlueJet.Identity.DefaultService do
   def update_password(password = %Password{}, new_password) do
     changeset =
       password
-      |> Password.changeset(:update, %{value: new_password})
+      |> Password.changeset(:update, %{value: new_password, reset_token: nil, reset_token_expires_at: nil})
 
     case Repo.update(changeset) do
       {:ok, password} ->

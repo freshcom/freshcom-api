@@ -18,7 +18,7 @@ defmodule BlueJet.Identity.Password do
   @type t :: Ecto.Schema.t()
 
   def writable_fields do
-    [:value]
+    [:value, :reset_token, :reset_token_expires_at]
   end
 
   @spec changeset(String.t(), atom, map) :: Changeset.t()
