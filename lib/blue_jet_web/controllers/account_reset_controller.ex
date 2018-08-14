@@ -7,7 +7,7 @@ defmodule BlueJetWeb.AccountResetController do
 
   plug :scrub_params, "data" when action in [:create]
 
-  def create(conn = %{ assigns: assigns }, %{"data" => data = %{ "type" => "AccountReset" }}) do
+  def create(conn = %{ assigns: assigns }, %{"data" => %{ "type" => "AccountReset" }}) do
     request = %AccessRequest{
       vas: assigns[:vas],
       preloads: assigns[:preloads],

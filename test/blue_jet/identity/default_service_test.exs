@@ -329,7 +329,22 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "update_user/3" do
     test "when user is given and fields are invalid" do
-      {:error, changeset} = DefaultService.update_user(%User{}, %{ username: nil }, %{ account: %Account{} })
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        name: Faker.Name.name(),
+        password: "test1234",
+        email: Faker.Internet.safe_email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
+
+      {:error, changeset} = DefaultService.update_user(user, %{ username: nil }, %{ account: account })
 
       assert changeset.valid? == false
     end

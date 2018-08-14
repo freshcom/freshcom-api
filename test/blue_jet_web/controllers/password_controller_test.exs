@@ -110,4 +110,43 @@ defmodule BlueJetWeb.PasswordControllerTest do
       assert length(response["errors"]) == 1
     end
   end
+
+  describe "PATCH /v1/passwords/:id" do
+    test "given standard user", %{conn: conn} do
+      user = create_standard_user()
+      uat = get_uat(user)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/passwords/#{user.id}", %{
+        "data" => %{
+          "id" => user.id,
+          "type" => "Password",
+          "attributes" => %{
+            "value" => "test1234"
+          }
+        }
+      })
+
+      assert conn.status == 404
+    end
+
+    test "given managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/passwords/#{managed_user.id}", %{
+        "data" => %{
+          "id" => managed_user.id,
+          "type" => "Password",
+          "attributes" => %{
+            "value" => "test1234"
+          }
+        }
+      })
+
+      assert conn.status == 204
+    end
+  end
 end

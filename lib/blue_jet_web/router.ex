@@ -43,6 +43,7 @@ defmodule BlueJetWeb.Router do
     get "/refresh_token", RefreshTokenController, :show
 
     post "/password_reset_tokens", PasswordResetTokenController, :create
+    resources "/passwords", PasswordController, only: [:update]
     patch "/password", PasswordController, :update
     post "/email_verification_tokens", EmailVerificationTokenController, :create
     post "/email_verifications", EmailVerificationController, :create

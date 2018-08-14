@@ -99,7 +99,7 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Password
   #
-  def authorize(request = %{role: role}, "update_password") when not is_nil(role) do
+  def authorize(request = %{role: role, fields: %{"reset_token" => _}}, "update_password") when not is_nil(role) do
     authorized_args = from_access_request(request, :update)
 
     identifiers =
@@ -110,6 +110,10 @@ defmodule BlueJet.Identity.Policy do
     authorized_args = %{authorized_args | identifiers: identifiers}
 
     {:ok, authorized_args}
+  end
+
+  def authorize(request = %{role: role, params: %{"id" => _}}, "update_password") when role in ["administrator"] do
+    {:ok, from_access_request(request, :update)}
   end
 
   #

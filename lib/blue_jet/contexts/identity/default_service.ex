@@ -327,8 +327,11 @@ defmodule BlueJet.Identity.DefaultService do
       end)
 
     case Repo.transaction(statements) do
-      {:ok, %{user: user}} -> {:ok, user}
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:ok, %{ user: user, account_membership: am }} ->
+        {:ok, %{ user | role: am.role }}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -578,6 +581,32 @@ defmodule BlueJet.Identity.DefaultService do
       update_password(password, new_password)
     else
       {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
+    end
+  end
+
+  def update_password(%{id: id}, new_password, %{account: nil}) do
+    password =
+      Password.Query.default()
+      |> Password.Query.standard()
+      |> Repo.get(id)
+
+    if password do
+      update_password(password, new_password)
+    else
+      {:error, :not_found}
+    end
+  end
+
+  def update_password(%{id: id}, new_password, %{account: account}) do
+    password =
+      Password.Query.default()
+      |> for_account(account.id)
+      |> Repo.get(id)
+
+    if password do
+      update_password(password, new_password)
+    else
+      {:error, :not_found}
     end
   end
 
