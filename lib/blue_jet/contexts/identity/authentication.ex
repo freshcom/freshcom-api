@@ -88,7 +88,26 @@ defmodule BlueJet.Identity.Authentication do
           scope: %{account_id: account_id}
         }
       ) do
-    user = User |> User.Query.member_of_account(account_id) |> Repo.get_by(username: username)
+    account = Repo.get(Account, account_id)
+
+    user = case account.mode do
+      "test" ->
+        test_user =
+          User
+          |> User.Query.member_of_account(account_id)
+          |> Repo.get_by(username: username)
+
+        test_user ||
+        User
+        |> User.Query.member_of_account(account.live_account_id)
+        |> Repo.get_by(username: username)
+
+      "live" ->
+        User
+        |> User.Query.member_of_account(account_id)
+        |> Repo.get_by(username: username)
+    end
+
     create_token_by_password(user, password, fields[:otp], account_id)
   rescue
     Ecto.Query.CastError ->
