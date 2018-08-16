@@ -153,6 +153,7 @@ defmodule BlueJet.Identity.DefaultService do
     AccountMembership.Query.default()
     |> AccountMembership.Query.search(fields[:search])
     |> AccountMembership.Query.filter_by(filter)
+    |> sort_by(desc: :inserted_at)
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
     |> preload(preloads[:path], preloads[:opts])

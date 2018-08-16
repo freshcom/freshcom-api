@@ -7,7 +7,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
     This is where we would put any long form documentation or doctests.
   """
 
-  def run(args) do
+  def run(_) do
     alias BlueJet.Repo
 
     alias BlueJet.{Identity, Goods, Catalogue, Crm}
@@ -26,6 +26,17 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
           "password" => "test1234",
           "default_locale" => "en"
         }
+      })
+
+      {:ok, _} = Identity.create_user(%AccessRequest{
+        fields: %{
+          "name" => "Managed User",
+          "username" => "managed@example.com",
+          "email" => "managed@example.com",
+          "password" => "test1234",
+          "role" => "marketing_specialist"
+        },
+        vas: %{account_id: user.default_account_id, user_id: user.id}
       })
 
       account = Repo.get_by(Account, id: user.default_account_id)
