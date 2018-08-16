@@ -14,11 +14,26 @@ defmodule BlueJet.Identity.AccountMembership.Query do
     from(am in AccountMembership)
   end
 
-  def preloads({:account, _}, options) do
+  def search(query, nil), do: query
+  def search(query, ""), do: query
+
+  def search(query, keyword) do
+    keyword = "%#{keyword}%"
+
+    from(am in query,
+      join: u in User,
+      on: am.user_id == u.id,
+      or_where: ilike(fragment("?::varchar", u.name), ^keyword),
+      or_where: ilike(fragment("?::varchar", u.email), ^keyword),
+      or_where: ilike(fragment("?::varchar", u.username), ^keyword)
+    )
+  end
+
+  def preloads({:account, _}, _) do
     [account: Account.Query.default()]
   end
 
-  def preloads({:user, _}, options) do
+  def preloads({:user, _}, _) do
     [user: User.Query.default()]
   end
 end

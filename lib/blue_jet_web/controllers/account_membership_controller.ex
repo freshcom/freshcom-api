@@ -9,11 +9,15 @@ defmodule BlueJetWeb.AccountMembershipController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
+    filter =
+      assigns[:filter]
+      |> underscore_value([:role])
+
     request = %AccessRequest{
       vas: assigns[:vas],
       params: Map.take(params, ["target"]),
       search: params["search"],
-      filter: assigns[:filter],
+      filter: filter,
       pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
       preloads: [:user, :account],
       locale: assigns[:locale]
@@ -28,12 +32,9 @@ defmodule BlueJetWeb.AccountMembershipController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "AccountMembership" } }) do
-    fields = Params.to_attributes(data)
-    fields = if fields["role"] do
-      Map.put(fields, "role", Inflex.underscore(fields["role"]))
-    else
-      fields
-    end
+    fields =
+      Params.to_attributes(data)
+      |> underscore_value(["role"])
 
     request = %AccessRequest{
       vas: assigns[:vas],

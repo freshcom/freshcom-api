@@ -151,6 +151,7 @@ defmodule BlueJet.Identity.DefaultService do
     filter = extract_filter(fields)
 
     AccountMembership.Query.default()
+    |> AccountMembership.Query.search(fields[:search])
     |> AccountMembership.Query.filter_by(filter)
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()

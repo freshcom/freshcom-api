@@ -9,12 +9,9 @@ defmodule BlueJetWeb.UserController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "User" } }) do
-    fields = Params.to_attributes(data)
-    fields = if fields["role"] do
-      Map.put(fields, "role", Inflex.underscore(fields["role"]))
-    else
-      fields
-    end
+    fields =
+      Params.to_attributes(data)
+      |> underscore_value(["role"])
 
     request = %AccessRequest{
       vas: assigns[:vas],
@@ -57,12 +54,9 @@ defmodule BlueJetWeb.UserController do
   end
 
   def update(conn = %{ assigns: assigns }, params = %{ "data" => data = %{ "type" => "User" } }) do
-    fields = Params.to_attributes(data)
-    fields = if fields["role"] do
-      Map.put(fields, "role", Inflex.underscore(fields["role"]))
-    else
-      fields
-    end
+    fields =
+      Params.to_attributes(data)
+      |> underscore_value(["role"])
 
     request = %AccessRequest{
       vas: assigns[:vas],
