@@ -25,10 +25,18 @@ defmodule BlueJetWeb.FallbackController do
   end
 
   def call(conn, {:error, :unprocessable_for_test_account}) do
-    reason = "You are making request in test mode, but this endpoint only work in live mode. Please try again using a live access token."
+    reason = "You are making request against a test account, but this endpoint only work for live account. Please try again using a live access token."
 
     conn
     |> put_status(422)
     |> render(BlueJetWeb.ErrorView, :"422", %{code: "unprocessable_for_test_mode", reason: reason})
+  end
+
+  def call(conn, {:error, :unprocessable_for_live_user}) do
+    reason = "You are making request using a test access token which is incapable of updating live user. Please try again using a live access token or try updating a test user instead."
+
+    conn
+    |> put_status(422)
+    |> render(BlueJetWeb.ErrorView, :"422", %{code: "unprocessable_for_live_user", reason: reason})
   end
 end

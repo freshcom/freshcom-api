@@ -350,22 +350,11 @@ defmodule BlueJet.Identity.DefaultService do
 
     cond do
       account_id && opts[:type] == :managed ->
-        user =
-          User.Query.default()
-          |> for_account(account_id)
-          |> User.Query.filter_by(filter)
-          |> Repo.get_by(clauses)
-          |> User.put_role(account_id)
-
-        if !user && account.mode == "test" do
-          User.Query.default()
-          |> for_account(account.live_account_id)
-          |> User.Query.filter_by(filter)
-          |> Repo.get_by(clauses)
-          |> User.put_role(account.live_account_id)
-        else
-          user
-        end
+        User.Query.default()
+        |> for_account(account_id)
+        |> User.Query.filter_by(filter)
+        |> Repo.get_by(clauses)
+        |> User.put_role(account_id)
 
       account_id ->
         user =
@@ -445,9 +434,14 @@ defmodule BlueJet.Identity.DefaultService do
 
   def update_user(identifiers, fields, opts) do
     opts = put_account(opts)
+    account = opts[:account]
 
-    get_user(identifiers, opts)
-    |> update_user(fields, opts)
+    user = get_user(identifiers, opts)
+    if opts[:type] != :managed && account.mode == "test" && user.account_id != account.id do
+      {:error, :unprocessable_for_live_user}
+    else
+      update_user(user, fields, opts)
+    end
   end
 
   def delete_user(nil, _), do: {:error, :not_found}

@@ -139,12 +139,11 @@ defmodule BlueJetWeb.UserControllerTest do
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/users/#{managed_user.id}")
 
-      response = json_response(conn, 200)
-      assert response["data"]["id"] == managed_user.id
+      assert conn.status == 404
     end
   end
 
-  # Update a standard user
+  # Update current user
   describe "PATCH /v1/user" do
     test "without UAT", %{conn: conn} do
       conn = patch(conn, "/v1/user", %{
@@ -159,7 +158,7 @@ defmodule BlueJetWeb.UserControllerTest do
       assert conn.status == 401
     end
 
-    test "with UAT", %{conn: conn} do
+    test "with UAT of standard user", %{conn: conn} do
       standard_user = create_standard_user()
       uat = get_uat(standard_user)
 
@@ -176,6 +175,44 @@ defmodule BlueJetWeb.UserControllerTest do
 
       response = json_response(conn, 200)
       assert response["data"]["attributes"]["name"] == new_name
+    end
+
+    test "with UAT of managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(managed_user)
+
+      new_name = Faker.Name.name()
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/user", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => new_name
+          }
+        }
+      })
+
+      response = json_response(conn, 200)
+      assert response["data"]["attributes"]["name"] == new_name
+    end
+
+    test "with test UAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user, mode: :test)
+
+      new_name = Faker.Name.name()
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/user", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => new_name
+          }
+        }
+      })
+
+      assert conn.status == 422
     end
   end
 
@@ -234,6 +271,25 @@ defmodule BlueJetWeb.UserControllerTest do
       assert response["data"]["id"] == managed_user.id
       assert response["data"]["attributes"]["name"] == new_name
     end
+
+    test "with test UAT targeting a live managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user, mode: :test)
+
+      new_name = Faker.Name.name()
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/users/#{managed_user.id}", %{
+        "data" => %{
+          "type" => "User",
+          "attributes" => %{
+            "name" => new_name
+          }
+        }
+      })
+
+      assert conn.status == 404
+    end
   end
 
   # Delete a managed user
@@ -266,6 +322,17 @@ defmodule BlueJetWeb.UserControllerTest do
       conn = delete(conn, "/v1/users/#{managed_user.id}")
 
       assert conn.status == 204
+    end
+
+    test "with test UAT targeting a live managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user, mode: :test)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = delete(conn, "/v1/users/#{managed_user.id}")
+
+      assert conn.status == 404
     end
   end
 end
