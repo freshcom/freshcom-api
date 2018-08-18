@@ -65,5 +65,23 @@ defmodule BlueJetWeb.AccountControllerTest do
       response = json_response(conn, 200)
       assert response["data"]["attributes"]["name"] == new_name
     end
+
+    test "with test UAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user, mode: :test)
+
+      new_name = Faker.Name.name()
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/account", %{
+        "data" => %{
+          "type" => "Account",
+          "attributes" => %{
+            "name" => new_name
+          }
+        }
+      })
+
+      assert conn.status == 422
+    end
   end
 end
