@@ -114,7 +114,13 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def update_account(account = %Account{}, fields, opts \\ %{}) do
+  def update_account(account, fields, opts \\ %{})
+
+  def update_account(%Account{mode: "test"}, _, _) do
+    {:error, :unprocessable_for_test_account}
+  end
+
+  def update_account(account = %Account{}, fields, opts) do
     changeset = Account.changeset(account, :update, fields, opts[:locale])
 
     statements =
@@ -338,23 +344,46 @@ defmodule BlueJet.Identity.DefaultService do
 
   def get_user(identifiers, opts) do
     account_id = get_account_id(opts)
+    account = get_account(opts)
     filter = extract_nil_filter(identifiers)
     clauses = extract_clauses(identifiers)
 
     cond do
       account_id && opts[:type] == :managed ->
-        User.Query.default()
-        |> for_account(account_id)
-        |> User.Query.filter_by(filter)
-        |> Repo.get_by(clauses)
-        |> User.put_role(account_id)
+        user =
+          User.Query.default()
+          |> for_account(account_id)
+          |> User.Query.filter_by(filter)
+          |> Repo.get_by(clauses)
+          |> User.put_role(account_id)
+
+        if !user && account.mode == "test" do
+          User.Query.default()
+          |> for_account(account.live_account_id)
+          |> User.Query.filter_by(filter)
+          |> Repo.get_by(clauses)
+          |> User.put_role(account.live_account_id)
+        else
+          user
+        end
 
       account_id ->
-        User.Query.default()
-        |> User.Query.member_of_account(account_id)
-        |> User.Query.filter_by(filter)
-        |> Repo.get_by(clauses)
-        |> User.put_role(account_id)
+        user =
+          User.Query.default()
+          |> User.Query.member_of_account(account_id)
+          |> User.Query.filter_by(filter)
+          |> Repo.get_by(clauses)
+          |> User.put_role(account_id)
+
+        if !user && account.mode == "test" do
+          User.Query.default()
+          |> User.Query.member_of_account(account.live_account_id)
+          |> User.Query.filter_by(filter)
+          |> Repo.get_by(clauses)
+          |> User.put_role(account.live_account_id)
+        else
+          user
+        end
 
       true ->
         User.Query.default()

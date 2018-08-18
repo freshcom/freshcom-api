@@ -51,10 +51,10 @@ defmodule BlueJetWeb.AccountController do
       {:ok, %{ data: account, meta: meta }} ->
         render(conn, "show.json-api", data: account, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-      {:error, changeset} ->
+      {:error, %{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(changeset))
+        |> render(:errors, data: extract_errors(errors))
 
       other -> other
     end

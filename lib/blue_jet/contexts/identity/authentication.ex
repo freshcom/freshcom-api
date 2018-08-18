@@ -90,19 +90,25 @@ defmodule BlueJet.Identity.Authentication do
       ) do
     account = Repo.get(Account, account_id)
 
-    user = case account.mode do
-      "test" ->
-        test_user =
+    user = cond do
+      !account ->
+        nil
+
+      account.mode == "test" ->
+        user =
           User
           |> User.Query.member_of_account(account_id)
           |> Repo.get_by(username: username)
 
-        test_user ||
-        User
-        |> User.Query.member_of_account(account.live_account_id)
-        |> Repo.get_by(username: username)
+        if !user do
+          User
+          |> User.Query.member_of_account(account.live_account_id)
+          |> Repo.get_by(username: username)
+        else
+          user
+        end
 
-      "live" ->
+      account.mode == "live" ->
         User
         |> User.Query.member_of_account(account_id)
         |> Repo.get_by(username: username)

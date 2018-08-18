@@ -5,7 +5,12 @@ defmodule BlueJetWeb.AccountView do
   attributes [
     :name,
     :mode,
+    :company_name,
+    :website_url,
+    :support_email,
+    :tech_email,
     :is_ready_for_live_transaction,
+    :default_auth_method,
     :default_locale,
     :test_account_id,
     :caption,

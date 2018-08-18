@@ -74,6 +74,16 @@ defmodule BlueJetWeb.ErrorView do
     }
   end
 
+  def render("422.json-api", %{code: code, reason: reason}) do
+    %{
+      errors: [%{
+        code: code,
+        title: "Unprocessable Request",
+        detail: reason
+      }]
+    }
+  end
+
   # In case no render clause matches or no
   # template is found, let's render it as 500
   def template_not_found(_template, assigns) do

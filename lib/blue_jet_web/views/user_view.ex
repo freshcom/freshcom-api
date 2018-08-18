@@ -3,14 +3,17 @@ defmodule BlueJetWeb.UserView do
   use JaSerializer.PhoenixView
 
   attributes [
+    :status,
     :email,
     :username,
     :first_name,
     :last_name,
     :name,
     :role,
+    :auth_method,
     :phone_number,
     :email_verified,
+    :email_verified_at,
     :inserted_at,
     :updated_at
   ]
