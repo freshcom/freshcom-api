@@ -67,7 +67,7 @@ defmodule BlueJetWeb.UserControllerTest do
     end
   end
 
-  # Retrieve a standard user
+  # Retrieve current user
   describe "GET /v1/user" do
     test "without UAT", %{conn: conn} do
       conn = get(conn, "/v1/user")
@@ -78,6 +78,17 @@ defmodule BlueJetWeb.UserControllerTest do
     test "with UAT", %{conn: conn} do
       standard_user = create_standard_user()
       uat = get_uat(standard_user)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = get(conn, "/v1/user")
+
+      response = json_response(conn, 200)
+      assert response["data"]["id"] == standard_user.id
+    end
+
+    test "with test UAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user, mode: :test)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/user")
@@ -112,6 +123,18 @@ defmodule BlueJetWeb.UserControllerTest do
       standard_user = create_standard_user()
       managed_user = create_managed_user(standard_user)
       uat = get_uat(standard_user)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = get(conn, "/v1/users/#{managed_user.id}")
+
+      response = json_response(conn, 200)
+      assert response["data"]["id"] == managed_user.id
+    end
+
+    test "with test UAT targeting a live managed user", %{conn: conn} do
+      standard_user = create_standard_user()
+      managed_user = create_managed_user(standard_user)
+      uat = get_uat(standard_user, mode: :test)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/users/#{managed_user.id}")
