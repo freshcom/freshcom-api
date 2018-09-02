@@ -2,7 +2,6 @@ defmodule BlueJet.Storefront.OrderLineItem do
   use BlueJet, :data
 
   alias Decimal, as: D
-  alias BlueJet.Catalogue.Price
   alias BlueJet.Storefront.{CatalogueService, CrmService, FulfillmentService}
   alias BlueJet.Storefront.Order
   alias __MODULE__.Proxy
