@@ -27,7 +27,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
 
   # Create a unlockable
   describe "POST /v1/unlockables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = post(conn, "/v1/unlockables", %{
         "data" => %{
           "type" => "Unlockable"
@@ -35,6 +35,20 @@ defmodule BlueJetWeb.UnlockableControllerTest do
       })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = post(conn, "/v1/unlockables", %{
+        "data" => %{
+          "type" => "Unlockable"
+        }
+      })
+
+      assert conn.status == 403
     end
 
     test "with no attributes", %{conn: conn} do
@@ -51,14 +65,55 @@ defmodule BlueJetWeb.UnlockableControllerTest do
       response = json_response(conn, 422)
       assert length(response["errors"]) == 1
     end
+
+    test "with valid attributes", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = post(conn, "/v1/unlockables", %{
+        "data" => %{
+          "type" => "Unlockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert json_response(conn, 201)
+    end
   end
 
   # Retrieve a unlockable
   describe "GET /v1/unlockables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = get(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting a unlockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      unlockable = create_unlockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = get(conn, "/v1/unlockables/#{unlockable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -68,11 +123,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
       uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
-      conn = get(conn, "/v1/unlockables/#{unlockable.id}", %{
-        "data" => %{
-          "type" => "Unlockable"
-        }
-      })
+      conn = get(conn, "/v1/unlockables/#{unlockable.id}")
 
       assert json_response(conn, 200)
     end
@@ -80,10 +131,55 @@ defmodule BlueJetWeb.UnlockableControllerTest do
 
   # Update a unlockable
   describe "PATCH /v1/unlockables/:id" do
-    test "without UAT", %{conn: conn} do
-      conn = get(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+    test "without access token", %{conn: conn} do
+      conn = patch(conn, "/v1/unlockables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Unlockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = patch(conn, "/v1/unlockables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Unlockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting unlockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      unlockable = create_unlockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = patch(conn, "/v1/unlockables/#{unlockable.id}", %{
+        "data" => %{
+          "type" => "Unlockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -95,10 +191,10 @@ defmodule BlueJetWeb.UnlockableControllerTest do
 
       conn = patch(conn, "/v1/unlockables/#{unlockable.id}", %{
         "data" => %{
-          "type" => "Unlockable"
-        },
-        "attributes" => %{
-          "name" => Faker.Commerce.product_name()
+          "type" => "Unlockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
         }
       })
 
@@ -108,10 +204,34 @@ defmodule BlueJetWeb.UnlockableControllerTest do
 
   # Delete a unlockable
   describe "DELETE /v1/unlockables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = delete(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = delete(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT and requesting unlockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      unlockable = create_unlockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = delete(conn, "/v1/unlockables/#{unlockable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do

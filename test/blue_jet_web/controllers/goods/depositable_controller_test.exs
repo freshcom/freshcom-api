@@ -29,7 +29,7 @@ defmodule BlueJetWeb.DepositableControllerTest do
 
   # Create a depositable
   describe "POST /v1/depositables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = post(conn, "/v1/depositables", %{
         "data" => %{
           "type" => "Depositable"
@@ -37,6 +37,20 @@ defmodule BlueJetWeb.DepositableControllerTest do
       })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = post(conn, "/v1/depositables", %{
+        "data" => %{
+          "type" => "Depositable"
+        }
+      })
+
+      assert conn.status == 403
     end
 
     test "with no attributes", %{conn: conn} do
@@ -53,14 +67,57 @@ defmodule BlueJetWeb.DepositableControllerTest do
       response = json_response(conn, 422)
       assert length(response["errors"]) == 3
     end
+
+    test "with valid attributes", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = post(conn, "/v1/depositables", %{
+        "data" => %{
+          "type" => "Depositable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name(),
+            "amount" => 5000,
+            "gateway" => "freshcom"
+          }
+        }
+      })
+
+      assert json_response(conn, 201)
+    end
   end
 
   # Retrieve a depositable
   describe "GET /v1/depositables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/depositables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = get(conn, "/v1/depositables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting a depositable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      depositable = create_depositable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = get(conn, "/v1/depositables/#{depositable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -70,11 +127,7 @@ defmodule BlueJetWeb.DepositableControllerTest do
       uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
-      conn = get(conn, "/v1/depositables/#{depositable.id}", %{
-        "data" => %{
-          "type" => "Depositable"
-        }
-      })
+      conn = get(conn, "/v1/depositables/#{depositable.id}")
 
       assert json_response(conn, 200)
     end
@@ -82,10 +135,57 @@ defmodule BlueJetWeb.DepositableControllerTest do
 
   # Update a depositable
   describe "PATCH /v1/depositables/:id" do
-    test "without UAT", %{conn: conn} do
-      conn = get(conn, "/v1/depositables/#{Ecto.UUID.generate()}")
+    test "without access token", %{conn: conn} do
+      conn = patch(conn, "/v1/depositables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Depositable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        },
+
+      })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = patch(conn, "/v1/depositables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Depositable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        },
+
+      })
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting depositable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      depositable = create_depositable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = patch(conn, "/v1/depositables/#{depositable.id}", %{
+        "data" => %{
+          "type" => "Depositable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -97,10 +197,10 @@ defmodule BlueJetWeb.DepositableControllerTest do
 
       conn = patch(conn, "/v1/depositables/#{depositable.id}", %{
         "data" => %{
-          "type" => "Depositable"
-        },
-        "attributes" => %{
-          "name" => Faker.Commerce.product_name()
+          "type" => "Depositable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
         }
       })
 
@@ -110,10 +210,34 @@ defmodule BlueJetWeb.DepositableControllerTest do
 
   # Delete a depositable
   describe "DELETE /v1/depositables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = delete(conn, "/v1/depositables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = delete(conn, "/v1/depositables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT and requesting depositable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      depositable = create_depositable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = delete(conn, "/v1/depositables/#{depositable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do

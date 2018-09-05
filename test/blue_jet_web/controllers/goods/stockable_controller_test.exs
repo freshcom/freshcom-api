@@ -28,7 +28,7 @@ defmodule BlueJetWeb.StockableControllerTest do
 
   # Create a stockable
   describe "POST /v1/stockables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = post(conn, "/v1/stockables", %{
         "data" => %{
           "type" => "Stockable"
@@ -36,6 +36,20 @@ defmodule BlueJetWeb.StockableControllerTest do
       })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = post(conn, "/v1/stockables", %{
+        "data" => %{
+          "type" => "Stockable"
+        }
+      })
+
+      assert conn.status == 403
     end
 
     test "with no attributes", %{conn: conn} do
@@ -52,14 +66,56 @@ defmodule BlueJetWeb.StockableControllerTest do
       response = json_response(conn, 422)
       assert length(response["errors"]) == 2
     end
+
+    test "with valid attributes", %{conn: conn} do
+      standard_user = create_standard_user()
+      uat = get_uat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = post(conn, "/v1/stockables", %{
+        "data" => %{
+          "type" => "Stockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name(),
+            "unit_of_measure" => "EA"
+          }
+        }
+      })
+
+      assert json_response(conn, 201)
+    end
   end
 
   # Retrieve a stockable
   describe "GET /v1/stockables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = get(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting a stockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      stockable = create_stockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = get(conn, "/v1/stockables/#{stockable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -69,11 +125,7 @@ defmodule BlueJetWeb.StockableControllerTest do
       uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
 
-      conn = get(conn, "/v1/stockables/#{stockable.id}", %{
-        "data" => %{
-          "type" => "Stockable"
-        }
-      })
+      conn = get(conn, "/v1/stockables/#{stockable.id}")
 
       assert json_response(conn, 200)
     end
@@ -81,10 +133,55 @@ defmodule BlueJetWeb.StockableControllerTest do
 
   # Update a stockable
   describe "PATCH /v1/stockables/:id" do
-    test "without UAT", %{conn: conn} do
-      conn = get(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+    test "without access token", %{conn: conn} do
+      conn = patch(conn, "/v1/stockables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Stockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = patch(conn, "/v1/stockables/#{Ecto.UUID.generate()}", %{
+        "data" => %{
+          "type" => "Stockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert conn.status == 403
+    end
+
+    test "with UAT requesting stockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      stockable = create_stockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = patch(conn, "/v1/stockables/#{stockable.id}", %{
+        "data" => %{
+          "type" => "Stockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
+        }
+      })
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
@@ -96,10 +193,10 @@ defmodule BlueJetWeb.StockableControllerTest do
 
       conn = patch(conn, "/v1/stockables/#{stockable.id}", %{
         "data" => %{
-          "type" => "Stockable"
-        },
-        "attributes" => %{
-          "name" => Faker.Commerce.product_name()
+          "type" => "Stockable",
+          "attributes" => %{
+            "name" => Faker.Commerce.product_name()
+          }
         }
       })
 
@@ -109,10 +206,34 @@ defmodule BlueJetWeb.StockableControllerTest do
 
   # Delete a stockable
   describe "DELETE /v1/stockables/:id" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = delete(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
 
       assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user = create_standard_user()
+      pat = get_pat(standard_user)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = delete(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+
+      assert conn.status == 403
+    end
+
+    test "with UAT and requesting stockable of a different account", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      stockable = create_stockable(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = delete(conn, "/v1/stockables/#{stockable.id}")
+
+      assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
