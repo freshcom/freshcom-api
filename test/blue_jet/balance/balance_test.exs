@@ -12,7 +12,7 @@ defmodule BlueJet.BalanceTest do
   #
   describe "get_settings/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -23,7 +23,7 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -40,7 +40,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "update_settings/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -52,7 +52,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -74,7 +74,7 @@ defmodule BlueJet.BalanceTest do
   #
   describe "list_card/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -85,7 +85,7 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when role is customer" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -132,7 +132,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -168,7 +168,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "update_card/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -180,7 +180,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "customer",
@@ -203,7 +203,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "delete_card/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -216,7 +216,7 @@ defmodule BlueJet.BalanceTest do
     test "when request is valid" do
       account = %Account{}
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "customer",
@@ -240,7 +240,7 @@ defmodule BlueJet.BalanceTest do
   #
   describe "list_payment/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -251,7 +251,7 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when role is customer" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -294,7 +294,7 @@ defmodule BlueJet.BalanceTest do
     end
 
     test "when role is administrator" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -327,7 +327,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "create_payment/1" do
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -344,7 +344,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "get_payment/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -356,7 +356,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "customer",
@@ -377,7 +377,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "update_payment/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -389,7 +389,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -412,7 +412,7 @@ defmodule BlueJet.BalanceTest do
 
   describe "delete_payment/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -424,7 +424,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -448,7 +448,7 @@ defmodule BlueJet.BalanceTest do
   #
   describe "create_refund/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -460,7 +460,7 @@ defmodule BlueJet.BalanceTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

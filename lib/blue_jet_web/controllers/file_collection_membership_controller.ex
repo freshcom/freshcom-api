@@ -31,7 +31,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   # end
 
   def create(conn = %{ assigns: assigns }, %{ "file_collection_id" => fc_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "collection_id" => fc_id },
       fields: Params.to_attributes(data),
@@ -44,7 +44,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
         |> put_status(:created)
         |> render("show.json-api", data: fcm, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -54,7 +54,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => fcm_id, "data" => data = %{ "type" => "FileCollectionMembership" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => fcm_id },
       fields: Params.to_attributes(data),
@@ -66,7 +66,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
       {:ok, %{ data: fcm, meta: meta }} ->
         render(conn, "show.json-api", data: fcm, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -77,7 +77,7 @@ defmodule BlueJetWeb.FileCollectionMembershipController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => fcm_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => fcm_id }
     }

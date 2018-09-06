@@ -10,7 +10,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "get_account/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -21,7 +21,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest"
@@ -40,7 +40,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "update_account/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -51,7 +51,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -75,7 +75,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "reset_account/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -86,7 +86,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -108,7 +108,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "list_account_membership/1" do
     test "when no params and role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "developer"
@@ -118,7 +118,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when target is user and role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         params: %{"target" => "user"},
@@ -130,7 +130,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when no params" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -154,7 +154,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when target=user" do
       user = %User{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: user,
         params: %{"target" => "user"},
@@ -180,7 +180,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "update_account_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "developer"
@@ -190,7 +190,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "administrator",
@@ -217,7 +217,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "create_email_verification_token/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -228,7 +228,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -255,7 +255,7 @@ defmodule BlueJet.Identity.IdentityTest do
   describe "create_email_verification/1" do
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -281,7 +281,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "create_phone_verification_code/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -292,7 +292,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -319,7 +319,7 @@ defmodule BlueJet.Identity.IdentityTest do
   describe "create_password_reset_token/1" do
     test "when request is valid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -341,7 +341,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid but no user for the email is found" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -363,7 +363,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is invalid" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -389,7 +389,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "update_password/1" do
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous",
@@ -411,7 +411,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when request is invalid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous",
@@ -438,7 +438,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "get_refresh_token/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -449,7 +449,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -471,7 +471,7 @@ defmodule BlueJet.Identity.IdentityTest do
   #
   describe "create_user/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -481,7 +481,7 @@ defmodule BlueJet.Identity.IdentityTest do
     end
 
     test "when role is anonymous" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous",
@@ -502,7 +502,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when role is guest" do
       account = %Account{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -526,7 +526,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "get_user/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -538,7 +538,7 @@ defmodule BlueJet.Identity.IdentityTest do
     test "when role is customer" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -558,7 +558,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -579,7 +579,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "update_user/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -591,7 +591,7 @@ defmodule BlueJet.Identity.IdentityTest do
     test "when role is customer" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -615,7 +615,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -640,7 +640,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
   describe "delete_user/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -651,7 +651,7 @@ defmodule BlueJet.Identity.IdentityTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

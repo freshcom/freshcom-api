@@ -9,7 +9,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -30,7 +30,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       Params.to_attributes(data)
       |> underscore_value(["action_type"])
 
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: fields,
       preloads: assigns[:preloads]
@@ -52,7 +52,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       preloads: assigns[:preloads],
@@ -72,7 +72,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
       Params.to_attributes(data)
       |> underscore_value(["action_type"])
 
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: fields,
@@ -94,7 +94,7 @@ defmodule BlueJetWeb.NotificationTriggerController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }

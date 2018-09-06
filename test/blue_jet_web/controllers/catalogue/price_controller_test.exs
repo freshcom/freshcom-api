@@ -9,7 +9,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   def create_product(user, fields \\ %{}) do
     stockable = create_stockable(user)
 
-    {:ok, %{data: product}} = Catalogue.create_product(%AccessRequest{
+    {:ok, %{data: product}} = Catalogue.create_product(%ContextRequest{
       fields: %{
         "name" => Faker.Commerce.product_name(),
         "goods_id" => stockable.id,
@@ -18,7 +18,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       vas: %{ account_id: user.default_account_id, user_id: user.id }
     })
 
-    {:ok, _} = Catalogue.create_price(%AccessRequest{
+    {:ok, _} = Catalogue.create_price(%ContextRequest{
       params: %{
         "product_id" => product.id
       },
@@ -32,7 +32,7 @@ defmodule BlueJetWeb.PriceControllerTest do
       vas: %{ account_id: user.default_account_id, user_id: user.id }
     })
 
-    {:ok, %{data: product}} = Catalogue.update_product(%AccessRequest{
+    {:ok, %{data: product}} = Catalogue.update_product(%ContextRequest{
       params: %{
         "id" => product.id
       },
@@ -48,7 +48,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   def create_price(user, fields \\ %{}) do
     product_id = fields[:product_id] || create_product(user).id
 
-    {:ok, %{data: price}} = Catalogue.create_price(%AccessRequest{
+    {:ok, %{data: price}} = Catalogue.create_price(%ContextRequest{
       params: %{
         "product_id" => product_id
       },

@@ -4,7 +4,7 @@ defmodule BlueJet.ContextCase do
   using do
     quote do
       alias BlueJet.Repo
-      alias BlueJet.AccessRequest
+      alias BlueJet.ContextRequest
       alias BlueJet.{AuthorizationMock, EventHandlerMock}
 
       import Mox

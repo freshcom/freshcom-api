@@ -9,7 +9,7 @@ defmodule BlueJetWeb.OrderController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -18,13 +18,13 @@ defmodule BlueJetWeb.OrderController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: orders, meta: meta }} = Storefront.list_order(request)
+    {:ok, %ContextResponse{ data: orders, meta: meta }} = Storefront.list_order(request)
 
     render(conn, "index.json-api", data: orders, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Order" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
@@ -46,7 +46,7 @@ defmodule BlueJetWeb.OrderController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       preloads: assigns[:preloads],
@@ -62,7 +62,7 @@ defmodule BlueJetWeb.OrderController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Order" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: Params.to_attributes(data),
@@ -84,7 +84,7 @@ defmodule BlueJetWeb.OrderController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }
@@ -93,7 +93,7 @@ defmodule BlueJetWeb.OrderController do
       {:ok, _} ->
         send_resp(conn, :no_content, "")
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))

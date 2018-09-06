@@ -8,7 +8,7 @@ defmodule BlueJet.DataTradingTest do
 
   describe "create_data_import/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -19,7 +19,7 @@ defmodule BlueJet.DataTradingTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

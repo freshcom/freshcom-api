@@ -1,4 +1,4 @@
-defmodule BlueJet.AccessRequest do
+defmodule BlueJet.ContextRequest do
   defstruct vas: %{},
             account: nil,
             user: nil,

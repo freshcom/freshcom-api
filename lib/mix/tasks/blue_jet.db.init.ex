@@ -16,12 +16,12 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
 
     alias BlueJet.Catalogue
     alias BlueJet.Goods
-    alias BlueJet.AccessRequest
+    alias BlueJet.ContextRequest
 
     Application.ensure_all_started(:blue_jet)
     # Application.ensure_all_started(:bamboo)
 
-    {:ok, %{ data: user }} = Identity.create_user(%AccessRequest{
+    {:ok, %{ data: user }} = Identity.create_user(%ContextRequest{
       fields: %{
         "first_name" => "Roy",
         "last_name" => "Bao",
@@ -36,13 +36,13 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     account = Repo.get_by(Account, id: user.default_account_id)
     test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
 
-    {:ok, _} = Identity.update_account(%AccessRequest{
+    {:ok, _} = Identity.update_account(%ContextRequest{
       vas: %{ user_id: user.id, account_id: account.id },
       account: account,
       fields: %{ default_auth_method: "tfa_sms" }
     })
 
-    {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
+    {:ok, _} = Catalogue.create_product_collection(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -53,7 +53,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
+    {:ok, _} = Catalogue.create_product_collection(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
+    {:ok, _} = Catalogue.create_product_collection(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -75,7 +75,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.create_product_collection(%AccessRequest{
+    {:ok, _} = Catalogue.create_product_collection(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -88,7 +88,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
     #
     # MARK: Deposit
     #
-    {:ok, %{ data: deposit_100 }} = Goods.create_depositable(%AccessRequest{
+    {:ok, %{ data: deposit_100 }} = Goods.create_depositable(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -99,7 +99,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, %{ data: product_100 }} = Catalogue.create_product(%AccessRequest{
+    {:ok, %{ data: product_100 }} = Catalogue.create_product(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "name_sync" => "sync_with_goods",
@@ -109,7 +109,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.create_price(%AccessRequest{
+    {:ok, _} = Catalogue.create_price(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       params: %{ "product_id" => product_100.id },
       fields: %{
@@ -121,7 +121,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.update_product(%AccessRequest{
+    {:ok, _} = Catalogue.update_product(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       params: %{ "id" => product_100.id },
       fields: %{
@@ -129,7 +129,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, %{ data: deposit_50 }} = Goods.create_depositable(%AccessRequest{
+    {:ok, %{ data: deposit_50 }} = Goods.create_depositable(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "status" => "active",
@@ -140,7 +140,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, %{ data: product_50 }} = Catalogue.create_product(%AccessRequest{
+    {:ok, %{ data: product_50 }} = Catalogue.create_product(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       fields: %{
         "name_sync" => "sync_with_goods",
@@ -150,7 +150,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.create_price(%AccessRequest{
+    {:ok, _} = Catalogue.create_price(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       params: %{ "product_id" => product_50.id },
       fields: %{
@@ -162,7 +162,7 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
       }
     })
 
-    {:ok, _} = Catalogue.update_product(%AccessRequest{
+    {:ok, _} = Catalogue.update_product(%ContextRequest{
       vas: %{ user_id: user.id, account_id: test_account.id },
       params: %{ "id" => product_50.id },
       fields: %{

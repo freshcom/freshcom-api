@@ -9,7 +9,7 @@ defmodule BlueJetWeb.EmailTemplateController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -26,7 +26,7 @@ defmodule BlueJetWeb.EmailTemplateController do
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "EmailTemplate" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
@@ -48,7 +48,7 @@ defmodule BlueJetWeb.EmailTemplateController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       preloads: assigns[:preloads],
@@ -64,7 +64,7 @@ defmodule BlueJetWeb.EmailTemplateController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "EmailTemplate" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: Params.to_attributes(data),
@@ -86,7 +86,7 @@ defmodule BlueJetWeb.EmailTemplateController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }

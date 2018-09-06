@@ -8,7 +8,7 @@ defmodule BlueJet.CrmTest do
 
   describe "list_customer/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -20,7 +20,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -49,7 +49,7 @@ defmodule BlueJet.CrmTest do
 
   describe "create_customer/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -61,7 +61,7 @@ defmodule BlueJet.CrmTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -85,7 +85,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -110,7 +110,7 @@ defmodule BlueJet.CrmTest do
 
   describe "get_customer/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -122,7 +122,7 @@ defmodule BlueJet.CrmTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -144,7 +144,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -165,7 +165,7 @@ defmodule BlueJet.CrmTest do
 
   describe "update_customer/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -179,7 +179,7 @@ defmodule BlueJet.CrmTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %Customer{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -209,7 +209,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -233,7 +233,7 @@ defmodule BlueJet.CrmTest do
 
   describe "delete_customer/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -245,7 +245,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -266,7 +266,7 @@ defmodule BlueJet.CrmTest do
 
   describe "list_point_transaction/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -280,7 +280,7 @@ defmodule BlueJet.CrmTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %Customer{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -310,7 +310,7 @@ defmodule BlueJet.CrmTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %Customer{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -361,7 +361,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -397,7 +397,7 @@ defmodule BlueJet.CrmTest do
 
   describe "create_point_transaction/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -410,7 +410,7 @@ defmodule BlueJet.CrmTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %Customer{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -441,7 +441,7 @@ defmodule BlueJet.CrmTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %Customer{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -478,7 +478,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -500,7 +500,7 @@ defmodule BlueJet.CrmTest do
 
   describe "get_point_transaction/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -511,7 +511,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -532,7 +532,7 @@ defmodule BlueJet.CrmTest do
 
   describe "update_point_transaction/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -543,7 +543,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -566,7 +566,7 @@ defmodule BlueJet.CrmTest do
 
   describe "delete_point_transaction/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -583,7 +583,7 @@ defmodule BlueJet.CrmTest do
         id: Ecto.UUID.generate(),
         point_account_id: Ecto.UUID.generate()
       }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -625,7 +625,7 @@ defmodule BlueJet.CrmTest do
         id: Ecto.UUID.generate(),
         point_account_id: Ecto.UUID.generate()
       }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -669,7 +669,7 @@ defmodule BlueJet.CrmTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

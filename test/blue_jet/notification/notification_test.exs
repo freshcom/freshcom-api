@@ -11,7 +11,7 @@ defmodule BlueJet.NotificationTest do
   #
   describe "list_trigger/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -21,7 +21,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -44,7 +44,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "create_trigger/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -54,7 +54,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -73,7 +73,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "get_trigger/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -86,7 +86,7 @@ defmodule BlueJet.NotificationTest do
     test "when request is valid" do
       trigger = %Trigger{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -106,7 +106,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "update_trigger/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -118,7 +118,7 @@ defmodule BlueJet.NotificationTest do
     test "request is valid" do
       trigger = %Trigger{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -140,7 +140,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "delete_trigger/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -152,7 +152,7 @@ defmodule BlueJet.NotificationTest do
     test "when request is valid" do
       trigger = %Trigger{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -175,7 +175,7 @@ defmodule BlueJet.NotificationTest do
   #
   describe "list_email/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -185,7 +185,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -208,7 +208,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "get_email/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -221,7 +221,7 @@ defmodule BlueJet.NotificationTest do
     test "when request is valid" do
       email = %Email{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -244,7 +244,7 @@ defmodule BlueJet.NotificationTest do
   #
   describe "list_email_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -254,7 +254,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -277,7 +277,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "create_email_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -287,7 +287,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -306,7 +306,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "get_email_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -318,7 +318,7 @@ defmodule BlueJet.NotificationTest do
     test "when request is valid" do
       email = %EmailTemplate{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -338,7 +338,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "update_email_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -350,7 +350,7 @@ defmodule BlueJet.NotificationTest do
     test "request is valid" do
       email_template = %EmailTemplate{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -372,7 +372,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "delete_email_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -384,7 +384,7 @@ defmodule BlueJet.NotificationTest do
     test "when request is valid" do
       email_template = %EmailTemplate{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -407,7 +407,7 @@ defmodule BlueJet.NotificationTest do
   #
   describe "list_sms/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -417,7 +417,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -440,7 +440,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "get_sms/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -452,7 +452,7 @@ defmodule BlueJet.NotificationTest do
     test "request is valid" do
       sms = %Sms{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -475,7 +475,7 @@ defmodule BlueJet.NotificationTest do
   #
   describe "list_sms_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -485,7 +485,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -508,7 +508,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "create_sms_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -518,7 +518,7 @@ defmodule BlueJet.NotificationTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator"
@@ -537,7 +537,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "get_sms_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -548,7 +548,7 @@ defmodule BlueJet.NotificationTest do
 
     test "when request is valid" do
       sms_template = %SmsTemplate{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -568,7 +568,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "update_sms_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -580,7 +580,7 @@ defmodule BlueJet.NotificationTest do
     test "request is valid" do
       sms_template = %EmailTemplate{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -602,7 +602,7 @@ defmodule BlueJet.NotificationTest do
 
   describe "delete_sms_template/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -614,7 +614,7 @@ defmodule BlueJet.NotificationTest do
     test "request is valid" do
       sms_template = %SmsTemplate{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",

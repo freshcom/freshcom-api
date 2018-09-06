@@ -9,7 +9,7 @@ defmodule BlueJetWeb.ReturnPackageController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, _) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       filter: assigns[:filter],
       pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },

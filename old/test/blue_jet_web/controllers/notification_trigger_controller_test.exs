@@ -3,7 +3,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.AccessRequest
+  alias BlueJet.ContextRequest
   alias BlueJet.Notification
 
   setup do
@@ -76,7 +76,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
 
     test "with a valid request", %{ conn: conn } do
       %{ user: user, account: account } = create_global_identity("administrator")
-      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
+      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%ContextRequest{
         account: account,
         fields: %{
           "name" => "Send password reset email",
@@ -114,7 +114,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
 
   #   test "with a valid request", %{ conn: conn } do
   #     %{ user: user, account: account } = create_global_identity("administrator")
-  #     {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
+  #     {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%ContextRequest{
   #       account: account,
   #       fields: %{
   #         "name" => "Email Verification",
@@ -150,7 +150,7 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
 
     test "with a valid request", %{ conn: conn } do
       %{ user: user, account: account } = create_global_identity("administrator")
-      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%AccessRequest{
+      {:ok, %{ data: notification_trigger }} = Notification.do_create_notification_trigger(%ContextRequest{
         account: account,
         fields: %{
           "name" => "Send password reset email",

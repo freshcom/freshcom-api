@@ -8,7 +8,7 @@ defmodule BlueJet.Balance do
     with {:ok, args} <- Policy.authorize(request, "get_settings"),
          settings = %{} <- Service.get_settings(args[:opts])
     do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: settings }}
+      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: settings }}
     else
       nil -> {:error, :not_found}
 
@@ -20,10 +20,10 @@ defmodule BlueJet.Balance do
     with {:ok, args} <- Policy.authorize(request, "update_settings"),
          {:ok, settings} <- Service.update_settings(args[:fields], args[:opts])
     do
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: settings }}
+      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: settings }}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end

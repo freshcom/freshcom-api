@@ -11,7 +11,7 @@ defmodule BlueJet.FileStorageTest do
   #
   describe "list_file/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -21,7 +21,7 @@ defmodule BlueJet.FileStorageTest do
     end
 
     test "when role is guest and no file collection ID is provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -32,7 +32,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when role is guest and file collection ID is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -68,7 +68,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -100,7 +100,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "create_file/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -112,7 +112,7 @@ defmodule BlueJet.FileStorageTest do
     test "when request is valid" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "administrator",
@@ -135,7 +135,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "get_file/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -146,7 +146,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -168,7 +168,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "update_file/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -179,7 +179,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -204,7 +204,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "delete_file/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -217,7 +217,7 @@ defmodule BlueJet.FileStorageTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       file = %File{ user_id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -240,7 +240,7 @@ defmodule BlueJet.FileStorageTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       file = %File{ user_id: user.id }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -270,7 +270,7 @@ defmodule BlueJet.FileStorageTest do
     test "when request is valid" do
       account = %Account{}
       file = %File{ user_id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{ id: Ecto.UUID.generate() },
         role: "administrator",
@@ -294,7 +294,7 @@ defmodule BlueJet.FileStorageTest do
   #
   describe "list_file_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -304,7 +304,7 @@ defmodule BlueJet.FileStorageTest do
     end
 
     test "when role is guest and no owner is provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -315,7 +315,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when role is guest and owner is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -354,7 +354,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -383,7 +383,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "create_file_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -394,7 +394,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -417,7 +417,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "get_file_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -428,7 +428,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -450,7 +450,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "update_file_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -461,7 +461,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -486,7 +486,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "delete_file_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -497,7 +497,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -521,7 +521,7 @@ defmodule BlueJet.FileStorageTest do
   #
   describe "create_file_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -532,7 +532,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -556,7 +556,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "update_file_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -567,7 +567,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -592,7 +592,7 @@ defmodule BlueJet.FileStorageTest do
 
   describe "delete_file_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -603,7 +603,7 @@ defmodule BlueJet.FileStorageTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

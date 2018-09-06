@@ -3,7 +3,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.AccessRequest
+  alias BlueJet.ContextRequest
   alias BlueJet.Notification
 
   setup do
@@ -74,7 +74,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
 
     test "with a valid request", %{ conn: conn } do
       %{ user: user, account: account } = create_global_identity("administrator")
-      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%AccessRequest{
+      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,
         fields: %{
           "name" => "Email Verification",
@@ -110,7 +110,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
 
     test "with a valid request", %{ conn: conn } do
       %{ user: user, account: account } = create_global_identity("administrator")
-      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%AccessRequest{
+      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,
         fields: %{
           "name" => "Email Verification",
@@ -146,7 +146,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
 
     test "with a valid request", %{ conn: conn } do
       %{ user: user, account: account } = create_global_identity("administrator")
-      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%AccessRequest{
+      {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,
         fields: %{
           "name" => "Email Verification",

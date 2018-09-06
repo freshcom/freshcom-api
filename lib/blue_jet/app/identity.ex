@@ -6,9 +6,9 @@ defmodule BlueJet.Identity do
 
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
-      {:ok, %AccessResponse{ data: token }}
+      {:ok, %ContextResponse{ data: token }}
     else
-      {:error, errors} -> {:error, %AccessResponse{ errors: errors }}
+      {:error, errors} -> {:error, %ContextResponse{ errors: errors }}
     end
   end
 
@@ -30,7 +30,7 @@ defmodule BlueJet.Identity do
 
       account ->
         account = Translation.translate(account, args[:locale], args[:default_locale])
-        {:ok, %AccessResponse{ data: account, meta: %{ locale: args[:locale] } }}
+        {:ok, %ContextResponse{ data: account, meta: %{ locale: args[:locale] } }}
     end
   end
 
@@ -45,10 +45,10 @@ defmodule BlueJet.Identity do
   def do_update_account(args) do
     with {:ok, account} <- Service.update_account(args[:opts][:account], args[:fields], args[:opts]) do
       account = Translation.translate(account, args[:locale], args[:default_locale])
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: account }}
+      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: account }}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -67,10 +67,10 @@ defmodule BlueJet.Identity do
 
     with {:ok, account} <- Service.reset_account(account) do
       account = Translation.translate(account, args[:locale], args[:default_locale])
-      {:ok, %AccessResponse{ meta: %{ locale: args[:locale] }, data: account }}
+      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: account }}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -104,10 +104,10 @@ defmodule BlueJet.Identity do
     with {:ok, args} <- Policy.authorize(request, "create_password_reset_token"),
          {:ok, user} <- Service.create_password_reset_token(args[:fields], args[:opts])
     do
-      {:ok, %AccessResponse{data: user}}
+      {:ok, %ContextResponse{data: user}}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -120,10 +120,10 @@ defmodule BlueJet.Identity do
     with {:ok, args} <- Policy.authorize(request, "update_password"),
          {:ok, _} <- Service.update_password(args[:identifiers], args[:fields]["value"], args[:opts])
     do
-      {:ok, %AccessResponse{}}
+      {:ok, %ContextResponse{}}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -136,7 +136,7 @@ defmodule BlueJet.Identity do
     with {:ok, args} <- Policy.authorize(request, "get_refresh_token"),
          refresh_token = %{} <- Service.get_refresh_token(args[:opts])
     do
-      {:ok, %AccessResponse{ data: refresh_token }}
+      {:ok, %ContextResponse{ data: refresh_token }}
     else
       nil -> {:error, :not_found}
 

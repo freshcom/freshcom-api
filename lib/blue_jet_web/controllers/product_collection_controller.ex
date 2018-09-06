@@ -9,7 +9,7 @@ defmodule BlueJetWeb.ProductCollectionController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -31,7 +31,7 @@ defmodule BlueJetWeb.ProductCollectionController do
       Params.to_attributes(data)
       |> underscore_value(["kind", "name_sync"])
 
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: vas,
       fields: fields,
       preloads: assigns[:preloads]
@@ -53,7 +53,7 @@ defmodule BlueJetWeb.ProductCollectionController do
   end
 
   def show(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: params,
       preloads: assigns[:preloads],
@@ -69,7 +69,7 @@ defmodule BlueJetWeb.ProductCollectionController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "ProductCollection" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: Params.to_attributes(data),
@@ -91,7 +91,7 @@ defmodule BlueJetWeb.ProductCollectionController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => pc_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => pc_id }
     }

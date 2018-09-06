@@ -11,7 +11,7 @@ defmodule BlueJet.GoodsTest do
   #
   describe "list_stockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -22,7 +22,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -51,7 +51,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "create_stockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -63,7 +63,7 @@ defmodule BlueJet.GoodsTest do
     test "when request is valid" do
       account = %Account{}
       stockable = %Stockable{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -87,7 +87,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "get_stockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -98,7 +98,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -119,7 +119,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "update_stockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -130,7 +130,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -153,7 +153,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "delete_stockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -164,7 +164,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -188,7 +188,7 @@ defmodule BlueJet.GoodsTest do
   #
   describe "list_unlockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -199,7 +199,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -228,7 +228,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "create_unlockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -239,7 +239,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -262,7 +262,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "get_unlockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -273,7 +273,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -294,7 +294,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "update_unlockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -305,7 +305,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -328,7 +328,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "delete_unlockable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -339,7 +339,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -363,7 +363,7 @@ defmodule BlueJet.GoodsTest do
   #
   describe "list_depositable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -374,7 +374,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -403,7 +403,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "create_depositable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -414,7 +414,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -437,7 +437,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "get_depositable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -448,7 +448,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -469,7 +469,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "update_depositable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -480,7 +480,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -503,7 +503,7 @@ defmodule BlueJet.GoodsTest do
 
   describe "delete_depositable/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -514,7 +514,7 @@ defmodule BlueJet.GoodsTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

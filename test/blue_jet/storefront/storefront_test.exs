@@ -12,7 +12,7 @@ defmodule BlueJet.StorefrontTest do
   #
   describe "list_order/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest"
@@ -25,7 +25,7 @@ defmodule BlueJet.StorefrontTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer"
@@ -68,7 +68,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -97,7 +97,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "create_order/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -110,7 +110,7 @@ defmodule BlueJet.StorefrontTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer"
@@ -136,7 +136,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -159,7 +159,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "get_order/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -171,7 +171,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest" do
       order = %Order{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: nil,
         role: "guest",
@@ -194,7 +194,7 @@ defmodule BlueJet.StorefrontTest do
       order = %Order{ id: Ecto.UUID.generate() }
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: user,
         role: "customer",
@@ -222,7 +222,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is administrator" do
       order = %Order{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -242,7 +242,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "update_order/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -254,7 +254,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest" do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "guest",
@@ -279,7 +279,7 @@ defmodule BlueJet.StorefrontTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -309,7 +309,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -334,7 +334,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "delete_order/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -345,7 +345,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -369,7 +369,7 @@ defmodule BlueJet.StorefrontTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -398,7 +398,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -422,7 +422,7 @@ defmodule BlueJet.StorefrontTest do
   #
   describe "create_order_line_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -434,7 +434,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest and the order is not in cart status or the customer_id does not match" do
       account = %Account{}
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -461,7 +461,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -492,7 +492,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -528,7 +528,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -552,7 +552,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "update_order_line_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -564,7 +564,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest and the order is not in cart status or the customer_id does not match" do
       account = %Account{}
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -598,7 +598,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -639,7 +639,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -686,7 +686,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -711,7 +711,7 @@ defmodule BlueJet.StorefrontTest do
 
   describe "delete_order_line_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -724,7 +724,7 @@ defmodule BlueJet.StorefrontTest do
     test "when role is guest and the order is not in cart status or the customer_id does not match" do
       account = %Account{}
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -755,7 +755,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -793,7 +793,7 @@ defmodule BlueJet.StorefrontTest do
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
       order = %Order{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer",
@@ -836,7 +836,7 @@ defmodule BlueJet.StorefrontTest do
 
     test "when role is administrator" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

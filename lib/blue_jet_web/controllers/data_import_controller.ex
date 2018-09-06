@@ -7,18 +7,18 @@ defmodule BlueJetWeb.DataImportController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "DataImport" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
     }
 
     case DataTrading.create_data_import(request) do
-      {:ok, %AccessResponse{ data: data_import }} ->
+      {:ok, %ContextResponse{ data: data_import }} ->
         conn
         |> put_status(:created)
         |> render("show.json-api", data: data_import, opts: [include: conn.query_params["include"]])
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))

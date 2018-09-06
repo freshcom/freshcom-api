@@ -14,8 +14,6 @@ defmodule BlueJetWeb.ConnCase do
   """
 
   use ExUnit.CaseTemplate
-  alias BlueJet.Identity
-  alias BlueJet.AccessRequest
 
   using do
     quote do
@@ -32,7 +30,7 @@ defmodule BlueJetWeb.ConnCase do
       import Ecto.Query
 
       alias BlueJet.Repo
-      alias BlueJet.AccessRequest
+      alias BlueJet.ContextRequest
       alias BlueJet.Identity
     end
   end

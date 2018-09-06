@@ -3,7 +3,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.AccessRequest
+  alias BlueJet.ContextRequest
   alias BlueJet.Notification
 
   setup do

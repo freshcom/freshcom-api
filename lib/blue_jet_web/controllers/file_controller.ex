@@ -9,7 +9,7 @@ defmodule BlueJetWeb.FileController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       params: %{ account_id: params["account_id"] },
@@ -19,13 +19,13 @@ defmodule BlueJetWeb.FileController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: stockables, meta: meta }} = FileStorage.list_file(request)
+    {:ok, %ContextResponse{ data: stockables, meta: meta }} = FileStorage.list_file(request)
 
     render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "File" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
@@ -47,7 +47,7 @@ defmodule BlueJetWeb.FileController do
   end
 
   def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => ef_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => ef_id },
       preloads: assigns[:preloads],
@@ -63,7 +63,7 @@ defmodule BlueJetWeb.FileController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => ef_id, "data" => data = %{ "type" => "File" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => ef_id },
       fields: Params.to_attributes(data),
@@ -72,10 +72,10 @@ defmodule BlueJetWeb.FileController do
     }
 
     case FileStorage.update_file(request) do
-      {:ok, %AccessResponse{ data: file, meta: meta }} ->
+      {:ok, %ContextResponse{ data: file, meta: meta }} ->
         render(conn, "show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -85,7 +85,7 @@ defmodule BlueJetWeb.FileController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => ef_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => ef_id }
     }

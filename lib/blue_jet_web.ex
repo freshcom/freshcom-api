@@ -35,25 +35,14 @@ defmodule BlueJetWeb do
   def controller do
     quote do
       use Phoenix.Controller, namespace: BlueJetWeb
+
       import Plug.Conn
       import BlueJetWeb.Router.Helpers
       import BlueJetWeb.Gettext
       ########
 
-      alias BlueJet.Repo
-      alias BlueJet.Translation
-
-      import BlueJetWeb.Controller.Helpers
-      alias BlueJet.AccessRequest
-      alias BlueJet.AccessResponse
-      # def paginate(query, %{ number: number, size: size }) do
-      #   limit = size
-      #   offset = size * (number - 1)
-
-      #   query
-      #   |> limit(^limit)
-      #   |> offset(^offset)
-      # end
+      import BlueJetWeb.Controller
+      alias BlueJet.{ContextRequest, ContextResponse}
     end
   end
 

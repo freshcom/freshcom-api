@@ -9,7 +9,7 @@ defmodule BlueJetWeb.PriceController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "product_id" => params["product_id"] },
       search: params["search"],
@@ -28,7 +28,7 @@ defmodule BlueJetWeb.PriceController do
   end
 
   def create(conn = %{ assigns: assigns }, %{ "product_id" => product_id, "data" => data = %{ "type" => "Price" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "product_id" => product_id },
       fields: Params.to_attributes(data),
@@ -51,7 +51,7 @@ defmodule BlueJetWeb.PriceController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       preloads: assigns[:preloads],
@@ -67,7 +67,7 @@ defmodule BlueJetWeb.PriceController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Price" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: Params.to_attributes(data),
@@ -89,7 +89,7 @@ defmodule BlueJetWeb.PriceController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }

@@ -9,7 +9,7 @@ defmodule BlueJetWeb.BalanceSettingsController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def show(conn = %{ assigns: assigns }, _) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -21,7 +21,7 @@ defmodule BlueJetWeb.BalanceSettingsController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "BalanceSettings" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads],

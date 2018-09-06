@@ -7,7 +7,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "collection_id" => params["product_collection_id"] },
       filter: assigns[:filter],
@@ -16,13 +16,13 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: product_collection_memberships, meta: meta }} = Catalogue.list_product_collection_membership(request)
+    {:ok, %ContextResponse{ data: product_collection_memberships, meta: meta }} = Catalogue.list_product_collection_membership(request)
 
     render(conn, "index.json-api", data: product_collection_memberships, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns }, %{ "product_collection_id" => pc_id, "data" => data = %{ "type" => "ProductCollectionMembership" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "collection_id" => pc_id },
       fields: Params.to_attributes(data),
@@ -45,14 +45,14 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   end
 
   # def show(conn = %{ assigns: assigns = %{ vas: vas } }, %{ "id" => id }) do
-  #   request = %AccessRequest{
+  #   request = %ContextRequest{
   #     vas: assigns[:vas],
   #     params: %{ id: id },
   #     preloads: assigns[:preloads],
   #     locale: assigns[:locale]
   #   }
 
-  #   {:ok, %AccessResponse{ data: product_collection_membership }} = Catalogue.get_product_collection_membership(request)
+  #   {:ok, %ContextResponse{ data: product_collection_membership }} = Catalogue.get_product_collection_membership(request)
 
   #   render(conn, "show.json-api", data: product_collection_membership, opts: [include: conn.query_params["include"]])
   # end
@@ -62,7 +62,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   #     Params.to_attributes(data)
   #     |> underscore_value(["kind", "name_sync"])
 
-  #   request = %AccessRequest{
+  #   request = %ContextRequest{
   #     vas: assigns[:vas],
   #     params: %{ id: id },
   #     fields: fields,
@@ -71,9 +71,9 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   #   }
 
   #   case Catalogue.update_product_collection_membership(request) do
-  #     {:ok, %AccessResponse{ data: product_collection_membership }} ->
+  #     {:ok, %ContextResponse{ data: product_collection_membership }} ->
   #       render(conn, "show.json-api", data: product_collection_membership, opts: [include: conn.query_params["include"]])
-  #     {:error, %AccessResponse{ errors: errors }} ->
+  #     {:error, %ContextResponse{ errors: errors }} ->
   #       conn
   #       |> put_status(:unprocessable_entity)
   #       |> render(:errors, data: extract_errors(errors))
@@ -81,7 +81,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipController do
   # end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }

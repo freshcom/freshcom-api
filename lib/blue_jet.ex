@@ -2,7 +2,7 @@ defmodule BlueJet do
   def context do
     quote do
       import BlueJet.Context.Default
-      alias BlueJet.{AccessRequest, AccessResponse, Translation}
+      alias BlueJet.{ContextRequest, ContextResponse, Translation}
     end
   end
 
@@ -50,7 +50,7 @@ defmodule BlueJet do
     quote do
       import BlueJet.Proxy.Option
       use BlueJet.Proxy.Common
-      alias BlueJet.AccessRequest
+      alias BlueJet.ContextRequest
     end
   end
 

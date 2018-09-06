@@ -11,7 +11,7 @@ defmodule BlueJet.CatalogueTest do
   #
   describe "list_product/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -23,7 +23,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest"
@@ -59,7 +59,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "create_product/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -71,7 +71,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -96,7 +96,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "get_product/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -108,7 +108,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: nil,
         role: "guest",
@@ -130,7 +130,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "update_product/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -142,7 +142,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -167,7 +167,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "delete_product/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -179,7 +179,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -203,7 +203,7 @@ defmodule BlueJet.CatalogueTest do
   #
   describe "list_product_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -215,7 +215,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request has role guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -251,7 +251,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "create_product_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -263,7 +263,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = Repo.insert!(%Account{})
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -286,7 +286,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "get_product_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "anonymous"
@@ -298,7 +298,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -319,7 +319,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "update_product_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -331,7 +331,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -354,7 +354,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "delete_product_collection/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -366,7 +366,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -390,7 +390,7 @@ defmodule BlueJet.CatalogueTest do
   #
   describe "list_product_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -402,7 +402,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when role is guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -434,7 +434,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -466,7 +466,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "create_product_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -478,7 +478,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -501,7 +501,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "delete_product_collection_membership/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -513,7 +513,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -537,7 +537,7 @@ defmodule BlueJet.CatalogueTest do
   #
   describe "list_price/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -549,7 +549,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request has role customer" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -585,7 +585,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "create_price/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -597,7 +597,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -624,7 +624,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "get_price/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: nil,
         user: nil,
         role: "anonymous"
@@ -636,7 +636,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request has role guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "guest",
@@ -658,7 +658,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "update_price/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -670,7 +670,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request has role guest" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -693,7 +693,7 @@ defmodule BlueJet.CatalogueTest do
 
   describe "delete_price/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -705,7 +705,7 @@ defmodule BlueJet.CatalogueTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

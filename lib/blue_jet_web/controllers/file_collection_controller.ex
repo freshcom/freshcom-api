@@ -9,7 +9,7 @@ defmodule BlueJetWeb.FileCollectionController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -18,13 +18,13 @@ defmodule BlueJetWeb.FileCollectionController do
       locale: assigns[:locale]
     }
 
-    {:ok, %AccessResponse{ data: file_collections, meta: meta }} = FileStorage.list_file_collection(request)
+    {:ok, %ContextResponse{ data: file_collections, meta: meta }} = FileStorage.list_file_collection(request)
 
     render(conn, "index.json-api", data: file_collections, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "FileCollection" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
@@ -36,7 +36,7 @@ defmodule BlueJetWeb.FileCollectionController do
         |> put_status(:created)
         |> render("show.json-api", data: fc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -46,7 +46,7 @@ defmodule BlueJetWeb.FileCollectionController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => fc_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => fc_id },
       preloads: assigns[:preloads],
@@ -54,7 +54,7 @@ defmodule BlueJetWeb.FileCollectionController do
     }
 
     case FileStorage.get_file_collection(request) do
-      {:ok, %AccessResponse{ data: fc, meta: meta }} ->
+      {:ok, %ContextResponse{ data: fc, meta: meta }} ->
         render(conn, "show.json-api", data: fc, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
@@ -62,7 +62,7 @@ defmodule BlueJetWeb.FileCollectionController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => fc_id, "data" => data = %{ "type" => "FileCollection" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => fc_id },
       fields: Params.to_attributes(data),
@@ -71,10 +71,10 @@ defmodule BlueJetWeb.FileCollectionController do
     }
 
     case FileStorage.update_file_collection(request) do
-      {:ok, %AccessResponse{ data: fc }} ->
+      {:ok, %ContextResponse{ data: fc }} ->
         render(conn, "show.json-api", data: fc, opts: [include: conn.query_params["include"]])
 
-      {:error, %AccessResponse{ errors: errors }} ->
+      {:error, %ContextResponse{ errors: errors }} ->
         conn
         |> put_status(:unprocessable_entity)
         |> render(:errors, data: extract_errors(errors))
@@ -84,7 +84,7 @@ defmodule BlueJetWeb.FileCollectionController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => fc_id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => fc_id }
     }

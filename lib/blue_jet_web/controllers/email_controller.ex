@@ -9,7 +9,7 @@ defmodule BlueJetWeb.EmailController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -26,7 +26,7 @@ defmodule BlueJetWeb.EmailController do
   end
 
   def show(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       preloads: assigns[:preloads],

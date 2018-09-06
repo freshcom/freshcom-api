@@ -9,7 +9,7 @@ defmodule BlueJetWeb.CustomerController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def index(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       search: params["search"],
       filter: assigns[:filter],
@@ -19,7 +19,7 @@ defmodule BlueJetWeb.CustomerController do
     }
 
     case Crm.list_customer(request) do
-      {:ok, %AccessResponse{ data: customers, meta: meta }} ->
+      {:ok, %ContextResponse{ data: customers, meta: meta }} ->
         render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
 
       other -> other
@@ -27,7 +27,7 @@ defmodule BlueJetWeb.CustomerController do
   end
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Customer" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
@@ -49,7 +49,7 @@ defmodule BlueJetWeb.CustomerController do
   end
 
   def show(conn = %{ assigns: assigns }, params) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: params,
       preloads: assigns[:preloads],
@@ -65,7 +65,7 @@ defmodule BlueJetWeb.CustomerController do
   end
 
   def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Customer" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id },
       fields: Params.to_attributes(data),
@@ -87,7 +87,7 @@ defmodule BlueJetWeb.CustomerController do
   end
 
   def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       params: %{ "id" => id }
     }

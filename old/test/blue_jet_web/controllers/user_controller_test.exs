@@ -4,7 +4,7 @@ defmodule BlueJetWeb.UserControllerTest do
   import BlueJet.Identity.TestHelper
 
   setup do
-    # {:ok, %User{ default_account_id: account1_id }} = Identity.create_user(%AccessRequest{
+    # {:ok, %User{ default_account_id: account1_id }} = Identity.create_user(%ContextRequest{
     #   fields: %{
     #     "first_name" => Faker.Name.first_name(),
     #     "last_name" => Faker.Name.last_name(),

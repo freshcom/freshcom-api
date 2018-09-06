@@ -7,7 +7,7 @@ defmodule BlueJetWeb.RefreshTokenController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def show(conn = %{ assigns: assigns }, _) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       preloads: assigns[:preloads],
       locale: assigns[:locale]

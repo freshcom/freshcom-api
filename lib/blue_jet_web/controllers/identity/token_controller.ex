@@ -7,12 +7,12 @@ defmodule BlueJetWeb.TokenController do
     otp = Enum.at(get_req_header(conn, "x-freshcom-otp"), 0)
     params = Map.put(params, "otp", otp)
 
-    with {:ok, %{ data: token }} <- Identity.create_token(%AccessRequest{ fields: params }) do
+    with {:ok, %{data: token}} <- Identity.create_token(%ContextRequest{fields: params}) do
       conn
       |> put_status(:ok)
       |> json(token)
     else
-      {:error, %{ errors: errors }} ->
+      {:error, %{errors: errors}} ->
         conn = if errors.error == :invalid_otp do
           put_resp_header(conn, "X-Freshcom-OTP", "required; auth_method=tfa_sms")
         else

@@ -12,13 +12,13 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
 
     alias BlueJet.{Identity, Goods, Catalogue, Crm}
     alias BlueJet.Identity.Account
-    alias BlueJet.AccessRequest
+    alias BlueJet.ContextRequest
 
     Application.ensure_all_started(:blue_jet)
     # Application.ensure_all_started(:bamboo)
 
     Repo.transaction(fn ->
-      {:ok, %{ data: user }} = Identity.create_user(%AccessRequest{
+      {:ok, %{ data: user }} = Identity.create_user(%ContextRequest{
         fields: %{
           "name" => "Test User",
           "username" => "test@example.com",
@@ -28,7 +28,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Identity.create_user(%AccessRequest{
+      {:ok, _} = Identity.create_user(%ContextRequest{
         fields: %{
           "name" => "Managed User",
           "username" => "managed@example.com",
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Customer
       #
-      {:ok, _} = Crm.create_customer(%AccessRequest{
+      {:ok, _} = Crm.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "guest",
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       })
 
       email = Faker.Internet.safe_email()
-      {:ok, _} = Crm.create_customer(%AccessRequest{
+      {:ok, _} = Crm.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "registered",
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       })
 
       email = Faker.Internet.safe_email()
-      {:ok, _} = Crm.create_customer(%AccessRequest{
+      {:ok, _} = Crm.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "registered",
@@ -83,7 +83,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: $50 Gift Card
       #
-      {:ok, %{ data: depositable_50 }} = Goods.create_depositable(%AccessRequest{
+      {:ok, %{ data: depositable_50 }} = Goods.create_depositable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "active",
@@ -94,7 +94,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_depositable(%AccessRequest{
+      {:ok, _} = Goods.update_depositable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => depositable_50.id },
         fields: %{
@@ -103,7 +103,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_gift_card_50 }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_gift_card_50 }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "GC50",
@@ -114,7 +114,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.create_price(%AccessRequest{
+      {:ok, _} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_gift_card_50.id },
         fields: %{
@@ -125,7 +125,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_gift_card_50.id },
         fields: %{
@@ -136,7 +136,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: $100 Gift Card
       #
-      {:ok, %{ data: depositable_100 }} = Goods.create_depositable(%AccessRequest{
+      {:ok, %{ data: depositable_100 }} = Goods.create_depositable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "active",
@@ -147,7 +147,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_depositable(%AccessRequest{
+      {:ok, _} = Goods.update_depositable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => depositable_100.id },
         fields: %{
@@ -156,7 +156,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_gift_card_100 }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_gift_card_100 }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "GC100",
@@ -167,7 +167,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_gift_card_100.id },
         fields: %{
@@ -178,7 +178,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -188,7 +188,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_gift_card_100.id },
         fields: %{
@@ -200,7 +200,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -210,7 +210,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_gift_card_100.id },
         fields: %{
@@ -218,7 +218,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: collection_gift_card }} = Catalogue.create_product_collection(%AccessRequest{
+      {:ok, %{ data: collection_gift_card }} = Catalogue.create_product_collection(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "active",
@@ -229,7 +229,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product_collection(%AccessRequest{
+      {:ok, _} = Catalogue.update_product_collection(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => collection_gift_card.id },
         fields: %{
@@ -238,7 +238,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.create_product_collection_membership(%AccessRequest{
+      {:ok, _} = Catalogue.create_product_collection_membership(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "collection_id" => collection_gift_card.id,
@@ -247,7 +247,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.create_product_collection_membership(%AccessRequest{
+      {:ok, _} = Catalogue.create_product_collection_membership(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "collection_id" => collection_gift_card.id,
@@ -259,7 +259,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Game
       #
-      {:ok, %{ data: unlockable_game }} = Goods.create_unlockable(%AccessRequest{
+      {:ok, %{ data: unlockable_game }} = Goods.create_unlockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "active",
@@ -268,7 +268,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_unlockable(%AccessRequest{
+      {:ok, _} = Goods.update_unlockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => unlockable_game.id },
         fields: %{
@@ -277,7 +277,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_game }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_game }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "AG001",
@@ -288,7 +288,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_game.id },
         fields: %{
@@ -299,7 +299,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -309,7 +309,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_game.id },
         fields: %{
@@ -320,7 +320,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -330,7 +330,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_game.id },
         fields: %{
@@ -341,7 +341,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Shirt
       #
-      {:ok, %{ data: stockable_shirt_s }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_shirt_s }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-S",
@@ -351,7 +351,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_shirt_s.id },
         fields: %{
@@ -361,7 +361,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: stockable_shirt_m }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_shirt_m }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-M",
@@ -371,7 +371,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_shirt_m.id },
         fields: %{
@@ -381,7 +381,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: stockable_shirt_l }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_shirt_l }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-L",
@@ -391,7 +391,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_shirt_l.id },
         fields: %{
@@ -401,7 +401,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_shirt }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_shirt }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT",
@@ -410,7 +410,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt.id },
         fields: %{
@@ -419,7 +419,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_shirt_s }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_shirt_s }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-S",
@@ -432,7 +432,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_s.id },
         fields: %{
@@ -441,7 +441,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_shirt_s.id },
         fields: %{
@@ -452,7 +452,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -462,7 +462,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_s.id },
         fields: %{
@@ -470,7 +470,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: product_shirt_m }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_shirt_m }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-M",
@@ -484,7 +484,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_m.id },
         fields: %{
@@ -493,7 +493,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_shirt_m.id },
         fields: %{
@@ -504,7 +504,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -514,7 +514,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_m.id },
         fields: %{
@@ -522,7 +522,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: product_shirt_l }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_shirt_l }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "MSHIRT-L",
@@ -535,7 +535,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_l.id },
         fields: %{
@@ -544,7 +544,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_shirt_l.id },
         fields: %{
@@ -555,7 +555,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -565,7 +565,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt_l.id },
         fields: %{
@@ -573,7 +573,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_shirt.id },
         fields: %{
@@ -584,7 +584,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Salmon
       #
-      {:ok, %{ data: stockable_salmon }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_salmon }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "SALMON",
@@ -594,7 +594,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_salmon.id },
         fields: %{
@@ -604,7 +604,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_salmon }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_salmon }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "SALMON",
@@ -614,7 +614,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_salmon.id },
         fields: %{
@@ -629,7 +629,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -640,7 +640,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_salmon.id },
         fields: %{
@@ -656,7 +656,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -667,7 +667,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_salmon.id },
         fields: %{
@@ -678,7 +678,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Fruit Combo
       #
-      {:ok, %{ data: stockable_apple }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_apple }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "APL",
@@ -688,7 +688,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_apple.id },
         fields: %{
@@ -698,7 +698,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: stockable_orange }} = Goods.create_stockable(%AccessRequest{
+      {:ok, %{ data: stockable_orange }} = Goods.create_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "ORG",
@@ -708,7 +708,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Goods.update_stockable(%AccessRequest{
+      {:ok, _} = Goods.update_stockable(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => stockable_orange.id },
         fields: %{
@@ -718,7 +718,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: product_fruit_combo }} = Catalogue.create_product(%AccessRequest{
+      {:ok, %{ data: product_fruit_combo }} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "FUTCOMBO",
@@ -727,7 +727,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_fruit_combo.id },
         fields: %{
@@ -736,7 +736,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, %{ data: price }} = Catalogue.create_price(%AccessRequest{
+      {:ok, %{ data: price }} = Catalogue.create_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "product_id" => product_fruit_combo.id },
         fields: %{
@@ -747,7 +747,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_price(%AccessRequest{
+      {:ok, _} = Catalogue.update_price(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => price.id },
         fields: %{
@@ -757,7 +757,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.create_product(%AccessRequest{
+      {:ok, _} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "APL",
@@ -771,7 +771,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.create_product(%AccessRequest{
+      {:ok, _} = Catalogue.create_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "code" => "ORG",
@@ -785,7 +785,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product(%AccessRequest{
+      {:ok, _} = Catalogue.update_product(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => product_fruit_combo.id },
         fields: %{
@@ -793,7 +793,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, %{ data: collection_food }} = Catalogue.create_product_collection(%AccessRequest{
+      {:ok, %{ data: collection_food }} = Catalogue.create_product_collection(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "active",
@@ -803,7 +803,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.update_product_collection(%AccessRequest{
+      {:ok, _} = Catalogue.update_product_collection(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         params: %{ "id" => collection_food.id },
         fields: %{
@@ -812,7 +812,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         locale: "zh-CN"
       })
 
-      {:ok, _} = Catalogue.create_product_collection_membership(%AccessRequest{
+      {:ok, _} = Catalogue.create_product_collection_membership(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "collection_id" => collection_food.id,
@@ -821,7 +821,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
         }
       })
 
-      {:ok, _} = Catalogue.create_product_collection_membership(%AccessRequest{
+      {:ok, _} = Catalogue.create_product_collection_membership(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "collection_id" => collection_food.id,

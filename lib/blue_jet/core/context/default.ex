@@ -1,5 +1,5 @@
 defmodule BlueJet.Context.Default do
-  alias BlueJet.{Translation, AccessResponse}
+  alias BlueJet.{Translation, ContextResponse}
 
   def list(type, request, module) do
     count_function = String.to_atom("count_" <> type)
@@ -17,7 +17,7 @@ defmodule BlueJet.Context.Default do
         apply(service_module, list_function, [fields, args[:opts]])
         |> Translation.translate(args[:locale], args[:default_locale])
 
-      response = %AccessResponse{
+      response = %ContextResponse{
         meta: %{
           locale: args[:locale],
           all_count: all_count,
@@ -40,7 +40,7 @@ defmodule BlueJet.Context.Default do
     with {:ok, args} <- policy_module.authorize(request, "create_" <> type),
          {:ok, resource} <- apply(service_module, create_function, [args[:fields], args[:opts]])
     do
-      response = %AccessResponse{
+      response = %ContextResponse{
         meta: %{ locale: args[:locale] },
         data: resource
       }
@@ -48,7 +48,7 @@ defmodule BlueJet.Context.Default do
       {:ok, response}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -64,7 +64,7 @@ defmodule BlueJet.Context.Default do
     do
       resource = Translation.translate(resource, args[:locale], args[:default_locale])
 
-      response = %AccessResponse{
+      response = %ContextResponse{
         meta: %{ locale: args[:locale] },
         data: resource
       }
@@ -87,7 +87,7 @@ defmodule BlueJet.Context.Default do
     do
       resource = Translation.translate(resource, args[:locale], args[:default_locale])
 
-      response = %AccessResponse{
+      response = %ContextResponse{
         meta: %{ locale: args[:locale] },
         data: resource
       }
@@ -95,7 +95,7 @@ defmodule BlueJet.Context.Default do
       {:ok, response}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end
@@ -109,10 +109,10 @@ defmodule BlueJet.Context.Default do
     with {:ok, args} <- policy_module.authorize(request, "delete_" <> type),
          {:ok, _} <- apply(service_module, delete_function, [args[:identifiers], args[:opts]])
     do
-      {:ok, %AccessResponse{}}
+      {:ok, %ContextResponse{}}
     else
       {:error, %{ errors: errors }} ->
-        {:error, %AccessResponse{ errors: errors }}
+        {:error, %ContextResponse{ errors: errors }}
 
       other -> other
     end

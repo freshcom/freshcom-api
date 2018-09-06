@@ -12,7 +12,7 @@ defmodule BlueJet.FulfillmentTest do
   #
   describe "list_fulfillment_package/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -22,7 +22,7 @@ defmodule BlueJet.FulfillmentTest do
     end
 
     test "when role is support specialist and no order ID or customer ID is provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "support_specialist"
@@ -33,7 +33,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when role is support specialist and order ID is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "support_specialist",
@@ -66,7 +66,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -95,7 +95,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "get_fulfillment_package/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -107,7 +107,7 @@ defmodule BlueJet.FulfillmentTest do
     test "when request is valid" do
       fulfillment_package = %FulfillmentPackage{ id: Ecto.UUID.generate() }
 
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -127,7 +127,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "delete_fulfillment_package/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -138,7 +138,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -162,7 +162,7 @@ defmodule BlueJet.FulfillmentTest do
   #
   describe "list_fulfillment_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -172,7 +172,7 @@ defmodule BlueJet.FulfillmentTest do
     end
 
     test "when role is customer but package ID is not provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -183,7 +183,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when role is customer and package ID is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "customer",
@@ -216,7 +216,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -245,7 +245,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "create_fulfillment_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -256,7 +256,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -279,7 +279,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "update_fulfillment_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -290,7 +290,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -318,7 +318,7 @@ defmodule BlueJet.FulfillmentTest do
   #
   describe "list_return_package/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -328,7 +328,7 @@ defmodule BlueJet.FulfillmentTest do
     end
 
     test "when role is support specialist and no order ID or customer ID is provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "support_specialist"
@@ -339,7 +339,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when role is support specialist and order ID is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "support_specialist",
@@ -372,7 +372,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -404,7 +404,7 @@ defmodule BlueJet.FulfillmentTest do
   #
   describe "create_return_item/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -415,7 +415,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -441,7 +441,7 @@ defmodule BlueJet.FulfillmentTest do
   #
   describe "list_unlock/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -454,7 +454,7 @@ defmodule BlueJet.FulfillmentTest do
       account = %Account{}
       user = %User{ id: Ecto.UUID.generate() }
       customer = %{ id: Ecto.UUID.generate() }
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: user,
         role: "customer"
@@ -492,7 +492,7 @@ defmodule BlueJet.FulfillmentTest do
     end
 
     test "when role is support specialist and customer ID is not provided" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "support_specialist"
@@ -503,7 +503,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when role is support specialist and customer ID is provided" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "support_specialist",
@@ -536,7 +536,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator"
@@ -565,7 +565,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "create_unlock/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -576,7 +576,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",
@@ -600,7 +600,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "get_unlock/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "guest"
@@ -610,7 +610,7 @@ defmodule BlueJet.FulfillmentTest do
     end
 
     test "when request is valid" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "administrator",
@@ -630,7 +630,7 @@ defmodule BlueJet.FulfillmentTest do
 
   describe "delete_unlock/1" do
     test "when role is not authorized" do
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: %Account{},
         user: %User{},
         role: "customer"
@@ -641,7 +641,7 @@ defmodule BlueJet.FulfillmentTest do
 
     test "when request is valid" do
       account = %Account{}
-      request = %AccessRequest{
+      request = %ContextRequest{
         account: account,
         user: %User{},
         role: "administrator",

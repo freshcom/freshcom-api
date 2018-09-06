@@ -9,7 +9,7 @@ defmodule BlueJetWeb.ReturnItemController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "ReturnItem" } }) do
-    request = %AccessRequest{
+    request = %ContextRequest{
       vas: assigns[:vas],
       fields: Params.to_attributes(data),
       preloads: assigns[:preloads]
