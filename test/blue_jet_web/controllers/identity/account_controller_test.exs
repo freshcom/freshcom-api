@@ -14,7 +14,7 @@ defmodule BlueJetWeb.AccountControllerTest do
 
   # Retrieve an account
   describe "GET /v1/account" do
-    test "without PAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/account")
 
       assert conn.status == 401
@@ -24,8 +24,10 @@ defmodule BlueJetWeb.AccountControllerTest do
       standard_user = create_standard_user()
       pat = get_pat(standard_user)
 
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = get(conn, "/v1/account")
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{pat}")
+        |> get("/v1/account")
 
       response = json_response(conn, 200)
       assert response["data"]["id"] == standard_user.default_account_id

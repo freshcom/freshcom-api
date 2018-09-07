@@ -37,8 +37,8 @@ defmodule BlueJetWeb do
       use Phoenix.Controller, namespace: BlueJetWeb
 
       import Plug.Conn
-      import BlueJetWeb.Router.Helpers
-      import BlueJetWeb.Gettext
+      # import BlueJetWeb.Router.Helpers
+      # import BlueJetWeb.Gettext
       ########
 
       import BlueJetWeb.Controller
