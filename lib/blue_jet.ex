@@ -1,7 +1,7 @@
 defmodule BlueJet do
   def context do
     quote do
-      import BlueJet.Context.Default
+      import BlueJet.Context
       alias BlueJet.{ContextRequest, ContextResponse, Translation}
     end
   end

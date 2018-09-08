@@ -7,9 +7,6 @@ defmodule BlueJetWeb.AccountController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn, _),
-    do: default(conn, :index, &Identity.list_account/1)
-
   def show(conn, _),
     do: default(conn, :show, &Identity.get_account/1)
 

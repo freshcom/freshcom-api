@@ -53,16 +53,34 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Account
   #
+  def get_account(%{id: id}) do
+    Repo.get(Account, id)
+    |> Account.put_test_account_id()
+  end
+
   def get_account(%{account_id: nil}), do: nil
   def get_account(%{account_id: account_id, account: nil}), do: get_account(account_id)
   def get_account(%{account: account}) when not is_nil(account), do: account
   def get_account(%{account_id: account_id}), do: get_account(account_id)
   def get_account(map) when is_map(map), do: nil
 
-  def get_account(id) do
-    Repo.get(Account, id)
-    |> Account.put_test_account_id()
+  def get_vad(vas) when map_size(vas) == 0, do: %{account: nil, user: nil}
+  def get_vad(%{account_id: nil}), do: %{account: nil, user: nil}
+
+  def get_vad(%{account_id: account_id, user_id: nil}) do
+    %{account: get_account(%{id: account_id}), user: nil}
   end
+
+  def get_vad(%{account_id: account_id, user_id: user_id}) do
+    account = get_account(%{id: account_id})
+    user = get_user(%{id: user_id}, %{account: account})
+
+    %{account: account, user: user}
+  end
+
+  def get_role(%{account: nil, user: nil}), do: "anonymous"
+  def get_role(%{account: account, user: nil}), do: "guest"
+  def get_role(%{user: user}), do: user.role
 
   defp get_account_id(opts) do
     cond do

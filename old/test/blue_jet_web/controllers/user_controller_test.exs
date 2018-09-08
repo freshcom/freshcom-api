@@ -4,17 +4,6 @@ defmodule BlueJetWeb.UserControllerTest do
   import BlueJet.Identity.TestHelper
 
   setup do
-    # {:ok, %User{ default_account_id: account1_id }} = Identity.create_user(%ContextRequest{
-    #   fields: %{
-    #     "first_name" => Faker.Name.first_name(),
-    #     "last_name" => Faker.Name.last_name(),
-    #     "email" => "test1@example.com",
-    #     "password" => "test1234",
-    #     "account_name" => Faker.Company.name()
-    #   }
-    # })
-    # {:ok, %{ access_token: uat1 }} = Identity.authenticate(%{ username: "test1@example.com", password: "test1234", scope: "type:user" })
-
     conn = build_conn()
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")

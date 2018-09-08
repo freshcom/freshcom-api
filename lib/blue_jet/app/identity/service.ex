@@ -3,6 +3,8 @@ defmodule BlueJet.Identity.Service do
 
   @callback get_vas_data(map) :: map
   @callback put_vas_data(map) :: map
+  @callback get_vad(map) :: map
+  @callback get_role(map) :: String.t()
 
   @callback get_account(map | String.t()) :: Account.t() | nil
   @callback create_account(map) :: {:ok, Account.t()} | {:error, any}
@@ -36,6 +38,8 @@ defmodule BlueJet.Identity.Service do
 
   defdelegate get_vas_data(map), to: @service
   defdelegate put_vas_data(map), to: @service
+  defdelegate get_vad(map), to: @service
+  defdelegate get_role(map), to: @service
 
   defdelegate get_account(id_or_struct), to: @service
   defdelegate create_account(fields), to: @service

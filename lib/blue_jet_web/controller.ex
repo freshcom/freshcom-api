@@ -3,20 +3,22 @@ defmodule BlueJetWeb.Controller do
   import Plug.Conn, only: [put_status: 2, send_resp: 3]
 
   alias JaSerializer.Params
+  alias BlueJet.{ListRequest, CreateRequest, GetRequest, UpdateRequest, DeleteRequest}
   alias BlueJet.{ContextRequest, ContextResponse}
 
   @type action :: :index | :create | :show | :update | :delete
+  @type request :: ListRequest.t() | CreateRequest.t() | GetRequest.t() | UpdateRequest.t() | DeleteRequest.t()
 
   @doc """
   Return a default context request according to the action.
   """
-  @spec build_context_request(Plug.Conn.t(), action, keyword) :: ContextRequest.t()
+  @spec build_context_request(Plug.Conn.t(), action, keyword) :: request
   def build_context_request(conn, action, opts \\ [])
 
   def build_context_request(%{assigns: assigns, params: params}, :index, opts) do
     filter = underscore_value(assigns[:filter], opts[:normalize] || [])
 
-    %ContextRequest{
+    %ListRequest{
       vas: assigns[:vas],
       params: Map.take(params, opts[:params] || []),
       search: params["search"],
@@ -33,7 +35,7 @@ defmodule BlueJetWeb.Controller do
       |> Params.to_attributes()
       |> underscore_value(opts[:normalize] || [])
 
-    %ContextRequest{
+    %CreateRequest{
       vas: assigns[:vas],
       fields: fields,
       preloads: assigns[:preloads]
@@ -41,9 +43,9 @@ defmodule BlueJetWeb.Controller do
   end
 
   def build_context_request(%{assigns: assigns, params: params}, :show, _) do
-    %ContextRequest{
+    %GetRequest{
       vas: assigns[:vas],
-      params: Map.take(params, ["id"]),
+      identifiers: %{id: params["id"]},
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
@@ -55,9 +57,9 @@ defmodule BlueJetWeb.Controller do
       |> Params.to_attributes()
       |> underscore_value(opts[:normalize] || [])
 
-    %ContextRequest{
+    %UpdateRequest{
       vas: assigns[:vas],
-      params: Map.take(params, ["id"]),
+      identifiers: %{id: params["id"]},
       fields: fields,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -65,9 +67,9 @@ defmodule BlueJetWeb.Controller do
   end
 
   def build_context_request(%{assigns: assigns, params: params}, :delete, _) do
-    %ContextRequest{
+    %DeleteRequest{
       vas: assigns[:vas],
-      params: Map.take(params, ["id"])
+      identifiers: %{id: params["id"]}
     }
   end
 
@@ -116,40 +118,40 @@ defmodule BlueJetWeb.Controller do
   Perform the default logic for given controller action.
   """
   @spec default(Plug.Conn.t(), action, fun) :: Plug.Conn.t() | {:error, any}
-  def default(conn, action, context_function, opts \\ [])
+  def default(conn, action, context_fun, opts \\ [])
 
-  def default(conn, :index, context_function, opts) do
+  def default(conn, :index, context_fun, opts) do
     conn
     |> build_context_request(:index, Keyword.take(opts, [:normalize, :params]))
-    |> context_function.()
+    |> context_fun.()
     |> send_http_response(conn, :index)
   end
 
-  def default(conn, :create, context_function, opts) do
+  def default(conn, :create, context_fun, opts) do
     conn
     |> build_context_request(:create, Keyword.take(opts, [:normalize]))
-    |> context_function.()
+    |> context_fun.()
     |> send_http_response(conn, :create, Keyword.take(opts, [:status]))
   end
 
-  def default(conn, :show, context_function, _) do
+  def default(conn, :show, context_fun, _) do
     conn
     |> build_context_request(:show)
-    |> context_function.()
+    |> context_fun.()
     |> send_http_response(conn, :show)
   end
 
-  def default(conn, :update, context_function, opts) do
+  def default(conn, :update, context_fun, opts) do
     conn
     |> build_context_request(:update, Keyword.take(opts, [:normalize]))
-    |> context_function.()
+    |> context_fun.()
     |> send_http_response(conn, :update, Keyword.take(opts, [:status]))
   end
 
-  def default(conn, :delete, context_function, _) do
+  def default(conn, :delete, context_fun, _) do
     conn
     |> build_context_request(:delete)
-    |> context_function.()
+    |> context_fun.()
     |> send_http_response(conn, :delete)
   end
 

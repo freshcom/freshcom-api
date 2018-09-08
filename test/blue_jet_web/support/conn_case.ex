@@ -31,6 +31,7 @@ defmodule BlueJetWeb.ConnCase do
 
       alias BlueJet.Repo
       alias BlueJet.ContextRequest
+      alias BlueJet.CreateRequest
       alias BlueJet.Identity
     end
   end

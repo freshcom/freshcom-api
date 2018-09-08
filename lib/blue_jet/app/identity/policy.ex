@@ -1,60 +1,75 @@
 defmodule BlueJet.Identity.Policy do
   import BlueJet.Policy.AuthorizedRequest
 
+  alias BlueJet.ContextRequest
   alias BlueJet.Identity.Service
+
+  # TODO: Fix this
+  def authorize(%{vas: vas, _role_: nil} = req, endpoint) do
+    vad = Service.get_vad(vas)
+    role = Service.get_role(vad)
+    default_locale = if vad[:account], do: vad[:account].default_locale, else: nil
+
+    req
+    |> Map.put(:_vad_, vad)
+    |> Map.put(:_role_, role)
+    |> Map.put(:_default_locale_, default_locale)
+    |> authorize(endpoint)
+  end
 
   #
   # MARK: Account
   #
-  def authorize(%{role: role}, "get_account") when role in ["anonymous"] do
+  def authorize(%{_role_: role}, :get_account) when role in ["anonymous"] do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role, account: account}, "get_account") when not is_nil(role) do
-    authoirzed_args = from_access_request(request, :get)
-    identifiers = Map.merge(authoirzed_args[:identifiers], %{id: account.id})
-    authoirzed_args = %{authoirzed_args | identifiers: identifiers}
-
-    {:ok, authoirzed_args}
+  def authorize(req, :get_account) do
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_account")
+  def authorize(%{_role_: role} = req, :update_account)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "reset_account")
+  def authorize(%{_role_: role} = req, :reset_account)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
   #
   # MARK: Account Membership
   #
-  def authorize(%{role: role, params: %{"target" => "user"}}, "list_account_membership") when role in ["anonymous", "guest", "customer"] do
+  def authorize(%{_role_: role, params: %{"target" => "user"}}, :list_account_membership)
+      when role in ["anonymous", "guest", "customer"] do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role, user: user, params: %{"target" => "user"}}, "list_account_membership") when not is_nil(role) do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_vad_: %{user: user}, params: %{"target" => "user"}} = req, :list_account_membership) do
+    req =
+      req
+      |> ContextRequest.put(:filter, :user_id, user.id)
+      |> ContextRequest.put(:_scope_, :user_id, user.id)
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    filter = Map.merge(authorized_args[:filter], %{user_id: user.id})
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: Map.take(filter, [:user_id])}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role, account: account}, "list_account_membership") when role in ["administrator"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role, _vad_: %{account: account}} = req, :list_account_membership) when role in ["administrator"] do
+    req =
+      req
+      |> ContextRequest.put(:filter, :account_id, account.id)
+      |> ContextRequest.put(:_scope_, :account_id, account.id)
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    filter = Map.merge(authorized_args[:filter], %{account_id: account.id})
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: Map.take(filter, [:account_id])}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_account_membership") when role in ["administrator"] do
-    {:ok, from_access_request(request, :update)}
+  def authorize(%{_role_: role} = req, :update_account_membership) when role in ["administrator"] do
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
   #
@@ -127,18 +142,14 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: User
   #
-  def authorize(request = %{role: "guest"}, "create_user") do
-    authorized_args = from_access_request(request, :create)
-
-    fields = Map.merge(authorized_args[:fields], %{"role" => "customer"})
-    authorized_args = %{authorized_args | fields: fields}
-
-    {:ok, authorized_args}
+  def authorize(%{_role_: "guest"} = req, :create_user) do
+    req = ContextRequest.put(req, :fields, "role", "customer")
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_user")
+  def authorize(%{_role_: role} = req,  :create_user)
       when role in ["anonymous", "developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    {:ok, req}
   end
 
   def authorize(%{role: role}, "get_user") when role in ["anonymous", "guest"] do
@@ -208,11 +219,11 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Other
   #
-  def authorize(request = %{role: nil}, endpoint) do
-    request
-    |> Service.put_vas_data()
-    |> authorize(endpoint)
-  end
+  # def authorize(request = %{role: nil}, endpoint) do
+  #   request
+  #   |> Service.put_vas_data()
+  #   |> authorize(endpoint)
+  # end
 
   def authorize(_, _) do
     {:error, :access_denied}

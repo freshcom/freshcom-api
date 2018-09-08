@@ -1,9 +1,9 @@
 defmodule BlueJet.Goods.TestHelper do
-  alias BlueJet.ContextRequest
+  alias BlueJet.CreateRequest
   alias BlueJet.Goods
 
   def create_stockable(user) do
-    {:ok, %{data: stockable}} = Goods.create_stockable(%ContextRequest{
+    {:ok, %{data: stockable}} = Goods.create_stockable(%CreateRequest{
       fields: %{
         "name" => Faker.Commerce.product_name(),
         "unit_of_measure" => "EA"

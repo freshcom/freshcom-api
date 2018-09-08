@@ -6,7 +6,7 @@ defmodule BlueJetWeb.DepositableControllerTest do
   alias BlueJet.Goods
 
   def create_depositable(user) do
-    {:ok, %{data: depositable}} = Goods.create_depositable(%ContextRequest{
+    {:ok, %{data: depositable}} = Goods.create_depositable(%CreateRequest{
       fields: %{
         "name" => Faker.Commerce.product_name(),
         "amount" => 5000,

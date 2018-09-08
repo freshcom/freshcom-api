@@ -1,6 +1,9 @@
 defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
+  @policy BlueJet.Catalogue.Policy
+  @service BlueJet.Catalogue.Service
+
   def list_product(req), do: list("product", req, __MODULE__)
   def create_product(req), do: create("product", req, __MODULE__)
   def get_product(req), do: get("product", req, __MODULE__)

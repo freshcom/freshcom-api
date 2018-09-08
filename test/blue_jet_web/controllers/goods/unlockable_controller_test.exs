@@ -6,7 +6,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   alias BlueJet.Goods
 
   def create_unlockable(user) do
-    {:ok, %{data: unlockable}} = Goods.create_unlockable(%ContextRequest{
+    {:ok, %{data: unlockable}} = Goods.create_unlockable(%CreateRequest{
       fields: %{
         "name" => Faker.Commerce.product_name()
       },

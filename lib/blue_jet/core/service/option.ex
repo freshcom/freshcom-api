@@ -13,10 +13,10 @@ defmodule BlueJet.Service.Option do
 
   def extract_preloads(opts, account \\ nil) do
     account = account || extract_account(opts)
-    preloads = opts[:preloads] || %{}
-    path = preloads[:path] || []
+    preload = opts[:preloads] || opts[:preload] || %{} # TODO: remove opts[:preloads]
+    path = preload[:path] || preload[:paths] || [] # TODO: remove preloads[:path]
 
-    opts = preloads[:opts] || %{}
+    opts = preload[:opts] || %{}
     opts = Map.put(opts, :account, account)
 
     %{ path: path, opts: opts }

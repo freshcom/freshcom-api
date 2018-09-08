@@ -4,6 +4,9 @@ defmodule BlueJet.Identity do
 
   alias BlueJet.Identity.{Authentication, Policy, Service}
 
+  @policy BlueJet.Identity.Policy
+  @service BlueJet.Identity.Service
+
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
       {:ok, %ContextResponse{ data: token }}
@@ -15,72 +18,57 @@ defmodule BlueJet.Identity do
   #
   # MARK: Account
   #
-  def get_account(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "get_account") do
-      do_get_account(authorized_args)
-    else
-      other -> other
-    end
+  def get_account(req) do
+    Policy.authorize(req, :get_account)
+    |> do_get_account()
   end
 
-  def do_get_account(args) do
-    case Service.get_account(args[:identifiers][:id]) do
-      nil ->
-        {:error, :not_found}
+  defp do_get_account({:ok, req}) do
+    account = Translation.translate(req._vad_.account, req.locale, req._default_locale_)
+    response = %ContextResponse{data: account, meta: %{locale: req.locale}}
 
-      account ->
-        account = Translation.translate(account, args[:locale], args[:default_locale])
-        {:ok, %ContextResponse{ data: account, meta: %{ locale: args[:locale] } }}
-    end
+    {:ok, response}
   end
 
-  def update_account(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "update_account") do
-      do_update_account(authorized_args)
-    else
-      other -> other
-    end
+  defp do_get_account(other), do: other
+
+  def update_account(req) do
+    Policy.authorize(req, :update_account)
+    |> do_update_account()
   end
 
-  def do_update_account(args) do
-    with {:ok, account} <- Service.update_account(args[:opts][:account], args[:fields], args[:opts]) do
-      account = Translation.translate(account, args[:locale], args[:default_locale])
-      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: account }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %ContextResponse{ errors: errors }}
+  defp do_update_account({:ok, req}) do
+    resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
 
-      other -> other
-    end
+    Service.update_account(req._vad_.account, req.fields, %{locale: req.locale})
+    |> to_response(:update, resp)
+    |> translate(req.locale, req._default_locale_)
+    |> to_result_tuple()
   end
 
-  def reset_account(request) do
-    with {:ok, authorized_args} <- Policy.authorize(request, "reset_account") do
-      do_reset_account(authorized_args)
-    else
-      other -> other
-    end
+  defp do_update_account(other), do: other
+
+  def reset_account(req) do
+    Policy.authorize(req, :reset_account)
+    |> do_reset_account()
   end
 
-  def do_reset_account(args) do
-    account = args[:opts][:account]
+  defp do_reset_account({:ok, req}) do
+    resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
 
-    with {:ok, account} <- Service.reset_account(account) do
-      account = Translation.translate(account, args[:locale], args[:default_locale])
-      {:ok, %ContextResponse{ meta: %{ locale: args[:locale] }, data: account }}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %ContextResponse{ errors: errors }}
-
-      other -> other
-    end
+    Service.reset_account(req._vad_.account)
+    |> to_response(:update, resp)
+    |> translate(req.locale, req._default_locale_)
+    |> to_result_tuple()
   end
+
+  defp do_reset_account(other), do: other
 
   #
   # MARK: Account Membership
   #
-  def list_account_membership(req), do: list("account_membership", req, __MODULE__)
-  def update_account_membership(req), do: update("account_membership", req, __MODULE__)
+  def list_account_membership(req), do: default(req, :list, :account_membership, @policy, @service)
+  def update_account_membership(req), do: default(req, :update, :account_membership, @policy, @service)
 
   #
   # MARK: Email Verification Token
@@ -147,7 +135,8 @@ defmodule BlueJet.Identity do
   #
   # MARK: User
   #
-  def create_user(req), do: create("user", req, __MODULE__)
+  def create_user(req), do: default(req, :create, :user, @policy, @service)
+  # def create_user(req), do: create("user", req, __MODULE__)
   def get_user(req), do: get("user", req, __MODULE__)
   def update_user(req), do: update("user", req, __MODULE__)
   def delete_user(req), do: delete("user", req, __MODULE__)

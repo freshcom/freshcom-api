@@ -35,7 +35,7 @@ defmodule BlueJetWeb.AccountControllerTest do
   end
 
   # Update an account
-  describe "PATCH /v1/user" do
+  describe "PATCH /v1/account" do
     test "without UAT", %{conn: conn} do
       conn = patch(conn, "/v1/account", %{
         "data" => %{
