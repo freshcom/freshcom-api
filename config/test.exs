@@ -25,6 +25,10 @@ config :blue_jet, BlueJet.GlobalMailer,
 config :blue_jet, BlueJet.AccountMailer,
   adapter: Bamboo.TestAdapter
 
+config :blue_jet, :event_bus, %{
+  "*" => [BlueJet.EventHandlerMock]
+}
+
 config :blue_jet, :identity, %{
   service: BlueJet.Identity.ServiceMock,
   listeners: [BlueJet.EventHandlerMock]

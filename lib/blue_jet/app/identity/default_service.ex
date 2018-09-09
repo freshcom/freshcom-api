@@ -59,9 +59,9 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def get_account(%{account_id: nil}), do: nil
-  def get_account(%{account_id: account_id, account: nil}), do: get_account(account_id)
+  def get_account(%{account_id: account_id, account: nil}), do: get_account(%{id: account_id})
   def get_account(%{account: account}) when not is_nil(account), do: account
-  def get_account(%{account_id: account_id}), do: get_account(account_id)
+  def get_account(%{account_id: account_id}), do: get_account(%{id: account_id})
   def get_account(map) when is_map(map), do: nil
 
   def get_vad(vas) when map_size(vas) == 0, do: %{account: nil, user: nil}
@@ -79,7 +79,7 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def get_role(%{account: nil, user: nil}), do: "anonymous"
-  def get_role(%{account: account, user: nil}), do: "guest"
+  def get_role(%{account: _, user: nil}), do: "guest"
   def get_role(%{user: user}), do: user.role
 
   defp get_account_id(opts) do
@@ -94,37 +94,48 @@ defmodule BlueJet.Identity.DefaultService do
     %{opts | account: get_account(opts)}
   end
 
+  @spec create_account(map) :: {:ok, Account.t()} | {:error, Changeset.t()}
   def create_account(fields) do
-    changeset =
-      %Account{mode: "live"}
-      |> Account.changeset(:insert, fields)
-
     statements =
       Multi.new()
-      |> Multi.insert(:account, changeset)
-      |> Multi.run(:test_account, fn %{account: account} ->
-        %Account{live_account_id: account.id, mode: "test"}
-        |> Account.changeset(:insert, fields)
-        |> Repo.insert()
-      end)
-      |> Multi.run(:prt_live, fn %{account: account} ->
-        prt_live = Repo.insert!(%RefreshToken{account_id: account.id})
-        {:ok, prt_live}
-      end)
-      |> Multi.run(:prt_test, fn %{test_account: test_account} ->
-        prt_test = Repo.insert!(%RefreshToken{account_id: test_account.id})
-        {:ok, prt_test}
-      end)
-      |> Multi.run(:after_account_create, fn %{account: account, test_account: test_account} ->
-        emit_event("identity.account.create.success", %{
-          account: account,
-          test_account: test_account
-        })
+      |> Multi.run(:account, fn(_) -> create_live_account(fields) end)
+      |> Multi.run(:test_account, fn(opts) -> create_test_account(fields, opts) end)
+      |> Multi.run(:dispatch_event, fn(data) ->
+        dispatch("identity:account.create.success", data)
       end)
 
     case Repo.transaction(statements) do
       {:ok, %{account: account, test_account: test_account}} ->
         account = %{account | test_account_id: test_account.id, test_account: test_account}
+        {:ok, account}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  defp create_live_account(fields) do
+    %Account{mode: "live"}
+    |> do_create_account(fields)
+  end
+
+  defp create_test_account(fields, opts) do
+    %Account{live_account_id: opts.account.id, mode: "test"}
+    |> do_create_account(fields)
+  end
+
+  defp do_create_account(account, fields) do
+    changeset = Account.changeset(account, :insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:account, changeset)
+      |> Multi.run(:prt, fn(%{account: account}) ->
+        {:ok, Repo.insert!(%RefreshToken{account_id: account.id})}
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{account: account}} ->
         {:ok, account}
 
       {:error, _, changeset, _} ->

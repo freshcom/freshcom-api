@@ -36,18 +36,19 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "create_account/1" do
+    @tag :focus
     test "when given fields are invalid" do
       {:error, changeset} = DefaultService.create_account(%{})
 
       assert changeset.valid? == false
     end
 
+    @tag :focus
     test "when fields are valid" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.account.create.success"
-          assert data[:account]
-          assert data[:test_account]
+          assert event_name == "identity:account.create.success"
+          assert Map.keys(data) == [:account, :test_account]
 
           {:ok, nil}
          end)

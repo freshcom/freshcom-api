@@ -17,6 +17,7 @@ defmodule BlueJet do
     quote do
       import BlueJet.Service.{Option, Preload, Helper, Default}
       import BlueJet.Query
+      import BlueJet.EventBus
       alias BlueJet.Repo
     end
   end
