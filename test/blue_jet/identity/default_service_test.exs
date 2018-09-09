@@ -36,14 +36,12 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "create_account/1" do
-    @tag :focus
-    test "when given fields are invalid" do
+    test "when fields are invalid" do
       {:error, changeset} = DefaultService.create_account(%{})
 
       assert changeset.valid? == false
     end
 
-    @tag :focus
     test "when fields are valid" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
@@ -53,7 +51,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, account} = DefaultService.create_account(%{ "name" => Faker.Company.name() })
+      {:ok, account} = DefaultService.create_account(%{"name" => Faker.Company.name()})
       test_account = account.test_account
 
       assert account.mode == "live"
@@ -127,7 +125,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     })
     EventHandlerMock
     |> expect(:handle_event, fn(event_name, _) ->
-        assert event_name == "identity.account.reset.success"
+        assert event_name == "identity:account.reset.success"
         {:ok, nil}
        end)
 

@@ -84,37 +84,18 @@ defmodule BlueJet.Identity.Account do
   defp castable_fields(:insert), do: writable_fields()
   defp castable_fields(:update), do: writable_fields() -- [:default_locale]
 
-  def sync_to_test_account(account = %{mode: "live"}, changeset = %{action: :update}) do
-    account = Repo.preload(account, :test_account)
-
+  @spec sync_to_test_account(Account.t(), Changeset.t()) :: {:ok, Account.t()}
+  def sync_to_test_account(%__MODULE__{mode: "live"} = account, %{action: :update} = changeset) do
     test_account =
-      change(account.test_account, changeset.changes)
+      __MODULE__
+      |> Repo.get_by(live_account_id: account.id)
+      |> change(changeset.changes)
       |> Repo.update!()
 
-    account = %{account | test_account: test_account}
-
-    {:ok, account}
+    {:ok, %{account | test_account: test_account, test_account_id: test_account.id}}
   end
 
   def sync_to_test_account(account), do: {:ok, account}
-
-  def reset(account = %{mode: "test"}) do
-    AccountMembership.Query.default()
-    |> for_account(account.id)
-    |> Repo.delete_all()
-
-    User.Query.default()
-    |> for_account(account.id)
-    |> Repo.delete_all()
-
-    PhoneVerificationCode.Query.default()
-    |> for_account(account.id)
-    |> Repo.delete_all()
-
-    :ok
-  end
-
-  def reset(_), do: :ok
 
   @doc """
   Return the account with `test_account_id` fields added. If given account does not

@@ -99,14 +99,12 @@ defmodule BlueJet.Identity.DefaultService do
     statements =
       Multi.new()
       |> Multi.run(:account, fn(_) -> create_live_account(fields) end)
-      |> Multi.run(:test_account, fn(opts) -> create_test_account(fields, opts) end)
-      |> Multi.run(:dispatch_event, fn(data) ->
-        dispatch("identity:account.create.success", data)
-      end)
+      |> Multi.run(:test_account, &create_test_account(fields, &1))
+      |> Multi.run(:dispatch_event, &dispatch("identity:account.create.success", &1))
 
     case Repo.transaction(statements) do
       {:ok, %{account: account, test_account: test_account}} ->
-        account = %{account | test_account_id: test_account.id, test_account: test_account}
+        account = %{account | test_account: test_account, test_account_id: test_account.id}
         {:ok, account}
 
       {:error, _, changeset, _} ->
@@ -124,7 +122,7 @@ defmodule BlueJet.Identity.DefaultService do
     |> do_create_account(fields)
   end
 
-  defp do_create_account(account, fields) do
+  defp do_create_account(%Account{} = account, fields) do
     changeset = Account.changeset(account, :insert, fields)
 
     statements =
@@ -143,24 +141,23 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
+  @spec update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, Changeset.t()}
   def update_account(account, fields, opts \\ %{})
 
   def update_account(%Account{mode: "test"}, _, _) do
     {:error, :unprocessable_for_test_account}
   end
 
-  def update_account(account = %Account{}, fields, opts) do
+  def update_account(%Account{} = account, fields, opts) do
     changeset = Account.changeset(account, :update, fields, opts[:locale])
 
     statements =
       Multi.new()
-      |> Multi.update(:account, changeset)
-      |> Multi.run(:_, fn %{account: account} ->
-        Account.sync_to_test_account(account, changeset)
-      end)
+      |> Multi.update(:_1, changeset)
+      |> Multi.run(:account, &Account.sync_to_test_account(&1[:_1], changeset))
 
     case Repo.transaction(statements) do
-      {:ok, %{_: account}} ->
+      {:ok, %{account: account}} ->
         {:ok, account}
 
       {:error, _, changeset, _} ->
@@ -168,11 +165,18 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def reset_account(account = %Account{mode: "test"}) do
-    Account.reset(account)
+  @spec reset_account(Account.t()) :: {:ok, Account.t()}
+  def reset_account(%Account{mode: "test"} = account) do
+    statements =
+      Multi.new()
+      |> Multi.delete_all(:_1, for_account(AccountMembership, account.id))
+      |> Multi.delete_all(:_2, for_account(User, account.id))
+      |> Multi.delete_all(:_3, for_account(PhoneVerificationCode, account.id))
+      |> Multi.run(:dispatch_event, fn(_) ->
+        dispatch("identity:account.reset.success", %{account: account})
+      end)
 
-    emit_event("identity.account.reset.success", %{account: account})
-
+    {:ok, _} = Repo.transaction(statements)
     {:ok, account}
   end
 
