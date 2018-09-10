@@ -32,6 +32,15 @@ defmodule BlueJet.Identity.RefreshToken do
     belongs_to :user, User
   end
 
+  @type t :: Ecto.Schema.t()
+
+  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  def changeset(refresh_token, :insert, params) do
+    refresh_token
+    |> cast(params, [:user_id])
+    |> Map.put(:action, :insert)
+  end
+
   def get_prefixed_id(refresh_token = %{id: id, user_id: nil}) do
     refresh_token = Repo.preload(refresh_token, :account)
     mode = refresh_token.account.mode

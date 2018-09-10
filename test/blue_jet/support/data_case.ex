@@ -17,11 +17,16 @@ defmodule BlueJet.DataCase do
   using do
     quote do
       alias BlueJet.Repo
+      alias BlueJet.EventHandlerMock
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
+
+      import Mox
       import BlueJet.DataCase
+
+      setup :verify_on_exit!
     end
   end
 

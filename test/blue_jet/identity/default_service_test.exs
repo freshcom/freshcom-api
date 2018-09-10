@@ -1,8 +1,18 @@
 defmodule BlueJet.Identity.DefaultDefaultServiceTest do
-  use BlueJet.ContextCase
+  use BlueJet.DataCase
 
   alias BlueJet.Identity.DefaultService
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
+
+  def account_fixture() do
+    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
+
+    {:ok, account} = DefaultService.create_account(%{
+      name: Faker.Company.name()
+    })
+
+    account
+  end
 
   #
   # MARK: Account
@@ -63,25 +73,14 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "update_account/2" do
     test "when given fields are invalid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Account{
-        name: Faker.Company.name(),
-        live_account_id: account.id,
-        mode: "test"
-      })
-
-      {:error, changeset} = DefaultService.update_account(account, %{ name: nil })
+      {:error, changeset} = DefaultService.update_account(%Account{}, %{ name: nil })
 
       assert changeset.valid? == false
     end
 
     test "when given fields are valid" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Account{
-        name: Faker.Company.name(),
-        live_account_id: account.id,
-        mode: "test"
-      })
+      account = account_fixture()
+
       fields = %{
         "name" => Faker.Company.name(),
         "company_name" => Faker.Company.name(),
@@ -117,7 +116,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   test "reset_account/1" do
-    account = Repo.insert!(%Account{ mode: "test" })
+    account = account_fixture().test_account
+
     user = Repo.insert!(%User{
       account_id: account.id,
       default_account_id: account.id,
@@ -133,6 +133,235 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
     assert Repo.get(Account, account.id)
     refute Repo.get(User, user.id)
+  end
+
+  #
+  # MARK: User
+  #
+  describe "create_user/2" do
+    test "when fields given is invalid and account is nil" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity:account.create.success"
+          {:ok, nil}
+         end)
+
+      {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })
+
+      assert changeset.valid? == false
+    end
+
+    test "when fields given is invalid and account is valid" do
+      account = Repo.insert!(%Account{ name: Faker.Company.name() })
+
+      {:error, changeset} = DefaultService.create_user(%{}, %{ account: account })
+
+      assert changeset.valid? == false
+    end
+
+    test "when fields given is valid and account is nil" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity:account.create.success"
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:user.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:email_verification_token.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+
+      fields = %{
+        "account_name" => Faker.Name.name(),
+        "username" => Faker.Internet.user_name(),
+        "name" => Faker.Name.name(),
+        "password" => "test1234"
+      }
+
+      {:ok, user} = DefaultService.create_user(fields, %{ account: nil })
+
+
+      assert user
+      assert user.account == nil
+      assert user.default_account.id
+      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "administrator")
+    end
+
+    test "when fields are valid and account is valid" do
+      account = account_fixture()
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:user.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:email_verification_token.create.success"
+          assert data[:user]
+          assert data[:account]
+
+          {:ok, nil}
+         end)
+
+      fields = %{
+        "username" => Faker.Internet.user_name(),
+        "email" => Faker.Internet.safe_email(),
+        "password" => "test1234",
+        "name" => Faker.Name.name(),
+        "role" => "customer"
+      }
+
+      {:ok, user} = DefaultService.create_user(fields, %{ account: account })
+
+      assert user
+      assert user.account.id == account.id
+      assert user.default_account.id == account.id
+      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "customer")
+    end
+  end
+
+  describe "update_user/3" do
+    test "when user is given and fields are invalid" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        name: Faker.Name.name(),
+        password: "test1234",
+        email: Faker.Internet.safe_email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
+
+      {:error, changeset} = DefaultService.update_user(user, %{ username: nil }, %{ account: account })
+
+      assert changeset.valid? == false
+    end
+
+    test "when event handler returns error" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        name: Faker.Name.name(),
+        password: "test1234",
+        email: Faker.Internet.safe_email()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
+      fields = %{
+        email: nil
+      }
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity:user.update.success"
+
+          {:error, %{ errors: [email: {"can't be blank", [validation: :required]}] }}
+         end)
+
+      {:error, changeset} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
+      assert changeset.errors
+    end
+
+    test "when user is given and fields are valid" do
+      account = Repo.insert!(%Account{})
+      pvc = Repo.insert!(%PhoneVerificationCode{
+        account_id: account.id,
+        phone_number: Faker.Phone.EnUs.phone(),
+        value: "123456",
+        expires_at: Timex.shift(Timex.now(), minutes: 5)
+      })
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234",
+        name: Faker.Name.name()
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
+      fields = %{
+        phone_number: pvc.phone_number,
+        phone_verification_code: pvc.value
+      }
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "identity:user.update.success"
+          {:ok, nil}
+         end)
+
+      {:ok, user} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
+
+      assert user.phone_number == fields.phone_number
+      refute Repo.get(PhoneVerificationCode, pvc.id)
+    end
+  end
+
+  describe "get_user/2" do
+    test "when fields are valid" do
+      account = Repo.insert!(%Account{})
+      target_user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234"
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: target_user.id,
+        role: "administrator"
+      })
+
+      user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
+
+      assert user.id == target_user.id
+    end
+  end
+
+  describe "delete_user/2" do
+    test "when id is valid" do
+      account = Repo.insert!(%Account{})
+      user = Repo.insert!(%User{
+        account_id: account.id,
+        default_account_id: account.id,
+        username: Faker.Internet.user_name(),
+        password: "test1234"
+      })
+      Repo.insert!(%AccountMembership{
+        account_id: account.id,
+        user_id: user.id,
+        role: "administrator"
+      })
+
+      {:ok, user} = DefaultService.delete_user(%{ id: user.id }, %{ account: account })
+
+      refute Repo.get(User, user.id)
+    end
   end
 
   #
@@ -231,235 +460,6 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   #
-  # MARK: User
-  #
-  describe "create_user/2" do
-    test "when fields given is invalid and account is nil" do
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity.account.create.success"
-          {:ok, nil}
-         end)
-
-      {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })
-
-      assert changeset.valid? == false
-    end
-
-    test "when fields given is invalid and account is valid" do
-      account = Repo.insert!(%Account{ name: Faker.Company.name() })
-
-      {:error, changeset} = DefaultService.create_user(%{}, %{ account: account })
-
-      assert changeset.valid? == false
-    end
-
-    test "when fields given is valid and account is nil" do
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity.account.create.success"
-          {:ok, nil}
-         end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.user.create.success"
-          assert data[:user]
-          assert data[:account] == nil
-
-          {:ok, nil}
-         end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.email_verification_token.create.success"
-          assert data[:user]
-          assert data[:account] == nil
-
-          {:ok, nil}
-         end)
-
-      fields = %{
-        "account_name" => Faker.Name.name(),
-        "username" => Faker.Internet.user_name(),
-        "name" => Faker.Name.name(),
-        "password" => "test1234"
-      }
-
-      {:ok, user} = DefaultService.create_user(fields, %{ account: nil })
-
-
-      assert user
-      assert user.account == nil
-      assert user.default_account.id
-      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "administrator")
-    end
-
-    test "when fields are valid and account is valid" do
-      account = Repo.insert!(%Account{})
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.user.create.success"
-          assert data[:user]
-          assert data[:account]
-
-          {:ok, nil}
-         end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.email_verification_token.create.success"
-          assert data[:user]
-          assert data[:account]
-
-          {:ok, nil}
-         end)
-
-      fields = %{
-        "username" => Faker.Internet.user_name(),
-        "email" => Faker.Internet.safe_email(),
-        "password" => "test1234",
-        "name" => Faker.Name.name(),
-        "role" => "customer"
-      }
-
-      {:ok, user} = DefaultService.create_user(fields, %{ account: account })
-
-      assert user
-      assert user.account.id == account.id
-      assert user.default_account.id == account.id
-      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "customer")
-    end
-  end
-
-  describe "update_user/3" do
-    test "when user is given and fields are invalid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        name: Faker.Name.name(),
-        password: "test1234",
-        email: Faker.Internet.safe_email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-
-      {:error, changeset} = DefaultService.update_user(user, %{ username: nil }, %{ account: account })
-
-      assert changeset.valid? == false
-    end
-
-    # Issue: GL#24
-    test "when event handler returns error" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        name: Faker.Name.name(),
-        password: "test1234",
-        email: Faker.Internet.safe_email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-      fields = %{
-        email: nil
-      }
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.user.update.success"
-
-          {:error, %{ errors: [email: {"can't be blank", [validation: :required]}] }}
-         end)
-
-      {:error, changeset} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
-      assert changeset.errors
-    end
-
-    test "when user is given and fields are valid" do
-      account = Repo.insert!(%Account{})
-      pvc = Repo.insert!(%PhoneVerificationCode{
-        account_id: account.id,
-        phone_number: Faker.Phone.EnUs.phone(),
-        value: "123456",
-        expires_at: Timex.shift(Timex.now(), minutes: 5)
-      })
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234",
-        name: Faker.Name.name()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-      fields = %{
-        phone_number: pvc.phone_number,
-        phone_verification_code: pvc.value
-      }
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.user.update.success"
-          {:ok, nil}
-         end)
-
-      {:ok, user} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
-
-      assert user.phone_number == fields.phone_number
-      refute Repo.get(PhoneVerificationCode, pvc.id)
-    end
-  end
-
-  describe "get_user/2" do
-    test "when fields are valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: target_user.id,
-        role: "administrator"
-      })
-
-      user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
-
-      assert user.id == target_user.id
-    end
-  end
-
-  describe "delete_user/2" do
-    test "when id is valid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-
-      {:ok, user} = DefaultService.delete_user(%{ id: user.id }, %{ account: account })
-
-      refute Repo.get(User, user.id)
-    end
-  end
-
-  #
   # MARK: Email Verification Token
   #
   describe "create_email_verification_token/1" do
@@ -481,7 +481,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
+          assert name == "identity:email_verification_token.create.success"
           {:ok, nil}
          end)
 
@@ -523,7 +523,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
+          assert name == "identity:email_verification_token.create.success"
           {:ok, nil}
          end)
 
@@ -542,7 +542,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.email_verification_token.create.success"
+          assert name == "identity:email_verification_token.create.success"
           {:ok, nil}
          end)
 

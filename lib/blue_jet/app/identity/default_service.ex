@@ -94,13 +94,19 @@ defmodule BlueJet.Identity.DefaultService do
     %{opts | account: get_account(opts)}
   end
 
+  defp put_account(nil, _), do: nil
+
+  defp put_account(data, account) do
+    %{data | account: account}
+  end
+
   @spec create_account(map) :: {:ok, Account.t()} | {:error, Changeset.t()}
   def create_account(fields) do
     statements =
       Multi.new()
       |> Multi.run(:account, fn(_) -> create_live_account(fields) end)
-      |> Multi.run(:test_account, &create_test_account(fields, &1))
-      |> Multi.run(:dispatch_event, &dispatch("identity:account.create.success", &1))
+      |> Multi.run(:test_account, &create_test_account(&1, fields))
+      |> Multi.run(:dispatch, &dispatch("identity:account.create.success", &1))
 
     case Repo.transaction(statements) do
       {:ok, %{account: account, test_account: test_account}} ->
@@ -117,8 +123,8 @@ defmodule BlueJet.Identity.DefaultService do
     |> do_create_account(fields)
   end
 
-  defp create_test_account(fields, opts) do
-    %Account{live_account_id: opts.account.id, mode: "test"}
+  defp create_test_account(data, fields) do
+    %Account{live_account_id: data.account.id, mode: "test"}
     |> do_create_account(fields)
   end
 
@@ -128,9 +134,7 @@ defmodule BlueJet.Identity.DefaultService do
     statements =
       Multi.new()
       |> Multi.insert(:account, changeset)
-      |> Multi.run(:prt, fn(%{account: account}) ->
-        {:ok, Repo.insert!(%RefreshToken{account_id: account.id})}
-      end)
+      |> Multi.run(:prt, &do_create_refresh_token!(&1))
 
     case Repo.transaction(statements) do
       {:ok, %{account: account}} ->
@@ -139,6 +143,16 @@ defmodule BlueJet.Identity.DefaultService do
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
+  end
+
+  defp do_create_refresh_token!(data) do
+    user_id = (data[:user] || %User{}).id
+    refresh_token = Repo.insert!(%RefreshToken{
+      account_id: data.account.id,
+      user_id: user_id
+    })
+
+    {:ok, refresh_token}
   end
 
   @spec update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, Changeset.t()}
@@ -172,7 +186,7 @@ defmodule BlueJet.Identity.DefaultService do
       |> Multi.delete_all(:_1, for_account(AccountMembership, account.id))
       |> Multi.delete_all(:_2, for_account(User, account.id))
       |> Multi.delete_all(:_3, for_account(PhoneVerificationCode, account.id))
-      |> Multi.run(:dispatch_event, fn(_) ->
+      |> Multi.run(:dispatch, fn(_) ->
         dispatch("identity:account.reset.success", %{account: account})
       end)
 
@@ -181,12 +195,214 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   #
+  # MARK: User
+  #
+  @spec create_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  def create_user(fields, %{account: nil}) do
+    account_fields =
+      fields
+      |> Map.take(["default_locale"])
+      |> Map.merge(%{"name" => "Unnamed Account"})
+
+    statements =
+      Multi.new()
+      |> Multi.run(:account, fn(_) -> create_account(account_fields) end)
+      |> Multi.run(:user, &do_create_user(%{default_account: &1[:account]}, fields))
+      |> Multi.run(:account_membership, &do_create_account_membership!(&1, %{role: "administrator", is_owner: true}))
+      |> Multi.run(:urt_live, &do_create_refresh_token!(&1))
+      |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: &1[:account].test_account, user: &1[:user]}))
+      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", Map.take(&1, [:account, :user])))
+      |> Multi.run(:dispatch2, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:account, :user])))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user, account: account}} ->
+        {:ok, %{user | default_account: account}}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def create_user(fields, %{account: account} = opts) do
+    test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) -> do_create_user(%{account: account}, fields) end)
+      |> Multi.run(:account_membership, &do_create_account_membership!(Map.merge(opts, &1), %{role: fields["role"]}))
+      |> Multi.run(:urt_1, &do_create_refresh_token!(%{account: account, user: &1[:user]}))
+      |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: test_account, user: &1[:user]}))
+      |> Multi.run(:urt_2, fn(%{user: user}) ->
+        if test_account do
+          do_create_refresh_token!(%{account: test_account, user: user})
+        else
+          {:ok, nil}
+        end
+      end)
+      |> Multi.run(:delete_all_pvc, &do_delete_all_pvc(&1))
+      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{account: account, user: &1[:user]}))
+      |> Multi.run(:dispatch2, fn(%{user: user}) ->
+        if user.email do
+          dispatch("identity:email_verification_token.create.success", %{user: user, account: account})
+        else
+          {:ok, nil}
+        end
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user, account_membership: am}} ->
+        {:ok, %{user | role: am.role, default_account: account, account: account}}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  defp do_create_user(data, fields) do
+    default_account_id = (data[:default_account] || %Account{}).id
+    account_id = (data[:account] || %Account{}).id
+
+    %User{default_account_id: default_account_id || account_id, account_id: account_id}
+    |> User.changeset(:insert, fields)
+    |> Repo.insert()
+  end
+
+  defp do_create_account_membership!(data, fields) do
+    account_membership =
+      %AccountMembership{account_id: data.account.id, user_id: data.user.id}
+      |> AccountMembership.changeset(:insert, fields)
+      |> Repo.insert!()
+
+    {:ok, account_membership}
+  end
+
+  defp do_delete_all_pvc(%{user: user}) do
+    PhoneVerificationCode.Query.default()
+    |> PhoneVerificationCode.Query.filter_by(%{phone_number: user.phone_number})
+    |> Repo.delete_all()
+
+    {:ok, user}
+  end
+
+  @spec get_user(map, map) :: User.t() | nil
+  def get_user(identifiers, opts) do
+    account = extract_account(opts)
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
+
+    do_get_user(filter, clauses, %{account: account})
+    |> put_account(account)
+  end
+
+  defp do_get_user(filter, clauses, %{type: :managed, account: account}) do
+    User.Query.default()
+    |> for_account(account.id)
+    |> User.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
+    |> User.put_role(account.id)
+  end
+
+  defp do_get_user(filter, clauses, %{account: account}) when not is_nil(account) do
+    user =
+      User.Query.default()
+      |> User.Query.member_of_account(account.id)
+      |> User.Query.filter_by(filter)
+      |> Repo.get_by(clauses)
+      |> User.put_role(account.id)
+
+    if !user && account.mode == "test" do
+      do_get_user(filter, clauses, %{account: %Account{id: account.live_account_id}})
+    else
+      user
+    end
+  end
+
+  defp do_get_user(filter, clauses, _) do
+    User.Query.default()
+    |> User.Query.standard()
+    |> User.Query.filter_by(filter)
+    |> Repo.get_by(clauses)
+  end
+
+  @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  def update_user(%User{} = user, fields, opts) do
+    account = extract_account(opts)
+    preload = extract_preload(opts)
+
+    changeset = User.changeset(user, :update, fields)
+    am = Repo.get_by(AccountMembership, account_id: account.id, user_id: user.id)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) -> do_update_user(user, fields) end)
+      |> Multi.run(:account_membership, fn(_) -> do_update_account_membership(am, fields) end)
+      |> Multi.run(:delete_all_pvc, &do_delete_all_pvc(&1))
+      |> Multi.run(:dispatch1, fn(_) ->
+        dispatch("identity:user.update.success", %{changeset: changeset, account: account})
+      end)
+      |> Multi.run(:dispatch2, fn(%{user: user}) ->
+        if changeset.changes[:email_verification_token] do
+          dispatch("identity:email_verification_token.create.success", %{user: user, account: account})
+        else
+          {:ok, nil}
+        end
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, preload(user, preload[:path], preload[:opts])}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_user(nil, _, _), do: {:error, :not_found}
+
+  def update_user(identifiers, fields, opts) do
+    account = extract_account(opts)
+
+    user = get_user(identifiers, opts)
+    if account.mode == "test" && user.account_id != account.id do
+      {:error, :unprocessable_for_live_user}
+    else
+      update_user(user, fields, opts)
+    end
+  end
+
+  defp do_update_user(user, fields) do
+    user
+    |> User.changeset(:update, fields)
+    |> Repo.update()
+  end
+
+  defp do_update_account_membership(account_membership, fields) do
+    account_membership
+    |> AccountMembership.changeset(:update, fields)
+    |> Repo.update()
+  end
+
+  @spec delete_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  def delete_user(user = %User{}, opts) do
+    delete(user, opts)
+  end
+
+  def delete_user(nil, _), do: {:error, :not_found}
+
+  def delete_user(identifiers, opts) do
+    opts = put_account(opts)
+
+    get_user(identifiers, opts)
+    |> delete_user(opts)
+  end
+
+  #
   # MARK: Account Memebership
   #
-  def list_account_membership(fields \\ %{}, opts) do
-    account = extract_account(opts)
+  @spec list_account_membership(map, map) :: [AccountMembership.t()]
+  def list_account_membership(fields, opts \\ %{}) do
     pagination = extract_pagination(opts)
-    preloads = extract_preloads(opts, account)
+    preload = extract_preload(opts)
     filter = extract_filter(fields)
 
     AccountMembership.Query.default()
@@ -195,7 +411,7 @@ defmodule BlueJet.Identity.DefaultService do
     |> sort_by(desc: :inserted_at)
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
-    |> preload(preloads[:path], preloads[:opts])
+    |> preload(preload[:paths], preload[:opts])
   end
 
   def count_account_membership(fields \\ %{}, _) do
@@ -234,263 +450,6 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   #
-  # MARK: User
-  #
-  def create_user(fields, %{account: nil}) do
-    account_fields =
-      fields
-      |> Map.take(["default_locale"])
-      |> Map.merge(%{"name" => "Unnamed Account"})
-
-    statements =
-      Multi.new()
-      |> Multi.run(:account, fn _ ->
-        create_account(account_fields)
-      end)
-      |> Multi.run(:user, fn %{account: account} ->
-        %User{default_account_id: account.id}
-        |> User.changeset(:insert, fields)
-        |> Repo.insert()
-      end)
-      |> Multi.run(:account_membership, fn %{account: account, user: user} ->
-        account_membership =
-          Repo.insert!(%AccountMembership{
-            account_id: account.id,
-            user_id: user.id,
-            role: "administrator",
-            is_owner: true
-          })
-
-        {:ok, account_membership}
-      end)
-      |> Multi.run(:urt_live, fn %{account: account, user: user} ->
-        refresh_token = Repo.insert!(%RefreshToken{account_id: account.id, user_id: user.id})
-        {:ok, refresh_token}
-      end)
-      |> Multi.run(:urt_test, fn %{account: account, user: user} ->
-        refresh_token =
-          Repo.insert!(%RefreshToken{account_id: account.test_account_id, user_id: user.id})
-
-        {:ok, refresh_token}
-      end)
-      |> Multi.run(:after_create, fn %{user: user} ->
-        emit_event("identity.user.create.success", %{user: user, account: nil})
-
-        emit_event("identity.email_verification_token.create.success", %{user: user, account: nil})
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{user: user, account: account}} ->
-        user = %{user | default_account: account}
-        {:ok, user}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def create_user(fields, %{account: account}) do
-    test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
-
-    live_account_id =
-      if test_account do
-        account.id
-      else
-        nil
-      end
-
-    test_account_id =
-      if test_account do
-        test_account.id
-      else
-        account.id
-      end
-
-    user = %User{
-      account_id: account.id,
-      account: account,
-      default_account_id: account.id,
-      default_account: account
-    }
-
-    changeset =
-      user
-      |> User.changeset(:insert, fields)
-
-    statements =
-      Multi.new()
-      |> Multi.insert(:user, changeset)
-      |> Multi.run(:account_membership, fn %{user: user} ->
-          %AccountMembership{ account_id: account.id, user_id: user.id }
-          |> AccountMembership.changeset(:insert, %{ role: Map.get(fields, "role") || Map.get(fields, :role) })
-          |> Repo.insert()
-      end)
-      |> Multi.run(:urt_live, fn %{user: user} ->
-        if live_account_id do
-          refresh_token =
-            Repo.insert!(%RefreshToken{account_id: live_account_id, user_id: user.id})
-
-          {:ok, refresh_token}
-        else
-          {:ok, nil}
-        end
-      end)
-      |> Multi.run(:urt_test, fn %{user: user} ->
-        if test_account_id do
-          refresh_token =
-            Repo.insert!(%RefreshToken{account_id: test_account_id, user_id: user.id})
-
-          {:ok, refresh_token}
-        else
-          {:ok, nil}
-        end
-      end)
-      |> Multi.run(:_, fn %{user: user} ->
-        User.delete_all_pvc(user)
-      end)
-      |> Multi.run(:after_create, fn %{user: user} ->
-        emit_event("identity.user.create.success", %{user: user, account: account})
-
-        if user.email do
-          emit_event("identity.email_verification_token.create.success", %{
-            user: user,
-            account: account
-          })
-        end
-
-        {:ok, nil}
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{ user: user, account_membership: am }} ->
-        {:ok, %{ user | role: am.role }}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def create_user(fields, opts) do
-    opts = put_account(opts)
-    create_user(fields, opts)
-  end
-
-  def get_user(identifiers, opts) do
-    account_id = get_account_id(opts)
-    account = get_account(opts)
-    filter = extract_nil_filter(identifiers)
-    clauses = extract_clauses(identifiers)
-
-    cond do
-      account_id && opts[:type] == :managed ->
-        User.Query.default()
-        |> for_account(account_id)
-        |> User.Query.filter_by(filter)
-        |> Repo.get_by(clauses)
-        |> User.put_role(account_id)
-
-      account_id ->
-        user =
-          User.Query.default()
-          |> User.Query.member_of_account(account_id)
-          |> User.Query.filter_by(filter)
-          |> Repo.get_by(clauses)
-          |> User.put_role(account_id)
-
-        if !user && account.mode == "test" do
-          User.Query.default()
-          |> User.Query.member_of_account(account.live_account_id)
-          |> User.Query.filter_by(filter)
-          |> Repo.get_by(clauses)
-          |> User.put_role(account.live_account_id)
-        else
-          user
-        end
-
-      true ->
-        User.Query.default()
-        |> User.Query.standard()
-        |> User.Query.filter_by(filter)
-        |> Repo.get_by(clauses)
-    end
-  end
-
-  def update_user(nil, _, _), do: {:error, :not_found}
-
-  def update_user(user = %User{}, fields, opts) do
-    account = get_account(opts)
-    preloads = extract_preloads(opts, account)
-
-    changeset =
-      %{user | account: account}
-      |> User.changeset(:update, fields, opts)
-
-    membership = Repo.get_by(AccountMembership, user_id: user.id, account_id: account.id)
-    membership_changeset =
-      %{membership | account: account}
-      |> AccountMembership.changeset(:update, fields)
-
-    statements =
-      Multi.new()
-      |> Multi.update(:user, changeset)
-      |> Multi.update(:membership, membership_changeset)
-      |> Multi.run(:_, fn %{user: user} ->
-        User.delete_all_pvc(user)
-      end)
-      |> Multi.run(:after_update, fn %{user: user} ->
-        emit_event("identity.user.update.success", %{
-          user: user,
-          changeset: changeset,
-          account: account
-        })
-      end)
-      |> Multi.run(:after_evt_create, fn %{user: user} ->
-        if changeset.changes[:email_verification_token] do
-          emit_event("identity.email_verification_token.create.success", %{
-            user: user,
-            account: account
-          })
-        else
-          {:ok, nil}
-        end
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{user: user}} ->
-        user = preload(user, preloads[:path], preloads[:opts])
-        {:ok, user}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def update_user(identifiers, fields, opts) do
-    opts = put_account(opts)
-    account = opts[:account]
-
-    user = get_user(identifiers, opts)
-    if opts[:type] != :managed && account.mode == "test" && user.account_id != account.id do
-      {:error, :unprocessable_for_live_user}
-    else
-      update_user(user, fields, opts)
-    end
-  end
-
-  def delete_user(nil, _), do: {:error, :not_found}
-
-  def delete_user(user = %User{}, opts) do
-    delete(user, opts)
-  end
-
-  def delete_user(identifiers, opts) do
-    opts = put_account(opts)
-
-    get_user(identifiers, opts)
-    |> delete_user(opts)
-  end
-
-  #
   # MARK: Email Verification Token
   #
   def create_email_verification_token(nil), do: {:error, :not_found}
@@ -505,7 +464,7 @@ defmodule BlueJet.Identity.DefaultService do
         {:ok, user}
       end)
       |> Multi.run(:after_create, fn %{user: user} ->
-        emit_event("identity.email_verification_token.create.success", %{
+        emit_event("identity:email_verification_token.create.success", %{
           user: user,
           account: account
         })

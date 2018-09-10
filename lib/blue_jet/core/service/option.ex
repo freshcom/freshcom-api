@@ -21,4 +21,10 @@ defmodule BlueJet.Service.Option do
 
     %{ path: path, opts: opts }
   end
+
+  def extract_preload(opts) do
+    preload = opts[:preload] || %{}
+
+    %{paths: preload[:paths] || [], opts: preload[:opts] || %{} }
+  end
 end

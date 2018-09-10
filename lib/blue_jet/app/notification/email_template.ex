@@ -105,7 +105,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.email_verification_token.create.success", %{
+  def extract_variables("identity:email_verification_token.create.success", %{
         account: account,
         user: user
       }) do
