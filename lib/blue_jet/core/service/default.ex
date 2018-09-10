@@ -3,6 +3,11 @@ defmodule BlueJet.Service.Default do
   import BlueJet.Query
   import BlueJet.Service.{Option, Preload, Helper}
 
+  def default(:delete, identifiers, opts, get_fun) do
+    get_fun.(identifiers, opts)
+    |> delete(opts)
+  end
+
   def list(type, fields, opts) do
     account = extract_account(opts)
     pagination = extract_pagination(opts)
@@ -78,18 +83,14 @@ defmodule BlueJet.Service.Default do
     end
   end
 
+  def delete(nil, _), do: {:error, :not_found}
+
   def delete(data, opts) do
     account = extract_account(opts)
 
-    changeset =
-      %{ data | account: account }
-      |> data.__struct__.changeset(:delete)
-
-    with {:ok, data} <- Repo.delete(changeset) do
-      {:ok, data}
-    else
-      other -> other
-    end
+    %{data | account: account}
+    |> data.__struct__.changeset(:delete)
+    |> Repo.delete()
   end
 
   def delete_all(type, opts = %{ account: account = %{ mode: "test" }}) do

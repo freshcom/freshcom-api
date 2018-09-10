@@ -14,6 +14,18 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     account
   end
 
+  def user_fixture() do
+    expect(EventHandlerMock, :handle_event, 3, fn(_, _) -> {:ok, nil} end)
+
+    {:ok, user} = DefaultService.create_user(%{
+      name: Faker.Name.name(),
+      username: Faker.Internet.user_name(),
+      password: "test1234"
+    }, %{account: nil})
+
+    user
+  end
+
   #
   # MARK: Account
   #
@@ -139,43 +151,42 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   # MARK: User
   #
   describe "create_user/2" do
-    test "when fields given is invalid and account is nil" do
+    test "when fields given are invalid and account is nil" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, _) ->
           assert event_name == "identity:account.create.success"
           {:ok, nil}
          end)
 
-      {:error, changeset} = DefaultService.create_user(%{}, %{ account: nil })
+      {:error, changeset} = DefaultService.create_user(%{}, %{account: nil})
 
       assert changeset.valid? == false
     end
 
-    test "when fields given is invalid and account is valid" do
-      account = Repo.insert!(%Account{ name: Faker.Company.name() })
-
-      {:error, changeset} = DefaultService.create_user(%{}, %{ account: account })
+    test "when fields given are invalid and account is valid" do
+      account = %Account{id: Ecto.UUID.generate()}
+      {:error, changeset} = DefaultService.create_user(%{}, %{account: account})
 
       assert changeset.valid? == false
     end
 
-    test "when fields given is valid and account is nil" do
+    test "when fields given are valid and account is nil" do
       EventHandlerMock
-      |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity:account.create.success"
-          {:ok, nil}
-         end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity:user.create.success"
-          assert data[:user]
-          assert data[:account]
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:account.create.success"
+          assert match_keys(data, [:account, :test_account])
 
           {:ok, nil}
          end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity:email_verification_token.create.success"
-          assert data[:user]
-          assert data[:account]
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.create.success"
+          assert match_keys(data, [:user, :account])
+
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:email_verification_token.create.success"
+          assert match_keys(data, [:user, :account])
 
           {:ok, nil}
          end)
@@ -187,30 +198,37 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "password" => "test1234"
       }
 
-      {:ok, user} = DefaultService.create_user(fields, %{ account: nil })
+      {:ok, user} = DefaultService.create_user(fields, %{account: nil})
 
+      account_membership = Repo.get_by(AccountMembership,
+        account_id: user.default_account.id,
+        user_id: user.id,
+        role: "administrator"
+      )
+      urt_live = Repo.get_by(RefreshToken, account_id: user.default_account.id, user_id: user.id)
+      urt_test = Repo.get_by(RefreshToken, account_id: user.default_account.test_account.id, user_id: user.id)
 
-      assert user
+      assert user.username == fields["username"]
       assert user.account == nil
       assert user.default_account.id
-      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "administrator")
+      assert account_membership
+      assert urt_live
+      assert urt_test
     end
 
-    test "when fields are valid and account is valid" do
+    test "when fields given are valid and account is live account" do
       account = account_fixture()
 
       EventHandlerMock
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity:user.create.success"
-          assert data[:user]
-          assert data[:account]
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.create.success"
+          assert match_keys(data, [:user, :account])
 
           {:ok, nil}
          end)
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity:email_verification_token.create.success"
-          assert data[:user]
-          assert data[:account]
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:email_verification_token.create.success"
+          assert match_keys(data, [:user, :account])
 
           {:ok, nil}
          end)
@@ -223,102 +241,66 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "role" => "customer"
       }
 
-      {:ok, user} = DefaultService.create_user(fields, %{ account: account })
+      {:ok, user} = DefaultService.create_user(fields, %{account: account})
 
-      assert user
+      account_membership = Repo.get_by(AccountMembership,
+        account_id: user.default_account.id,
+        user_id: user.id,
+        role: fields["role"]
+      )
+      urt_live = Repo.get_by(RefreshToken, account_id: user.account.id, user_id: user.id)
+      urt_test = Repo.get_by(RefreshToken, account_id: user.account.test_account.id, user_id: user.id)
+
+      assert user.username == fields["username"]
       assert user.account.id == account.id
       assert user.default_account.id == account.id
-      assert Repo.get_by(AccountMembership, account_id: user.default_account.id, user_id: user.id, role: "customer")
-    end
-  end
-
-  describe "update_user/3" do
-    test "when user is given and fields are invalid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        name: Faker.Name.name(),
-        password: "test1234",
-        email: Faker.Internet.safe_email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-
-      {:error, changeset} = DefaultService.update_user(user, %{ username: nil }, %{ account: account })
-
-      assert changeset.valid? == false
+      assert user.role == "customer"
+      assert account_membership
+      assert urt_live
+      assert urt_test
     end
 
-    test "when event handler returns error" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        name: Faker.Name.name(),
-        password: "test1234",
-        email: Faker.Internet.safe_email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-      fields = %{
-        email: nil
-      }
+    test "when fields given are valid and account is test account" do
+      account = account_fixture()
+      test_account = account.test_account
 
       EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity:user.update.success"
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.create.success"
+          assert match_keys(data, [:user, :account])
 
-          {:error, %{ errors: [email: {"can't be blank", [validation: :required]}] }}
+          {:ok, nil}
          end)
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:email_verification_token.create.success"
+          assert match_keys(data, [:user, :account])
 
-      {:error, changeset} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
-      assert changeset.errors
-    end
-
-    test "when user is given and fields are valid" do
-      account = Repo.insert!(%Account{})
-      pvc = Repo.insert!(%PhoneVerificationCode{
-        account_id: account.id,
-        phone_number: Faker.Phone.EnUs.phone(),
-        value: "123456",
-        expires_at: Timex.shift(Timex.now(), minutes: 5)
-      })
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234",
-        name: Faker.Name.name()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
-      fields = %{
-        phone_number: pvc.phone_number,
-        phone_verification_code: pvc.value
-      }
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity:user.update.success"
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.update_user(%{ id: user.id }, fields, %{ account: account })
+      fields = %{
+        "username" => Faker.Internet.user_name(),
+        "email" => Faker.Internet.safe_email(),
+        "password" => "test1234",
+        "name" => Faker.Name.name(),
+        "role" => "customer"
+      }
 
-      assert user.phone_number == fields.phone_number
-      refute Repo.get(PhoneVerificationCode, pvc.id)
+      {:ok, user} = DefaultService.create_user(fields, %{account: test_account})
+
+      account_membership = Repo.get_by(AccountMembership,
+        account_id: test_account.id,
+        user_id: user.id,
+        role: fields["role"]
+      )
+      urt_test = Repo.get_by(RefreshToken, account_id: test_account.id, user_id: user.id)
+
+      assert user.username == fields["username"]
+      assert user.account.id == test_account.id
+      assert user.default_account.id == test_account.id
+      assert user.role == "customer"
+      assert account_membership
+      assert urt_test
     end
   end
 
@@ -340,6 +322,75 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
 
       assert user.id == target_user.id
+    end
+  end
+
+  describe "update_user/3" do
+    test "when user is nil" do
+      {:error, :not_found} = DefaultService.update_user(nil, %{}, %{})
+    end
+
+    test "when user is given and fields are invalid" do
+      user = %User{id: Ecto.UUID.generate()}
+      fields = %{"name" => nil}
+      opts = %{account: %Account{id: Ecto.UUID.generate()}}
+
+      {:error, changeset} = DefaultService.update_user(user, fields, opts)
+
+      assert changeset.valid? == false
+    end
+
+    test "when user is given and fields are valid" do
+      user = user_fixture()
+      fields = %{"name" => Faker.Name.name()}
+      opts = %{account: user.default_account}
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.update.success"
+          assert match_keys(data, [:changeset, :account])
+
+          {:ok, nil}
+         end)
+
+      {:ok, user} = DefaultService.update_user(user, fields, opts)
+
+      assert user.name == fields["name"]
+    end
+
+    test "when user is given and fields are valid but event handler returns error" do
+      user = user_fixture()
+      fields = %{"email" => nil}
+      opts = %{account: user.default_account}
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.update.success"
+          assert match_keys(data, [:changeset, :account])
+
+          {:error, %{errors: [email: {"can't be blank", [validation: :required]}]}}
+         end)
+
+      {:error, changeset} = DefaultService.update_user(user, fields, opts)
+      assert match_keys(changeset.errors, [:email])
+    end
+
+    test "when identifiers are given and fields are valid" do
+      user = user_fixture()
+      account = user.default_account
+      fields = %{"name" => Faker.Name.name()}
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.update.success"
+          assert match_keys(data, [:changeset, :account])
+
+          {:ok, nil}
+         end)
+
+      {:ok, user} = DefaultService.update_user(%{id: user.id}, fields, %{account: account})
+
+      assert user.name == fields["name"]
     end
   end
 

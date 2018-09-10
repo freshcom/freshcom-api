@@ -1,12 +1,12 @@
 defmodule BlueJet.Context do
   alias BlueJet.{Translation, ContextResponse}
 
-  def default(request, action, type, policy, service) do
-    endpoint = join_atom(action, type, "_")
+  def default(request, cmd, type, policy, service) do
+    endpoint = join_atom(cmd, type, "_")
 
     request
     |> policy.authorize(endpoint)
-    |> do_default(action, Atom.to_string(type), service)
+    |> do_default(cmd, Atom.to_string(type), service)
   end
 
   defp do_default({:ok, req}, :list, type, service) do

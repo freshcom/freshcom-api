@@ -82,18 +82,6 @@ defmodule BlueJet.Identity.DefaultService do
   def get_role(%{account: _, user: nil}), do: "guest"
   def get_role(%{user: user}), do: user.role
 
-  defp get_account_id(opts) do
-    cond do
-      opts[:account_id] -> opts[:account_id]
-      opts[:account] -> opts[:account].id
-      true -> nil
-    end
-  end
-
-  defp put_account(opts) do
-    %{opts | account: get_account(opts)}
-  end
-
   defp put_account(nil, _), do: nil
 
   defp put_account(data, account) do
@@ -211,8 +199,8 @@ defmodule BlueJet.Identity.DefaultService do
       |> Multi.run(:account_membership, &do_create_account_membership!(&1, %{role: "administrator", is_owner: true}))
       |> Multi.run(:urt_live, &do_create_refresh_token!(&1))
       |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: &1[:account].test_account, user: &1[:user]}))
-      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", Map.take(&1, [:account, :user])))
-      |> Multi.run(:dispatch2, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:account, :user])))
+      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", Map.take(&1, [:user, :account])))
+      |> Multi.run(:dispatch2, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:user, :account])))
 
     case Repo.transaction(statements) do
       {:ok, %{user: user, account: account}} ->
@@ -224,23 +212,21 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def create_user(fields, %{account: account} = opts) do
-    test_account = Repo.get_by(Account, mode: "test", live_account_id: account.id)
-
     statements =
       Multi.new()
       |> Multi.run(:user, fn(_) -> do_create_user(%{account: account}, fields) end)
       |> Multi.run(:account_membership, &do_create_account_membership!(Map.merge(opts, &1), %{role: fields["role"]}))
-      |> Multi.run(:urt_1, &do_create_refresh_token!(%{account: account, user: &1[:user]}))
-      |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: test_account, user: &1[:user]}))
+      |> Multi.run(:urt_1, &do_create_refresh_token!(%{user: &1[:user], account: account}))
       |> Multi.run(:urt_2, fn(%{user: user}) ->
-        if test_account do
+        if account.mode == "live" do
+          test_account = Repo.get_by!(Account, mode: "test", live_account_id: account.id)
           do_create_refresh_token!(%{account: test_account, user: user})
         else
           {:ok, nil}
         end
       end)
       |> Multi.run(:delete_all_pvc, &do_delete_all_pvc(&1))
-      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{account: account, user: &1[:user]}))
+      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{user: &1[:user], account: account}))
       |> Multi.run(:dispatch2, fn(%{user: user}) ->
         if user.email do
           dispatch("identity:email_verification_token.create.success", %{user: user, account: account})
@@ -327,7 +313,6 @@ defmodule BlueJet.Identity.DefaultService do
   @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
   def update_user(%User{} = user, fields, opts) do
     account = extract_account(opts)
-    preload = extract_preload(opts)
 
     changeset = User.changeset(user, :update, fields)
     am = Repo.get_by(AccountMembership, account_id: account.id, user_id: user.id)
@@ -350,7 +335,7 @@ defmodule BlueJet.Identity.DefaultService do
 
     case Repo.transaction(statements) do
       {:ok, %{user: user}} ->
-        {:ok, preload(user, preload[:path], preload[:opts])}
+        {:ok, user}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
@@ -383,18 +368,20 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   @spec delete_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
-  def delete_user(user = %User{}, opts) do
-    delete(user, opts)
-  end
+  def delete_user(identifiers, opts), do: default(:delete, identifiers, opts, &get_user/2)
 
-  def delete_user(nil, _), do: {:error, :not_found}
+  # def delete_user(user = %User{}, opts), do: default(:delete, )
+  #   delete(user, opts)
+  # end
 
-  def delete_user(identifiers, opts) do
-    opts = put_account(opts)
+  # def delete_user(nil, _), do: {:error, :not_found}
 
-    get_user(identifiers, opts)
-    |> delete_user(opts)
-  end
+  # def delete_user(identifiers, opts) do
+  #   opts = put_account(opts)
+
+  #   get_user(identifiers, opts)
+  #   |> delete_user(opts)
+  # end
 
   #
   # MARK: Account Memebership
