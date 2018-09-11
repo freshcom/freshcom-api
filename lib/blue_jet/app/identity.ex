@@ -4,9 +4,6 @@ defmodule BlueJet.Identity do
 
   alias BlueJet.Identity.{Authentication, Policy, Service}
 
-  @policy BlueJet.Identity.Policy
-  @service BlueJet.Identity.Service
-
   def create_token(%{ fields: fields }) do
     with {:ok, token} <- Authentication.create_token(fields) do
       {:ok, %ContextResponse{ data: token }}
@@ -67,18 +64,18 @@ defmodule BlueJet.Identity do
   #
   # MARK: Account Membership
   #
-  def list_account_membership(req), do: default(req, :list, :account_membership, @policy, @service)
-  def update_account_membership(req), do: default(req, :update, :account_membership, @policy, @service)
+  def list_account_membership(req), do: default(req, :list, :account_membership, Policy, Service)
+  def update_account_membership(req), do: default(req, :update, :account_membership, Policy, Service)
 
   #
   # MARK: Email Verification Token
   #
-  def create_email_verification_token(req), do: create("email_verification_token", req, __MODULE__)
+  def create_email_verification_token(req), do: default(req, :create, :email_verification_token, Policy, Service)
 
   #
   # MARK: Email Verification
   #
-  def create_email_verification(req), do: create("email_verification", req, __MODULE__)
+  def create_email_verification(req), do: default(req, :create, :email_verification, Policy, &Service.verify_email/2)
 
   #
   # MARK: Phone Verification Code
@@ -135,7 +132,7 @@ defmodule BlueJet.Identity do
   #
   # MARK: User
   #
-  def create_user(req), do: default(req, :create, :user, @policy, @service)
+  def create_user(req), do: default(req, :create, :user, Policy, Service)
   # def create_user(req), do: create("user", req, __MODULE__)
   def get_user(req), do: get("user", req, __MODULE__)
   def update_user(req), do: update("user", req, __MODULE__)

@@ -20,11 +20,9 @@ defmodule BlueJet.Identity.Service do
   @callback update_user(String.t() | User.t(), map, map) :: {:ok, User.t()} | {:error, any}
   @callback delete_user(String.t() | User.t(), map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_email_verification_token(User.t()) :: {:ok, User.t()} | {:error, any}
   @callback create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, any}
 
-  @callback create_email_verification(User.t()) :: {:ok, User.t()} | {:error, any}
-  @callback create_email_verification(map, map) :: {:ok, User.t()} | {:error, any}
+  @callback verify_email(map, map) :: {:ok, User.t()} | {:error, any}
 
   @callback create_password_reset_token(String.t(), map) :: {:ok, User.t()} | {:error, any}
 
@@ -55,11 +53,9 @@ defmodule BlueJet.Identity.Service do
   defdelegate update_user(id_or_user, fields, opts), to: @service
   defdelegate delete_user(id_or_user, opts), to: @service
 
-  defdelegate create_email_verification_token(user), to: @service
   defdelegate create_email_verification_token(fields, opts), to: @service
 
-  defdelegate create_email_verification(user), to: @service
-  defdelegate create_email_verification(fields, opts), to: @service
+  defdelegate verify_email(fields, opts), to: @service
 
   defdelegate create_password_reset_token(email, opts), to: @service
 

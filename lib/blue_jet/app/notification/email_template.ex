@@ -105,13 +105,10 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity:email_verification_token.create.success", %{
-        account: account,
-        user: user
-      }) do
+  def extract_variables("identity:email_verification_token.create.success", %{user: user}) do
     %{
       user: Map.take(user, [:id, :email_verification_token, :first_name, :last_name, :email]),
-      account: Map.take(account, [:name]),
+      account: Map.take(user.account, [:name]),
       freshcom_verify_email_url: System.get_env("VERIFY_EMAIL_URL")
     }
   end

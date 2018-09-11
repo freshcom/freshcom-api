@@ -1,7 +1,44 @@
 defmodule BlueJet.Service.Default do
   alias BlueJet.Repo
+
   import BlueJet.Query
   import BlueJet.Service.{Option, Preload, Helper}
+
+  # def default(:list, type, query, opts) do
+  #   account = extract_account(opts)
+  #   pagination = extract_pagination(opts)
+  #   filter = extract_filter(query)
+  #   preload = extract_preload(opts)
+  #   query_module = Module.concat([type, Query])
+
+  #   query_module.default()
+  #   |> query_module.search(fields[:search], opts[:locale], account.default_locale)
+  #   |> query_module.filter_by(filter)
+  #   |> for_account(account.id)
+  #   |> paginate(size: pagination[:size], number: pagination[:number])
+  #   |> sort_by(opts[:sort] || [desc: :updated_at])
+  #   |> Repo.all()
+  #   |> preload(preload[:path], preload[:opts])
+  # end
+
+  def default(:get, type, identifiers, opts) do
+    account = extract_account(opts)
+    preload = extract_preload(opts)
+    filter = extract_nil_filter(identifiers)
+    clauses = extract_clauses(identifiers)
+    query_module = Module.concat([type, Query])
+
+    query_module.default()
+    |> for_account(account.id)
+    |> query_module.filter_by(filter)
+    |> Repo.get_by(clauses)
+    |> preload(preload[:paths], preload[:opts])
+  end
+
+  def default(:update, identifiers, fields, opts, get_fun) do
+    get_fun.(identifiers, opts)
+    |> update(fields, opts)
+  end
 
   def default(:delete, identifiers, opts, get_fun) do
     get_fun.(identifiers, opts)
@@ -67,19 +104,22 @@ defmodule BlueJet.Service.Default do
     |> preload(preloads[:path], preloads[:opts])
   end
 
+  def update(nil, _, _), do: {:error, :not_found}
+
   def update(data, fields, opts) do
     account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    preload = extract_preload(opts)
 
     changeset =
-      %{ data | account: account }
+      %{data | account: account}
       |> data.__struct__.changeset(:update, fields, opts[:locale])
 
-    with {:ok, data} <- Repo.update(changeset) do
-      data = preload(data, preloads[:path], preloads[:opts])
-      {:ok, data}
-    else
-      other -> other
+    case Repo.update(changeset) do
+      {:ok, data} ->
+        {:ok, preload(data, preload[:paths], preload[:opts])}
+
+      other ->
+        other
     end
   end
 

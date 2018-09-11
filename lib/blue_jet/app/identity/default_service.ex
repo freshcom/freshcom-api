@@ -88,13 +88,24 @@ defmodule BlueJet.Identity.DefaultService do
     %{data | account: account}
   end
 
-  @spec create_account(map) :: {:ok, Account.t()} | {:error, Changeset.t()}
-  def create_account(fields) do
+  @spec create_account(map, map) :: {:ok, Account.t()} | {:error, Changeset.t()}
+  def create_account(fields, opts \\ %{}) do
+    if opts[:user] && User.type(opts[:user]) == :managed do
+      raise ArgumentError, message: "managed user cannot be used to create account"
+    end
+
     statements =
       Multi.new()
       |> Multi.run(:account, fn(_) -> create_live_account(fields) end)
       |> Multi.run(:test_account, &create_test_account(&1, fields))
       |> Multi.run(:dispatch, &dispatch("identity:account.create.success", &1))
+      |> Multi.run(:account_membership, fn(%{account: account}) ->
+        if opts[:user] do
+          do_create_account_membership!(%{account: account, user: opts[:user]}, %{is_owner: true, role: "administrator"})
+        else
+          {:ok, nil}
+        end
+      end)
 
     case Repo.transaction(statements) do
       {:ok, %{account: account, test_account: test_account}} ->
@@ -212,10 +223,12 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   def create_user(fields, %{account: account} = opts) do
+    role = fields["role"] || fields[:role]
+
     statements =
       Multi.new()
       |> Multi.run(:user, fn(_) -> do_create_user(%{account: account}, fields) end)
-      |> Multi.run(:account_membership, &do_create_account_membership!(Map.merge(opts, &1), %{role: fields["role"]}))
+      |> Multi.run(:account_membership, &do_create_account_membership!(Map.merge(opts, &1), %{role: role}))
       |> Multi.run(:urt_1, &do_create_refresh_token!(%{user: &1[:user], account: account}))
       |> Multi.run(:urt_2, fn(%{user: user}) ->
         if account.mode == "live" do
@@ -276,11 +289,11 @@ defmodule BlueJet.Identity.DefaultService do
     filter = extract_nil_filter(identifiers)
     clauses = extract_clauses(identifiers)
 
-    do_get_user(filter, clauses, %{account: account})
+    do_get_user(filter, clauses, opts)
     |> put_account(account)
   end
 
-  defp do_get_user(filter, clauses, %{type: :managed, account: account}) do
+  defp do_get_user(filter, clauses, %{type: :managed, account: account}) when not is_nil(account) do
     User.Query.default()
     |> for_account(account.id)
     |> User.Query.filter_by(filter)
@@ -368,32 +381,20 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   @spec delete_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
-  def delete_user(identifiers, opts), do: default(:delete, identifiers, opts, &get_user/2)
-
-  # def delete_user(user = %User{}, opts), do: default(:delete, )
-  #   delete(user, opts)
-  # end
-
-  # def delete_user(nil, _), do: {:error, :not_found}
-
-  # def delete_user(identifiers, opts) do
-  #   opts = put_account(opts)
-
-  #   get_user(identifiers, opts)
-  #   |> delete_user(opts)
-  # end
+  def delete_user(identifiers, opts),
+    do: default(:delete, identifiers, Map.put(opts, :type, :managed), &get_user/2)
 
   #
   # MARK: Account Memebership
   #
   @spec list_account_membership(map, map) :: [AccountMembership.t()]
-  def list_account_membership(fields, opts \\ %{}) do
+  def list_account_membership(query, opts \\ %{}) do
     pagination = extract_pagination(opts)
     preload = extract_preload(opts)
-    filter = extract_filter(fields)
+    filter = extract_account_membership_filter(query, opts)
 
     AccountMembership.Query.default()
-    |> AccountMembership.Query.search(fields[:search])
+    |> AccountMembership.Query.search(query[:search])
     |> AccountMembership.Query.filter_by(filter)
     |> sort_by(desc: :inserted_at)
     |> paginate(size: pagination[:size], number: pagination[:number])
@@ -401,108 +402,114 @@ defmodule BlueJet.Identity.DefaultService do
     |> preload(preload[:paths], preload[:opts])
   end
 
-  def count_account_membership(fields \\ %{}, _) do
-    filter = extract_filter(fields)
+  @spec count_account_membership(map, map) :: integer
+  def count_account_membership(query, opts \\ %{}) do
+    filter = extract_account_membership_filter(query, opts)
 
     AccountMembership.Query.default()
     |> AccountMembership.Query.filter_by(filter)
     |> Repo.aggregate(:count, :id)
   end
 
-  def get_account_membership(identifiers, opts) do
-    get(AccountMembership, identifiers, opts)
-  end
+  defp extract_account_membership_filter(query, opts) do
+    filter = extract_filter(query)
 
-  def update_account_membership(nil, _, _), do: {:error, :not_found}
+    if !opts[:account] && !filter[:user_id] do
+      raise ArgumentError, message: "when account is not provided in opts :user_id must be provided as filter"
+    end
 
-  def update_account_membership(membership = %AccountMembership{}, fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
-
-    changeset =
-      %{ membership | account: account }
-      |> AccountMembership.changeset(:update, fields)
-
-    with {:ok, membership} <- Repo.update(changeset) do
-      membership = preload(membership, preloads[:path], preloads[:opts])
-      {:ok, membership}
+   if opts[:account] do
+      Map.put(filter, :account_id, opts[:account].id)
     else
-      other -> other
+      filter
     end
   end
 
-  def update_account_membership(identifiers, fields, opts) do
-    get_account_membership(identifiers, opts)
-    |> update_account_membership(fields, opts)
-  end
+  @spec get_account_membership(map, map) :: AccountMembership.t() | nil
+  def get_account_membership(identifiers, opts),
+    do: default(:get, AccountMembership, identifiers, opts)
+
+  @spec update_account_membership(map, map, map) :: {:ok, AccountMembership.t()} | {:error, Changeset.t()}
+  def update_account_membership(identifiers, fields, opts),
+    do: default(:update, identifiers, fields, opts, &get_account_membership/2)
 
   #
   # MARK: Email Verification Token
   #
-  def create_email_verification_token(nil), do: {:error, :not_found}
+  @evt_error %{errors: [user_id: {"User not found.", code: :not_found}]}
 
-  def create_email_verification_token(user = %User{}) do
-    account = user.account || get_account(user)
+  @spec create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, map}
+  def create_email_verification_token(%{"user_id" => nil}, _), do: {:error, @evt_error}
 
+  def create_email_verification_token(%{"user_id" => user_id}, opts) do
+    get_user(%{id: user_id}, opts)
+    |> create_email_verification_token()
+  end
+
+  defp create_email_verification_token(nil), do: {:error, @evt_error}
+
+  defp create_email_verification_token(%User{} = user) do
     statements =
       Multi.new()
-      |> Multi.run(:user, fn _ ->
-        user = User.refresh_email_verification_token(user)
-        {:ok, user}
-      end)
-      |> Multi.run(:after_create, fn %{user: user} ->
-        emit_event("identity:email_verification_token.create.success", %{
-          user: user,
-          account: account
-        })
-      end)
+      |> Multi.run(:user, fn(_) -> do_create_email_verification_token!(user) end)
+      |> Multi.run(:dispatch, &dispatch("identity:email_verification_token.create.success", &1))
 
     case Repo.transaction(statements) do
-      {:ok, %{user: user}} -> {:ok, user}
-      {:error, _, changeset, _} -> {:error, changeset}
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
     end
   end
 
-  def create_email_verification_token(%{"user_id" => nil}, _), do: {:error, :not_found}
+  defp do_create_email_verification_token!(user) do
+    user =
+      user
+      |> User.changeset(:refresh_email_verification_token)
+      |> Repo.update!()
 
-  def create_email_verification_token(%{"user_id" => user_id}, opts) do
-    user = get_user(%{id: user_id}, opts)
-
-    if user do
-      %{user | account: opts[:account]}
-      |> create_email_verification_token()
-    else
-      {:error, :not_found}
-    end
+    {:ok, user}
   end
 
   #
   # MARK: Email Verification
   #
-  def create_email_verification(nil), do: {:error, :not_found}
+  @ev_error %{errors: [token: {"Token is invalid or expired.", code: :invalid}]}
 
-  def create_email_verification(user = %{}) do
-    User.verify_email(user)
+  @spec verify_email(map, map) :: {:ok, User.t()} | {:error, :not_found}
+  def verify_email(%{"token" => nil}, _), do: {:error, @ev_error}
+
+  def verify_email(%{"token" => token}, opts) do
+    get_user(%{email_verification_token: token}, opts)
+    |> verify_email()
+  end
+
+  defp verify_email(nil), do: {:error, @ev_error}
+
+  defp verify_email(user = %{}) do
+    statements =
+      Multi.new()
+      |> Multi.run(:user, fn(_) -> do_verify_email!(user) end)
+      |> Multi.run(:dispatch, &dispatch("identity:email_verification.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  defp do_verify_email!(user) do
+    user =
+      user
+      |> User.changeset(:verify_email)
+      |> Repo.update!()
+
     {:ok, user}
   end
-
-  def create_email_verification(%{"token" => nil}, _), do: {:error, :not_found}
-
-  def create_email_verification(%{"token" => token}, %{account: nil}) do
-    User.Query.default()
-    |> User.Query.standard()
-    |> Repo.get_by(email_verification_token: token)
-    |> create_email_verification()
-  end
-
-  def create_email_verification(%{"token" => token}, %{account: account}) do
-    User.Query.default()
-    |> for_account(account.id)
-    |> Repo.get_by(email_verification_token: token)
-    |> create_email_verification()
-  end
-
-  def create_email_verification(_, _), do: {:error, :not_found}
 
   #
   # MARK: Password Reset Token

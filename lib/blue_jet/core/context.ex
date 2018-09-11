@@ -22,8 +22,8 @@ defmodule BlueJet.Context do
     |> to_result_tuple()
   end
 
-  defp do_default({:ok, req}, :create, type, service) do
-    create_fun = Function.capture(service, String.to_atom("create_" <> type), 2)
+  defp do_default({:ok, req}, :create, type, service_or_fun) do
+    create_fun = extract_fun(:create, type, service_or_fun)
 
     %ContextResponse{}
     |> ContextResponse.put_meta(:locale, req.locale)
@@ -60,6 +60,14 @@ defmodule BlueJet.Context do
   end
 
   defp do_default(other, _, _, _), do: other
+
+  defp extract_fun(_, _, fun) when is_function(fun) do
+    fun
+  end
+
+  defp extract_fun(:create, type, service) do
+    Function.capture(service, String.to_atom("create_" <> type), 2)
+  end
 
   defp join_atom(atom1, atom2, joiner) do
     string1 = Atom.to_string(atom1)

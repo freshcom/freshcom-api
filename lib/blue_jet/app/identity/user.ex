@@ -108,6 +108,21 @@ defmodule BlueJet.Identity.User do
     |> Map.put(:action, :delete)
   end
 
+  def changeset(user, :refresh_email_verification_token) do
+    change(user,
+      email_verification_token: generate_email_verification_token(),
+      email_verified: false
+    )
+  end
+
+  def changeset(user, :verify_email) do
+    change(user,
+      email_verification_token: nil,
+      email_verified: true,
+      email_verified_at: Ecto.DateTime.utc()
+    )
+  end
+
   @spec encrypt_password(String.t()) :: Changeset.t()
   def encrypt_password(password) do
     Comeonin.Bcrypt.hashpwsalt(password)
@@ -298,8 +313,13 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  @spec is_managed_user?(__MODULE__.t()) :: boolean
-  def is_managed_user?(user), do: !!user.account_id
+  # @spec is_managed_user?(__MODULE__.t()) :: boolean
+  # def is_managed_user?(user), do: !!user.account_id
+
+  @spec type(__MODULE__.t()) :: :managed | :standard
+  def type(user) do
+    if user.account_id, do: :managed, else: :standard
+  end
 
   @spec delete_all_pvc(__MODULE__.t()) :: {:ok, __MODULE__.t()}
   def delete_all_pvc(%{phone_verification_code: nil} = user), do: {:ok, user}
@@ -339,30 +359,9 @@ defmodule BlueJet.Identity.User do
     end
   end
 
-  @spec verify_email(__MODULE__.t()) :: __MODULE__.t()
-  def verify_email(user) do
-    user
-    |> change(
-      email_verification_token: nil,
-      email_verified: true,
-      email_verified_at: Ecto.DateTime.utc()
-    )
-    |> Repo.update!()
-  end
-
   @spec generate_email_verification_token() :: String.t()
   def generate_email_verification_token() do
     Ecto.UUID.generate()
-  end
-
-  @spec refresh_email_verification_token(__MODULE__.t()) :: __MODULE__.t()
-  def refresh_email_verification_token(user) do
-    user
-    |> change(
-      email_verification_token: generate_email_verification_token(),
-      email_verified: false
-    )
-    |> Repo.update!()
   end
 
   @spec refresh_tfa_code(__MODULE__.t()) :: __MODULE__.t()

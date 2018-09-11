@@ -18,6 +18,7 @@ defmodule BlueJet.DataCase do
     quote do
       alias BlueJet.Repo
       alias BlueJet.EventHandlerMock
+      alias Ecto.UUID
 
       import Ecto
       import Ecto.Changeset

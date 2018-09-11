@@ -37,15 +37,17 @@ defmodule BlueJet.Identity.AccountMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(membership, :insert, params) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t()) :: Changeset.t()
+  def changeset(membership, cmd, params, locale \\ nil)
+
+  def changeset(membership, :insert, params, _) do
     membership
     |> cast(params, castable_fields(:insert))
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(membership, :update, params) do
+  def changeset(membership, :update, params, _) do
     membership
     |> cast(params, castable_fields(:update))
     |> Map.put(:action, :update)

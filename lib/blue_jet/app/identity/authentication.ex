@@ -123,7 +123,7 @@ defmodule BlueJet.Identity.Authentication do
   def create_token(fields = %{grant_type: "password", username: username, password: password}) do
     user = Repo.get_by(User, username: username)
 
-    if user && User.is_managed_user?(user) && User.get_role(user, user.account_id) == "customer" do
+    if user && User.type(User) == :managed && User.get_role(user, user.account_id) == "customer" do
       @errors[:invalid_password_grant]
     else
       create_token_by_password(user, password, fields[:otp])

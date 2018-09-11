@@ -14,16 +14,65 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     account
   end
 
+  def account_fixture(user) do
+    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
+
+    {:ok, account} = DefaultService.create_account(%{
+      name: Faker.Company.name()
+    }, %{user: user})
+
+    account
+  end
+
   def user_fixture() do
     expect(EventHandlerMock, :handle_event, 3, fn(_, _) -> {:ok, nil} end)
 
+    n = System.unique_integer([:positive])
     {:ok, user} = DefaultService.create_user(%{
       name: Faker.Name.name(),
-      username: Faker.Internet.user_name(),
-      password: "test1234"
+      username: "username#{n}",
+      password: "test1234",
+      email: "user#{n}@example.com"
     }, %{account: nil})
 
     user
+  end
+
+  def user_fixture(account) do
+    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
+
+    n = System.unique_integer([:positive])
+    {:ok, user} = DefaultService.create_user(%{
+      name: Faker.Name.name(),
+      username: "username#{n}",
+      password: "test1234",
+      role: "administrator"
+    }, %{account: account})
+
+    user
+  end
+
+  def account_membership_fixture() do
+    standard_user = user_fixture()
+
+    membership = Repo.get_by!(AccountMembership,
+      user_id: standard_user.id,
+      account_id: standard_user.default_account.id
+    )
+
+    %{membership | account: standard_user.default_account}
+  end
+
+  def account_membership_fixture(for: :managed) do
+    standard_user = user_fixture()
+    managed_user = user_fixture(standard_user.default_account)
+
+    membership = Repo.get_by!(AccountMembership,
+      user_id: managed_user.id,
+      account_id: managed_user.account.id
+    )
+
+    %{membership | account: managed_user.account}
   end
 
   #
@@ -64,7 +113,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       assert changeset.valid? == false
     end
 
-    test "when fields are valid" do
+    test "when fields are valid and no user given" do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
           assert event_name == "identity:account.create.success"
@@ -73,7 +122,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, account} = DefaultService.create_account(%{"name" => Faker.Company.name()})
+      fields = %{"name" => Faker.Company.name()}
+
+      {:ok, account} = DefaultService.create_account(fields)
       test_account = account.test_account
 
       assert account.mode == "live"
@@ -81,11 +132,51 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       assert Repo.get_by(RefreshToken, account_id: account.id)
       assert Repo.get_by(RefreshToken, account_id: test_account.id)
     end
+
+    test "when managed user is given" do
+      assert_raise ArgumentError, fn ->
+        DefaultService.create_account(%{}, %{user: %User{account_id: UUID.generate()}})
+      end
+    end
+
+    test "when fields are valid and no standard user given" do
+      standard_user = user_fixture()
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:account.create.success"
+          assert Map.keys(data) == [:account, :test_account]
+
+          {:ok, nil}
+         end)
+
+      fields = %{"name" => Faker.Company.name()}
+      opts = %{user: standard_user}
+
+      {:ok, account} = DefaultService.create_account(fields, opts)
+      test_account = account.test_account
+
+      prt_live = Repo.get_by(RefreshToken, account_id: account.id)
+      prt_test = Repo.get_by(RefreshToken, account_id: test_account.id)
+      membership = Repo.get_by(AccountMembership,
+        account_id: account.id,
+        user_id: standard_user.id,
+        is_owner: true,
+        role: "administrator"
+      )
+
+      assert account.mode == "live"
+      assert test_account.mode == "test"
+      assert prt_live
+      assert prt_test
+      assert membership
+    end
   end
 
   describe "update_account/2" do
     test "when given fields are invalid" do
-      {:error, changeset} = DefaultService.update_account(%Account{}, %{ name: nil })
+      account = %Account{id: UUID.generate()}
+      {:error, changeset} = DefaultService.update_account(account, %{"name" => nil})
 
       assert changeset.valid? == false
     end
@@ -164,7 +255,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when fields given are invalid and account is valid" do
-      account = %Account{id: Ecto.UUID.generate()}
+      account = %Account{id: UUID.generate()}
       {:error, changeset} = DefaultService.create_user(%{}, %{account: account})
 
       assert changeset.valid? == false
@@ -200,9 +291,10 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       {:ok, user} = DefaultService.create_user(fields, %{account: nil})
 
-      account_membership = Repo.get_by(AccountMembership,
+      membership = Repo.get_by(AccountMembership,
         account_id: user.default_account.id,
         user_id: user.id,
+        is_owner: true,
         role: "administrator"
       )
       urt_live = Repo.get_by(RefreshToken, account_id: user.default_account.id, user_id: user.id)
@@ -211,7 +303,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       assert user.username == fields["username"]
       assert user.account == nil
       assert user.default_account.id
-      assert account_membership
+      assert membership
       assert urt_live
       assert urt_test
     end
@@ -305,23 +397,113 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "get_user/2" do
-    test "when fields are valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: target_user.id,
-        role: "administrator"
-      })
+    test "when identifiers are for standard user and account is nil" do
+      standard_user = user_fixture()
+      identifiers = %{id: standard_user.id}
+      opts = %{account: nil}
 
-      user = DefaultService.get_user(%{ id: target_user.id }, %{ account: account })
+      user = DefaultService.get_user(identifiers, opts)
 
-      assert user.id == target_user.id
+      assert user.id == standard_user.id
+      assert user.role == nil
+    end
+
+    test "when identifiers are for managed user but account is nil" do
+      standard_user = user_fixture()
+      managed_user = user_fixture(standard_user.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{account: nil}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user == nil
+    end
+
+    test "when identifiers are for standard user of given account but type is managed" do
+      standard_user = user_fixture()
+      identifiers = %{id: standard_user.id}
+      opts = %{type: :managed, account: standard_user.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user == nil
+    end
+
+    test "when identifiers are for managed user of another account and type is managed" do
+      standard_user1 = user_fixture()
+      standard_user2 = user_fixture()
+      managed_user = user_fixture(standard_user2.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{type: :managed, account: standard_user1.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user == nil
+    end
+
+    test "when identifiers are for managed user of given account and type is managed" do
+      standard_user = user_fixture()
+      managed_user = user_fixture(standard_user.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{type: :managed, account: standard_user.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user.id == managed_user.id
+      assert user.role == "administrator"
+    end
+
+    test "when identifiers are for managed user of another account" do
+      standard_user1 = user_fixture()
+      standard_user2 = user_fixture()
+      managed_user = user_fixture(standard_user2.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{account: standard_user1.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user == nil
+    end
+
+    test "when identifiers are for managed user of given account" do
+      standard_user = user_fixture()
+      managed_user = user_fixture(standard_user.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{account: standard_user.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user.id == managed_user.id
+      assert user.role == "administrator"
+    end
+
+    test "when identifiers are for standard user of another account" do
+      standard_user1 = user_fixture()
+      standard_user2 = user_fixture()
+
+      identifiers = %{id: standard_user2.id}
+      opts = %{account: standard_user1.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user == nil
+    end
+
+    test "when identifiers are for standard user of given account" do
+      standard_user = user_fixture()
+
+      identifiers = %{id: standard_user.id}
+      opts = %{account: standard_user.default_account}
+
+      user = DefaultService.get_user(identifiers, opts)
+
+      assert user.id == standard_user.id
+      assert user.role == "administrator"
     end
   end
 
@@ -331,9 +513,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when user is given and fields are invalid" do
-      user = %User{id: Ecto.UUID.generate()}
+      user = %User{id: UUID.generate()}
       fields = %{"name" => nil}
-      opts = %{account: %Account{id: Ecto.UUID.generate()}}
+      opts = %{account: %Account{id: UUID.generate()}}
 
       {:error, changeset} = DefaultService.update_user(user, fields, opts)
 
@@ -395,23 +577,36 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   describe "delete_user/2" do
-    test "when id is valid" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        password: "test1234"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
+    test "when identifiers are for standard user" do
+      standard_user = user_fixture()
+      identifiers = %{id: standard_user.id}
+      opts = %{account: standard_user.default_account}
 
-      {:ok, user} = DefaultService.delete_user(%{ id: user.id }, %{ account: account })
+      assert DefaultService.delete_user(identifiers, opts) == {:error, :not_found}
+    end
 
-      refute Repo.get(User, user.id)
+    test "when identifiers are for managed user of another account" do
+      standard_user1 = user_fixture()
+      standard_user2 = user_fixture()
+      managed_user = user_fixture(standard_user2.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{account: standard_user1.default_account}
+
+      assert DefaultService.delete_user(identifiers, opts) == {:error, :not_found}
+    end
+
+    test "when identifiers are for managed user of given account" do
+      standard_user = user_fixture()
+      managed_user = user_fixture(standard_user.default_account)
+
+      identifiers = %{id: managed_user.id}
+      opts = %{account: standard_user.default_account}
+
+      {:ok, user} =  DefaultService.delete_user(identifiers, opts)
+
+      assert user
+      assert Repo.get(User, user.id) == nil
     end
   end
 
@@ -419,248 +614,204 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   # Mark: Account Membership
   #
   describe "list_account_membership/2" do
-    test "should respect the given filter" do
-      account1 = Repo.insert!(%Account{})
-      account2 = Repo.insert!(%Account{})
-      user1 = Repo.insert!(%User{
-        default_account_id: account1.id,
-        username: Faker.Internet.user_name()
-      })
+    test "when both account and user_id is not provided" do
+      assert_raise ArgumentError, fn ->
+        DefaultService.list_account_membership(%{})
+      end
+    end
 
-      Repo.insert!(%AccountMembership{
-        account_id: account1.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account2.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
+    test "when account is given" do
+      user_fixture()
+      standard_user = user_fixture()
+      user_fixture(standard_user.default_account)
 
-      memberships = DefaultService.list_account_membership(%{filter: %{user_id: user1.id}}, %{})
+      opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
+
+      memberships = DefaultService.list_account_membership(%{}, opts)
+
       assert length(memberships) == 2
+      assert Enum.at(memberships, 0).user.id
+    end
 
-      memberships = DefaultService.list_account_membership(%{filter: %{account_id: account1.id}}, %{})
-      assert length(memberships) == 1
+    test "when filter is given" do
+      user_fixture()
+      standard_user = user_fixture()
+      account_fixture(standard_user)
+
+      filter = %{user_id: standard_user.id}
+      opts = %{preload: %{paths: [:account]}}
+
+      memberships = DefaultService.list_account_membership(%{filter: filter}, opts)
+
+      assert length(memberships) == 2
+      assert Enum.at(memberships, 0).account.id
     end
   end
 
   describe "count_account_membership/2" do
-    test "should respect the given filter" do
-      account1 = Repo.insert!(%Account{})
-      account2 = Repo.insert!(%Account{})
-      user1 = Repo.insert!(%User{
-        default_account_id: account1.id,
-        username: Faker.Internet.user_name()
-      })
+    test "when both account and user_id is not provided" do
+      assert_raise ArgumentError, fn ->
+        DefaultService.count_account_membership(%{})
+      end
+    end
 
-      Repo.insert!(%AccountMembership{
-        account_id: account1.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account2.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
+    test "when account is given" do
+      user_fixture()
+      standard_user = user_fixture()
+      user_fixture(standard_user.default_account)
 
-      count = DefaultService.count_account_membership(%{filter: %{user_id: user1.id}}, %{})
-      assert count == 2
+      opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
 
-      count = DefaultService.count_account_membership(%{filter: %{account_id: account1.id}}, %{})
-      assert count == 1
+      assert DefaultService.count_account_membership(%{}, opts) == 2
+    end
+
+    test "when filter is given" do
+      user_fixture()
+      standard_user = user_fixture()
+      account_fixture(standard_user)
+
+      filter = %{user_id: standard_user.id}
+      opts = %{preload: %{paths: [:account]}}
+
+      assert DefaultService.count_account_membership(%{filter: filter}, opts) == 2
+    end
+  end
+
+  describe "get_account_membership/2" do
+    test "when identifiers is invalid" do
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: %Account{id: UUID.generate()}}
+
+      assert DefaultService.get_account_membership(identifiers, opts) == nil
+    end
+
+    test "when identifiers are valid" do
+      target_membership = account_membership_fixture()
+
+      identifiers = %{id: target_membership.id}
+      opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
+
+      membership = DefaultService.get_account_membership(identifiers, opts)
+
+      assert membership
+      assert membership.user.id
+      assert membership.account.id
     end
   end
 
   describe "update_account_membership/2" do
-    test "with given fields are invalid" do
-      account1 = Repo.insert!(%Account{})
-      user1 = Repo.insert!(%User{
-        default_account_id: account1.id,
-        username: Faker.Internet.user_name()
-      })
-      membership = Repo.insert!(%AccountMembership{
-        account_id: account1.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
+    test "when identifiers is invalid" do
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: %Account{id: UUID.generate()}}
 
-      {:error, changeset} = DefaultService.update_account_membership(%{id: membership.id}, %{"role" => "invalid"}, %{account: account1})
+      assert DefaultService.update_account_membership(identifiers, %{}, opts) == {:error, :not_found}
+    end
+
+    test "with given fields are invalid" do
+      target_membership = account_membership_fixture(for: :managed)
+
+      identifiers = %{id: target_membership.id}
+      fields = %{"role" => "invalid"}
+      opts = %{account: target_membership.account}
+
+      {:error, changeset} = DefaultService.update_account_membership(identifiers, fields, opts)
 
       assert changeset.valid? == false
+      assert match_keys(changeset.errors, [:role])
     end
 
     test "with given fields are valid" do
-      account1 = Repo.insert!(%Account{})
-      user1 = Repo.insert!(%User{
-        default_account_id: account1.id,
-        username: Faker.Internet.user_name()
-      })
-      membership = Repo.insert!(%AccountMembership{
-        account_id: account1.id,
-        user_id: user1.id,
-        role: "administrator"
-      })
+      target_membership = account_membership_fixture(for: :managed)
 
-      {:ok, membership} = DefaultService.update_account_membership(%{id: membership.id}, %{"role" => "developer"}, %{account: account1})
+      identifiers = %{id: target_membership.id}
+      fields = %{"role" => "developer"}
+      opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
 
+      {:ok, membership} = DefaultService.update_account_membership(identifiers, fields, opts)
+
+      assert membership
       assert membership.role == "developer"
+      assert membership.user
+      assert membership.account
     end
   end
 
   #
   # MARK: Email Verification Token
   #
-  describe "create_email_verification_token/1" do
-    test "when user is nil" do
-      assert DefaultService.create_email_verification_token(nil) == {:error, :not_found}
-    end
-
-    test "when user is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5)
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: target_user.id,
-        role: "administrator"
-      })
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity:email_verification_token.create.success"
-          {:ok, nil}
-         end)
-
-      {:ok, user} = DefaultService.create_email_verification_token(target_user)
-
-      assert user.email_verification_token
-      assert user.email_verified == false
-      assert user.id == target_user.id
-    end
-  end
-
   describe "create_email_verification_token/2" do
     test "when user_id is nil" do
-      assert DefaultService.create_email_verification_token(%{ "user_id" => nil }, %{}) == {:error, :not_found}
+      {:error, %{errors: errors}} = DefaultService.create_email_verification_token(%{"user_id" => nil}, %{})
+      assert match_keys(errors, [:user_id])
     end
 
-    test "when account is given and user_id does not exist" do
-      account = Repo.insert!(%Account{})
-      assert DefaultService.create_email_verification(%{ "user_id" => Faker.Internet.email() }, %{ account: account }) == {:error, :not_found}
+    test "user_id does not exist" do
+      fields = %{"user_id" => UUID.generate()}
+      opts = %{account: %Account{id: UUID.generate()}}
+
+      {:error, %{errors: errors}} = DefaultService.create_email_verification_token(fields, opts)
+      assert match_keys(errors, [:user_id])
     end
 
-    test "when account is nil and user_id does not exist" do
-      assert DefaultService.create_email_verification(%{ "user_id" => Faker.Internet.email() }, %{ account: nil }) == {:error, :not_found}
-    end
-
-    test "when account is given and user_id is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email: Faker.Internet.email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: target_user.id,
-        role: "administrator"
-      })
+    test "when valid user_id is given" do
+      target_user = user_fixture()
 
       EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
+      |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:email_verification_token.create.success"
+          assert match_keys(data, [:user])
+
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_email_verification_token(%{ "user_id" => target_user.id }, %{ account: account })
+      fields = %{"user_id" => target_user.id}
+      opts = %{account: target_user.default_account}
+
+      {:ok, user} = DefaultService.create_email_verification_token(fields, opts)
+
+      assert user.email_verification_token != target_user.email_verification_token
+      assert user.email_verified == false
       assert user.id == target_user.id
-      assert user.email_verification_token
-    end
-
-    test "when account is nil and email is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email: Faker.Internet.email()
-      })
-
-      EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity:email_verification_token.create.success"
-          {:ok, nil}
-         end)
-
-      {:ok, user} = DefaultService.create_email_verification_token(%{ "user_id" => target_user.id }, %{ account: nil })
-      assert user.id == target_user.id
-      assert user.email_verification_token
     end
   end
 
   #
   # MARK: Email Verification
   #
-  describe "create_email_verification/2" do
+  describe "verify_email/2" do
     test "when token is nil" do
-      assert DefaultService.create_email_verification(%{ "token" => nil }, %{}) == {:error, :not_found}
+      {:error, %{errors: errors}} = DefaultService.verify_email(%{"token" => nil}, %{})
+
+      assert match_keys(errors, [:token])
     end
 
-    test "when account is given and token does not exist" do
-      account = Repo.insert!(%Account{})
-      assert DefaultService.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: account }) == {:error, :not_found}
+    test "when token is invalid" do
+      fields = %{"token" => UUID.generate()}
+      opts = %{account: %Account{id: UUID.generate()}}
+
+      {:error, %{errors: errors}} = DefaultService.verify_email(fields, opts)
+
+      assert match_keys(errors, [:token])
     end
 
-    test "when account is nil and token does not exist" do
-      assert DefaultService.create_email_verification(%{ "token" => Ecto.UUID.generate() }, %{ account: nil }) == {:error, :not_found}
-    end
+    test "when valid token is given" do
+      target_user = user_fixture()
 
-    test "when account is given and token is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email_verification_token: Ecto.UUID.generate()
-      })
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:email_verification.create.success"
+          assert match_keys(data, [:user])
 
-      {:ok, user} = DefaultService.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: account })
-      assert target_user.id == user.id
-    end
+          {:ok, nil}
+         end)
 
-    test "when account is nil and token is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email_verification_token: Ecto.UUID.generate()
-      })
+      fields = %{"token" => target_user.email_verification_token}
+      opts = %{account: target_user.default_account}
+      {:ok, user} = DefaultService.verify_email(fields, opts)
 
-      {:ok, user} = DefaultService.create_email_verification(%{ "token" => target_user.email_verification_token }, %{ account: nil })
-      assert target_user.id == user.id
-    end
-  end
-
-  describe "create_email_verification/1" do
-    test "when user is nil" do
-      assert DefaultService.create_email_verification(nil) == {:error, :not_found}
-    end
-
-    test "when user is valid" do
-      account = Repo.insert!(%Account{})
-      target_user = Repo.insert!(%User{
-        default_account_id: account.id,
-        username: Faker.String.base64(5),
-        email_verification_token: Ecto.UUID.generate()
-      })
-
-      {:ok, user} = DefaultService.create_email_verification(target_user)
-      assert target_user.id == user.id
+      assert user.email_verification_token == nil
+      assert user.email_verified == true
+      assert user.email_verified_at
     end
   end
 

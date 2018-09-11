@@ -75,21 +75,21 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Email Verification Token
   #
-  def authorize(%{role: role}, "create_email_verification_token")
+  def authorize(%{_role_: role}, :create_email_verification_token)
       when role in ["anonymous", "guest"] do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role}, "create_email_verification_token")
+  def authorize(%{_role_: role} = req, :create_email_verification_token)
       when not is_nil(role) do
-    {:ok, from_access_request(request, :create)}
+    {:ok, req}
   end
 
   #
   # MARK: Email Verification
   #
-  def authorize(request = %{role: role}, "create_email_verification") when not is_nil(role) do
-    {:ok, from_access_request(request, :create)}
+  def authorize(%{_role_: role} = req, :create_email_verification) when not is_nil(role) do
+    {:ok, req}
   end
 
   #
