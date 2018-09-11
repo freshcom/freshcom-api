@@ -95,13 +95,12 @@ defmodule BlueJet.Identity.Policy do
   #
   # MARK: Phone Verification Code
   #
-  def authorize(%{role: role}, "create_phone_verification_code") when role in ["anonymous"] do
+  def authorize(%{_role_: role}, :create_phone_verification_code) when role in ["anonymous"] do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role}, "create_phone_verification_code")
-      when not is_nil(role) do
-    {:ok, from_access_request(request, :create)}
+  def authorize(%{_role_: role} = req, :create_phone_verification_code) when not is_nil(role) do
+    {:ok, req}
   end
 
   #

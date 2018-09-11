@@ -443,15 +443,17 @@ defmodule BlueJet.Identity.DefaultService do
 
   def create_email_verification_token(%{"user_id" => user_id}, opts) do
     get_user(%{id: user_id}, opts)
-    |> create_email_verification_token()
+    |> do_create_email_verification_token()
   end
 
-  defp create_email_verification_token(nil), do: {:error, @evt_error}
+  defp do_create_email_verification_token(nil), do: {:error, @evt_error}
 
-  defp create_email_verification_token(%User{} = user) do
+  defp do_create_email_verification_token(%User{} = user) do
+    changeset = User.changeset(user, :refresh_email_verification_token)
+
     statements =
       Multi.new()
-      |> Multi.run(:user, fn(_) -> do_create_email_verification_token!(user) end)
+      |> Multi.update(:user, changeset)
       |> Multi.run(:dispatch, &dispatch("identity:email_verification_token.create.success", &1))
 
     case Repo.transaction(statements) do
@@ -461,15 +463,6 @@ defmodule BlueJet.Identity.DefaultService do
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
-  end
-
-  defp do_create_email_verification_token!(user) do
-    user =
-      user
-      |> User.changeset(:refresh_email_verification_token)
-      |> Repo.update!()
-
-    {:ok, user}
   end
 
   #
@@ -482,15 +475,17 @@ defmodule BlueJet.Identity.DefaultService do
 
   def verify_email(%{"token" => token}, opts) do
     get_user(%{email_verification_token: token}, opts)
-    |> verify_email()
+    |> do_verify_email()
   end
 
-  defp verify_email(nil), do: {:error, @ev_error}
+  defp do_verify_email(nil), do: {:error, @ev_error}
 
-  defp verify_email(user = %{}) do
+  defp do_verify_email(%User{} = user) do
+    changeset = User.changeset(user, :verify_email)
+
     statements =
       Multi.new()
-      |> Multi.run(:user, fn(_) -> do_verify_email!(user) end)
+      |> Multi.update(:user, changeset)
       |> Multi.run(:dispatch, &dispatch("identity:email_verification.create.success", &1))
 
     case Repo.transaction(statements) do
@@ -502,43 +497,73 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  defp do_verify_email!(user) do
-    user =
-      user
-      |> User.changeset(:verify_email)
-      |> Repo.update!()
+  #
+  # MARK: Phone Verification Code
+  #
+  @spec create_phone_verification_code(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  def create_phone_verification_code(fields, opts) do
+    account = extract_account(opts)
 
-    {:ok, user}
+    changeset =
+      %PhoneVerificationCode{account_id: account.id, account: account}
+      |> PhoneVerificationCode.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:phone_verification_code, changeset)
+      |> Multi.run(:dispatch1, &dispatch("identity:phone_verification_code.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{phone_verification_code: pvc}} ->
+        {:ok, pvc}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
   end
 
   #
   # MARK: Password Reset Token
   #
+  @spec create_password_reset_token(map, map) :: {:ok, User.t()}
+  def create_password_reset_token(%{"username" => username}, _) when byte_size(username) == 0 do
+    {:error, %{errors: [username: {"Username is required.", code: :required}]}}
+  end
 
-  @doc """
-  When an account is provided in `opts`, this function will only search for managed
-  user otherwise this function will only search for standard user.
-  """
-  def create_password_reset_token(fields, opts) do
-    changeset =
-      Changeset.change(%User{}, %{username: fields["username"]})
-      |> Changeset.validate_required(:username)
+  def create_password_reset_token(fields, %{account: nil} = opts) do
+    get_user(%{username: fields["username"]}, opts)
+    |> do_create_password_reset_token(opts, fields)
+  end
 
-    with true <- changeset.valid?,
-         user = %User{} <- get_user(%{username: fields["username"]}, opts) do
-      user = User.refresh_password_reset_token(user)
-      event_data = Map.merge(opts, %{user: user})
-      emit_event("identity.password_reset_token.create.success", event_data)
+  def create_password_reset_token(fields, %{account: _} = opts) do
+    get_user(%{username: fields["username"]}, Map.put(opts, :type, :managed))
+    |> do_create_password_reset_token(opts, fields)
+  end
 
-      {:ok, user}
-    else
-      false ->
+  defp do_create_password_reset_token(nil, opts, fields) do
+    data = Map.merge(%{username: fields["username"]}, opts)
+
+    Repo.transaction(fn ->
+      dispatch("identity:password_reset_token.create.error.username_not_found", data)
+    end)
+
+    {:error, %{errors: [username: {"Username not found.", code: :not_found}]}}
+  end
+
+  defp do_create_password_reset_token(%User{} = user, _, _) do
+    changeset = User.changeset(user, :refresh_password_reset_token)
+
+    statements =
+      Multi.new()
+      |> Multi.update(:user, changeset)
+      |> Multi.run(:dispatch, &dispatch("identity:password_reset_token.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
         {:error, changeset}
-
-      nil ->
-        event_data = Map.merge(opts, %{username: fields["username"]})
-        emit_event("identity.password_reset_token.create.error.username_not_found", event_data)
-        {:error, %{errors: [username: {"Username not found", code: :not_found}]}}
     end
   end
 
@@ -612,35 +637,6 @@ defmodule BlueJet.Identity.DefaultService do
       update_password(password, new_password)
     else
       {:error, :not_found}
-    end
-  end
-
-  #
-  # MARK: Phone Verification Code
-  #
-  def create_phone_verification_code(fields, opts) do
-    account = get_account(opts)
-
-    changeset =
-      %PhoneVerificationCode{account_id: account.id, account: account}
-      |> PhoneVerificationCode.changeset(:insert, fields)
-
-    statements =
-      Multi.new()
-      |> Multi.insert(:pvc, changeset)
-      |> Multi.run(:after_create, fn %{pvc: pvc} ->
-        emit_event("identity.phone_verification_code.create.success", %{
-          phone_verification_code: pvc,
-          account: account
-        })
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{pvc: pvc}} ->
-        {:ok, pvc}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
     end
   end
 

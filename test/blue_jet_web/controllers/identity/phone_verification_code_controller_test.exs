@@ -14,7 +14,7 @@ defmodule BlueJetWeb.PhoneVerificationCodeControllerTest do
 
   # Create a phone verification code
   describe "POST /v1/phone_verification_codes" do
-    test "without PAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = post(conn, "/v1/phone_verification_codes", %{
         "data" => %{
           "type" => "PhoneVerificationCode"

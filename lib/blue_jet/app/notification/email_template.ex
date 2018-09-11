@@ -83,7 +83,7 @@ defmodule BlueJet.Notification.EmailTemplate do
   end
 
   @spec extract_variables(String.t(), map) :: map
-  def extract_variables("identity.password_reset_token.create.error.username_not_found", %{
+  def extract_variables("identity:password_reset_token.create.error.username_not_found", %{
         account: account,
         username: username
       }) do
@@ -94,7 +94,7 @@ defmodule BlueJet.Notification.EmailTemplate do
     }
   end
 
-  def extract_variables("identity.password_reset_token.create.success", %{
+  def extract_variables("identity:password_reset_token.create.success", %{
         account: account,
         user: user
       }) do

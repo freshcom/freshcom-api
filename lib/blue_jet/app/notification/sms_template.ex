@@ -76,14 +76,11 @@ defmodule BlueJet.Notification.SmsTemplate do
   end
 
   @spec extract_variables(String.t(), map) :: map
-  def extract_variables("identity.phone_verification_code.create.success", %{
-        account: account,
-        phone_verification_code: pvc
-      }) do
+  def extract_variables("identity:phone_verification_code.create.success", %{phone_verification_code: pvc}) do
     %{
       phone_number: pvc.phone_number,
       code: pvc.value,
-      account: Map.take(account, [:name])
+      account: Map.take(pvc.account, [:name])
     }
   end
 

@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   use BlueJet.DataCase
 
   alias BlueJet.Identity.DefaultService
-  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken, PhoneVerificationCode}
+  alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
 
   def account_fixture() do
     expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
@@ -816,52 +816,116 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   #
-  # MARK: Password Reset Token
+  # MARK: Phone Verification Code
   #
-  describe "create_password_reset_token/2" do
-    test "when username is not provided" do
-      {:error, changeset} = DefaultService.create_password_reset_token(%{ "username" => "" }, %{})
+  describe "create_phone_verification_code/2" do
+    test "when given invalid fields" do
+      opts = %{account: %Account{id: UUID.generate()}}
+      {:error, changeset} = DefaultService.create_phone_verification_code(%{}, opts)
 
       assert changeset.valid? == false
     end
 
-    test "when username does not belong to any user" do
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity.password_reset_token.create.error.username_not_found"
-
-          {:ok, nil}
-         end)
-
-      {:error, _} = DefaultService.create_password_reset_token(%{ "username" => Faker.Internet.safe_email() }, %{})
-    end
-
-    test "when username belongs to a user" do
-      account = Repo.insert!(%Account{})
-      user = Repo.insert!(%User{
-        account_id: account.id,
-        default_account_id: account.id,
-        username: Faker.Internet.user_name(),
-        email: Faker.Internet.safe_email()
-      })
-      Repo.insert!(%AccountMembership{
-        account_id: account.id,
-        user_id: user.id,
-        role: "administrator"
-      })
+    test "when given valid fields" do
+      account = account_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.password_reset_token.create.success"
-          assert data[:user]
-          assert data[:account]
+          assert event_name == "identity:phone_verification_code.create.success"
+          assert match_keys(data, [:phone_verification_code])
 
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.create_password_reset_token(%{ "username" => user.username }, %{ account: account })
+      fields = %{"phone_number" => "+111234567890"}
+      opts = %{account: account}
+      {:ok, pvc} = DefaultService.create_phone_verification_code(fields, opts)
+
+      assert pvc.value
+    end
+  end
+
+  #
+  # MARK: Password Reset Token
+  #
+  describe "create_password_reset_token/2" do
+    test "when username is not provided" do
+      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(%{"username" => ""}, %{})
+
+      assert match_keys(errors, [:username])
+    end
+
+    test "when username is not found and account is nil" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity:password_reset_token.create.error.username_not_found"
+
+          {:ok, nil}
+         end)
+
+      fields = %{"username" => Faker.Internet.safe_email()}
+      opts = %{account: nil}
+
+      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(fields, opts)
+
+      assert match_keys(errors, [:username])
+    end
+
+    test "when username is not found and account is given" do
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, _) ->
+          assert event_name == "identity:password_reset_token.create.error.username_not_found"
+
+          {:ok, nil}
+         end)
+
+      fields = %{"username" => Faker.Internet.safe_email()}
+      opts = %{account: %Account{id: UUID.generate()}}
+
+      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(fields, opts)
+
+      assert match_keys(errors, [:username])
+    end
+
+    test "when username is for standard user" do
+      standard_user = user_fixture()
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:password_reset_token.create.success"
+          assert match_keys(data, [:user])
+
+          {:ok, nil}
+         end)
+
+      fields = %{"username" => standard_user.username}
+      opts = %{account: nil}
+
+      {:ok, user} = DefaultService.create_password_reset_token(fields, opts)
 
       assert user.password_reset_token
+      assert user.password_reset_token != standard_user.password_reset_token
+    end
+
+    test "when username is for managed user of given account" do
+      standard_user = user_fixture()
+      managed_user = user_fixture(standard_user.default_account)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(event_name, data) ->
+          assert event_name == "identity:password_reset_token.create.success"
+          assert match_keys(data, [:user])
+
+          {:ok, nil}
+         end)
+
+      fields = %{"username" => managed_user.username}
+      opts = %{account: standard_user.default_account}
+
+      {:ok, user} = DefaultService.create_password_reset_token(fields, opts)
+
+      assert user.password_reset_token
+      assert user.password_reset_token != managed_user.password_reset_token
     end
   end
 
@@ -907,33 +971,6 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       assert changeset.valid? == false
       assert changeset.changes[:value]
-    end
-  end
-
-  #
-  # MARK: Phone Verification Code
-  #
-  describe "create_phone_verification_code/2" do
-    test "when given invalid fields" do
-      {:error, changeset} = DefaultService.create_phone_verification_code(%{}, %{ account: %Account{} })
-
-      assert changeset.valid? == false
-    end
-
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, data) ->
-          assert event_name == "identity.phone_verification_code.create.success"
-          assert data[:phone_verification_code]
-          assert data[:account]
-
-          {:ok, nil}
-         end)
-
-      {:ok, pvc} = DefaultService.create_phone_verification_code(%{ phone_number: "+11234567890" }, %{ account: account })
-
-      assert pvc.value
     end
   end
 

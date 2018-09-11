@@ -123,6 +123,13 @@ defmodule BlueJet.Identity.User do
     )
   end
 
+  def changeset(user, :refresh_password_reset_token) do
+    change(user,
+      password_reset_token: Ecto.UUID.generate(),
+      password_reset_token_expires_at: Timex.shift(Timex.now(), hours: 24)
+    )
+  end
+
   @spec encrypt_password(String.t()) :: Changeset.t()
   def encrypt_password(password) do
     Comeonin.Bcrypt.hashpwsalt(password)
@@ -385,14 +392,6 @@ defmodule BlueJet.Identity.User do
   def clear_tfa_code(user) do
     user
     |> change(%{tfa_code: nil, tfa_code_expires_at: nil})
-    |> Repo.update!()
-  end
-
-  @spec refresh_password_reset_token(__MODULE__.t()) :: __MODULE__.t()
-  def refresh_password_reset_token(user) do
-    user
-    |> change(password_reset_token: Ecto.UUID.generate())
-    |> change(password_reset_token_expires_at: Timex.shift(Timex.now(), hours: 24))
     |> Repo.update!()
   end
 

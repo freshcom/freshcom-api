@@ -38,7 +38,7 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("identity.password_reset_token.create.success", %{
+  def handle_event("identity:password_reset_token.create.success", %{
         user: user = %{account_id: nil}
       }) do
     Email.Factory.password_reset_email(user)
@@ -47,7 +47,7 @@ defmodule BlueJet.Notification.EventHandler do
     {:ok, nil}
   end
 
-  def handle_event("identity.password_reset_token.create.error.username_not_found", %{
+  def handle_event("identity:password_reset_token.create.error.username_not_found", %{
         email: email,
         account_id: nil
       }) do

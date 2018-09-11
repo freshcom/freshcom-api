@@ -80,7 +80,7 @@ defmodule BlueJet.Identity do
   #
   # MARK: Phone Verification Code
   #
-  def create_phone_verification_code(req), do: create("phone_verification_code", req, __MODULE__)
+  def create_phone_verification_code(req), do: default(req, :create, :phone_verification_code, Policy, Service)
 
   #
   # MARK: Password Reset Token

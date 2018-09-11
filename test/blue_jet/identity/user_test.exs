@@ -465,19 +465,6 @@ defmodule BlueJet.Identity.UserTest do
     assert user.tfa_code_expires_at == nil
   end
 
-  test "refresh_password_reset_token/1" do
-    account = Repo.insert!(%Account{
-      name: Faker.Company.name()
-    })
-    user = Repo.insert!(%User{
-      username: Faker.String.base64(5),
-      default_account_id: account.id
-    })
-
-    user = User.refresh_password_reset_token(user)
-    assert user.password_reset_token
-  end
-
   test "update_password/2" do
     account = Repo.insert!(%Account{
       name: Faker.Company.name()
