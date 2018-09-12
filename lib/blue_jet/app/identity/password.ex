@@ -27,6 +27,8 @@ defmodule BlueJet.Identity.Password do
     |> cast(params, writable_fields())
     |> Map.put(:action, :update)
     |> put_encrypted_value()
+    |> put_reset_token()
+    |> put_reset_token_expires_at()
     |> validate()
   end
 
@@ -40,9 +42,21 @@ defmodule BlueJet.Identity.Password do
     Comeonin.Bcrypt.hashpwsalt(value)
   end
 
-  defp put_encrypted_value(changeset = %{changes: %{value: value}}) do
+  defp put_encrypted_value(%{changes: %{value: value}} = changeset) do
     put_change(changeset, :encrypted_value, encrypt_value(value))
   end
 
   defp put_encrypted_value(changeset), do: changeset
+
+  defp put_reset_token(%{changes: %{value: _}} = changeset) do
+    put_change(changeset, :reset_token, nil)
+  end
+
+  defp put_reset_token(changeset), do: changeset
+
+  defp put_reset_token_expires_at(%{changes: %{value: _}} = changeset) do
+    put_change(changeset, :reset_token_expires_at, nil)
+  end
+
+  defp put_reset_token_expires_at(changeset), do: changeset
 end

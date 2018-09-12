@@ -13,11 +13,10 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   end
 
   # Create a password reset token
-  # - Without PAT this endpoint only create the token for standard user (internal)
-  # - With PAT this endpoint can create the token for any standard and managed user that is
-  #   a member of the target account
+  # - Without access token this endpoint only create the token for standard user (internal)
+  # - With PAT this endpoint only create the token for managed user
   describe "POST /v1/password_reset_tokens" do
-    test "without PAT and given a non existing standard user's username", %{conn: conn} do
+    test "without access token and given a non existing standard user's username", %{conn: conn} do
       standard_user = create_standard_user()
       managed_user = create_managed_user(standard_user)
 
@@ -30,12 +29,12 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
         }
       })
 
-      # Without a PAT we only look for standard user to create the token
+      # Without a access token we only look for standard user to create the token
       response = json_response(conn, 422)
       assert length(response["errors"]) == 1
     end
 
-    test "without PAT and given a existing standard user's username", %{conn: conn} do
+    test "without access token and given a existing standard user's username", %{conn: conn} do
       user = create_standard_user()
 
       conn = post(conn, "/v1/password_reset_tokens", %{
@@ -82,24 +81,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
         }
       })
 
-      assert conn.status == 204
-    end
-
-    test "with PAT and given a existing standard user's username that is not a member of target account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      pat = get_pat(standard_user1)
-
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = post(conn, "/v1/password_reset_tokens", %{
-        "data" => %{
-          "type" => "PasswordResetToken",
-          "attributes" => %{
-            "username" => standard_user2.username
-          }
-        }
-      })
-
+      # Using PAT we only look for managed user
       assert conn.status == 422
     end
   end

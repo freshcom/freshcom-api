@@ -26,7 +26,6 @@ defmodule BlueJet.Identity.Service do
 
   @callback create_password_reset_token(String.t(), map) :: {:ok, User.t()} | {:error, any}
 
-  @callback update_password(Password.t(), String.t()) :: {:ok, User.t()} | {:error, any}
   @callback update_password(map, String.t(), map) :: {:ok, User.t()} | {:error, any}
 
   @callback create_phone_verification_code(map, map) ::
@@ -54,12 +53,9 @@ defmodule BlueJet.Identity.Service do
   defdelegate delete_user(id_or_user, opts), to: @service
 
   defdelegate create_email_verification_token(fields, opts), to: @service
-
   defdelegate verify_email(fields, opts), to: @service
 
   defdelegate create_password_reset_token(email, opts), to: @service
-
-  defdelegate update_password(password, new_password), to: @service
   defdelegate update_password(identifiers, new_password, opts), to: @service
 
   defdelegate create_phone_verification_code(fields, opts), to: @service

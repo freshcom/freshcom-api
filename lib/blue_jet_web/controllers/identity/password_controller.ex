@@ -8,5 +8,5 @@ defmodule BlueJetWeb.PasswordController do
   plug :scrub_params, "data" when action in [:create, :update]
 
   def update(conn, %{"data" => %{"type" => "Password"}}),
-    do: default(conn, :update, &Identity.update_password/1, status: :no_content)
+    do: default(conn, :update, &Identity.update_password/1, status: :no_content, identifiers: [:id, :reset_token])
 end

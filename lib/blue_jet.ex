@@ -18,7 +18,9 @@ defmodule BlueJet do
       import BlueJet.Service.{Option, Preload, Helper, Default}
       import BlueJet.Query
       import BlueJet.EventBus
+
       alias BlueJet.Repo
+      alias Ecto.Multi
     end
   end
 

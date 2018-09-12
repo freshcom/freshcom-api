@@ -3,20 +3,19 @@ defmodule BlueJetWeb.PasswordControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.ContextRequest
   alias BlueJet.Identity
 
   def create_password_reset_token(user) do
     if user.account_id do
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
-        fields: %{"username" => user.username },
+      {:ok, %{data: user}} = Identity.create_password_reset_token(%CreateRequest{
+        fields: %{"username" => user.username},
         vas: %{account_id: user.account_id, user_id: nil}
       })
 
       user
     else
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
-        fields: %{"username" => user.username }
+      {:ok, %{data: user}} = Identity.create_password_reset_token(%CreateRequest{
+        fields: %{"username" => user.username}
       })
 
       user
@@ -37,11 +36,10 @@ defmodule BlueJetWeb.PasswordControllerTest do
   # - With PAT this endpoint only update managed user's password
   describe "PATCH /v1/password" do
     test "given invalid password reset token", %{conn: conn} do
-      conn = patch(conn, "/v1/password", %{
+      conn = patch(conn, "/v1/password?resetToken=invalidToken", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
-            "resetToken" => "invalid",
             "value" => "test1234"
           }
         }
@@ -59,11 +57,10 @@ defmodule BlueJetWeb.PasswordControllerTest do
       |> change(password_reset_token_expires_at: Timex.shift(Timex.now(), hours: -1))
       |> Repo.update()
 
-      conn = patch(conn, "/v1/password", %{
+      conn = patch(conn, "/v1/password?resetToken=#{user.password_reset_token}", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
-            "resetToken" => user.password_reset_token,
             "value" => "test1234"
           }
         }
@@ -77,11 +74,10 @@ defmodule BlueJetWeb.PasswordControllerTest do
       user = create_standard_user()
       user = create_password_reset_token(user)
 
-      conn = patch(conn, "/v1/password", %{
+      conn = patch(conn, "/v1/password?resetToken=#{user.password_reset_token}", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
-            "resetToken" => user.password_reset_token,
             "value" => "test1234"
           }
         }
@@ -95,11 +91,10 @@ defmodule BlueJetWeb.PasswordControllerTest do
       managed_user = create_managed_user(standard_user)
       managed_user = create_password_reset_token(managed_user)
 
-      conn = patch(conn, "/v1/password", %{
+      conn = patch(conn, "/v1/password?resetToken=#{managed_user.password_reset_token}", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
-            "resetToken" => managed_user.password_reset_token,
             "value" => "test1234"
           }
         }

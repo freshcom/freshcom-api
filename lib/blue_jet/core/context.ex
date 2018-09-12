@@ -122,32 +122,40 @@ defmodule BlueJet.Context do
   end
 
   defp process_get(response, req, fun) do
-    fun.(req.identifiers, %{
+    opts = Map.merge(req._opts_, %{
       account: req._vad_.account,
       preload: req._preload_
     })
+
+    fun.(req.identifiers, opts)
     |> to_response(:get, response)
   end
 
   defp process_update(response, req, fun) do
-    fun.(req.identifiers, req.fields, %{
+    opts = Map.merge(req._opts_, %{
       account: req._vad_.account,
       locale: req.locale,
       preload: req._preload_
     })
+
+    fun.(req.identifiers, req.fields, opts)
     |> to_response(:update, response)
   end
 
   defp process_delete(response, req, fun) do
-    fun.(req.identifiers, %{account: req._vad_.account})
+    opts = Map.merge(req._opts_, %{
+      account: req._vad_.account
+    })
+
+    fun.(req.identifiers, opts)
     |> to_response(:delete, response)
   end
 
   def to_response({:ok, data}, cmd, resp) when cmd in [:create, :update], do: %{resp | data: data}
   def to_response({:error, %{errors: errors}}, cmd, resp) when cmd in [:create, :update, :delete], do: %{resp | errors: errors}
-  def to_response(nil, :get, resp), do: {:error, :not_found}
+  def to_response(nil, :get, _), do: {:error, :not_found}
   def to_response(%{} = data, :get, resp), do: %{resp | data: data}
-  def to_response({:ok, data}, :delete, resp), do: resp
+  def to_response({:ok, _}, :delete, resp), do: resp
   def to_response(other, _, _), do: other
 
   def translate(%{"data" => data} = response, locale, default_locale) do

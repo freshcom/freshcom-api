@@ -7,7 +7,8 @@ defmodule BlueJet.DeleteRequest do
               user: nil
             },
             _role_: nil,
-            _default_locale_: nil
+            _default_locale_: nil,
+            _opts_: %{}
 
   @type t :: map
 end

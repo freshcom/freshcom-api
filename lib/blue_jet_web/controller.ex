@@ -4,7 +4,7 @@ defmodule BlueJetWeb.Controller do
 
   alias JaSerializer.Params
   alias BlueJet.{ListRequest, CreateRequest, GetRequest, UpdateRequest, DeleteRequest}
-  alias BlueJet.{ContextRequest, ContextResponse}
+  alias BlueJet.ContextResponse
 
   @type action :: :index | :create | :show | :update | :delete
   @type request :: ListRequest.t() | CreateRequest.t() | GetRequest.t() | UpdateRequest.t() | DeleteRequest.t()
@@ -42,16 +42,19 @@ defmodule BlueJetWeb.Controller do
     }
   end
 
-  def build_context_request(%{assigns: assigns, params: params}, :show, _) do
+  def build_context_request(%{assigns: assigns, params: params}, :show, opts) do
+    identifiers = extract_identifiers(params, opts)
+
     %GetRequest{
       vas: assigns[:vas],
-      identifiers: %{id: params["id"]},
+      identifiers: identifiers,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
     }
   end
 
   def build_context_request(%{assigns: assigns, params: params}, :update, opts) do
+    identifiers = extract_identifiers(params, opts)
     fields =
       params["data"]
       |> Params.to_attributes()
@@ -59,7 +62,7 @@ defmodule BlueJetWeb.Controller do
 
     %UpdateRequest{
       vas: assigns[:vas],
-      identifiers: %{id: params["id"]},
+      identifiers: identifiers,
       fields: fields,
       preloads: assigns[:preloads],
       locale: assigns[:locale]
@@ -71,6 +74,16 @@ defmodule BlueJetWeb.Controller do
       vas: assigns[:vas],
       identifiers: %{id: params["id"]}
     }
+  end
+
+  defp extract_identifiers(params, identifiers: valid_keys) do
+    valid_keys = Enum.map(valid_keys, &Atom.to_string/1)
+    valid_params = Map.take(params, valid_keys)
+    Enum.reduce(valid_params, %{}, fn({k, v}, acc) -> Map.put(acc, String.to_atom(k), v) end)
+  end
+
+  defp extract_identifiers(params, _) do
+    %{id: params["id"]}
   end
 
   @doc """
@@ -134,16 +147,16 @@ defmodule BlueJetWeb.Controller do
     |> send_http_response(conn, :create, Keyword.take(opts, [:status]))
   end
 
-  def default(conn, :show, context_fun, _) do
+  def default(conn, :show, context_fun, opts) do
     conn
-    |> build_context_request(:show)
+    |> build_context_request(:show, Keyword.take(opts, [:identifiers]))
     |> context_fun.()
     |> send_http_response(conn, :show)
   end
 
   def default(conn, :update, context_fun, opts) do
     conn
-    |> build_context_request(:update, Keyword.take(opts, [:normalize]))
+    |> build_context_request(:update, Keyword.take(opts, [:normalize, :identifiers]))
     |> context_fun.()
     |> send_http_response(conn, :update, Keyword.take(opts, [:status]))
   end

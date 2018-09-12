@@ -1,8 +1,5 @@
 defmodule BlueJet.Identity.DefaultService do
   use BlueJet, :service
-  use BlueJet.EventEmitter, namespace: :identity
-
-  alias Ecto.{Multi, Changeset}
 
   alias BlueJet.Identity.{
     Account,
@@ -88,7 +85,7 @@ defmodule BlueJet.Identity.DefaultService do
     %{data | account: account}
   end
 
-  @spec create_account(map, map) :: {:ok, Account.t()} | {:error, Changeset.t()}
+  @spec create_account(map, map) :: {:ok, Account.t()} | {:error, %{errors: Keyword.t()}}
   def create_account(fields, opts \\ %{}) do
     if opts[:user] && User.type(opts[:user]) == :managed do
       raise ArgumentError, message: "managed user cannot be used to create account"
@@ -154,7 +151,7 @@ defmodule BlueJet.Identity.DefaultService do
     {:ok, refresh_token}
   end
 
-  @spec update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, Changeset.t()}
+  @spec update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, %{errors: Keyword.t()}}
   def update_account(account, fields, opts \\ %{})
 
   def update_account(%Account{mode: "test"}, _, _) do
@@ -196,7 +193,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: User
   #
-  @spec create_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  @spec create_user(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def create_user(fields, %{account: nil}) do
     account_fields =
       fields
@@ -323,7 +320,7 @@ defmodule BlueJet.Identity.DefaultService do
     |> Repo.get_by(clauses)
   end
 
-  @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def update_user(%User{} = user, fields, opts) do
     account = extract_account(opts)
 
@@ -361,7 +358,7 @@ defmodule BlueJet.Identity.DefaultService do
     account = extract_account(opts)
 
     user = get_user(identifiers, opts)
-    if account.mode == "test" && user.account_id != account.id do
+    if account.mode == "test" && user && user.account_id != account.id do
       {:error, :unprocessable_for_live_user}
     else
       update_user(user, fields, opts)
@@ -380,7 +377,7 @@ defmodule BlueJet.Identity.DefaultService do
     |> Repo.update()
   end
 
-  @spec delete_user(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  @spec delete_user(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def delete_user(identifiers, opts),
     do: default(:delete, identifiers, Map.put(opts, :type, :managed), &get_user/2)
 
@@ -414,14 +411,14 @@ defmodule BlueJet.Identity.DefaultService do
   defp extract_account_membership_filter(query, opts) do
     filter = extract_filter(query)
 
-    if !opts[:account] && !filter[:user_id] do
+    unless opts[:account] || filter[:user_id] do
       raise ArgumentError, message: "when account is not provided in opts :user_id must be provided as filter"
     end
 
-   if opts[:account] do
-      Map.put(filter, :account_id, opts[:account].id)
-    else
+    if filter[:user_id] do
       filter
+    else
+      Map.put(filter, :account_id, opts[:account].id)
     end
   end
 
@@ -429,7 +426,7 @@ defmodule BlueJet.Identity.DefaultService do
   def get_account_membership(identifiers, opts),
     do: default(:get, AccountMembership, identifiers, opts)
 
-  @spec update_account_membership(map, map, map) :: {:ok, AccountMembership.t()} | {:error, Changeset.t()}
+  @spec update_account_membership(map, map, map) :: {:ok, AccountMembership.t()} | {:error, %{errors: Keyword.t()}}
   def update_account_membership(identifiers, fields, opts),
     do: default(:update, identifiers, fields, opts, &get_account_membership/2)
 
@@ -438,7 +435,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
   @evt_error %{errors: [user_id: {"User not found.", code: :not_found}]}
 
-  @spec create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, map}
+  @spec create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def create_email_verification_token(%{"user_id" => nil}, _), do: {:error, @evt_error}
 
   def create_email_verification_token(%{"user_id" => user_id}, opts) do
@@ -470,7 +467,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
   @ev_error %{errors: [token: {"Token is invalid or expired.", code: :invalid}]}
 
-  @spec verify_email(map, map) :: {:ok, User.t()} | {:error, :not_found}
+  @spec verify_email(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def verify_email(%{"token" => nil}, _), do: {:error, @ev_error}
 
   def verify_email(%{"token" => token}, opts) do
@@ -500,7 +497,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Phone Verification Code
   #
-  @spec create_phone_verification_code(map, map) :: {:ok, User.t()} | {:error, Changeset.t()}
+  @spec create_phone_verification_code(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def create_phone_verification_code(fields, opts) do
     account = extract_account(opts)
 
@@ -525,7 +522,7 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Password Reset Token
   #
-  @spec create_password_reset_token(map, map) :: {:ok, User.t()}
+  @spec create_password_reset_token(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def create_password_reset_token(%{"username" => username}, _) when byte_size(username) == 0 do
     {:error, %{errors: [username: {"Username is required.", code: :required}]}}
   end
@@ -570,10 +567,22 @@ defmodule BlueJet.Identity.DefaultService do
   #
   # MARK: Password
   #
-  def update_password(password = %Password{}, new_password) do
-    changeset =
-      password
-      |> Password.changeset(:update, %{value: new_password, reset_token: nil, reset_token_expires_at: nil})
+  @spec update_password(map, map, map) :: {:ok, Password.t()} | {:error, :not_found} | {:error, %{errors: Keyword.t()}}
+  def update_password(identifiers, fields, opts) do
+    get_password(identifiers, opts)
+    |> do_update_password(identifiers, fields)
+  end
+
+  defp do_update_password(nil, %{reset_token: _}, _) do
+    {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
+  end
+
+  defp do_update_password(nil, %{id: _}, _) do
+    {:error, :not_found}
+  end
+
+  defp do_update_password(%Password{} = password, _, fields) do
+    changeset = Password.changeset(password, :update, fields)
 
     case Repo.update(changeset) do
       {:ok, password} ->
@@ -584,67 +593,38 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  def update_password(nil, _, _), do: {:error, :not_found}
-
-  def update_password(%{reset_token: reset_token}, new_password, %{account: nil}) do
-    password =
-      Password.Query.default()
-      |> Password.Query.standard()
-      |> Password.Query.with_valid_reset_token()
-      |> Repo.get_by(reset_token: reset_token)
-
-    if password do
-      update_password(password, new_password)
-    else
-      {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
-    end
+  defp get_password(%{reset_token: reset_token}, %{account: nil}) do
+    Password.Query.default()
+    |> Password.Query.standard()
+    |> Password.Query.with_valid_reset_token()
+    |> Repo.get_by(reset_token: reset_token)
   end
 
-  def update_password(%{reset_token: reset_token}, new_password, %{account: account}) do
-    password =
-      Password.Query.default()
-      |> for_account(account.id)
-      |> Password.Query.with_valid_reset_token()
-      |> Repo.get_by(reset_token: reset_token)
-
-    if password do
-      update_password(password, new_password)
-    else
-      {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
-    end
+  defp get_password(%{reset_token: reset_token}, %{account: account}) do
+    Password.Query.default()
+    |> for_account(account.id)
+    |> Password.Query.with_valid_reset_token()
+    |> Repo.get_by(reset_token: reset_token)
   end
 
-  def update_password(%{id: id}, new_password, %{account: nil}) do
-    password =
-      Password.Query.default()
-      |> Password.Query.standard()
-      |> Repo.get(id)
-
-    if password do
-      update_password(password, new_password)
-    else
-      {:error, :not_found}
-    end
+  defp get_password(%{id: id}, %{account: nil}) do
+    Password.Query.default()
+    |> Password.Query.standard()
+    |> Repo.get(id)
   end
 
-  def update_password(%{id: id}, new_password, %{account: account}) do
-    password =
-      Password.Query.default()
-      |> for_account(account.id)
-      |> Repo.get(id)
-
-    if password do
-      update_password(password, new_password)
-    else
-      {:error, :not_found}
-    end
+  defp get_password(%{id: id}, %{account: account}) do
+    Password.Query.default()
+    |> for_account(account.id)
+    |> Repo.get(id)
   end
 
   #
   # MARK: Refresh Token
   #
+  @spec get_refresh_token(map) :: RefreshToken.t() | nil
   def get_refresh_token(opts) do
-    account = get_account(opts)
+    account = extract_account(opts)
 
     RefreshToken.Query.publishable()
     |> Repo.get_by!(account_id: account.id)

@@ -1,7 +1,6 @@
 defmodule BlueJetWeb.ProductController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.Catalogue
 
   action_fallback BlueJetWeb.FallbackController
@@ -20,6 +19,6 @@ defmodule BlueJetWeb.ProductController do
   def update(conn, %{"id" => _, "data" => %{"type" => "Product"}}),
     do: default(conn, :update, &Catalogue.update_product/1, normalize: ["kind", "name_sync"])
 
-  def delete(conn, %{"id" => id}),
+  def delete(conn, %{"id" => _}),
     do: default(conn, :delete, &Catalogue.delete_product/1)
 end

@@ -14,7 +14,8 @@ defmodule BlueJet.UpdateRequest do
               paths: [],
               opts: %{}
             },
-            _default_locale_: nil
+            _default_locale_: nil,
+            _opts_: %{}
 
   @type t :: map
 end

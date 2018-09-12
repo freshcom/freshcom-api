@@ -68,13 +68,9 @@ defmodule BlueJet.Identity do
   def update_account_membership(req), do: default(req, :update, :account_membership, Policy, Service)
 
   #
-  # MARK: Email Verification Token
-  #
-  def create_email_verification_token(req), do: default(req, :create, :email_verification_token, Policy, Service)
-
-  #
   # MARK: Email Verification
   #
+  def create_email_verification_token(req), do: default(req, :create, :email_verification_token, Policy, Service)
   def create_email_verification(req), do: default(req, :create, :email_verification, Policy, &Service.verify_email/2)
 
   #
@@ -83,58 +79,34 @@ defmodule BlueJet.Identity do
   def create_phone_verification_code(req), do: default(req, :create, :phone_verification_code, Policy, Service)
 
   #
-  # MARK: Password Reset Token
-  #
-  def create_password_reset_token(request) do
-    with {:ok, args} <- Policy.authorize(request, "create_password_reset_token"),
-         {:ok, user} <- Service.create_password_reset_token(args[:fields], args[:opts])
-    do
-      {:ok, %ContextResponse{data: user}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %ContextResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
-
-  #
   # MARK: Password
   #
-  def update_password(request) do
-    with {:ok, args} <- Policy.authorize(request, "update_password"),
-         {:ok, _} <- Service.update_password(args[:identifiers], args[:fields]["value"], args[:opts])
-    do
-      {:ok, %ContextResponse{}}
-    else
-      {:error, %{ errors: errors }} ->
-        {:error, %ContextResponse{ errors: errors }}
-
-      other -> other
-    end
-  end
+  def create_password_reset_token(req), do: default(req, :create, :password_reset_token, Policy, Service)
+  def update_password(req), do: default(req, :update, :password, Policy, Service)
 
   #
   # MARK: Refresh Token
   #
-  def get_refresh_token(request) do
-    with {:ok, args} <- Policy.authorize(request, "get_refresh_token"),
-         refresh_token = %{} <- Service.get_refresh_token(args[:opts])
-    do
-      {:ok, %ContextResponse{ data: refresh_token }}
-    else
-      nil -> {:error, :not_found}
-
-      other -> other
-    end
+  def get_refresh_token(req) do
+    Policy.authorize(req, :get_refresh_token)
+    |> do_get_refresh_token()
   end
+
+  defp do_get_refresh_token({:ok, req}) do
+    resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
+
+    Service.get_refresh_token(%{account: req._vad_.account})
+    |> to_response(:get, resp)
+    |> to_result_tuple()
+  end
+
+  defp do_get_refresh_token(other), do: other
 
   #
   # MARK: User
   #
   def create_user(req), do: default(req, :create, :user, Policy, Service)
-  # def create_user(req), do: create("user", req, __MODULE__)
-  def get_user(req), do: get("user", req, __MODULE__)
-  def update_user(req), do: update("user", req, __MODULE__)
-  def delete_user(req), do: delete("user", req, __MODULE__)
+  def get_user(req), do: default(req, :get, :user, Policy, Service)
+  def update_user(req), do: default(req, :update, :user, Policy, Service)
+  def delete_user(req), do: default(req, :delete, :user, Policy, Service)
 end
