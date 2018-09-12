@@ -1,5 +1,5 @@
 defmodule BlueJet.Identity.Authentication do
-  use BlueJet.EventEmitter, namespace: :identity
+  alias BlueJet.EventBus
   alias BlueJet.Identity.Service
 
   @token_expiry_seconds 3600
@@ -168,7 +168,7 @@ defmodule BlueJet.Identity.Authentication do
 
       !otp_provided ->
         Repo.update!(User.changeset(user, :refresh_tfa_code))
-        BlueJet.EventBus.dispatch("identity:user.tfa_code.create.success", %{user: user})
+        EventBus.dispatch("identity:user.tfa_code.create.success", %{user: user})
         @errors[:invalid_otp]
 
       !otp_valid ->
