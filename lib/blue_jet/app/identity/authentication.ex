@@ -1,10 +1,12 @@
 defmodule BlueJet.Identity.Authentication do
   use BlueJet.EventEmitter, namespace: :identity
+  alias BlueJet.Identity.Service
 
   @token_expiry_seconds 3600
   @errors [
     invalid_password_grant: {:error, %{error: :invalid_grant, error_description: "Username and password does not match."}},
-    invalid_refresh_token_grant: {:error, %{error: :invalid_grant, error_description: "Refresh token is invalid."}}
+    invalid_refresh_token_grant: {:error, %{error: :invalid_grant, error_description: "Refresh token is invalid."}},
+    invalid_otp: {:error, %{error: :invalid_otp, error_description: "OTP is invalid."}}
   ]
 
   @moduledoc """
@@ -36,283 +38,179 @@ defmodule BlueJet.Identity.Authentication do
     {:error, %{error: :unsupported_grant_type, error_description: "\"grant_type\" must be one of \"password\" or \"refresh_token\""}}
   end
 
-  def create_token(
-        fields = %{
-          "grant_type" => "password",
-          "username" => username,
-          "password" => password,
-          "scope" => scope
-        }
-      ) do
-    create_token(%{
-      grant_type: "password",
-      username: username,
-      password: password,
-      otp: fields["otp"],
-      scope: deserialize_scope(scope, %{aid: :account_id})
-    })
+  def create_token(%{"grant_type" => "password", "scope" => scope} = fields) do
+    scope = deserialize_scope(scope, %{aid: :account_id})
+    fields =
+      fields
+      |> take_atomize(["grant_type", "username", "password"])
+      |> Map.merge(%{otp: fields["otp"]})
+      |> Map.merge(%{scope: scope})
+
+    create_token_by_password(fields)
   end
 
-  def create_token(
-        fields = %{"grant_type" => "password", "username" => username, "password" => password}
-      ) do
-    create_token(%{
-      grant_type: "password",
-      username: username,
-      password: password,
-      otp: fields["otp"]
-    })
+  def create_token(%{"grant_type" => "password"} = fields) do
+    fields =
+      fields
+      |> take_atomize(["grant_type", "username", "password"])
+      |> Map.merge(%{otp: fields["otp"]})
+
+    create_token_by_password(fields)
   end
 
-  def create_token(%{
-        "grant_type" => "refresh_token",
-        "refresh_token" => refresh_token,
-        "scope" => scope
-      }) do
-    create_token(%{
-      grant_type: "refresh_token",
-      refresh_token: refresh_token,
-      scope: deserialize_scope(scope, %{aid: :account_id})
-    })
+  def create_token(%{"grant_type" => "refresh_token", "scope" => scope} = fields) do
+    scope = deserialize_scope(scope, %{aid: :account_id})
+    fields =
+      fields
+      |> take_atomize(["grant_type", "refresh_token"])
+      |> Map.merge(%{scope: scope})
+
+    create_token_by_refresh_token(fields)
   end
 
   def create_token(%{"grant_type" => "refresh_token", "refresh_token" => refresh_token}) do
-    create_token(%{grant_type: "refresh_token", refresh_token: refresh_token})
+    create_token_by_refresh_token(%{grant_type: "refresh_token", refresh_token: refresh_token})
   end
 
-  def create_token(
-        fields = %{
-          grant_type: "password",
-          username: username,
-          password: password,
-          scope: %{account_id: account_id}
-        }
-      ) do
-    account = Repo.get(Account, account_id)
+  defp take_atomize(m, keys) do
+    m
+    |> Map.take(keys)
+    |> Enum.reduce(%{}, fn({k, v}, acc) -> Map.put(acc, String.to_atom(k), v) end)
+  end
 
-    user = cond do
-      !account ->
+  def create_token_by_password(%{username: username, password: password, scope: scope} = fields) do
+    case Repo.get(Account, scope[:account_id]) do
+      nil ->
         nil
 
-      account.mode == "test" ->
-        user =
-          User
-          |> User.Query.member_of_account(account_id)
-          |> Repo.get_by(username: username)
-
-        if !user do
-          User
-          |> User.Query.member_of_account(account.live_account_id)
-          |> Repo.get_by(username: username)
-        else
-          user
-        end
-
-      account.mode == "live" ->
-        User
-        |> User.Query.member_of_account(account_id)
-        |> Repo.get_by(username: username)
+      account ->
+        user = Service.get_user(%{username: username}, %{account: account})
+        do_create_token_by_password(user, password, fields[:otp], scope[:account_id])
     end
-
-    create_token_by_password(user, password, fields[:otp], account_id)
   rescue
     Ecto.Query.CastError ->
       @errors[:invalid_password_grant]
   end
 
-  def create_token(fields = %{grant_type: "password", username: username, password: password}) do
+  def create_token_by_password(%{username: username, password: password} = fields) do
     user = Repo.get_by(User, username: username)
 
-    if user && User.type(User) == :managed && User.get_role(user, user.account_id) == "customer" do
+    if user && User.type(user) == :managed && User.get_role(user, user.account_id) == "customer" do
       @errors[:invalid_password_grant]
     else
-      create_token_by_password(user, password, fields[:otp])
+      do_create_token_by_password(user, password, fields[:otp])
     end
   end
 
-  def create_token(%{
-        grant_type: "refresh_token",
-        refresh_token: refresh_token_id,
-        scope: %{account_id: account_id}
-      }) do
-    target_account = Repo.get!(Account, account_id)
+  def create_token_by_password(_) do
+    {:error, %{error: :invalid_request, error_description: "Your request is missing required parameters or is otherwise malformed."}}
+  end
+
+  def create_token_by_refresh_token(%{refresh_token: refresh_token_id, scope: scope}) do
+    target_account = Repo.get!(Account, scope[:account_id])
     refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
 
     cond do
-      refresh_token.account_id == account_id ->
-        create_token_by_refresh_token(refresh_token)
+      refresh_token.account_id == scope[:account_id] ->
+        do_create_token_by_refresh_token(refresh_token)
 
       refresh_token.account_id == target_account.live_account_id ->
         target_refresh_token =
           Repo.get_by(RefreshToken, account_id: target_account.id, user_id: refresh_token.user_id)
 
-        create_token_by_refresh_token(target_refresh_token)
+        do_create_token_by_refresh_token(target_refresh_token)
 
       true ->
-        create_token_by_refresh_token(nil)
+        do_create_token_by_refresh_token(nil)
     end
   rescue
     Ecto.Query.CastError ->
       @errors[:invalid_refresh_token_grant]
   end
 
-  def create_token(%{grant_type: "refresh_token", refresh_token: refresh_token_id}) do
+  def create_token_by_refresh_token(%{refresh_token: refresh_token_id}) do
     refresh_token = Repo.get(RefreshToken, RefreshToken.unprefix_id(refresh_token_id))
-    create_token_by_refresh_token(refresh_token)
+    do_create_token_by_refresh_token(refresh_token)
   rescue
     Ecto.Query.CastError ->
       @errors[:invalid_password_grant]
   end
 
-  def create_token(_) do
+  def create_token_by_refresh_token(_) do
     {:error, %{error: :invalid_request, error_description: "Your request is missing required parameters or is otherwise malformed."}}
   end
 
-  # No scope
-  defp create_token_by_password(nil, _, _) do
+  defp do_create_token_by_password(nil, _, _) do
     @errors[:invalid_password_grant]
   end
 
-  defp create_token_by_password(user, password, otp) do
-    password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
-    otp_provided = otp != "" && otp
-
-    otp_valid =
-      user.auth_method == "simple" ||
-        (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
-
-    cond do
-      password_valid && otp_valid ->
-        refresh_token =
-          user.id
-          |> RefreshToken.Query.for_user()
-          |> Repo.get_by!(account_id: user.default_account_id)
-
-        User.clear_tfa_code(user)
-
-        token =
-          Jwt.sign_token(%{
-            exp: System.system_time(:second) + @token_expiry_seconds,
-            aud: user.default_account_id,
-            prn: user.id,
-            typ: "user"
-          })
-
-        {:ok,
-         %{
-           access_token: token,
-           token_type: "bearer",
-           expires_in: @token_expiry_seconds,
-           refresh_token: RefreshToken.get_prefixed_id(refresh_token)
-         }}
-
-      !password_valid ->
-        {:error,
-         %{error: :invalid_grant, error_description: "Username and password does not match."}}
-
-      !otp_provided ->
-        user = User.refresh_tfa_code(user)
-        emit_event("identity.user.tfa_code.create.success", %{account: nil, user: user})
-        {:error, %{error: :invalid_otp, error_description: "OTP is invalid."}}
-
-      !otp_valid ->
-        {:error, %{error: :invalid_otp, error_description: "OTP is invalid."}}
-    end
+  defp do_create_token_by_password(user, password, otp) do
+    do_create_token_by_password(user, password, otp, user.default_account_id)
   end
 
-  defp create_token_by_password(nil, _, _, _) do
+  defp do_create_token_by_password(nil, _, _, _) do
     @errors[:invalid_password_grant]
   end
 
-  defp create_token_by_password(user, password, otp, account_id) do
+  defp do_create_token_by_password(user, password, otp, account_id) do
     password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
     otp_provided = otp != "" && otp
-
-    otp_valid =
-      user.auth_method == "simple" ||
-        (user.auth_method == "tfa_sms" && otp && otp == User.get_tfa_code(user))
+    otp_valid = User.is_tfa_code_valid?(user, otp)
 
     cond do
       password_valid && otp_valid ->
-        refresh_token =
-          user.id
-          |> RefreshToken.Query.for_user()
-          |> Repo.get_by!(account_id: account_id)
-
-        User.clear_tfa_code(user)
-
-        token =
-          Jwt.sign_token(%{
-            exp: System.system_time(:second) + @token_expiry_seconds,
-            aud: account_id,
-            prn: user.id,
-            typ: "user"
-          })
-
-        {:ok,
-         %{
-           access_token: token,
-           token_type: "bearer",
-           expires_in: @token_expiry_seconds,
-           refresh_token: RefreshToken.get_prefixed_id(refresh_token)
-         }}
+        refresh_token = Repo.get_by!(RefreshToken, user_id: user.id, account_id: account_id)
+        Repo.update!(User.changeset(user, :clear_tfa_code))
+        do_create_token_by_refresh_token(refresh_token)
 
       !password_valid ->
         @errors[:invalid_password_grant]
 
       !otp_provided ->
-        user = User.refresh_tfa_code(user)
-        account = Repo.get!(Account, account_id)
-        emit_event("identity.user.tfa_code.create.success", %{account: account, user: user})
-        {:error, %{error: :invalid_otp, error_description: "OTP is invalid."}}
+        Repo.update!(User.changeset(user, :refresh_tfa_code))
+        BlueJet.EventBus.dispatch("identity:user.tfa_code.create.success", %{user: user})
+        @errors[:invalid_otp]
 
       !otp_valid ->
-        {:error, %{error: :invalid_otp, error_description: "OTP is invalid."}}
+        @errors[:invalid_otp]
     end
   end
 
-  defp create_token_by_refresh_token(nil) do
+  defp do_create_token_by_refresh_token(nil) do
     @errors[:invalid_refresh_token_grant]
   end
 
-  defp create_token_by_refresh_token(
-         refresh_token = %RefreshToken{user_id: nil, account_id: account_id}
-       )
-       when not is_nil(account_id) do
-    token =
-      Jwt.sign_token(%{
-        exp: System.system_time(:second) + @token_expiry_seconds,
-        prn: account_id,
-        typ: "publishable"
-      })
+  defp do_create_token_by_refresh_token(%RefreshToken{user_id: nil} = refresh_token) do
+    jwt = Jwt.sign_token(%{
+      exp: System.system_time(:second) + @token_expiry_seconds,
+      prn: refresh_token.account_id,
+      typ: "publishable"
+    })
+    token = %{
+      access_token: jwt,
+      token_type: "bearer",
+      expires_in: @token_expiry_seconds,
+      refresh_token: RefreshToken.get_prefixed_id(refresh_token)
+    }
 
-    {:ok,
-     %{
-       access_token: token,
-       token_type: "bearer",
-       expires_in: @token_expiry_seconds,
-       refresh_token: RefreshToken.get_prefixed_id(refresh_token)
-     }}
+    {:ok, token}
   end
 
-  defp create_token_by_refresh_token(
-         refresh_token = %RefreshToken{user_id: user_id, account_id: account_id}
-       ) do
-    token =
-      Jwt.sign_token(%{
-        exp: System.system_time(:second) + @token_expiry_seconds,
-        aud: account_id,
-        prn: user_id,
-        typ: "user"
-      })
+  defp do_create_token_by_refresh_token(%RefreshToken{user_id: user_id} = refresh_token) do
+    jwt = Jwt.sign_token(%{
+      exp: System.system_time(:second) + @token_expiry_seconds,
+      aud: refresh_token.account_id,
+      prn: user_id,
+      typ: "user"
+    })
+    token = %{
+      access_token: jwt,
+      token_type: "bearer",
+      expires_in: @token_expiry_seconds,
+      refresh_token: RefreshToken.get_prefixed_id(refresh_token)
+    }
 
-    {:ok,
-     %{
-       access_token: token,
-       token_type: "bearer",
-       expires_in: @token_expiry_seconds,
-       refresh_token: RefreshToken.get_prefixed_id(refresh_token)
-     }}
+    {:ok, token}
   end
 
   def deserialize_scope(scope_string, abr_mappings \\ %{}) do

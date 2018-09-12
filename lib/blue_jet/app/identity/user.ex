@@ -130,6 +130,17 @@ defmodule BlueJet.Identity.User do
     )
   end
 
+  def changeset(user, :clear_tfa_code) do
+    change(user, %{tfa_code: nil, tfa_code_expires_at: nil})
+  end
+
+  def changeset(user, :refresh_tfa_code) do
+    change(user, %{
+      tfa_code: generate_tfa_code(6),
+      tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5)
+    })
+  end
+
   @spec encrypt_password(String.t()) :: Changeset.t()
   def encrypt_password(password) do
     Comeonin.Bcrypt.hashpwsalt(password)
@@ -353,6 +364,10 @@ defmodule BlueJet.Identity.User do
     else
       nil
     end
+  end
+
+  def is_tfa_code_valid?(user, otp) do
+    user.auth_method == "simple" || (user.auth_method == "tfa_sms" && otp && otp == get_tfa_code(user))
   end
 
   @spec get_role(__MODULE__.t(), String.t()) :: String.t()

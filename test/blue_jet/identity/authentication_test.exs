@@ -167,7 +167,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "identity.user.tfa_code.create.success"
+          assert name == "identity:user.tfa_code.create.success"
           {:ok, nil}
          end)
 

@@ -29,74 +29,74 @@ config :blue_jet, :event_bus, %{
   "*" => [BlueJet.EventHandlerMock]
 }
 
-config :blue_jet, :identity, %{
-  service: BlueJet.Identity.ServiceMock,
-  listeners: [BlueJet.EventHandlerMock]
-}
+# config :blue_jet, :identity, %{
+#   service: BlueJet.Identity.ServiceMock,
+#   listeners: [BlueJet.EventHandlerMock]
+# }
 
-config :blue_jet, :file_storage, %{
-  service: BlueJet.FileStorage.ServiceMock,
-  identity_service: BlueJet.FileStorage.IdentityServiceMock,
-  s3_client: BlueJet.FileStorage.S3ClientMock,
-  cloudfront_client: BlueJet.FileStorage.CloudfrontClientMock
-}
+# config :blue_jet, :file_storage, %{
+#   service: BlueJet.FileStorage.ServiceMock,
+#   identity_service: BlueJet.FileStorage.IdentityServiceMock,
+#   s3_client: BlueJet.FileStorage.S3ClientMock,
+#   cloudfront_client: BlueJet.FileStorage.CloudfrontClientMock
+# }
 
-config :blue_jet, :goods, %{
-  service: BlueJet.Goods.ServiceMock,
-  identity_service: BlueJet.Goods.IdentityServiceMock,
-  file_storage_service: BlueJet.Goods.FileStorageServiceMock
-}
+# config :blue_jet, :goods, %{
+#   service: BlueJet.Goods.ServiceMock,
+#   identity_service: BlueJet.Goods.IdentityServiceMock,
+#   file_storage_service: BlueJet.Goods.FileStorageServiceMock
+# }
 
-config :blue_jet, :crm, %{
-  service: BlueJet.Crm.ServiceMock,
-  stripe_client: BlueJet.Crm.StripeClientMock,
-  identity_service: BlueJet.Crm.IdentityServiceMock,
-  file_storage_service: BlueJet.Crm.FileStorageServiceMock
-}
+# config :blue_jet, :crm, %{
+#   service: BlueJet.Crm.ServiceMock,
+#   stripe_client: BlueJet.Crm.StripeClientMock,
+#   identity_service: BlueJet.Crm.IdentityServiceMock,
+#   file_storage_service: BlueJet.Crm.FileStorageServiceMock
+# }
 
-config :blue_jet, :notification, %{
-  service: BlueJet.Notification.ServiceMock,
-  identity_service: BlueJet.Notification.IdentityServiceMock
-}
+# config :blue_jet, :notification, %{
+#   service: BlueJet.Notification.ServiceMock,
+#   identity_service: BlueJet.Notification.IdentityServiceMock
+# }
 
-config :blue_jet, :balance, %{
-  service: BlueJet.Balance.ServiceMock,
-  stripe_client: BlueJet.Balance.StripeClientMock,
-  oauth_client: BlueJet.Balance.OauthClientMock,
-  identity_service: BlueJet.Balance.IdentityServiceMock,
-  crm_service: BlueJet.Balance.CrmServiceMock,
-  listeners: [BlueJet.EventHandlerMock]
-}
+# config :blue_jet, :balance, %{
+#   service: BlueJet.Balance.ServiceMock,
+#   stripe_client: BlueJet.Balance.StripeClientMock,
+#   oauth_client: BlueJet.Balance.OauthClientMock,
+#   identity_service: BlueJet.Balance.IdentityServiceMock,
+#   crm_service: BlueJet.Balance.CrmServiceMock,
+#   listeners: [BlueJet.EventHandlerMock]
+# }
 
-config :blue_jet, :catalogue, %{
-  service: BlueJet.Catalogue.ServiceMock,
-  identity_service: BlueJet.Catalogue.IdentityServiceMock,
-  goods_service: BlueJet.Catalogue.GoodsServiceMock,
-  file_storage_service: BlueJet.Catalogue.FileStorageServiceMock
-}
+# config :blue_jet, :catalogue, %{
+#   service: BlueJet.Catalogue.ServiceMock,
+#   identity_service: BlueJet.Catalogue.IdentityServiceMock,
+#   goods_service: BlueJet.Catalogue.GoodsServiceMock,
+#   file_storage_service: BlueJet.Catalogue.FileStorageServiceMock
+# }
 
-config :blue_jet, :data_trading, %{
-  service: BlueJet.DataTrading.ServiceMock,
-  identity_service: BlueJet.DataTrading.IdentityServiceMock,
-  goods_service: BlueJet.DataTrading.GoodsServiceMock,
-  crm_service: BlueJet.DataTrading.CrmServiceMock,
-  catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
-}
+# config :blue_jet, :data_trading, %{
+#   service: BlueJet.DataTrading.ServiceMock,
+#   identity_service: BlueJet.DataTrading.IdentityServiceMock,
+#   goods_service: BlueJet.DataTrading.GoodsServiceMock,
+#   crm_service: BlueJet.DataTrading.CrmServiceMock,
+#   catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
+# }
 
-config :blue_jet, :fulfillment, %{
-  service: BlueJet.Fulfillment.ServiceMock,
-  identity_service: BlueJet.Fulfillment.IdentityServiceMock,
-  crm_service: BlueJet.Fulfillment.CrmServiceMock,
-  goods_service: BlueJet.Fulfillment.GoodsServiceMock,
-  listeners: [BlueJet.EventHandlerMock]
-}
+# config :blue_jet, :fulfillment, %{
+#   service: BlueJet.Fulfillment.ServiceMock,
+#   identity_service: BlueJet.Fulfillment.IdentityServiceMock,
+#   crm_service: BlueJet.Fulfillment.CrmServiceMock,
+#   goods_service: BlueJet.Fulfillment.GoodsServiceMock,
+#   listeners: [BlueJet.EventHandlerMock]
+# }
 
-config :blue_jet, :storefront, %{
-  service: BlueJet.Storefront.ServiceMock,
-  balance_service: BlueJet.Storefront.BalanceServiceMock,
-  fulfillment_service: BlueJet.Storefront.FulfillmentServiceMock,
-  catalogue_service: BlueJet.Storefront.CatalogueServiceMock,
-  identity_service: BlueJet.Storefront.IdentityServiceMock,
-  goods_service: BlueJet.Storefront.GoodsServiceMock,
-  crm_service: BlueJet.Storefront.CrmServiceMock
-}
+# config :blue_jet, :storefront, %{
+#   service: BlueJet.Storefront.ServiceMock,
+#   balance_service: BlueJet.Storefront.BalanceServiceMock,
+#   fulfillment_service: BlueJet.Storefront.FulfillmentServiceMock,
+#   catalogue_service: BlueJet.Storefront.CatalogueServiceMock,
+#   identity_service: BlueJet.Storefront.IdentityServiceMock,
+#   goods_service: BlueJet.Storefront.GoodsServiceMock,
+#   crm_service: BlueJet.Storefront.CrmServiceMock
+# }

@@ -210,7 +210,7 @@ defmodule BlueJet.Notification.Trigger do
         account_id: account.id,
         system_label: "default",
         name: "Send TFA code sms",
-        event: "identity.user.tfa_code.create.success",
+        event: "identity:user.tfa_code.create.success",
         action_type: "send_sms",
         action_target: sms_template.id
       }

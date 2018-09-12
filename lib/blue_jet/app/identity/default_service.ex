@@ -48,6 +48,13 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   #
+  # MARK: Access Token
+  #
+  def create_token(fields) do
+
+  end
+
+  #
   # MARK: Account
   #
   def get_account(%{id: id}) do
