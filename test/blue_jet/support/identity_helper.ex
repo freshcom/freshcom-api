@@ -1,6 +1,9 @@
 defmodule BlueJet.Identity.TestHelper do
-  alias BlueJet.ContextRequest
+  import Mox
+  alias BlueJet.EventHandlerMock
+  alias BlueJet.Identity.Service
 
+  alias BlueJet.ContextRequest
   alias BlueJet.Identity
   alias BlueJet.Identity.User
   alias BlueJet.Identity.Account
@@ -89,5 +92,57 @@ defmodule BlueJet.Identity.TestHelper do
     })
 
     pat
+  end
+
+  def account_fixture() do
+    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
+
+    {:ok, account} = Service.create_account(%{
+      name: Faker.Company.name()
+    })
+
+    account
+  end
+
+  def managed_user_fixture(account, fields \\ %{}) do
+    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
+
+    n = System.unique_integer([:positive])
+    default_fields = %{
+      name: Faker.Name.name(),
+      username: "#{Faker.Internet.user_name()}#{n}",
+      password: "test1234",
+      role: "administrator"
+    }
+    fields = Map.merge(default_fields, fields)
+
+    {:ok, user} = Service.create_user(fields, %{account: account, bypass_pvc_validation: true})
+
+    user
+  end
+
+  def standard_user_fixture(fields \\ %{}) do
+    expect(EventHandlerMock, :handle_event, 3, fn(_, _) -> {:ok, nil} end)
+
+    n = System.unique_integer([:positive])
+    default_fields = %{
+      name: Faker.Name.name(),
+      username: "#{Faker.Internet.user_name()}#{n}",
+      password: "test1234",
+      email: "#{Faker.Internet.user_name()}#{n}@example.com"
+    }
+    fields = Map.merge(default_fields, fields)
+    {:ok, user} = Service.create_user(fields, %{account: nil, bypass_pvc_validation: true})
+
+    user
+  end
+
+  def get_prt(account) do
+    BlueJet.Identity.Service.get_refresh_token(%{account: account}).prefixed_id
+  end
+
+  def get_urt(user_id, account_id) do
+    Repo.get_by!(RefreshToken, user_id: user_id, account_id: account_id)
+    |> RefreshToken.get_prefixed_id()
   end
 end

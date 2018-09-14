@@ -33,6 +33,8 @@ defmodule BlueJet.Identity.Service do
 
   @callback get_refresh_token(map) :: {:ok, RefreshToken.t()} | {:error, any}
 
+  @callback refresh_tfa_code(User.t()) :: User.t()
+
   defdelegate get_vas_data(map), to: @service
   defdelegate put_vas_data(map), to: @service
   defdelegate get_vad(map), to: @service
@@ -61,4 +63,6 @@ defmodule BlueJet.Identity.Service do
   defdelegate create_phone_verification_code(fields, opts), to: @service
 
   defdelegate get_refresh_token(opts), to: @service
+
+  defdelegate refresh_tfa_code(user), to: @service
 end

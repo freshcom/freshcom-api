@@ -48,10 +48,14 @@ defmodule BlueJet.Identity.DefaultService do
   end
 
   #
-  # MARK: Access Token
+  # MARK: Authentication
   #
-  def create_token(fields) do
+  def create_access_token(_) do
 
+  end
+
+  def refresh_tfa_code(%User{} = user) do
+    BlueJet.Identity.Authentication.refresh_tfa_code(user)
   end
 
   #
@@ -201,16 +205,17 @@ defmodule BlueJet.Identity.DefaultService do
   # MARK: User
   #
   @spec create_user(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
-  def create_user(fields, %{account: nil}) do
+  def create_user(fields, %{account: nil} = opts) do
     account_fields =
       fields
       |> Map.take(["default_locale"])
       |> Map.merge(%{"name" => "Unnamed Account"})
+    create_opts = Map.take(opts, [:bypass_pvc_validation])
 
     statements =
       Multi.new()
       |> Multi.run(:account, fn(_) -> create_account(account_fields) end)
-      |> Multi.run(:user, &do_create_user(%{default_account: &1[:account]}, fields))
+      |> Multi.run(:user, &do_create_user(%{default_account: &1[:account]}, fields, create_opts))
       |> Multi.run(:account_membership, &do_create_account_membership!(&1, %{role: "administrator", is_owner: true}))
       |> Multi.run(:urt_live, &do_create_refresh_token!(&1))
       |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: &1[:account].test_account, user: &1[:user]}))
@@ -228,10 +233,11 @@ defmodule BlueJet.Identity.DefaultService do
 
   def create_user(fields, %{account: account} = opts) do
     role = fields["role"] || fields[:role]
+    create_opts = Map.take(opts, [:bypass_pvc_validation])
 
     statements =
       Multi.new()
-      |> Multi.run(:user, fn(_) -> do_create_user(%{account: account}, fields) end)
+      |> Multi.run(:user, fn(_) -> do_create_user(%{account: account}, fields, create_opts) end)
       |> Multi.run(:account_membership, &do_create_account_membership!(Map.merge(opts, &1), %{role: role}))
       |> Multi.run(:urt_1, &do_create_refresh_token!(%{user: &1[:user], account: account}))
       |> Multi.run(:urt_2, fn(%{user: user}) ->
@@ -261,12 +267,12 @@ defmodule BlueJet.Identity.DefaultService do
     end
   end
 
-  defp do_create_user(data, fields) do
+  defp do_create_user(data, fields, opts) do
     default_account_id = (data[:default_account] || %Account{}).id
     account_id = (data[:account] || %Account{}).id
 
     %User{default_account_id: default_account_id || account_id, account_id: account_id}
-    |> User.changeset(:insert, fields)
+    |> User.changeset(:insert, fields, opts)
     |> Repo.insert()
   end
 

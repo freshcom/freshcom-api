@@ -1,9 +1,12 @@
 defmodule BlueJet.Identity.AuthenticationTest do
-  use BlueJet.ContextCase
+  use BlueJet.DataCase
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity.{Account, User, RefreshToken, AccountMembership}
   alias BlueJet.Identity.Authentication
+
+  def refresh_tfa_code(user) do
+    BlueJet.Identity.Service.refresh_tfa_code(user)
+  end
 
   describe "deserialize_scope/1" do
     test "with valid scope using abbreviation" do
@@ -26,160 +29,274 @@ defmodule BlueJet.Identity.AuthenticationTest do
   end
 
   describe "create_token/1" do
-    test "when using incorrect credentials with no scope" do
-      {:error, response} = Authentication.create_token(%{
+    test "when using incorrect credentials and no scope" do
+      {:error, result} = Authentication.create_token(%{
         "grant_type" => "password",
         "username" => "invalid",
         "password" => "invalid"
       })
 
-      assert response.error == :invalid_grant
-      assert response.error_description
+      assert result.error == :invalid_grant
+      assert result.error_description
     end
 
-    test "when using valid credentials but invalid scope" do
-      %{ user: user } = create_global_identity("administrator")
-      account = Repo.insert!(%Account{
-        name: Faker.Company.name()
-      })
+    test "when using standard user credentials and scope" do
+      user = standard_user_fixture()
 
-      {:error, response} = Authentication.create_token(%{
+      {:error, result} = Authentication.create_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
-        "scope" => "account_id:#{account.id}"
+        "scope" => "account_id:#{user.default_account.id}"
       })
 
-      assert response.error == :invalid_grant
-      assert response.error_description
+      # When scope is provided, we should only create token for managed user
+      assert result.error == :invalid_grant
+      assert result.error_description
     end
 
-    test "when using valid credentials without scope" do
-      %{ user: user } = create_global_identity("administrator")
+    test "when using standard user credentials and no scope" do
+      user = standard_user_fixture()
 
-      {:ok, response} = Authentication.create_token(%{
+      {:ok, result} = Authentication.create_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234"
       })
 
-      assert response.expires_in
-      assert response.access_token
-      assert response.refresh_token
-      assert response.token_type
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
     end
 
-    test "when using valid credentials with valid scope" do
-      %{ user: user } = create_global_identity("administrator")
+    test "when using managed user credentials and no scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
-      {:ok, response} = Authentication.create_token(%{
+      {:error, result} = Authentication.create_token(%{
         "grant_type" => "password",
-        "username" => user.username,
+        "username" => managed_user.username,
         "password" => "test1234"
       })
 
-      assert response.expires_in
-      assert response.access_token
-      assert response.refresh_token
-      assert response.token_type
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using managed user credentials and invalid scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+
+      {:error, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => managed_user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{UUID.generate()}"
+      })
+
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using managed user credentials and valid scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+
+      {:ok, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => managed_user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{managed_user.account_id}"
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
     end
 
     test "when using incorrect refresh token" do
-      {:error, response} = Authentication.create_token(%{
+      {:error, result} = Authentication.create_token(%{
         "grant_type" => "refresh_token",
-        "refresh_token" => Ecto.UUID.generate()
+        "refresh_token" => UUID.generate()
       })
 
-      assert response.error == :invalid_grant
-      assert response.error_description
+      assert result.error == :invalid_grant
+      assert result.error_description
     end
 
-    test "when using prt" do
-      %{ prt: prt } = create_global_identity("administrator")
-      {:ok, response} = Authentication.create_token(%{
+    test "when using prt and no scope" do
+      account = account_fixture()
+      prt = get_prt(account)
+
+      {:ok, result} = Authentication.create_token(%{
         "grant_type" => "refresh_token",
-        "refresh_token" => RefreshToken.get_prefixed_id(prt)
+        "refresh_token" => prt
       })
 
-      assert response.expires_in
-      assert response.access_token
-      assert response.refresh_token
-      assert response.token_type
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
     end
 
-    test "when using urt without scope" do
-      %{ urt: urt } = create_global_identity("administrator")
-      {:ok, response} = Authentication.create_token(%{
+    test "when using urt and no scope" do
+      user = standard_user_fixture()
+      urt = get_urt(user.id, user.default_account_id)
+      {:ok, result} = Authentication.create_token(%{
         "grant_type" => "refresh_token",
-        "refresh_token" => RefreshToken.get_prefixed_id(urt)
+        "refresh_token" => urt
       })
 
-      assert response.expires_in
-      assert response.access_token
-      assert response.refresh_token
-      assert response.token_type
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
     end
 
-    test "when using urt with scope" do
-      %{ urt: urt, account: account, user: user } = create_global_identity("administrator")
-      test_account = Repo.insert!(%Account{
-        mode: "test",
-        name: account.name,
-        live_account_id: account.id
-      })
-      test_refresh_token = Repo.insert!(%RefreshToken{
-        account_id: test_account.id,
-        user_id: user.id
-      })
+    test "when using urt and scope containing test account id" do
+      user = standard_user_fixture()
+      urt = get_urt(user.id, user.default_account_id)
+      test_account_id = user.default_account.test_account_id
+      urt_test = get_urt(user.id, test_account_id)
 
-      {:ok, response} = Authentication.create_token(%{
+      {:ok, result} = Authentication.create_token(%{
         "grant_type" => "refresh_token",
-        "refresh_token" => RefreshToken.get_prefixed_id(urt),
-        "scope" => "account_id:#{test_account.id}"
+        "refresh_token" => urt,
+        "scope" => "account_id:#{test_account_id}"
       })
 
-      assert response.expires_in
-      assert response.access_token
-      assert response.refresh_token == RefreshToken.get_prefixed_id(test_refresh_token)
-      assert response.token_type
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token == urt_test
+      assert result.token_type
     end
 
-    test "when user auth method is tfa_sms but otp is not provided in the header" do
-      account = Repo.insert!(%Account{})
-      user =
-        %User{
-          default_account_id: account.id,
-          username: Faker.Internet.email(),
-          auth_method: "tfa_sms",
-          encrypted_password: User.encrypt_password("test1234")
-        }
-        |> User.put_encrypted_password()
-        |> Repo.insert!()
-      Repo.insert!(%AccountMembership{
-        user_id: user.id,
-        account_id: account.id,
-        role: "administrator"
-      })
-      Repo.insert!(%RefreshToken{
-        user_id: user.id,
-        account_id: account.id
+    test "when standard user auth method is tfa_sms and no otp" do
+      user = standard_user_fixture(%{
+        auth_method: "tfa_sms",
+        phone_number: "+1234567890"
       })
 
       EventHandlerMock
-      |> expect(:handle_event, fn(name, _) ->
+      |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:user.tfa_code.create.success"
+          assert data[:user].tfa_code
+
           {:ok, nil}
          end)
 
-      {:error, response} = Authentication.create_token(%{
+      {:error, result} = Authentication.create_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234"
       })
 
-      verify!()
-      assert response.error == :invalid_otp
-      assert response.error_description
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when standard user auth method is tfa_sms and invalid otp" do
+      user =
+        %{auth_method: "tfa_sms", phone_number: "+1234567890"}
+        |> standard_user_fixture()
+        |> refresh_tfa_code()
+
+      {:error, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "otp" => "invalid"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when standard user auth method is tfa_sms and valid otp" do
+      user =
+        %{auth_method: "tfa_sms", phone_number: "+1234567890"}
+        |> standard_user_fixture()
+        |> refresh_tfa_code()
+
+      {:ok, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "otp" => user.tfa_code
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when managed user auth method is tfa_sms and no otp" do
+      standard_user = standard_user_fixture()
+      user = managed_user_fixture(standard_user.default_account, %{
+        auth_method: "tfa_sms",
+        phone_number: "+1234567890"
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.tfa_code.create.success"
+          assert data[:user].tfa_code
+
+          {:ok, nil}
+         end)
+
+      {:error, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when managed user auth method is tfa_sms and invalid otp" do
+      standard_user = standard_user_fixture()
+      user =
+        standard_user.default_account
+        |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
+        |> refresh_tfa_code()
+
+      {:error, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}",
+        "otp" => "invalid"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when managed user auth method is tfa_sms and valid otp" do
+      standard_user = standard_user_fixture()
+      user =
+        standard_user.default_account
+        |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
+        |> refresh_tfa_code()
+
+      {:ok, result} = Authentication.create_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}",
+        "otp" => user.tfa_code
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
     end
   end
 end

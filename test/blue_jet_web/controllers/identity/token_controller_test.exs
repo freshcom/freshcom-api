@@ -103,7 +103,7 @@ defmodule BlueJetWeb.TokenControllerTest do
       assert response["refresh_token"]
     end
 
-    test "with valid standard user credentials and valid scope", %{conn: conn} do
+    test "with valid standard user credentials and scope", %{conn: conn} do
       user = create_standard_user()
 
       conn = post(conn, "/v1/token", %{
@@ -113,11 +113,11 @@ defmodule BlueJetWeb.TokenControllerTest do
         "scope" => "aid:#{user.default_account_id}"
       })
 
-      response = json_response(conn, 200)
+      response = json_response(conn, 400)
 
-      assert response["access_token"]
-      assert response["expires_in"]
-      assert response["refresh_token"]
+      # Scope is provided we only create token for managed user
+      assert response["error"] == "invalid_grant"
+      assert response["error_description"]
     end
 
     test "with valid managed user credentials and invalid scope", %{conn: conn} do
@@ -133,8 +133,8 @@ defmodule BlueJetWeb.TokenControllerTest do
 
       response = json_response(conn, 400)
 
-      assert response["error_description"]
       assert response["error"] == "invalid_grant"
+      assert response["error_description"]
     end
 
     test "with valid managed user credentials and no scope", %{conn: conn} do
@@ -147,11 +147,11 @@ defmodule BlueJetWeb.TokenControllerTest do
         "password" => "managed1234"
       })
 
-      response = json_response(conn, 200)
+      response = json_response(conn, 400)
 
-      assert response["access_token"]
-      assert response["expires_in"]
-      assert response["refresh_token"]
+      # When no scope is provided, we only create token for standard user
+      assert response["error"] == "invalid_grant"
+      assert response["error_description"]
     end
 
     test "with valid managed user credentials and valid scope", %{conn: conn} do

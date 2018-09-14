@@ -1,18 +1,10 @@
 defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   use BlueJet.DataCase
 
+  import BlueJet.Identity.TestHelper
+
   alias BlueJet.Identity.DefaultService
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
-
-  def account_fixture() do
-    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
-
-    {:ok, account} = DefaultService.create_account(%{
-      name: Faker.Company.name()
-    })
-
-    account
-  end
 
   def account_fixture(user) do
     expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
@@ -24,36 +16,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     account
   end
 
-  def user_fixture() do
-    expect(EventHandlerMock, :handle_event, 3, fn(_, _) -> {:ok, nil} end)
-
-    n = System.unique_integer([:positive])
-    {:ok, user} = DefaultService.create_user(%{
-      name: Faker.Name.name(),
-      username: "username#{n}",
-      password: "test1234",
-      email: "user#{n}@example.com"
-    }, %{account: nil})
-
-    user
-  end
-
-  def user_fixture(account) do
-    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
-
-    n = System.unique_integer([:positive])
-    {:ok, user} = DefaultService.create_user(%{
-      name: Faker.Name.name(),
-      username: "username#{n}",
-      password: "test1234",
-      role: "administrator"
-    }, %{account: account})
-
-    user
-  end
-
   def account_membership_fixture() do
-    standard_user = user_fixture()
+    standard_user = standard_user_fixture()
 
     membership = Repo.get_by!(AccountMembership,
       user_id: standard_user.id,
@@ -64,8 +28,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   end
 
   def account_membership_fixture(for: :managed) do
-    standard_user = user_fixture()
-    managed_user = user_fixture(standard_user.default_account)
+    standard_user = standard_user_fixture()
+    managed_user = managed_user_fixture(standard_user.default_account)
 
     membership = Repo.get_by!(AccountMembership,
       user_id: managed_user.id,
@@ -140,7 +104,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when fields are valid and no standard user given" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
@@ -398,7 +362,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "get_user/2" do
     test "when identifiers are for standard user and account is nil" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
       identifiers = %{id: standard_user.id}
       opts = %{account: nil}
 
@@ -409,8 +373,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user but account is nil" do
-      standard_user = user_fixture()
-      managed_user = user_fixture(standard_user.default_account)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{account: nil}
@@ -421,7 +385,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for standard user of given account but type is managed" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
       identifiers = %{id: standard_user.id}
       opts = %{type: :managed, account: standard_user.default_account}
 
@@ -431,9 +395,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of another account and type is managed" do
-      standard_user1 = user_fixture()
-      standard_user2 = user_fixture()
-      managed_user = user_fixture(standard_user2.default_account)
+      standard_user1 = standard_user_fixture()
+      standard_user2 = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user2.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{type: :managed, account: standard_user1.default_account}
@@ -444,8 +408,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of given account and type is managed" do
-      standard_user = user_fixture()
-      managed_user = user_fixture(standard_user.default_account)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{type: :managed, account: standard_user.default_account}
@@ -457,9 +421,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of another account" do
-      standard_user1 = user_fixture()
-      standard_user2 = user_fixture()
-      managed_user = user_fixture(standard_user2.default_account)
+      standard_user1 = standard_user_fixture()
+      standard_user2 = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user2.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user1.default_account}
@@ -470,8 +434,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of given account" do
-      standard_user = user_fixture()
-      managed_user = user_fixture(standard_user.default_account)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user.default_account}
@@ -483,8 +447,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for standard user of another account" do
-      standard_user1 = user_fixture()
-      standard_user2 = user_fixture()
+      standard_user1 = standard_user_fixture()
+      standard_user2 = standard_user_fixture()
 
       identifiers = %{id: standard_user2.id}
       opts = %{account: standard_user1.default_account}
@@ -495,7 +459,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for standard user of given account" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
 
       identifiers = %{id: standard_user.id}
       opts = %{account: standard_user.default_account}
@@ -523,7 +487,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when user is given and fields are valid" do
-      user = user_fixture()
+      user = standard_user_fixture()
       fields = %{"name" => Faker.Name.name()}
       opts = %{account: user.default_account}
 
@@ -541,7 +505,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when user is given and fields are valid but event handler returns error" do
-      user = user_fixture()
+      user = standard_user_fixture()
       fields = %{"email" => nil}
       opts = %{account: user.default_account}
 
@@ -558,7 +522,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are given and fields are valid" do
-      user = user_fixture()
+      user = standard_user_fixture()
       account = user.default_account
       fields = %{"name" => Faker.Name.name()}
 
@@ -578,7 +542,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "delete_user/2" do
     test "when identifiers are for standard user" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
       identifiers = %{id: standard_user.id}
       opts = %{account: standard_user.default_account}
 
@@ -586,9 +550,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of another account" do
-      standard_user1 = user_fixture()
-      standard_user2 = user_fixture()
-      managed_user = user_fixture(standard_user2.default_account)
+      standard_user1 = standard_user_fixture()
+      standard_user2 = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user2.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user1.default_account}
@@ -597,8 +561,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when identifiers are for managed user of given account" do
-      standard_user = user_fixture()
-      managed_user = user_fixture(standard_user.default_account)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user.default_account}
@@ -621,9 +585,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when account is given" do
-      user_fixture()
-      standard_user = user_fixture()
-      user_fixture(standard_user.default_account)
+      standard_user_fixture()
+      standard_user = standard_user_fixture()
+      managed_user_fixture(standard_user.default_account)
 
       opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
 
@@ -634,8 +598,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when filter is given" do
-      user_fixture()
-      standard_user = user_fixture()
+      standard_user_fixture()
+      standard_user = standard_user_fixture()
       account_fixture(standard_user)
 
       filter = %{user_id: standard_user.id}
@@ -656,9 +620,9 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when account is given" do
-      user_fixture()
-      standard_user = user_fixture()
-      user_fixture(standard_user.default_account)
+      standard_user_fixture()
+      standard_user = standard_user_fixture()
+      managed_user_fixture(standard_user.default_account)
 
       opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
 
@@ -666,8 +630,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when filter is given" do
-      user_fixture()
-      standard_user = user_fixture()
+      standard_user_fixture()
+      standard_user = standard_user_fixture()
       account_fixture(standard_user)
 
       filter = %{user_id: standard_user.id}
@@ -754,7 +718,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when valid user_id is given" do
-      target_user = user_fixture()
+      target_user = standard_user_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, data) ->
@@ -795,7 +759,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when valid token is given" do
-      target_user = user_fixture()
+      target_user = standard_user_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, data) ->
@@ -888,7 +852,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when username is for standard user" do
-      standard_user = user_fixture()
+      standard_user = standard_user_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
@@ -908,8 +872,8 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     end
 
     test "when username is for managed user of given account" do
-      standard_user = user_fixture()
-      managed_user = user_fixture(standard_user.default_account)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
 
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->

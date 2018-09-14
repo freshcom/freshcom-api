@@ -416,4 +416,9 @@ defmodule BlueJet.Identity.User do
     |> change(encrypted_password: Comeonin.Bcrypt.hashpwsalt(new_password))
     |> Repo.update!()
   end
+
+  @spec is_password_valid?(__MODULE__.t(), String.t()) :: boolean
+  def is_password_valid?(user, password) do
+    Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
+  end
 end
