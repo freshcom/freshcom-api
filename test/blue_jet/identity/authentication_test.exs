@@ -2,7 +2,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
   use BlueJet.DataCase
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity.Authentication
+  alias BlueJet.Identity.Authentication.Service
 
   def refresh_tfa_code(user) do
     BlueJet.Identity.Service.refresh_tfa_code(user)
@@ -10,27 +10,27 @@ defmodule BlueJet.Identity.AuthenticationTest do
 
   describe "deserialize_scope/1" do
     test "with valid scope using abbreviation" do
-      scope = Authentication.deserialize_scope("aid:test-test-test", %{ aid: :account_id })
+      scope = Service.deserialize_scope("aid:test-test-test", %{ aid: :account_id })
 
       assert scope.account_id == "test-test-test"
     end
 
     test "with valid scope using full name" do
-      scope = Authentication.deserialize_scope("account_id:test-test-test", %{ aid: :account_id })
+      scope = Service.deserialize_scope("account_id:test-test-test", %{ aid: :account_id })
 
       assert scope.account_id == "test-test-test"
     end
 
     test "with partially valid scope" do
-      scope = Authentication.deserialize_scope("aid:test-test-test,ddd", %{ aid: :account_id })
+      scope = Service.deserialize_scope("aid:test-test-test,ddd", %{ aid: :account_id })
 
       assert scope.account_id == "test-test-test"
     end
   end
 
-  describe "create_token/1" do
+  describe "create_access_token/1" do
     test "when using incorrect credentials and no scope" do
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => "invalid",
         "password" => "invalid"
@@ -43,7 +43,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
     test "when using standard user credentials and scope" do
       user = standard_user_fixture()
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
@@ -58,7 +58,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
     test "when using standard user credentials and no scope" do
       user = standard_user_fixture()
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234"
@@ -74,7 +74,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       standard_user = standard_user_fixture()
       managed_user = managed_user_fixture(standard_user.default_account)
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => managed_user.username,
         "password" => "test1234"
@@ -88,7 +88,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       standard_user = standard_user_fixture()
       managed_user = managed_user_fixture(standard_user.default_account)
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => managed_user.username,
         "password" => "test1234",
@@ -103,7 +103,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       standard_user = standard_user_fixture()
       managed_user = managed_user_fixture(standard_user.default_account)
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => managed_user.username,
         "password" => "test1234",
@@ -117,7 +117,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
     end
 
     test "when using incorrect refresh token" do
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => UUID.generate()
       })
@@ -130,7 +130,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       account = account_fixture()
       prt = get_prt(account)
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => prt
       })
@@ -144,7 +144,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
     test "when using urt and no scope" do
       user = standard_user_fixture()
       urt = get_urt(user.id, user.default_account_id)
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => urt
       })
@@ -161,7 +161,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
       test_account_id = user.default_account.test_account_id
       urt_test = get_urt(user.id, test_account_id)
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => urt,
         "scope" => "account_id:#{test_account_id}"
@@ -187,7 +187,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
           {:ok, nil}
          end)
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234"
@@ -203,7 +203,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
         |> standard_user_fixture()
         |> refresh_tfa_code()
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
@@ -220,7 +220,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
         |> standard_user_fixture()
         |> refresh_tfa_code()
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
@@ -248,7 +248,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
           {:ok, nil}
          end)
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
@@ -266,7 +266,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
         |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
         |> refresh_tfa_code()
 
-      {:error, result} = Authentication.create_token(%{
+      {:error, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",
@@ -285,7 +285,7 @@ defmodule BlueJet.Identity.AuthenticationTest do
         |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
         |> refresh_tfa_code()
 
-      {:ok, result} = Authentication.create_token(%{
+      {:ok, result} = Service.create_access_token(%{
         "grant_type" => "password",
         "username" => user.username,
         "password" => "test1234",

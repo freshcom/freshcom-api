@@ -1,68 +1,299 @@
 defmodule BlueJet.Identity.Service do
-  @service Application.get_env(:blue_jet, :identity)[:service]
+  use BlueJet, :service
 
-  @callback get_vas_data(map) :: map
-  @callback put_vas_data(map) :: map
-  @callback get_vad(map) :: map
-  @callback get_role(map) :: String.t()
+  alias BlueJet.Identity.{
+    Account,
+    User,
+    Password,
+    AccountMembership,
+    RefreshToken,
+    PhoneVerificationCode,
+    Authentication
+  }
 
-  @callback get_account(map | String.t()) :: Account.t() | nil
-  @callback create_account(map) :: {:ok, Account.t()} | {:error, any}
-  @callback update_account(Account.t(), map, map) :: {:ok, Account.t()} | {:error, any}
-  @callback reset_account(Account.t()) :: {:ok, Account.t()} | {:error, any}
+  def get_vas_data(%{account_id: nil}) do
+    %{account: nil, user: nil, role: "anonymous"}
+  end
 
-  @callback list_account_membership(map, map) :: [AccountMembership.t]
-  @callback count_account_membership(map, map) :: integer
-  @callback update_account_membership(String.t() | AccountMembership.t(), map, map) :: {:ok, AccountMembership.t()} | {:error, any}
+  def get_vas_data(%{account_id: account_id, user_id: nil}) do
+    %{account: get_account(account_id), user: nil, role: "guest"}
+  end
 
-  @callback create_user(map, map) :: {:ok, User.t()} | {:error, any}
-  @callback get_user(map, map) :: User.t() | nil
-  @callback update_user(String.t() | User.t(), map, map) :: {:ok, User.t()} | {:error, any}
-  @callback delete_user(String.t() | User.t(), map) :: {:ok, User.t()} | {:error, any}
+  def get_vas_data(%{account_id: account_id, user_id: user_id}) do
+    account = get_account(account_id)
 
-  @callback create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, any}
+    user =
+      get_user(%{id: user_id}, %{account: account}) ||
+        get_user(%{id: user_id}, %{account_id: account.live_account_id})
 
-  @callback verify_email(map, map) :: {:ok, User.t()} | {:error, any}
+    cond do
+      account && user -> %{account: account, user: user, role: user.role}
+      account -> %{account: account, user: nil, role: "guest"}
+      true -> %{account: nil, user: nil, role: "anonymous"}
+    end
+  end
 
-  @callback create_password_reset_token(String.t(), map) :: {:ok, User.t()} | {:error, any}
+  def get_vas_data(_) do
+    %{account: nil, user: nil, role: "anonymous"}
+  end
 
-  @callback update_password(map, String.t(), map) :: {:ok, User.t()} | {:error, any}
+  def put_vas_data(request = %{vas: vas}) do
+    %{account: account, user: user, role: role} = get_vas_data(vas)
 
-  @callback create_phone_verification_code(map, map) ::
-              {:ok, PhoneVerificationCode.t()} | {:error, any}
+    request
+    |> Map.put(:account, account)
+    |> Map.put(:user, user)
+    |> Map.put(:role, role)
+  end
 
-  @callback get_refresh_token(map) :: {:ok, RefreshToken.t()} | {:error, any}
+  #
+  # MARK: Authentication
+  #
+  defdelegate create_access_token(fields), to: Authentication.Service
+  defdelegate refresh_tfa_code(user), to: Authentication.Service
 
-  @callback refresh_tfa_code(User.t()) :: User.t()
+  #
+  # MARK: Account
+  #
+  def get_account(%{account_id: nil}), do: nil
+  def get_account(%{account_id: account_id, account: nil}), do: get_account(%{id: account_id})
+  def get_account(%{account: account}) when not is_nil(account), do: account
+  def get_account(%{account_id: account_id}), do: get_account(%{id: account_id})
+  def get_account(%{account: nil}), do: nil
 
-  defdelegate get_vas_data(map), to: @service
-  defdelegate put_vas_data(map), to: @service
-  defdelegate get_vad(map), to: @service
-  defdelegate get_role(map), to: @service
+  defdelegate create_account(fields, opts \\ %{}), to: Account.Service
+  defdelegate get_account(identifiers), to: Account.Service
+  defdelegate update_account(account, fields, opts \\ %{}), to: Account.Service
+  defdelegate reset_account(account), to: Account.Service
 
-  defdelegate get_account(id_or_struct), to: @service
-  defdelegate create_account(fields), to: @service
-  defdelegate update_account(account, fields, opts), to: @service
-  defdelegate reset_account(account), to: @service
+  #
+  # MARK: Athorization
+  #
+  def get_vad(vas) when map_size(vas) == 0, do: %{account: nil, user: nil}
+  def get_vad(%{account_id: nil}), do: %{account: nil, user: nil}
 
-  defdelegate list_account_membership(params, opts), to: @service
-  defdelegate count_account_membership(params \\ %{}, opts), to: @service
-  defdelegate update_account_membership(id_or_membership \\ %{}, fields, opts), to: @service
+  def get_vad(%{account_id: account_id, user_id: nil}) do
+    %{account: get_account(%{id: account_id}), user: nil}
+  end
 
-  defdelegate create_user(fields, opts), to: @service
-  defdelegate get_user(fields, opts), to: @service
-  defdelegate update_user(id_or_user, fields, opts), to: @service
-  defdelegate delete_user(id_or_user, opts), to: @service
+  def get_vad(%{account_id: account_id, user_id: user_id}) do
+    account = get_account(%{id: account_id})
+    user = get_user(%{id: user_id}, %{account: account})
 
-  defdelegate create_email_verification_token(fields, opts), to: @service
-  defdelegate verify_email(fields, opts), to: @service
+    %{account: account, user: user}
+  end
 
-  defdelegate create_password_reset_token(email, opts), to: @service
-  defdelegate update_password(identifiers, new_password, opts), to: @service
+  def get_role(%{account: nil, user: nil}), do: "anonymous"
+  def get_role(%{account: _, user: nil}), do: "guest"
+  def get_role(%{user: user}), do: user.role
 
-  defdelegate create_phone_verification_code(fields, opts), to: @service
+  #
+  # MARK: User
+  #
+  defdelegate create_user(fields, opts), to: User.Service
+  defdelegate get_user(identifiers, opts), to: User.Service
+  defdelegate update_user(identifiers_or_user, fields, opts), to: User.Service
+  defdelegate delete_user(identifiers_or_user, opts), to: User.Service
 
-  defdelegate get_refresh_token(opts), to: @service
+  #
+  # MARK: Account Memebership
+  #
+  defdelegate list_account_membership(query, opts \\ %{}), to: AccountMembership.Service
+  defdelegate count_account_membership(query, opts \\ %{}), to: AccountMembership.Service
+  defdelegate get_account_membership(identifiers, opts), to: AccountMembership.Service
+  defdelegate update_account_membership(identifiers, fields, opts), to: AccountMembership.Service
 
-  defdelegate refresh_tfa_code(user), to: @service
+  #
+  # MARK: Email Verification Token
+  #
+  @evt_error %{errors: [user_id: {"User not found.", code: :not_found}]}
+
+  @spec create_email_verification_token(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
+  def create_email_verification_token(%{"user_id" => nil}, _), do: {:error, @evt_error}
+
+  def create_email_verification_token(%{"user_id" => user_id}, opts) do
+    get_user(%{id: user_id}, opts)
+    |> do_create_email_verification_token()
+  end
+
+  defp do_create_email_verification_token(nil), do: {:error, @evt_error}
+
+  defp do_create_email_verification_token(%User{} = user) do
+    changeset = User.changeset(user, :refresh_email_verification_token)
+
+    statements =
+      Multi.new()
+      |> Multi.update(:user, changeset)
+      |> Multi.run(:dispatch, &dispatch("identity:email_verification_token.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  #
+  # MARK: Email Verification
+  #
+  @ev_error %{errors: [token: {"Token is invalid or expired.", code: :invalid}]}
+
+  @spec verify_email(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
+  def verify_email(%{"token" => nil}, _), do: {:error, @ev_error}
+
+  def verify_email(%{"token" => token}, opts) do
+    get_user(%{email_verification_token: token}, opts)
+    |> do_verify_email()
+  end
+
+  defp do_verify_email(nil), do: {:error, @ev_error}
+
+  defp do_verify_email(%User{} = user) do
+    changeset = User.changeset(user, :verify_email)
+
+    statements =
+      Multi.new()
+      |> Multi.update(:user, changeset)
+      |> Multi.run(:dispatch, &dispatch("identity:email_verification.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  #
+  # MARK: Phone Verification Code
+  #
+  @spec create_phone_verification_code(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
+  def create_phone_verification_code(fields, opts) do
+    account = extract_account(opts)
+
+    changeset =
+      %PhoneVerificationCode{account_id: account.id, account: account}
+      |> PhoneVerificationCode.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:phone_verification_code, changeset)
+      |> Multi.run(:dispatch1, &dispatch("identity:phone_verification_code.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{phone_verification_code: pvc}} ->
+        {:ok, pvc}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  #
+  # MARK: Password Reset Token
+  #
+  @spec create_password_reset_token(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
+  def create_password_reset_token(%{"username" => username}, _) when byte_size(username) == 0 do
+    {:error, %{errors: [username: {"Username is required.", code: :required}]}}
+  end
+
+  def create_password_reset_token(fields, %{account: nil} = opts) do
+    get_user(%{username: fields["username"]}, opts)
+    |> do_create_password_reset_token(opts, fields)
+  end
+
+  def create_password_reset_token(fields, %{account: _} = opts) do
+    get_user(%{username: fields["username"]}, Map.put(opts, :type, :managed))
+    |> do_create_password_reset_token(opts, fields)
+  end
+
+  defp do_create_password_reset_token(nil, opts, fields) do
+    data = Map.merge(%{username: fields["username"]}, opts)
+
+    Repo.transaction(fn ->
+      dispatch("identity:password_reset_token.create.error.username_not_found", data)
+    end)
+
+    {:error, %{errors: [username: {"Username not found.", code: :not_found}]}}
+  end
+
+  defp do_create_password_reset_token(%User{} = user, _, _) do
+    changeset = User.changeset(user, :refresh_password_reset_token)
+
+    statements =
+      Multi.new()
+      |> Multi.update(:user, changeset)
+      |> Multi.run(:dispatch, &dispatch("identity:password_reset_token.create.success", &1))
+
+    case Repo.transaction(statements) do
+      {:ok, %{user: user}} ->
+        {:ok, user}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  #
+  # MARK: Password
+  #
+  @spec update_password(map, map, map) :: {:ok, Password.t()} | {:error, :not_found} | {:error, %{errors: Keyword.t()}}
+  def update_password(identifiers, fields, opts) do
+    get_password(identifiers, opts)
+    |> do_update_password(identifiers, fields)
+  end
+
+  defp do_update_password(nil, %{reset_token: _}, _) do
+    {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
+  end
+
+  defp do_update_password(nil, %{id: _}, _) do
+    {:error, :not_found}
+  end
+
+  defp do_update_password(%Password{} = password, _, fields) do
+    changeset = Password.changeset(password, :update, fields)
+
+    case Repo.update(changeset) do
+      {:ok, password} ->
+        {:ok, password}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  defp get_password(%{reset_token: reset_token}, %{account: nil}) do
+    Password.Query.default()
+    |> Password.Query.standard()
+    |> Password.Query.with_valid_reset_token()
+    |> Repo.get_by(reset_token: reset_token)
+  end
+
+  defp get_password(%{reset_token: reset_token}, %{account: account}) do
+    Password.Query.default()
+    |> for_account(account.id)
+    |> Password.Query.with_valid_reset_token()
+    |> Repo.get_by(reset_token: reset_token)
+  end
+
+  defp get_password(%{id: id}, %{account: nil}) do
+    Password.Query.default()
+    |> Password.Query.standard()
+    |> Repo.get(id)
+  end
+
+  defp get_password(%{id: id}, %{account: account}) do
+    Password.Query.default()
+    |> for_account(account.id)
+    |> Repo.get(id)
+  end
+
+  #
+  # MARK: Refresh Token
+  #
+  defdelegate get_refresh_token(opts), to: RefreshToken.Service
 end

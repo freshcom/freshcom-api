@@ -56,7 +56,7 @@ defmodule BlueJet.Identity.TestHelper do
   def get_uat(user, opts \\ []) do
     urt = get_urt(user, opts)
 
-    {:ok, %{data: %{access_token: uat}}} = Identity.create_token(%{
+    {:ok, %{data: %{access_token: uat}}} = Identity.create_access_token(%{
       fields: %{ "grant_type" => "refresh_token", "refresh_token" => urt }
     })
 
@@ -65,7 +65,7 @@ defmodule BlueJet.Identity.TestHelper do
 
   def get_pat(user) do
     %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: user.default_account_id)
-    {:ok, %{data: %{access_token: pat}}} = Identity.create_token(%{
+    {:ok, %{data: %{access_token: pat}}} = Identity.create_access_token(%{
       fields: %{ "grant_type" => "refresh_token", "refresh_token" => prt }
     })
 

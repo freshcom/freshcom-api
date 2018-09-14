@@ -1,15 +1,15 @@
-defmodule BlueJet.Identity.DefaultDefaultServiceTest do
+defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.DataCase
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity.DefaultService
+  alias BlueJet.Identity.Service
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
 
   def account_fixture(user) do
     expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
 
-    {:ok, account} = DefaultService.create_account(%{
+    {:ok, account} = Service.create_account(%{
       name: Faker.Company.name()
     }, %{user: user})
 
@@ -39,6 +39,285 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     %{membership | account: managed_user.account}
   end
 
+  def refresh_tfa_code(user) do
+    Service.refresh_tfa_code(user)
+  end
+
+  #
+  # MARK: Authentication
+  #
+  describe "create_access_token/1" do
+    test "when using incorrect credentials and no scope" do
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => "invalid",
+        "password" => "invalid"
+      })
+
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using standard user credentials and scope" do
+      user = standard_user_fixture()
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "account_id:#{user.default_account.id}"
+      })
+
+      # When scope is provided, we should only create token for managed user
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using standard user credentials and no scope" do
+      user = standard_user_fixture()
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234"
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when using managed user credentials and no scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => managed_user.username,
+        "password" => "test1234"
+      })
+
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using managed user credentials and invalid scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => managed_user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{UUID.generate()}"
+      })
+
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using managed user credentials and valid scope" do
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => managed_user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{managed_user.account_id}"
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when using incorrect refresh token" do
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "refresh_token",
+        "refresh_token" => UUID.generate()
+      })
+
+      assert result.error == :invalid_grant
+      assert result.error_description
+    end
+
+    test "when using prt and no scope" do
+      account = account_fixture()
+      prt = get_prt(account)
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "refresh_token",
+        "refresh_token" => prt
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when using urt and no scope" do
+      user = standard_user_fixture()
+      urt = get_urt(user.id, user.default_account_id)
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "refresh_token",
+        "refresh_token" => urt
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when using urt and scope containing test account id" do
+      user = standard_user_fixture()
+      urt = get_urt(user.id, user.default_account_id)
+      test_account_id = user.default_account.test_account_id
+      urt_test = get_urt(user.id, test_account_id)
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "refresh_token",
+        "refresh_token" => urt,
+        "scope" => "account_id:#{test_account_id}"
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token == urt_test
+      assert result.token_type
+    end
+
+    test "when standard user auth method is tfa_sms and no otp" do
+      user = standard_user_fixture(%{
+        auth_method: "tfa_sms",
+        phone_number: "+1234567890"
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.tfa_code.create.success"
+          assert data[:user].tfa_code
+
+          {:ok, nil}
+         end)
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when standard user auth method is tfa_sms and invalid otp" do
+      user =
+        %{auth_method: "tfa_sms", phone_number: "+1234567890"}
+        |> standard_user_fixture()
+        |> refresh_tfa_code()
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "otp" => "invalid"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when standard user auth method is tfa_sms and valid otp" do
+      user =
+        %{auth_method: "tfa_sms", phone_number: "+1234567890"}
+        |> standard_user_fixture()
+        |> refresh_tfa_code()
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "otp" => user.tfa_code
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+
+    test "when managed user auth method is tfa_sms and no otp" do
+      standard_user = standard_user_fixture()
+      user = managed_user_fixture(standard_user.default_account, %{
+        auth_method: "tfa_sms",
+        phone_number: "+1234567890"
+      })
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, data) ->
+          assert name == "identity:user.tfa_code.create.success"
+          assert data[:user].tfa_code
+
+          {:ok, nil}
+         end)
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when managed user auth method is tfa_sms and invalid otp" do
+      standard_user = standard_user_fixture()
+      user =
+        standard_user.default_account
+        |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
+        |> refresh_tfa_code()
+
+      {:error, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}",
+        "otp" => "invalid"
+      })
+
+      assert result.error == :invalid_otp
+      assert result.error_description
+    end
+
+    test "when managed user auth method is tfa_sms and valid otp" do
+      standard_user = standard_user_fixture()
+      user =
+        standard_user.default_account
+        |> managed_user_fixture(%{auth_method: "tfa_sms", phone_number: "+1234567890"})
+        |> refresh_tfa_code()
+
+      {:ok, result} = Service.create_access_token(%{
+        "grant_type" => "password",
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{standard_user.default_account.id}",
+        "otp" => user.tfa_code
+      })
+
+      assert result.expires_in
+      assert result.access_token
+      assert result.refresh_token
+      assert result.token_type
+    end
+  end
+
   #
   # MARK: Account
   #
@@ -46,33 +325,33 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     test "when only account_id is given" do
       account = Repo.insert!(%Account{})
 
-      assert DefaultService.get_account(%{ account_id: nil }) == nil
-      assert DefaultService.get_account(%{ account_id: account.id }).id == account.id
+      assert Service.get_account(%{ account_id: nil }) == nil
+      assert Service.get_account(%{ account_id: account.id }).id == account.id
     end
 
     test "when only account is given" do
       account = Repo.insert!(%Account{})
 
-      assert DefaultService.get_account(%{ account: nil }) == nil
-      assert DefaultService.get_account(%{ account: account }) == account
+      assert Service.get_account(%{ account: nil }) == nil
+      assert Service.get_account(%{ account: account }) == account
     end
 
     test "when both account and account_id is given but account is nil" do
       account = Repo.insert!(%Account{})
 
-      assert DefaultService.get_account(%{ account_id: account.id, account: nil }).id == account.id
+      assert Service.get_account(%{ account_id: account.id, account: nil }).id == account.id
     end
 
     test "when both account and account_id is given and account is not nil" do
       account = Repo.insert!(%Account{})
 
-      assert DefaultService.get_account(%{ account_id: account.id, account: account }) == account
+      assert Service.get_account(%{ account_id: account.id, account: account }) == account
     end
   end
 
   describe "create_account/1" do
     test "when fields are invalid" do
-      {:error, changeset} = DefaultService.create_account(%{})
+      {:error, changeset} = Service.create_account(%{})
 
       assert changeset.valid? == false
     end
@@ -88,7 +367,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       fields = %{"name" => Faker.Company.name()}
 
-      {:ok, account} = DefaultService.create_account(fields)
+      {:ok, account} = Service.create_account(fields)
       test_account = account.test_account
 
       assert account.mode == "live"
@@ -99,7 +378,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
     test "when managed user is given" do
       assert_raise ArgumentError, fn ->
-        DefaultService.create_account(%{}, %{user: %User{account_id: UUID.generate()}})
+        Service.create_account(%{}, %{user: %User{account_id: UUID.generate()}})
       end
     end
 
@@ -117,7 +396,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"name" => Faker.Company.name()}
       opts = %{user: standard_user}
 
-      {:ok, account} = DefaultService.create_account(fields, opts)
+      {:ok, account} = Service.create_account(fields, opts)
       test_account = account.test_account
 
       prt_live = Repo.get_by(RefreshToken, account_id: account.id)
@@ -140,7 +419,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   describe "update_account/2" do
     test "when given fields are invalid" do
       account = %Account{id: UUID.generate()}
-      {:error, changeset} = DefaultService.update_account(account, %{"name" => nil})
+      {:error, changeset} = Service.update_account(account, %{"name" => nil})
 
       assert changeset.valid? == false
     end
@@ -159,7 +438,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "description" => Faker.Lorem.sentence(20)
       }
 
-      {:ok, account} = DefaultService.update_account(account, fields)
+      {:ok, account} = Service.update_account(account, fields)
       test_account = account.test_account
 
       assert account.name == fields["name"]
@@ -196,7 +475,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         {:ok, nil}
        end)
 
-    {:ok, account} = DefaultService.reset_account(account)
+    {:ok, account} = Service.reset_account(account)
 
     assert Repo.get(Account, account.id)
     refute Repo.get(User, user.id)
@@ -213,14 +492,14 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:error, changeset} = DefaultService.create_user(%{}, %{account: nil})
+      {:error, changeset} = Service.create_user(%{}, %{account: nil})
 
       assert changeset.valid? == false
     end
 
     test "when fields given are invalid and account is valid" do
       account = %Account{id: UUID.generate()}
-      {:error, changeset} = DefaultService.create_user(%{}, %{account: account})
+      {:error, changeset} = Service.create_user(%{}, %{account: account})
 
       assert changeset.valid? == false
     end
@@ -253,7 +532,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "password" => "test1234"
       }
 
-      {:ok, user} = DefaultService.create_user(fields, %{account: nil})
+      {:ok, user} = Service.create_user(fields, %{account: nil})
 
       membership = Repo.get_by(AccountMembership,
         account_id: user.default_account.id,
@@ -297,7 +576,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "role" => "customer"
       }
 
-      {:ok, user} = DefaultService.create_user(fields, %{account: account})
+      {:ok, user} = Service.create_user(fields, %{account: account})
 
       account_membership = Repo.get_by(AccountMembership,
         account_id: user.default_account.id,
@@ -342,7 +621,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         "role" => "customer"
       }
 
-      {:ok, user} = DefaultService.create_user(fields, %{account: test_account})
+      {:ok, user} = Service.create_user(fields, %{account: test_account})
 
       account_membership = Repo.get_by(AccountMembership,
         account_id: test_account.id,
@@ -366,7 +645,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: standard_user.id}
       opts = %{account: nil}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user.id == standard_user.id
       assert user.role == nil
@@ -379,7 +658,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{account: nil}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user == nil
     end
@@ -389,7 +668,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: standard_user.id}
       opts = %{type: :managed, account: standard_user.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user == nil
     end
@@ -402,7 +681,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{type: :managed, account: standard_user1.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user == nil
     end
@@ -414,7 +693,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{type: :managed, account: standard_user.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user.id == managed_user.id
       assert user.role == "administrator"
@@ -428,7 +707,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user1.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user == nil
     end
@@ -440,7 +719,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user.id == managed_user.id
       assert user.role == "administrator"
@@ -453,7 +732,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: standard_user2.id}
       opts = %{account: standard_user1.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user == nil
     end
@@ -464,7 +743,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: standard_user.id}
       opts = %{account: standard_user.default_account}
 
-      user = DefaultService.get_user(identifiers, opts)
+      user = Service.get_user(identifiers, opts)
 
       assert user.id == standard_user.id
       assert user.role == "administrator"
@@ -473,7 +752,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
   describe "update_user/3" do
     test "when user is nil" do
-      {:error, :not_found} = DefaultService.update_user(nil, %{}, %{})
+      {:error, :not_found} = Service.update_user(nil, %{}, %{})
     end
 
     test "when user is given and fields are invalid" do
@@ -481,7 +760,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"name" => nil}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      {:error, changeset} = DefaultService.update_user(user, fields, opts)
+      {:error, changeset} = Service.update_user(user, fields, opts)
 
       assert changeset.valid? == false
     end
@@ -499,7 +778,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.update_user(user, fields, opts)
+      {:ok, user} = Service.update_user(user, fields, opts)
 
       assert user.name == fields["name"]
     end
@@ -517,7 +796,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:error, %{errors: [email: {"can't be blank", [validation: :required]}]}}
          end)
 
-      {:error, changeset} = DefaultService.update_user(user, fields, opts)
+      {:error, changeset} = Service.update_user(user, fields, opts)
       assert match_keys(changeset.errors, [:email])
     end
 
@@ -534,7 +813,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
           {:ok, nil}
          end)
 
-      {:ok, user} = DefaultService.update_user(%{id: user.id}, fields, %{account: account})
+      {:ok, user} = Service.update_user(%{id: user.id}, fields, %{account: account})
 
       assert user.name == fields["name"]
     end
@@ -546,7 +825,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: standard_user.id}
       opts = %{account: standard_user.default_account}
 
-      assert DefaultService.delete_user(identifiers, opts) == {:error, :not_found}
+      assert Service.delete_user(identifiers, opts) == {:error, :not_found}
     end
 
     test "when identifiers are for managed user of another account" do
@@ -557,7 +836,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user1.default_account}
 
-      assert DefaultService.delete_user(identifiers, opts) == {:error, :not_found}
+      assert Service.delete_user(identifiers, opts) == {:error, :not_found}
     end
 
     test "when identifiers are for managed user of given account" do
@@ -567,7 +846,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: managed_user.id}
       opts = %{account: standard_user.default_account}
 
-      {:ok, user} =  DefaultService.delete_user(identifiers, opts)
+      {:ok, user} =  Service.delete_user(identifiers, opts)
 
       assert user
       assert Repo.get(User, user.id) == nil
@@ -580,7 +859,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   describe "list_account_membership/2" do
     test "when both account and user_id is not provided" do
       assert_raise ArgumentError, fn ->
-        DefaultService.list_account_membership(%{})
+        Service.list_account_membership(%{})
       end
     end
 
@@ -591,7 +870,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
 
-      memberships = DefaultService.list_account_membership(%{}, opts)
+      memberships = Service.list_account_membership(%{}, opts)
 
       assert length(memberships) == 2
       assert Enum.at(memberships, 0).user.id
@@ -605,7 +884,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       filter = %{user_id: standard_user.id}
       opts = %{preload: %{paths: [:account]}}
 
-      memberships = DefaultService.list_account_membership(%{filter: filter}, opts)
+      memberships = Service.list_account_membership(%{filter: filter}, opts)
 
       assert length(memberships) == 2
       assert Enum.at(memberships, 0).account.id
@@ -615,7 +894,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   describe "count_account_membership/2" do
     test "when both account and user_id is not provided" do
       assert_raise ArgumentError, fn ->
-        DefaultService.count_account_membership(%{})
+        Service.count_account_membership(%{})
       end
     end
 
@@ -626,7 +905,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
 
-      assert DefaultService.count_account_membership(%{}, opts) == 2
+      assert Service.count_account_membership(%{}, opts) == 2
     end
 
     test "when filter is given" do
@@ -637,7 +916,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       filter = %{user_id: standard_user.id}
       opts = %{preload: %{paths: [:account]}}
 
-      assert DefaultService.count_account_membership(%{filter: filter}, opts) == 2
+      assert Service.count_account_membership(%{filter: filter}, opts) == 2
     end
   end
 
@@ -646,7 +925,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      assert DefaultService.get_account_membership(identifiers, opts) == nil
+      assert Service.get_account_membership(identifiers, opts) == nil
     end
 
     test "when identifiers are valid" do
@@ -655,7 +934,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: target_membership.id}
       opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
 
-      membership = DefaultService.get_account_membership(identifiers, opts)
+      membership = Service.get_account_membership(identifiers, opts)
 
       assert membership
       assert membership.user.id
@@ -668,7 +947,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      assert DefaultService.update_account_membership(identifiers, %{}, opts) == {:error, :not_found}
+      assert Service.update_account_membership(identifiers, %{}, opts) == {:error, :not_found}
     end
 
     test "with given fields are invalid" do
@@ -678,7 +957,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"role" => "invalid"}
       opts = %{account: target_membership.account}
 
-      {:error, changeset} = DefaultService.update_account_membership(identifiers, fields, opts)
+      {:error, changeset} = Service.update_account_membership(identifiers, fields, opts)
 
       assert changeset.valid? == false
       assert match_keys(changeset.errors, [:role])
@@ -691,7 +970,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"role" => "developer"}
       opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
 
-      {:ok, membership} = DefaultService.update_account_membership(identifiers, fields, opts)
+      {:ok, membership} = Service.update_account_membership(identifiers, fields, opts)
 
       assert membership
       assert membership.role == "developer"
@@ -705,7 +984,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   #
   describe "create_email_verification_token/2" do
     test "when user_id is nil" do
-      {:error, %{errors: errors}} = DefaultService.create_email_verification_token(%{"user_id" => nil}, %{})
+      {:error, %{errors: errors}} = Service.create_email_verification_token(%{"user_id" => nil}, %{})
       assert match_keys(errors, [:user_id])
     end
 
@@ -713,7 +992,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"user_id" => UUID.generate()}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      {:error, %{errors: errors}} = DefaultService.create_email_verification_token(fields, opts)
+      {:error, %{errors: errors}} = Service.create_email_verification_token(fields, opts)
       assert match_keys(errors, [:user_id])
     end
 
@@ -731,7 +1010,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"user_id" => target_user.id}
       opts = %{account: target_user.default_account}
 
-      {:ok, user} = DefaultService.create_email_verification_token(fields, opts)
+      {:ok, user} = Service.create_email_verification_token(fields, opts)
 
       assert user.email_verification_token != target_user.email_verification_token
       assert user.email_verified == false
@@ -744,7 +1023,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   #
   describe "verify_email/2" do
     test "when token is nil" do
-      {:error, %{errors: errors}} = DefaultService.verify_email(%{"token" => nil}, %{})
+      {:error, %{errors: errors}} = Service.verify_email(%{"token" => nil}, %{})
 
       assert match_keys(errors, [:token])
     end
@@ -753,7 +1032,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"token" => UUID.generate()}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      {:error, %{errors: errors}} = DefaultService.verify_email(fields, opts)
+      {:error, %{errors: errors}} = Service.verify_email(fields, opts)
 
       assert match_keys(errors, [:token])
     end
@@ -771,7 +1050,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       fields = %{"token" => target_user.email_verification_token}
       opts = %{account: target_user.default_account}
-      {:ok, user} = DefaultService.verify_email(fields, opts)
+      {:ok, user} = Service.verify_email(fields, opts)
 
       assert user.email_verification_token == nil
       assert user.email_verified == true
@@ -785,7 +1064,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   describe "create_phone_verification_code/2" do
     test "when given invalid fields" do
       opts = %{account: %Account{id: UUID.generate()}}
-      {:error, changeset} = DefaultService.create_phone_verification_code(%{}, opts)
+      {:error, changeset} = Service.create_phone_verification_code(%{}, opts)
 
       assert changeset.valid? == false
     end
@@ -803,7 +1082,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
 
       fields = %{"phone_number" => "+111234567890"}
       opts = %{account: account}
-      {:ok, pvc} = DefaultService.create_phone_verification_code(fields, opts)
+      {:ok, pvc} = Service.create_phone_verification_code(fields, opts)
 
       assert pvc.value
     end
@@ -814,7 +1093,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
   #
   describe "create_password_reset_token/2" do
     test "when username is not provided" do
-      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(%{"username" => ""}, %{})
+      {:error, %{errors: errors}} = Service.create_password_reset_token(%{"username" => ""}, %{})
 
       assert match_keys(errors, [:username])
     end
@@ -830,7 +1109,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"username" => Faker.Internet.safe_email()}
       opts = %{account: nil}
 
-      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(fields, opts)
+      {:error, %{errors: errors}} = Service.create_password_reset_token(fields, opts)
 
       assert match_keys(errors, [:username])
     end
@@ -846,7 +1125,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"username" => Faker.Internet.safe_email()}
       opts = %{account: %Account{id: UUID.generate()}}
 
-      {:error, %{errors: errors}} = DefaultService.create_password_reset_token(fields, opts)
+      {:error, %{errors: errors}} = Service.create_password_reset_token(fields, opts)
 
       assert match_keys(errors, [:username])
     end
@@ -865,7 +1144,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"username" => standard_user.username}
       opts = %{account: nil}
 
-      {:ok, user} = DefaultService.create_password_reset_token(fields, opts)
+      {:ok, user} = Service.create_password_reset_token(fields, opts)
 
       assert user.password_reset_token
       assert user.password_reset_token != standard_user.password_reset_token
@@ -886,7 +1165,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
       fields = %{"username" => managed_user.username}
       opts = %{account: standard_user.default_account}
 
-      {:ok, user} = DefaultService.create_password_reset_token(fields, opts)
+      {:ok, user} = Service.create_password_reset_token(fields, opts)
 
       assert user.password_reset_token
       assert user.password_reset_token != managed_user.password_reset_token
@@ -900,7 +1179,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
 
-      {:error, _} = DefaultService.update_password(%{ reset_token: "invalid" }, %{"value" => "test1234"}, %{ account: account })
+      {:error, _} = Service.update_password(%{ reset_token: "invalid" }, %{"value" => "test1234"}, %{ account: account })
     end
 
     test "when password_reset_token is valid" do
@@ -915,7 +1194,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         encrypted_password: "original"
       })
 
-      {:ok, password} = DefaultService.update_password(%{ reset_token: "token" }, %{"value" => "test1234"}, %{ account: account })
+      {:ok, password} = Service.update_password(%{ reset_token: "token" }, %{"value" => "test1234"}, %{ account: account })
       assert password.encrypted_value != target_user.encrypted_password
     end
 
@@ -931,7 +1210,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
         encrypted_password: "original"
       })
 
-      {:error, changeset} = DefaultService.update_password(%{ reset_token: "token" }, %{"value" => "test"}, %{ account: account })
+      {:error, changeset} = Service.update_password(%{ reset_token: "token" }, %{"value" => "test"}, %{ account: account })
 
       assert changeset.valid? == false
       assert changeset.changes[:value]
@@ -945,7 +1224,7 @@ defmodule BlueJet.Identity.DefaultDefaultServiceTest do
     account = Repo.insert!(%Account{})
     target_refresh_token = Repo.insert!(%RefreshToken{ account_id: account.id })
 
-    refresh_token = DefaultService.get_refresh_token(%{ account: account })
+    refresh_token = Service.get_refresh_token(%{ account: account })
 
     assert refresh_token
     assert refresh_token.id == target_refresh_token.id

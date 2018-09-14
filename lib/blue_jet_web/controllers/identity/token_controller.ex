@@ -1,13 +1,14 @@
 defmodule BlueJetWeb.TokenController do
   use BlueJetWeb, :controller
 
+  alias BlueJet.CreateRequest
   alias BlueJet.Identity
 
   def create(conn, params) do
     otp = Enum.at(get_req_header(conn, "x-freshcom-otp"), 0)
     params = Map.put(params, "otp", otp)
 
-    with {:ok, %{data: token}} <- Identity.create_token(%ContextRequest{fields: params}) do
+    with {:ok, %{data: token}} <- Identity.create_access_token(%CreateRequest{fields: params}) do
       conn
       |> put_status(:ok)
       |> json(token)

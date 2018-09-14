@@ -1,8 +1,7 @@
-defmodule BlueJet.Identity.Authentication do
+defmodule BlueJet.Identity.Authentication.Service do
   import BlueJet.ControlFlow
-
+  import BlueJet.Identity.User.Service, only: [get_user: 2]
   alias BlueJet.EventBus
-  alias BlueJet.Identity.Service
 
   @token_expiry_seconds 3600
   @errors [
@@ -37,11 +36,11 @@ defmodule BlueJet.Identity.Authentication do
   alias BlueJet.Repo
   alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}
 
-  def create_token(%{"grant_type" => grant_type}) when grant_type not in ["refresh_token", "password"] do
+  def create_access_token(%{"grant_type" => grant_type}) when grant_type not in ["refresh_token", "password"] do
     {:error, %{error: :unsupported_grant_type, error_description: "\"grant_type\" must be one of \"password\" or \"refresh_token\""}}
   end
 
-  def create_token(%{"grant_type" => "password", "scope" => scope} = fields) do
+  def create_access_token(%{"grant_type" => "password", "scope" => scope} = fields) do
     scope = deserialize_scope(scope, %{aid: :account_id})
 
     fields
@@ -50,13 +49,13 @@ defmodule BlueJet.Identity.Authentication do
     |> create_token_by_password()
   end
 
-  def create_token(%{"grant_type" => "password"} = fields) do
+  def create_access_token(%{"grant_type" => "password"} = fields) do
     fields
     |> take_atomize(["grant_type", "username", "password", "otp"])
     |> create_token_by_password()
   end
 
-  def create_token(%{"grant_type" => "refresh_token", "scope" => scope} = fields) do
+  def create_access_token(%{"grant_type" => "refresh_token", "scope" => scope} = fields) do
     scope = deserialize_scope(scope, %{aid: :account_id})
 
     fields
@@ -65,11 +64,11 @@ defmodule BlueJet.Identity.Authentication do
     |> create_token_by_refresh_token()
   end
 
-  def create_token(%{"grant_type" => "refresh_token", "refresh_token" => refresh_token}) do
+  def create_access_token(%{"grant_type" => "refresh_token", "refresh_token" => refresh_token}) do
     create_token_by_refresh_token(%{grant_type: "refresh_token", refresh_token: refresh_token})
   end
 
-  def create_token(_), do: @errors[:invalid_request]
+  def create_access_token(_), do: @errors[:invalid_request]
 
   defp take_atomize(m, keys) do
     m
@@ -100,13 +99,13 @@ defmodule BlueJet.Identity.Authentication do
 
   defp get_user_for_token(account, username) do
     %{username: username}
-    |> Service.get_user(%{account: account, type: :managed})
+    |> get_user(%{account: account, type: :managed})
     |> tt()
   end
 
   defp get_user_for_token(username) do
     %{username: username}
-    |> Service.get_user(%{account: nil})
+    |> get_user(%{account: nil})
     |> tt()
   end
 
@@ -150,30 +149,6 @@ defmodule BlueJet.Identity.Authentication do
     ~>> get_refresh_token(account_id)
     ~>> do_create_token_by_refresh_token()
   end
-
-  # defp do_create_token_by_password(user, password, otp, account_id) do
-  #   password_valid = Comeonin.Bcrypt.checkpw(password, user.encrypted_password)
-  #   otp_provided = otp != "" && otp
-  #   otp_valid = User.is_tfa_code_valid?(user, otp)
-
-  #   cond do
-  #     password_valid && otp_valid ->
-  #       refresh_token = Repo.get_by!(RefreshToken, user_id: user.id, account_id: account_id)
-  #       Repo.update!(User.changeset(user, :clear_tfa_code))
-  #       do_create_token_by_refresh_token(refresh_token)
-
-  #     !password_valid ->
-  #       @errors[:invalid_password_grant]
-
-  #     !otp_provided ->
-  #       Repo.update!(User.changeset(user, :refresh_tfa_code))
-  #       EventBus.dispatch("identity:user.tfa_code.create.success", %{user: user})
-  #       @errors[:invalid_otp]
-
-  #     !otp_valid ->
-  #       @errors[:invalid_otp]
-  #   end
-  # end
 
   defp check_password(user, password) do
     if User.is_password_valid?(user, password) do
