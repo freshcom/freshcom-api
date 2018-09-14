@@ -1,7 +1,7 @@
 defmodule BlueJet.Identity.Account do
   use BlueJet, :data
 
-  alias BlueJet.Identity.{User, AccountMembership, RefreshToken, PhoneVerificationCode}
+  alias BlueJet.Identity.{AccountMembership, RefreshToken}
 
   schema "accounts" do
     field :mode, :string, default: "live"
@@ -83,19 +83,6 @@ defmodule BlueJet.Identity.Account do
 
   defp castable_fields(:insert), do: writable_fields()
   defp castable_fields(:update), do: writable_fields() -- [:default_locale]
-
-  @spec sync_to_test_account(Account.t(), Changeset.t()) :: {:ok, Account.t()}
-  def sync_to_test_account(%__MODULE__{mode: "live"} = account, %{action: :update} = changeset) do
-    test_account =
-      __MODULE__
-      |> Repo.get_by(live_account_id: account.id)
-      |> change(changeset.changes)
-      |> Repo.update!()
-
-    {:ok, %{account | test_account: test_account, test_account_id: test_account.id}}
-  end
-
-  def sync_to_test_account(account), do: {:ok, account}
 
   @doc """
   Return the account with `test_account_id` fields added. If given account does not

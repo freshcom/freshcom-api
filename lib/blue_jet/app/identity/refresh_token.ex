@@ -64,25 +64,4 @@ defmodule BlueJet.Identity.RefreshToken do
     |> String.replace_prefix("urt-test-", "")
     |> String.replace_prefix("urt-live-", "")
   end
-
-  defmodule Query do
-    import Ecto.Query
-    alias BlueJet.Identity.RefreshToken
-
-    def default() do
-      from(rt in RefreshToken)
-    end
-
-    def for_user(user_id) do
-      from(rt in RefreshToken, where: rt.user_id == ^user_id)
-    end
-
-    def for_account(query, account_id) do
-      from(rt in query, where: rt.account_id == ^account_id)
-    end
-
-    def publishable() do
-      from(rt in RefreshToken, where: is_nil(rt.user_id))
-    end
-  end
 end

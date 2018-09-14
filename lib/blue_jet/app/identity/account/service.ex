@@ -1,6 +1,7 @@
 defmodule BlueJet.Identity.Account.Service do
   use BlueJet, :service
 
+  import Ecto.Changeset
   import BlueJet.Identity.AccountMembership.Service, only: [create_account_membership!: 2]
   import BlueJet.Identity.RefreshToken.Service, only: [create_refresh_token!: 2]
 
@@ -102,7 +103,7 @@ defmodule BlueJet.Identity.Account.Service do
     statements =
       Multi.new()
       |> Multi.update(:_1, changeset)
-      |> Multi.run(:account, &Account.sync_to_test_account(&1[:_1], changeset))
+      |> Multi.run(:account, &sync_to_test_account!(&1[:_1], changeset))
 
     case Repo.transaction(statements) do
       {:ok, %{account: account}} ->
@@ -112,6 +113,18 @@ defmodule BlueJet.Identity.Account.Service do
         {:error, changeset}
     end
   end
+
+  defp sync_to_test_account!(%Account{mode: "live"} = account, %{action: :update} = changeset) do
+    test_account =
+      Account
+      |> Repo.get_by(live_account_id: account.id)
+      |> change(changeset.changes)
+      |> Repo.update!()
+
+    {:ok, %{account | test_account: test_account, test_account_id: test_account.id}}
+  end
+
+  def sync_to_test_account(account, _), do: {:ok, account}
 
   @spec reset_account(Account.t()) :: {:ok, Account.t()}
   def reset_account(%Account{mode: "test"} = account) do

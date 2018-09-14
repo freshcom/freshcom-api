@@ -75,7 +75,7 @@ defmodule BlueJet.Identity.TestHelper do
   end
 
   def create_access_token(username, password) do
-    {:ok, %{ data: %{ access_token: uat } }} = Identity.create_token(%ContextRequest{
+    {:ok, %{ data: %{ access_token: uat } }} = Identity.create_access_token(%ContextRequest{
       fields: %{ grant_type: "password", username: username, password: password }
     })
 
@@ -87,7 +87,7 @@ defmodule BlueJet.Identity.TestHelper do
       RefreshToken.Query.publishable()
       |> Repo.get_by(account_id: account.id)
 
-    {:ok, %{ data: %{ access_token: pat } }} = Identity.create_token(%ContextRequest{
+    {:ok, %{ data: %{ access_token: pat } }} = Identity.create_access_token(%ContextRequest{
       fields: %{ grant_type: "refresh_token", refresh_token: rt.id }
     })
 

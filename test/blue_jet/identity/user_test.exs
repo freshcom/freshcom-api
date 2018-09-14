@@ -376,23 +376,6 @@ defmodule BlueJet.Identity.UserTest do
     end
   end
 
-  describe "delete_all_pvc/1" do
-    test "when user has phone verification code" do
-      account = Repo.insert!(%Account{})
-      pvc = Repo.insert!(%PhoneVerificationCode{
-        account_id: account.id,
-        phone_number: Faker.Phone.EnUs.phone(),
-        value: "123456",
-        expires_at: Timex.now()
-      })
-      user = %User{ phone_number: pvc.phone_number, phone_verification_code: pvc.value }
-
-      User.delete_all_pvc(user)
-
-      refute Repo.get(PhoneVerificationCode, pvc.id)
-    end
-  end
-
   describe "get_role/2" do
     test "when the user has a role for that account" do
       account = Repo.insert!(%Account{
@@ -431,51 +414,5 @@ defmodule BlueJet.Identity.UserTest do
 
       assert User.get_tfa_code(user) == "123456"
     end
-  end
-
-  test "refresh_tfa_code/1" do
-    account = Repo.insert!(%Account{
-      name: Faker.Company.name()
-    })
-    user = Repo.insert!(%User{
-      username: Faker.String.base64(5),
-      default_account_id: account.id
-    })
-
-    user = User.refresh_tfa_code(user)
-
-    assert user.tfa_code
-    assert user.tfa_code_expires_at
-  end
-
-  test "clear_tfa_code/1" do
-    account = Repo.insert!(%Account{
-      name: Faker.Company.name()
-    })
-    user = Repo.insert!(%User{
-      username: Faker.String.base64(5),
-      default_account_id: account.id,
-      tfa_code: "123456",
-      tfa_code_expires_at: Timex.now()
-    })
-
-    user = User.clear_tfa_code(user)
-
-    assert user.tfa_code == nil
-    assert user.tfa_code_expires_at == nil
-  end
-
-  test "update_password/2" do
-    account = Repo.insert!(%Account{
-      name: Faker.Company.name()
-    })
-    user = Repo.insert!(%User{
-      username: Faker.String.base64(5),
-      default_account_id: account.id
-    })
-
-    user = User.update_password(user, "test1234")
-
-    assert user.encrypted_password
   end
 end

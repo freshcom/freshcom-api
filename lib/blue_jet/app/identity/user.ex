@@ -4,7 +4,6 @@ defmodule BlueJet.Identity.User do
   alias BlueJet.Utils
 
   alias BlueJet.Identity.{Account, RefreshToken, AccountMembership, PhoneVerificationCode}
-  alias __MODULE__.Query
 
   schema "users" do
     field :status, :string, default: "active"
@@ -141,19 +140,17 @@ defmodule BlueJet.Identity.User do
     })
   end
 
-  @spec encrypt_password(String.t()) :: Changeset.t()
-  def encrypt_password(password) do
-    Comeonin.Bcrypt.hashpwsalt(password)
-  end
-
-  @spec put_encrypted_password(Changeset.t()) :: Changeset.t()
-  def put_encrypted_password(changeset = %{changes: %{password: password}}) do
+  defp put_encrypted_password(%{changes: %{password: password}} = changeset) do
     put_change(changeset, :encrypted_password, encrypt_password(password))
   end
 
-  def put_encrypted_password(changeset), do: changeset
+  defp put_encrypted_password(changeset), do: changeset
 
-  defp put_name(changeset = %{changes: %{name: _}}), do: changeset
+  defp encrypt_password(password) do
+    Comeonin.Bcrypt.hashpwsalt(password)
+  end
+
+  defp put_name(%{changes: %{name: _}} = changeset), do: changeset
 
   defp put_name(changeset) do
     first_name = get_field(changeset, :first_name)
@@ -166,12 +163,10 @@ defmodule BlueJet.Identity.User do
     end
   end
 
-  defp put_auth_method(changeset = %{changes: %{auth_method: _}}), do: changeset
+  defp put_auth_method(%{changes: %{auth_method: _}} = changeset), do: changeset
 
-  defp put_auth_method(
-         changeset = %{data: %{account: %{default_auth_method: default_auth_method}}}
-       ) do
-    put_change(changeset, :auth_method, default_auth_method)
+  defp put_auth_method(%{data: %{account: %{default_auth_method: auth_method}}} = changeset) do
+    put_change(changeset, :auth_method, auth_method)
   end
 
   defp put_auth_method(changeset), do: changeset
@@ -184,10 +179,10 @@ defmodule BlueJet.Identity.User do
     |> put_change(:tfa_code_expires_at, Timex.shift(Timex.now(), minutes: 5))
   end
 
-  defp put_email_fields(changeset = %{changes: %{email: _}}) do
+  defp put_email_fields(%{changes: %{email: _}} = changeset) do
     changeset
-    |> put_change(:email_verified, false)
     |> put_change(:email_verification_token, generate_email_verification_token())
+    |> put_change(:email_verified, false)
   end
 
   defp put_email_fields(changeset), do: changeset
@@ -219,41 +214,11 @@ defmodule BlueJet.Identity.User do
   defp validate_username(changeset = %{valid?: true, changes: %{username: _}}) do
     changeset
     |> validate_length(:username, min: 5)
-    |> validate_username_unique_within_account()
     |> unique_constraint(:username)
     |> unique_constraint(:username, name: :users_account_id_username_index)
   end
 
   defp validate_username(changeset), do: changeset
-
-  # This function is needed in addition to the constraint. The constraints
-  # only checks managed user and standard user seperately. In addition to that
-  # we also need to check them together. Username must be unique within an
-  # account regardless of whether they are standard user or managed user.
-  defp validate_username_unique_within_account(
-         changeset = %{valid?: true, changes: %{username: username}}
-       ) do
-    account_id = get_field(changeset, :account_id)
-
-    if username_unique_within_account?(username, account_id) do
-      changeset
-    else
-      add_error(changeset, :username, "Username already taken.", validation: :unique)
-    end
-  end
-
-  defp validate_username_unique_within_account(changeset), do: changeset
-
-  defp username_unique_within_account?(_, nil), do: true
-
-  defp username_unique_within_account?(username, account_id) do
-    existing_user =
-      Query.default()
-      |> Query.member_of_account(account_id)
-      |> Repo.get_by(username: username)
-
-    !existing_user
-  end
 
   defp validate_email(changeset) do
     changeset
@@ -261,9 +226,9 @@ defmodule BlueJet.Identity.User do
     |> unique_constraint(:email)
   end
 
-  defp validate_current_password(changeset = %{data: user, changes: %{password: _}}) do
-    current_password = get_field(changeset, :current_password)
+  defp validate_current_password(%{data: user, changes: %{password: _}} = changeset) do
     changeset = validate_required(changeset, [:current_password])
+    current_password = get_field(changeset, :current_password)
 
     if current_password && !checkpw(current_password, user.encrypted_password) do
       add_error(changeset, :current_password, "is invalid", validation: :must_match)
@@ -331,23 +296,9 @@ defmodule BlueJet.Identity.User do
   defp checkpw(_, nil), do: false
   defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
-  # @spec is_managed_user?(__MODULE__.t()) :: boolean
-  # def is_managed_user?(user), do: !!user.account_id
-
   @spec type(__MODULE__.t()) :: :managed | :standard
   def type(user) do
     if user.account_id, do: :managed, else: :standard
-  end
-
-  @spec delete_all_pvc(__MODULE__.t()) :: {:ok, __MODULE__.t()}
-  def delete_all_pvc(%{phone_verification_code: nil} = user), do: {:ok, user}
-
-  def delete_all_pvc(user) do
-    PhoneVerificationCode.Query.default()
-    |> PhoneVerificationCode.Query.filter_by(%{phone_number: user.phone_number})
-    |> Repo.delete_all()
-
-    {:ok, user}
   end
 
   @spec put_role(__MODULE__.t() | nil, String.t()) :: __MODULE__.t() | nil
@@ -386,28 +337,11 @@ defmodule BlueJet.Identity.User do
     Ecto.UUID.generate()
   end
 
-  @spec refresh_tfa_code(__MODULE__.t()) :: __MODULE__.t()
-  def refresh_tfa_code(user) do
-    user
-    |> change(%{
-      tfa_code: generate_tfa_code(6),
-      tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 5)
-    })
-    |> Repo.update!()
-  end
-
   defp generate_tfa_code(n) do
     Enum.reduce(1..n, "", fn _, acc ->
       char = Enum.random(0..9)
       acc <> Integer.to_string(char)
     end)
-  end
-
-  @spec clear_tfa_code(__MODULE__.t()) :: __MODULE__.t()
-  def clear_tfa_code(user) do
-    user
-    |> change(%{tfa_code: nil, tfa_code_expires_at: nil})
-    |> Repo.update!()
   end
 
   @spec update_password(__MODULE__.t(), String.t()) :: __MODULE__.t()
