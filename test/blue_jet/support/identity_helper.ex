@@ -104,7 +104,7 @@ defmodule BlueJet.Identity.TestHelper do
     account
   end
 
-  def managed_user_fixture(account, fields \\ %{}) do
+  def managed_user_fixture(account, fields \\ %{}) when not is_nil(account) do
     expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
 
     n = System.unique_integer([:positive])

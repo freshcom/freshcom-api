@@ -7,6 +7,7 @@ defmodule BlueJet.ContextCase do
       alias BlueJet.ContextRequest
       alias BlueJet.{AuthorizationMock, EventHandlerMock}
 
+      import BlueJet.Identity.TestHelper
       import BlueJet.ContextCase
     end
   end
