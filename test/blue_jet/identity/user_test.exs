@@ -39,7 +39,8 @@ defmodule BlueJet.Identity.UserTest do
   describe "validate/2" do
     test "when action is insert and missing required fields" do
       changeset =
-        change(%User{}, %{})
+        %User{}
+        |> change(%{})
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -47,73 +48,15 @@ defmodule BlueJet.Identity.UserTest do
       assert Keyword.keys(changeset.errors) == [:password, :username, :name]
     end
 
-    test "when action is insert and  given username less than 5 characters" do
+    test "when action is insert and given username less than 5 characters" do
       changeset =
-        change(%User{}, %{ username: "abcd", password: "test1234", name: Faker.Name.name() })
+        %User{}
+        |> change(%{ username: "abcd", password: "test1234", name: Faker.Name.name() })
         |> Map.put(:action, :insert)
         |> User.validate()
 
       assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:username]
-    end
-
-    test "when action is insert and given global username already exist" do
-      account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      user = Repo.insert!(%User{
-        username: Faker.String.base64(5),
-        password: "test1234",
-        name: Faker.Name.name(),
-        default_account_id: account1.id
-      })
-      Repo.insert!(%AccountMembership{
-        role: "developer",
-        account_id: account1.id,
-        user_id: user.id
-      })
-
-      # Creating non related account user
-      {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          account_id: account2.id,
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
-
-      # Creating related account user
-      {:error, au_changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
-
-      # Creating global user
-      {:error, gu_changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          default_account_id: account2.id
-        })
-        |> Map.put(:action, :insert)
-        |> User.validate()
-        |> Repo.insert()
-
-      assert au_changeset.valid? == false
-      assert gu_changeset.valid? == false
-      assert Keyword.keys(au_changeset.errors) == [:username]
-      assert Keyword.keys(gu_changeset.errors) == [:username]
     end
 
     test "when action is insert and given account username already exist" do
@@ -127,40 +70,49 @@ defmodule BlueJet.Identity.UserTest do
         default_account_id: account1.id
       })
 
-      # Creating global user should pass
+      params = %{
+        username: user.username,
+        password: "test1234",
+        name: Faker.Name.name(),
+        default_account_id: account2.id
+      }
+
+      # Creating standard user should pass
       {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          default_account_id: account2.id
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
-      # Creating non related account user should pass
+      params = %{
+        username: user.username,
+        password: "test1234",
+        name: Faker.Name.name(),
+        account_id: account2.id,
+        default_account_id: account2.id
+      }
+
+      # Creating non related managed user should pass
       {:ok, _} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          account_id: account2.id,
-          default_account_id: account2.id
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
+
+      params = %{
+        username: user.username,
+        password: "test1234",
+        name: Faker.Name.name(),
+        account_id: account1.id,
+        default_account_id: account1.id
+      }
 
       # Creating related account user should error
       {:error, changeset} =
-        change(%User{}, %{
-          username: user.username,
-          password: "test1234",
-          name: Faker.Name.name(),
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
@@ -170,13 +122,16 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is insert and given invalid email" do
+      params = %{
+        username: Faker.String.base64(5),
+        name: Faker.Name.name(),
+        email: "invalid",
+        password: "test1234"
+      }
+
       changeset =
-        change(%User{}, %{
-          username: Faker.String.base64(5),
-          name: Faker.Name.name(),
-          email: "invalid",
-          password: "test1234"
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -185,8 +140,8 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is insert and given global email already exist" do
-      account1 = Repo.insert!(%Account{ name: Faker.Company.name() })
-      account2 = Repo.insert!(%Account{ name: Faker.Company.name() })
+      account1 = Repo.insert!(%Account{name: Faker.Company.name()})
+      account2 = Repo.insert!(%Account{name: Faker.Company.name()})
       user = Repo.insert!(%User{
         username: Faker.String.base64(5),
         password: "test1234",
@@ -194,29 +149,35 @@ defmodule BlueJet.Identity.UserTest do
         default_account_id: account1.id
       })
 
+      params = %{
+        username: Faker.String.base64(5),
+        password: "test1234",
+        email: user.email,
+        name: Faker.Name.name(),
+        account_id: account1.id,
+        default_account_id: account1.id
+      }
+
       # Creating account user should pass
       {:ok, _} =
-        change(%User{}, %{
-          username: Faker.String.base64(5),
-          password: "test1234",
-          email: user.email,
-          name: Faker.Name.name(),
-          account_id: account1.id,
-          default_account_id: account1.id
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
 
+      params = %{
+        username: "username2",
+        password: "test1234",
+        email: user.email,
+        name: Faker.Name.name(),
+        default_account_id: account2.id
+      }
+
       # Creating global user should error
       {:error, changeset} =
-        change(%User{}, %{
-          username: "username2",
-          password: "test1234",
-          email: user.email,
-          name: Faker.Name.name(),
-          default_account_id: account2.id
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
         |> Repo.insert()
@@ -226,8 +187,14 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is insert and given password less than 8 characters" do
+      params = %{
+        username: "username",
+        password: "abc",
+        name: Faker.Name.name()
+      }
       changeset =
-        change(%User{}, %{ username: "username", password: "abc", name: Faker.Name.name() })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -236,13 +203,15 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is insert, auth_method is tfa_sms and missing required fields" do
+      params = %{
+        auth_method: "tfa_sms",
+        username: Faker.Internet.user_name(),
+        password: "test1234",
+        name: Faker.Name.name()
+      }
       changeset =
-        change(%User{}, %{
-          auth_method: "tfa_sms",
-          username: Faker.Internet.user_name(),
-          password: "test1234",
-          name: Faker.Name.name()
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -251,15 +220,18 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is insert, auth_method is tfa_sms and phone_verification_code is invalid" do
+      params = %{
+        auth_method: "tfa_sms",
+        username: Faker.Internet.user_name(),
+        password: "test1234",
+        name: Faker.Name.name(),
+        phone_number: "+11234567890",
+        phone_verification_code: "123456"
+      }
+
       changeset =
-        change(%User{}, %{
-          auth_method: "tfa_sms",
-          username: Faker.Internet.user_name(),
-          password: "test1234",
-          name: Faker.Name.name(),
-          phone_number: "+11234567890",
-          phone_verification_code: "123456"
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -277,15 +249,19 @@ defmodule BlueJet.Identity.UserTest do
         value: "123456",
         expires_at: Timex.shift(Timex.now(), minutes: 5)
       })
+
+      params = %{
+        auth_method: "tfa_sms",
+        username: Faker.Internet.user_name(),
+        password: "test1234",
+        name: Faker.Name.name(),
+        phone_number: pvc.phone_number,
+        phone_verification_code: pvc.value
+      }
+
       changeset =
-        change(%User{}, %{
-          auth_method: "tfa_sms",
-          username: Faker.Internet.user_name(),
-          password: "test1234",
-          name: Faker.Name.name(),
-          phone_number: pvc.phone_number,
-          phone_verification_code: pvc.value
-        })
+        %User{}
+        |> change(params)
         |> Map.put(:action, :insert)
         |> User.validate()
 
@@ -293,11 +269,11 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update but missing required fields" do
-      user = %User{ username: "username", name: Faker.Name.name() }
+      user = %User{username: "username", name: Faker.Name.name()}
 
       changeset =
         user
-        |> change(%{ password: "newpassword" })
+        |> change(%{password: "newpassword"})
         |> Map.put(:action, :update)
         |> User.validate()
 
@@ -306,11 +282,11 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update and password is changed but provided wrong current password" do
-      user = %User{ username: "username", name: Faker.Name.name() }
+      user = %User{username: "username", name: Faker.Name.name()}
 
       changeset =
         user
-        |> change(%{ password: "newpassword", current_password: "wrongpassword" })
+        |> change(%{password: "newpassword", current_password: "wrongpassword"})
         |> Map.put(:action, :update)
         |> User.validate()
 
@@ -319,7 +295,7 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when action is update" do
-      user = %User{ username: Faker.String.base64(5), name: Faker.Name.name() }
+      user = %User{username: Faker.String.base64(5), name: Faker.Name.name()}
 
       changeset =
         user
@@ -333,7 +309,7 @@ defmodule BlueJet.Identity.UserTest do
 
   describe "changeset/3" do
     test "when action is insert" do
-      account = Repo.insert!(%Account{ default_auth_method: "tfa_sms" })
+      account = Repo.insert!(%Account{default_auth_method: "tfa_sms"})
       params = %{
         username: " Tes t ",
         email: " te s t@example.com  ",
@@ -344,7 +320,7 @@ defmodule BlueJet.Identity.UserTest do
       }
 
       changeset =
-        %User{ account_id: account.id, account: account }
+        %User{account_id: account.id, account: account}
         |> User.changeset(:insert, params)
 
       assert changeset.changes[:encrypted_password]
@@ -366,7 +342,7 @@ defmodule BlueJet.Identity.UserTest do
       }
 
       changeset =
-        %User{ }
+        %User{}
         |> User.changeset(:update, params)
 
       assert changeset.changes[:encrypted_password]
@@ -395,8 +371,8 @@ defmodule BlueJet.Identity.UserTest do
     end
 
     test "when uesr is not part of the account" do
-      user = %User{ id: Ecto.UUID.generate() }
-      account = %Account{ id: Ecto.UUID.generate() }
+      user = %User{id: Ecto.UUID.generate()}
+      account = %Account{id: Ecto.UUID.generate()}
 
       assert User.get_role(user, account.id) == nil
     end
@@ -404,13 +380,13 @@ defmodule BlueJet.Identity.UserTest do
 
   describe "get_tfa_code/1" do
     test "when tfa code expired" do
-      user = %User{ tfa_code: "123456", tfa_code_expires_at: Timex.now() }
+      user = %User{tfa_code: "123456", tfa_code_expires_at: Timex.now()}
 
       assert User.get_tfa_code(user) == nil
     end
 
     test "when tfa code is valid" do
-      user = %User{ tfa_code: "123456", tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 1) }
+      user = %User{tfa_code: "123456", tfa_code_expires_at: Timex.shift(Timex.now(), minutes: 1)}
 
       assert User.get_tfa_code(user) == "123456"
     end

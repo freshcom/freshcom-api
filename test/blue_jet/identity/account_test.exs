@@ -38,7 +38,7 @@ defmodule BlueJet.Identity.AccountTest do
 
   describe "changeset/3" do
     test "when default_locale is set to nil" do
-      params = %{ default_locale: nil }
+      params = %{default_locale: nil}
 
       changeset =
         %Account{}
@@ -49,7 +49,7 @@ defmodule BlueJet.Identity.AccountTest do
     end
 
     test "when given params is valid" do
-      params = %{ name: Faker.Company.name() }
+      params = %{name: Faker.Company.name()}
 
       changeset =
         %Account{}
@@ -62,7 +62,7 @@ defmodule BlueJet.Identity.AccountTest do
 
   describe "changeset/4" do
     test "when name is set to nil" do
-      params = %{ name: nil }
+      params = %{name: nil}
 
       changeset =
         %Account{}
@@ -73,7 +73,7 @@ defmodule BlueJet.Identity.AccountTest do
     end
 
     test "when updating default locale should not be changeable" do
-      params = %{ default_locale: "test" }
+      params = %{default_locale: "test"}
 
       changeset =
         %Account{}
@@ -99,7 +99,7 @@ defmodule BlueJet.Identity.AccountTest do
     end
 
     test "when given account is a test account" do
-      account = %Account{ mode: "test" }
+      account = %Account{mode: "test"}
 
       refute Account.put_test_account_id(account).test_account_id
     end

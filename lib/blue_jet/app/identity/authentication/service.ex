@@ -70,6 +70,20 @@ defmodule BlueJet.Identity.Authentication.Service do
 
   def create_access_token(_), do: @errors[:invalid_request]
 
+  defp deserialize_scope(scope_string, abr_mappings) do
+    scopes = String.split(scope_string, ",")
+
+    Enum.reduce(scopes, %{}, fn scope, acc ->
+      with [key, value] <- String.split(scope, ":") do
+        raw_key = String.to_atom(key)
+        key = abr_mappings[raw_key] || raw_key
+        Map.put(acc, key, value)
+      else
+        _ -> acc
+      end
+    end)
+  end
+
   defp take_atomize(m, keys) do
     m
     |> Map.take(keys)
@@ -256,19 +270,5 @@ defmodule BlueJet.Identity.Authentication.Service do
     user
     |> User.changeset(:refresh_tfa_code)
     |> Repo.update!()
-  end
-
-  def deserialize_scope(scope_string, abr_mappings \\ %{}) do
-    scopes = String.split(scope_string, ",")
-
-    Enum.reduce(scopes, %{}, fn scope, acc ->
-      with [key, value] <- String.split(scope, ":") do
-        raw_key = String.to_atom(key)
-        key = abr_mappings[raw_key] || raw_key
-        Map.put(acc, key, value)
-      else
-        _ -> acc
-      end
-    end)
   end
 end

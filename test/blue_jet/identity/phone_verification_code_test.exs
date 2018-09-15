@@ -23,27 +23,30 @@ defmodule BlueJet.Identity.PhoneVerificationCodeTest do
 
   describe "validate/1" do
     test "when missing required fields" do
-      changeset = change(%PhoneVerificationCode{})
-
-      changeset = PhoneVerificationCode.validate(changeset)
+      changeset =
+        %PhoneVerificationCode{}
+        |> change()
+        |> PhoneVerificationCode.validate()
 
       assert changeset.valid? == false
       assert changeset.errors[:phone_number]
     end
 
     test "when phone number is no long enough" do
-      changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123" })
-
-      changeset = PhoneVerificationCode.validate(changeset)
+      changeset =
+        %PhoneVerificationCode{}
+        |> change(%{phone_number: "123"})
+        |> PhoneVerificationCode.validate()
 
       assert changeset.valid? == false
       assert changeset.errors[:phone_number]
     end
 
     test "when phone number format is invalid" do
-      changeset = change(%PhoneVerificationCode{}, %{ phone_number: "123ab123123" })
-
-      changeset = PhoneVerificationCode.validate(changeset)
+      changeset =
+        %PhoneVerificationCode{}
+        |> change(%{phone_number: "123ab123123"})
+        |> PhoneVerificationCode.validate()
 
       assert changeset.valid? == false
       assert changeset.errors[:phone_number]
@@ -58,7 +61,7 @@ defmodule BlueJet.Identity.PhoneVerificationCodeTest do
       }
 
       changeset =
-        %PhoneVerificationCode{ account_id: account.id, account: account }
+        %PhoneVerificationCode{account_id: account.id, account: account}
         |> PhoneVerificationCode.changeset(:insert, params)
 
       assert changeset.valid?

@@ -53,7 +53,8 @@ defmodule BlueJet.Identity.AccountMembershipTest do
   describe "validate/1" do
     test "when missing required fields" do
       changeset =
-        change(%AccountMembership{})
+        %AccountMembership{}
+        |> change()
         |> Map.put(:action, :insert)
 
       changeset = AccountMembership.validate(changeset)
@@ -65,7 +66,8 @@ defmodule BlueJet.Identity.AccountMembershipTest do
 
     test "when role is not valid" do
       changeset =
-        change(%AccountMembership{}, %{ role: "invalid" })
+        %AccountMembership{}
+        |> change(%{role: "invalid"})
         |> Map.put(:action, :insert)
 
       changeset = AccountMembership.validate(changeset)
@@ -76,7 +78,8 @@ defmodule BlueJet.Identity.AccountMembershipTest do
 
     test "when changeset is valid" do
       changeset =
-        change(%AccountMembership{}, %{ id: Ecto.UUID.generate(), role: "invalid" })
+        %AccountMembership{}
+        |> change(%{id: Ecto.UUID.generate(), role: "invalid"})
         |> Map.put(:action, :insert)
 
       assert changeset.valid?
