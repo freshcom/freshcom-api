@@ -1,20 +1,37 @@
 defmodule BlueJet.ContextRequest do
   defstruct vas: %{},
-            account: nil,
-            user: nil,
-            role: nil,
 
-            params: %{},
+            # For list, create, get & update
+            preloads: [],
+
+            # For list, get & update
+            locale: nil,
+
+            # For get, update & delete
+            identifiers: %{},
+
+            # For create & update
             fields: %{},
 
+            # For list
+            params: %{},
             search: "",
             filter: %{},
             sort: %{},
             pagination: %{size: 25, number: 1},
 
-            preloads: [],
-            preload_filters: %{},
-            locale: nil
+            _vad_: %{
+              account: nil,
+              user: nil
+            },
+            _role_: nil,
+            _preload_: %{
+              paths: [],
+              opts: %{}
+            },
+            _scope_: %{},
+            _default_locale_: nil,
+            _opts_: %{}
 
   @type t :: map
 
@@ -25,5 +42,25 @@ defmodule BlueJet.ContextRequest do
       |> Map.put(key, value)
 
     Map.put(req, root_key, root_value)
+  end
+
+  def valid_keys(:list) do
+    [:params, :search, :filter, :sort, :pagination, :preloads, :locale]
+  end
+
+  def valid_keys(:create) do
+    [:fields, :preloads, :locale]
+  end
+
+  def valid_keys(:get) do
+    [:identifiers, :preloads, :locale]
+  end
+
+  def valid_keys(:update) do
+    [:identifiers, :fields, :preloads, :locale]
+  end
+
+  def valid_keys(:delete) do
+    [:identifiers]
   end
 end

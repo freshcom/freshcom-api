@@ -7,14 +7,14 @@ defmodule BlueJetWeb.PasswordControllerTest do
 
   def create_password_reset_token(user) do
     if user.account_id do
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%CreateRequest{
+      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
         fields: %{"username" => user.username},
         vas: %{account_id: user.account_id, user_id: nil}
       })
 
       user
     else
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%CreateRequest{
+      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
         fields: %{"username" => user.username}
       })
 

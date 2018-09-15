@@ -7,10 +7,7 @@ defmodule BlueJet.ContextCase do
       alias BlueJet.ContextRequest
       alias BlueJet.{AuthorizationMock, EventHandlerMock}
 
-      import Mox
       import BlueJet.ContextCase
-
-      setup :verify_on_exit!
     end
   end
 

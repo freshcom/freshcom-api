@@ -3,22 +3,20 @@ defmodule BlueJetWeb.Controller do
   import Plug.Conn, only: [put_status: 2, send_resp: 3]
 
   alias JaSerializer.Params
-  alias BlueJet.{ListRequest, CreateRequest, GetRequest, UpdateRequest, DeleteRequest}
-  alias BlueJet.ContextResponse
+  alias BlueJet.{ContextRequest, ContextResponse}
 
   @type action :: :index | :create | :show | :update | :delete
-  @type request :: ListRequest.t() | CreateRequest.t() | GetRequest.t() | UpdateRequest.t() | DeleteRequest.t()
 
   @doc """
   Return a default context request according to the action.
   """
-  @spec build_context_request(Plug.Conn.t(), action, keyword) :: request
+  @spec build_context_request(Plug.Conn.t(), action, keyword) :: ContextRequest.t()
   def build_context_request(conn, action, opts \\ [])
 
   def build_context_request(%{assigns: assigns, params: params}, :index, opts) do
     filter = underscore_value(assigns[:filter], opts[:normalize] || [])
 
-    %ListRequest{
+    %ContextRequest{
       vas: assigns[:vas],
       params: Map.take(params, opts[:params] || []),
       search: params["search"],
@@ -35,7 +33,7 @@ defmodule BlueJetWeb.Controller do
       |> Params.to_attributes()
       |> underscore_value(opts[:normalize] || [])
 
-    %CreateRequest{
+    %ContextRequest{
       vas: assigns[:vas],
       fields: fields,
       preloads: assigns[:preloads]
@@ -45,7 +43,7 @@ defmodule BlueJetWeb.Controller do
   def build_context_request(%{assigns: assigns, params: params}, :show, opts) do
     identifiers = extract_identifiers(params, opts)
 
-    %GetRequest{
+    %ContextRequest{
       vas: assigns[:vas],
       identifiers: identifiers,
       preloads: assigns[:preloads],
@@ -60,7 +58,7 @@ defmodule BlueJetWeb.Controller do
       |> Params.to_attributes()
       |> underscore_value(opts[:normalize] || [])
 
-    %UpdateRequest{
+    %ContextRequest{
       vas: assigns[:vas],
       identifiers: identifiers,
       fields: fields,
@@ -70,7 +68,7 @@ defmodule BlueJetWeb.Controller do
   end
 
   def build_context_request(%{assigns: assigns, params: params}, :delete, _) do
-    %DeleteRequest{
+    %ContextRequest{
       vas: assigns[:vas],
       identifiers: %{id: params["id"]}
     }

@@ -1,5 +1,5 @@
 defmodule BlueJet.Identity.TestHelper do
-  alias BlueJet.CreateRequest
+  alias BlueJet.ContextRequest
   alias BlueJet.Repo
   alias BlueJet.Identity
   alias BlueJet.Identity.{Account, RefreshToken, AccountMembership}
@@ -7,7 +7,7 @@ defmodule BlueJet.Identity.TestHelper do
   def create_standard_user(opts \\ []) do
     n = opts[:n] || 1
 
-    {:ok, %{data: standard_user}} = Identity.create_user(%CreateRequest{
+    {:ok, %{data: standard_user}} = Identity.create_user(%ContextRequest{
       fields: %{
         "name" => Faker.Name.name(),
         "username" => "standard_user#{n}@example.com",
@@ -24,7 +24,7 @@ defmodule BlueJet.Identity.TestHelper do
     n = opts[:n] || 1
     role = opts[:role] || "developer"
 
-    {:ok, %{data: managed_user}} = Identity.create_user(%CreateRequest{
+    {:ok, %{data: managed_user}} = Identity.create_user(%ContextRequest{
       fields: %{
         "name" => Faker.Name.name(),
         "username" => "managed_user#{n}@example.com",

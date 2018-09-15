@@ -38,7 +38,6 @@ defmodule Mix.Tasks.BlueJet.Db.Init do
 
     {:ok, _} = Identity.update_account(%ContextRequest{
       vas: %{ user_id: user.id, account_id: account.id },
-      account: account,
       fields: %{ default_auth_method: "tfa_sms" }
     })
 

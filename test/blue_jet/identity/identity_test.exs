@@ -9,30 +9,19 @@ defmodule BlueJet.Identity.IdentityTest do
   # MARK: Account
   #
   describe "get_account/1" do
+    @tag :focus
     test "when role is not authorized" do
-      request = %ContextRequest{
-        account: nil,
-        user: nil,
-        role: "anonymous"
-      }
+      request = %ContextRequest{}
 
       {:error, :access_denied} = Identity.get_account(request)
     end
 
+    @tag :focus
     test "when request is valid" do
-      account = %Account{ id: Ecto.UUID.generate() }
+      account = account_fixture()
       request = %ContextRequest{
-        account: account,
-        user: nil,
-        role: "guest"
+        vas: %{account_id: account.id, user_id: nil}
       }
-
-      ServiceMock
-      |> expect(:get_account, fn(id) ->
-          assert id == account.id
-
-          account
-         end)
 
       {:ok, _} = Identity.get_account(request)
     end

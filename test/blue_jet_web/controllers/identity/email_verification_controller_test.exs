@@ -4,7 +4,7 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
   import BlueJet.Identity.TestHelper
 
   def create_email_verification_token(user) do
-    {:ok, %{data: user}} = Identity.create_email_verification_token(%CreateRequest{
+    {:ok, %{data: user}} = Identity.create_email_verification_token(%ContextRequest{
       fields: %{
         "user_id" => user.id
       },
