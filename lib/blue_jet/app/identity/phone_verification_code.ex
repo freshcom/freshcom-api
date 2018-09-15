@@ -26,20 +26,6 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
     |> put_expires_at()
   end
 
-  defp generate_value(n, account_id) do
-    value =
-      Enum.reduce(1..n, "", fn _, acc ->
-        char = Enum.random(0..9)
-        acc <> Integer.to_string(char)
-      end)
-
-    if Repo.get_by(__MODULE__, value: value, account_id: account_id) do
-      generate_value(n, account_id)
-    else
-      value
-    end
-  end
-
   defp put_value(changeset = %{valid?: true}) do
     account = get_field(changeset, :account)
     value = generate_value(6, account.id)
@@ -47,6 +33,21 @@ defmodule BlueJet.Identity.PhoneVerificationCode do
   end
 
   defp put_value(changeset), do: changeset
+
+  defp generate_value(n, account_id) do
+    value =
+      Enum.reduce(1..n, "", fn _, acc ->
+        char = Enum.random(0..9)
+        acc <> Integer.to_string(char)
+      end)
+
+    # If the value we just generated already exist we generate another one
+    if Repo.get_by(__MODULE__, value: value, account_id: account_id) do
+      generate_value(n, account_id)
+    else
+      value
+    end
+  end
 
   defp put_expires_at(changeset = %{valid?: true}) do
     put_change(changeset, :expires_at, Timex.shift(Timex.now(), minutes: 30))

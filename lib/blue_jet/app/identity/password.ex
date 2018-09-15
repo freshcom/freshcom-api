@@ -32,7 +32,8 @@ defmodule BlueJet.Identity.Password do
     |> validate()
   end
 
-  defp validate(changeset) do
+  @spec validate(Changeset.t()) :: Changeset.t()
+  def validate(changeset) do
     changeset
     |> validate_required(:value)
     |> validate_length(:value, min: 8)

@@ -187,6 +187,17 @@ defmodule BlueJet.Identity.User do
 
   defp put_email_fields(changeset), do: changeset
 
+  defp generate_email_verification_token() do
+    Ecto.UUID.generate()
+  end
+
+  defp generate_tfa_code(n) do
+    Enum.reduce(1..n, "", fn _, acc ->
+      char = Enum.random(0..9)
+      acc <> Integer.to_string(char)
+    end)
+  end
+
   @spec validate(Changeset.t(), map) :: Changeset.t()
   def validate(changeset, opts \\ %{})
 
@@ -239,6 +250,10 @@ defmodule BlueJet.Identity.User do
 
   defp validate_current_password(changeset), do: changeset
 
+  defp checkpw(nil, _), do: false
+  defp checkpw(_, nil), do: false
+  defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
+
   defp validate_phone_number(changeset) do
     auth_method = get_field(changeset, :auth_method)
 
@@ -249,6 +264,25 @@ defmodule BlueJet.Identity.User do
     else
       changeset
     end
+  end
+
+  defp validate_phone_verification_code(changeset, %{bypass: true}), do: changeset
+
+  defp validate_phone_verification_code(changeset, _) do
+    if should_validate_phone_verification_code?(changeset) do
+      changeset
+      |> validate_required([:phone_verification_code])
+      |> validate_phone_verification_code_exists()
+    else
+      changeset
+    end
+  end
+
+  defp should_validate_phone_verification_code?(%{action: action} = changeset) do
+    auth_method = get_field(changeset, :auth_method)
+    is_updating_phone_number = action == :update && get_change(changeset, :phone_number)
+
+    (action == :insert || is_updating_phone_number) && auth_method == "tfa_sms"
   end
 
   defp validate_phone_verification_code_exists(changeset = %{valid?: true}) do
@@ -264,37 +298,18 @@ defmodule BlueJet.Identity.User do
 
   defp validate_phone_verification_code_exists(changeset), do: changeset
 
-  defp validate_phone_verification_code(changeset, %{bypass: true}), do: changeset
-
-  defp validate_phone_verification_code(changeset = %{action: action}, _) do
-    auth_method = get_field(changeset, :auth_method)
-    is_updating_phone_number = action == :update && get_change(changeset, :phone_number)
-
-    if (action == :insert || is_updating_phone_number) && auth_method == "tfa_sms" do
-      changeset
-      |> validate_required([:phone_verification_code])
-      |> validate_phone_verification_code_exists()
-    else
-      changeset
-    end
-  end
-
-  defp validate_password(changeset = %{action: :insert}) do
+  defp validate_password(%{action: :insert} = changeset) do
     changeset
     |> validate_required([:password])
     |> validate_length(:password, min: 8)
   end
 
-  defp validate_password(changeset = %{action: :update, changes: %{password: _}}) do
+  defp validate_password(%{action: :update, changes: %{password: _}} = changeset) do
     changeset
     |> validate_length(:password, min: 8)
   end
 
   defp validate_password(changeset), do: changeset
-
-  defp checkpw(nil, _), do: false
-  defp checkpw(_, nil), do: false
-  defp checkpw(pp, ep), do: Comeonin.Bcrypt.checkpw(pp, ep)
 
   @spec type(__MODULE__.t()) :: :managed | :standard
   def type(user) do
@@ -317,6 +332,7 @@ defmodule BlueJet.Identity.User do
     end
   end
 
+  @spec is_tfa_code_valid?(__MODULE__.t(), String.t()) :: boolean
   def is_tfa_code_valid?(user, otp) do
     user.auth_method == "simple" || (user.auth_method == "tfa_sms" && otp && otp == get_tfa_code(user))
   end
@@ -330,18 +346,6 @@ defmodule BlueJet.Identity.User do
     else
       nil
     end
-  end
-
-  @spec generate_email_verification_token() :: String.t()
-  def generate_email_verification_token() do
-    Ecto.UUID.generate()
-  end
-
-  defp generate_tfa_code(n) do
-    Enum.reduce(1..n, "", fn _, acc ->
-      char = Enum.random(0..9)
-      acc <> Integer.to_string(char)
-    end)
   end
 
   @spec update_password(__MODULE__.t(), String.t()) :: __MODULE__.t()
