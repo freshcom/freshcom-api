@@ -1,541 +1,553 @@
 defmodule BlueJet.Goods.DefaultServiceTest do
-  use BlueJet.ContextCase
+  use BlueJet.DataCase
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
   alias BlueJet.Goods.DefaultService
 
-  describe "list_stockable/2" do
-    test "stockable for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
+  def stockable_fixture(account, fields \\ %{}) do
+    default_fields = %{
+      name: Faker.Commerce.product_name(),
+      unit_of_measure: "EA"
+    }
+    fields = Map.merge(default_fields, fields)
+
+    {:ok, stockable} = DefaultService.create_stockable(fields, %{account: account})
+
+    stockable
+  end
+
+  describe "list_stockable/2 and count_stockable/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+
+      stockable_fixture(account1, %{label: "colored_shirt", name: "Blue Shirt"})
+      stockable_fixture(account1, %{label: "colored_shirt", name: "White Shirt"})
+      stockable_fixture(account1, %{label: "colored_shirt", name: "Black Shirt"})
+      stockable_fixture(account1, %{name: "Yellow Shirt"})
+      stockable_fixture(account1)
+      stockable_fixture(account1)
+
+      stockable_fixture(account2, %{label: "colored_shirt", name: "Blue Shirt"})
+
+      query = %{
+        filter: %{label: "colored_shirt"},
+        search: "shirt"
+      }
+
+      stockables = DefaultService.list_stockable(query, %{
+        account: account1,
+        pagination: %{size: 2, number: 1}
       })
 
-      stockables = DefaultService.list_stockable(%{ account: account })
       assert length(stockables) == 2
-    end
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
-      Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
+      stockables = DefaultService.list_stockable(query, %{
+        account: account1,
+        pagination: %{size: 2, number: 2}
       })
 
-      stockables = DefaultService.list_stockable(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(stockables) == 3
+      assert length(stockables) == 1
 
-      stockables = DefaultService.list_stockable(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(stockables) == 2
+      assert DefaultService.count_stockable(query, %{account: account1}) == 3
+      assert DefaultService.count_stockable(%{}, %{account: account1}) == 6
     end
   end
 
   describe "create_stockable/2" do
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+      account = account_fixture()
 
-      {:error, changeset} = DefaultService.create_stockable(fields, %{ account: account })
-
-      assert changeset.valid? == false
+      {:error, %{errors: _}} = DefaultService.create_stockable(%{}, %{account: account})
     end
 
     test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
 
       fields = %{
         "name" => Faker.Commerce.product_name(),
         "unit_of_measure" => "ea"
       }
 
-      {:ok, stockable} = DefaultService.create_stockable(fields, %{ account: account })
+      {:ok, stockable} = DefaultService.create_stockable(fields, %{account: account})
 
-      assert stockable
+      assert stockable.name == fields["name"]
+      assert stockable.unit_of_measure == fields["unit_of_measure"]
+      assert stockable.account.id == account.id
     end
   end
 
   describe "get_stockable/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
+    test "when give id does not exist" do
+      account = account_fixture()
 
-      assert DefaultService.get_stockable(%{ id: stockable.id }, %{ account: account })
+      refute DefaultService.get_stockable(%{id: Ecto.UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      stockable = stockable_fixture(account1)
 
-      refute DefaultService.get_stockable(%{ id: stockable.id }, %{ account: account })
+      refute DefaultService.get_stockable(%{id: stockable.id}, %{account: account2})
     end
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+    test "when given id" do
+      account = account_fixture()
+      target_stockable = stockable_fixture(account)
 
-      refute DefaultService.get_stockable(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      stockable = DefaultService.get_stockable(%{id: target_stockable.id}, %{account: account})
+
+      assert stockable.id == target_stockable.id
+      assert stockable.account.id == account.id
     end
   end
 
   describe "update_stockable/2" do
-    test "when given nil for stockable" do
-      {:error, error} = DefaultService.update_stockable(nil, %{}, %{})
-
-      assert error == :not_found
-    end
-
     test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
 
-      {:error, error} = DefaultService.update_stockable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+      identifiers = %{id: Ecto.UUID.generate()}
+      opts = %{account: account}
+      {:error, error} = DefaultService.update_stockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      stockable = stockable_fixture(account1)
 
-      {:error, error} = DefaultService.update_stockable(%{ id: stockable.id }, %{}, %{ account: account })
+      identifiers = %{id: stockable.id}
+      opts = %{account: account2}
+
+      {:error, error} = DefaultService.update_stockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
+      account = account_fixture()
+      target_stockable = stockable_fixture(account)
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+      identifiers = %{id: target_stockable.id}
+      fields = %{"name" => Faker.Commerce.product_name()}
+      opts = %{account: account}
 
-      {:ok, stockable} = DefaultService.update_stockable(%{ id: stockable.id }, fields, %{ account: account })
+      {:ok, stockable} = DefaultService.update_stockable(identifiers, fields, opts)
 
-      assert stockable
+      assert stockable.name == fields["name"]
     end
   end
 
   describe "delete_stockable/2" do
-    test "when given valid stockable" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        unit_of_measure: "EA"
-      })
+    test "when given id does not exist" do
+      account = account_fixture()
 
-      {:ok, stockable} = DefaultService.delete_stockable(stockable, %{ account: account })
+      identifiers = %{id: Ecto.UUID.generate()}
+      opts = %{account: account}
+
+      {:error, error} = DefaultService.delete_stockable(identifiers, opts)
+
+      assert error == :not_found
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      stockable = stockable_fixture(account1)
+
+      identifiers = %{id: stockable.id}
+      opts = %{account: account2}
+
+      {:error, error} = DefaultService.delete_stockable(identifiers, opts)
+
+      assert error == :not_found
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      stockable = stockable_fixture(account)
+
+      identifiers = %{id: stockable.id}
+      opts = %{account: account}
+
+      {:ok, stockable} = DefaultService.delete_stockable(identifiers, opts)
 
       assert stockable
       refute Repo.get(Stockable, stockable.id)
     end
   end
 
-  describe "list_unlockable/2" do
-    test "unlockable for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+  describe "delete_all_stockable/1" do
+    test "given valid account" do
+      account = account_fixture()
+      test_account = account.test_account
+      stockable1 = stockable_fixture(test_account)
+      stockable2 = stockable_fixture(test_account)
 
-      unlockables = DefaultService.list_unlockable(%{ account: account })
-      assert length(unlockables) == 2
-    end
+      :ok = DefaultService.delete_all_stockable(%{account: test_account})
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-
-      unlockables = DefaultService.list_unlockable(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(unlockables) == 3
-
-      unlockables = DefaultService.list_unlockable(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(unlockables) == 2
+      refute Repo.get(Stockable, stockable1.id)
+      refute Repo.get(Stockable, stockable2.id)
     end
   end
 
-  describe "create_unlockable/2" do
-    test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+  # describe "list_unlockable/2" do
+  #   test "unlockable for different account is not returned" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-      {:error, changeset} = DefaultService.create_unlockable(fields, %{ account: account })
+  #     unlockables = DefaultService.list_unlockable(%{ account: account })
+  #     assert length(unlockables) == 2
+  #   end
 
-      assert changeset.valid? == false
-    end
+  #   test "pagination should change result size" do
+  #     account = Repo.insert!(%Account{})
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
+  #     Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+  #     unlockables = DefaultService.list_unlockable(%{ account: account, pagination: %{ size: 3, number: 1 } })
+  #     assert length(unlockables) == 3
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+  #     unlockables = DefaultService.list_unlockable(%{ account: account, pagination: %{ size: 3, number: 2 } })
+  #     assert length(unlockables) == 2
+  #   end
+  # end
 
-      {:ok, unlockable} = DefaultService.create_unlockable(fields, %{ account: account })
+  # describe "create_unlockable/2" do
+  #   test "when given invalid fields" do
+  #     account = Repo.insert!(%Account{})
+  #     fields = %{}
 
-      assert unlockable
-    end
-  end
+  #     {:error, changeset} = DefaultService.create_unlockable(fields, %{ account: account })
 
-  describe "get_unlockable/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #     assert changeset.valid? == false
+  #   end
 
-      assert DefaultService.get_unlockable(%{ id: unlockable.id }, %{ account: account })
-    end
+  #   test "when given valid fields" do
+  #     account = Repo.insert!(%Account{})
 
-    test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #     fields = %{
+  #       "name" => Faker.Commerce.product_name()
+  #     }
 
-      refute DefaultService.get_unlockable(%{ id: unlockable.id }, %{ account: account })
-    end
+  #     {:ok, unlockable} = DefaultService.create_unlockable(fields, %{ account: account })
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+  #     assert unlockable
+  #   end
+  # end
 
-      refute DefaultService.get_unlockable(%{ id: Ecto.UUID.generate() }, %{ account: account })
-    end
-  end
+  # describe "get_unlockable/2" do
+  #   test "when given id" do
+  #     account = Repo.insert!(%Account{})
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-  describe "update_unlockable/2" do
-    test "when given nil for unlockable" do
-      {:error, error} = DefaultService.update_unlockable(nil, %{}, %{})
+  #     assert DefaultService.get_unlockable(%{ id: unlockable.id }, %{ account: account })
+  #   end
 
-      assert error == :not_found
-    end
+  #   test "when given id belongs to a different account" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-    test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+  #     refute DefaultService.get_unlockable(%{ id: unlockable.id }, %{ account: account })
+  #   end
 
-      {:error, error} = DefaultService.update_unlockable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+  #   test "when give id does not exist" do
+  #     account = Repo.insert!(%Account{})
 
-      assert error == :not_found
-    end
+  #     refute DefaultService.get_unlockable(%{ id: Ecto.UUID.generate() }, %{ account: account })
+  #   end
+  # end
 
-    test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+  # describe "update_unlockable/2" do
+  #   test "when given nil for unlockable" do
+  #     {:error, error} = DefaultService.update_unlockable(nil, %{}, %{})
 
-      {:error, error} = DefaultService.update_unlockable(%{ id: unlockable.id }, %{}, %{ account: account })
+  #     assert error == :not_found
+  #   end
 
-      assert error == :not_found
-    end
+  #   test "when given id does not exist" do
+  #     account = Repo.insert!(%Account{})
 
-    test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #     {:error, error} = DefaultService.update_unlockable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+  #     assert error == :not_found
+  #   end
 
-      {:ok, unlockable} = DefaultService.update_unlockable(%{ id: unlockable.id }, fields, %{ account: account })
+  #   test "when given id belongs to a different account" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-      assert unlockable
-    end
-  end
+  #     {:error, error} = DefaultService.update_unlockable(%{ id: unlockable.id }, %{}, %{ account: account })
 
-  describe "delete_unlockable/2" do
-    test "when given valid unlockable" do
-      account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #     assert error == :not_found
+  #   end
 
-      {:ok, unlockable} = DefaultService.delete_unlockable(unlockable, %{ account: account })
+  #   test "when given valid id and valid fields" do
+  #     account = Repo.insert!(%Account{})
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-      assert unlockable
-      refute Repo.get(Unlockable, unlockable.id)
-    end
-  end
+  #     fields = %{
+  #       "name" => Faker.Commerce.product_name()
+  #     }
 
-  describe "list_depositable/2" do
-    test "depositable for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  #     {:ok, unlockable} = DefaultService.update_unlockable(%{ id: unlockable.id }, fields, %{ account: account })
 
-      depositables = DefaultService.list_depositable(%{ account: account })
-      assert length(depositables) == 2
-    end
+  #     assert unlockable
+  #   end
+  # end
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
-      Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  # describe "delete_unlockable/2" do
+  #   test "when given valid unlockable" do
+  #     account = Repo.insert!(%Account{})
+  #     unlockable = Repo.insert!(%Unlockable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name()
+  #     })
 
-      depositables = DefaultService.list_depositable(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(depositables) == 3
+  #     {:ok, unlockable} = DefaultService.delete_unlockable(unlockable, %{ account: account })
 
-      depositables = DefaultService.list_depositable(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(depositables) == 2
-    end
-  end
+  #     assert unlockable
+  #     refute Repo.get(Unlockable, unlockable.id)
+  #   end
+  # end
 
-  describe "create_depositable/2" do
-    test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+  # describe "list_depositable/2" do
+  #   test "depositable for different account is not returned" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-      {:error, changeset} = DefaultService.create_depositable(fields, %{ account: account })
+  #     depositables = DefaultService.list_depositable(%{ account: account })
+  #     assert length(depositables) == 2
+  #   end
 
-      assert changeset.valid? == false
-    end
+  #   test "pagination should change result size" do
+  #     account = Repo.insert!(%Account{})
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+  #     Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+  #     depositables = DefaultService.list_depositable(%{ account: account, pagination: %{ size: 3, number: 1 } })
+  #     assert length(depositables) == 3
 
-      fields = %{
-        "name" => Faker.Commerce.product_name(),
-        "gateway" => "freshcom",
-        "amount" => 500
-      }
+  #     depositables = DefaultService.list_depositable(%{ account: account, pagination: %{ size: 3, number: 2 } })
+  #     assert length(depositables) == 2
+  #   end
+  # end
 
-      {:ok, depositable} = DefaultService.create_depositable(fields, %{ account: account })
+  # describe "create_depositable/2" do
+  #   test "when given invalid fields" do
+  #     account = Repo.insert!(%Account{})
+  #     fields = %{}
 
-      assert depositable
-    end
-  end
+  #     {:error, changeset} = DefaultService.create_depositable(fields, %{ account: account })
 
-  describe "get_depositable/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  #     assert changeset.valid? == false
+  #   end
 
-      assert DefaultService.get_depositable(%{ id: depositable.id }, %{ account: account })
-    end
+  #   test "when given valid fields" do
+  #     account = Repo.insert!(%Account{})
 
-    test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  #     fields = %{
+  #       "name" => Faker.Commerce.product_name(),
+  #       "gateway" => "freshcom",
+  #       "amount" => 500
+  #     }
 
-      refute DefaultService.get_depositable(%{ id: depositable.id }, %{ account: account })
-    end
+  #     {:ok, depositable} = DefaultService.create_depositable(fields, %{ account: account })
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+  #     assert depositable
+  #   end
+  # end
 
-      refute DefaultService.get_depositable(%{ id: Ecto.UUID.generate() }, %{ account: account })
-    end
-  end
+  # describe "get_depositable/2" do
+  #   test "when given id" do
+  #     account = Repo.insert!(%Account{})
+  #     depositable = Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-  describe "update_depositable/2" do
-    test "when given nil for depositable" do
-      {:error, error} = DefaultService.update_depositable(nil, %{}, %{})
+  #     assert DefaultService.get_depositable(%{ id: depositable.id }, %{ account: account })
+  #   end
 
-      assert error == :not_found
-    end
+  #   test "when given id belongs to a different account" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     depositable = Repo.insert!(%Depositable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-    test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+  #     refute DefaultService.get_depositable(%{ id: depositable.id }, %{ account: account })
+  #   end
 
-      {:error, error} = DefaultService.update_depositable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+  #   test "when give id does not exist" do
+  #     account = Repo.insert!(%Account{})
 
-      assert error == :not_found
-    end
+  #     refute DefaultService.get_depositable(%{ id: Ecto.UUID.generate() }, %{ account: account })
+  #   end
+  # end
 
-    test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  # describe "update_depositable/2" do
+  #   test "when given nil for depositable" do
+  #     {:error, error} = DefaultService.update_depositable(nil, %{}, %{})
 
-      {:error, error} = DefaultService.update_depositable(%{ id: depositable.id }, %{}, %{ account: account })
+  #     assert error == :not_found
+  #   end
 
-      assert error == :not_found
-    end
+  #   test "when given id does not exist" do
+  #     account = Repo.insert!(%Account{})
 
-    test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  #     {:error, error} = DefaultService.update_depositable(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+  #     assert error == :not_found
+  #   end
 
-      {:ok, depositable} = DefaultService.update_depositable(%{ id: depositable.id }, fields, %{ account: account })
+  #   test "when given id belongs to a different account" do
+  #     account = Repo.insert!(%Account{})
+  #     other_account = Repo.insert!(%Account{})
+  #     depositable = Repo.insert!(%Depositable{
+  #       account_id: other_account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-      assert depositable
-    end
-  end
+  #     {:error, error} = DefaultService.update_depositable(%{ id: depositable.id }, %{}, %{ account: account })
 
-  describe "delete_depositable/2" do
-    test "when given valid depositable" do
-      account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        gateway: "freshcom",
-        amount: 500
-      })
+  #     assert error == :not_found
+  #   end
 
-      {:ok, depositable} = DefaultService.delete_depositable(depositable, %{ account: account })
+  #   test "when given valid id and valid fields" do
+  #     account = Repo.insert!(%Account{})
+  #     depositable = Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
 
-      assert depositable
-      refute Repo.get(Depositable, depositable.id)
-    end
-  end
+  #     fields = %{
+  #       "name" => Faker.Commerce.product_name()
+  #     }
+
+  #     {:ok, depositable} = DefaultService.update_depositable(%{ id: depositable.id }, fields, %{ account: account })
+
+  #     assert depositable
+  #   end
+  # end
+
+  # describe "delete_depositable/2" do
+  #   test "when given valid depositable" do
+  #     account = Repo.insert!(%Account{})
+  #     depositable = Repo.insert!(%Depositable{
+  #       account_id: account.id,
+  #       name: Faker.Commerce.product_name(),
+  #       gateway: "freshcom",
+  #       amount: 500
+  #     })
+
+  #     {:ok, depositable} = DefaultService.delete_depositable(depositable, %{ account: account })
+
+  #     assert depositable
+  #     refute Repo.get(Depositable, depositable.id)
+  #   end
+  # end
 end

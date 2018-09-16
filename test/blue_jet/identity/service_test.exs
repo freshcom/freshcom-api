@@ -1,8 +1,6 @@
 defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.DataCase
 
-  import BlueJet.Identity.TestHelper
-
   alias BlueJet.Identity.Service
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
 

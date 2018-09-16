@@ -5,47 +5,13 @@ defmodule BlueJet.Goods.DefaultService do
 
   @behaviour BlueJet.Goods.Service
 
-  def list_stockable(fields \\ %{}, opts) do
-    list(Stockable, fields, opts)
-  end
-
-  def count_stockable(fields \\ %{}, opts) do
-    count(Stockable, fields, opts)
-  end
-
-  def create_stockable(fields, opts) do
-    create(Stockable, fields, opts)
-  end
-
-  def get_stockable(identifiers, opts) do
-    get(Stockable, identifiers, opts)
-  end
-
-  def update_stockable(nil, _, _), do: {:error, :not_found}
-
-  def update_stockable(stockable = %Stockable{}, fields, opts) do
-    update(stockable, fields, opts)
-  end
-
-  def update_stockable(identifiers, fields, opts) do
-    get_stockable(identifiers, Map.merge(opts, %{ preloads: %{} }))
-    |> update_stockable(fields, opts)
-  end
-
-  def delete_stockable(nil, _), do: {:error, :not_found}
-
-  def delete_stockable(stockable = %Stockable{}, opts) do
-    delete(stockable, opts)
-  end
-
-  def delete_stockable(identifiers, opts) do
-    get_stockable(identifiers, Map.merge(opts, %{ preloads: %{} }))
-    |> delete_stockable(opts)
-  end
-
-  def delete_all_stockable(opts)  do
-    delete_all(Stockable, opts)
-  end
+  def list_stockable(query \\ %{}, opts), do: default(:list, Stockable, query, opts)
+  def count_stockable(query \\ %{}, opts), do: default(:count, Stockable, query, opts)
+  def create_stockable(fields, opts), do: default(:create, Stockable, fields, opts)
+  def get_stockable(identifiers, opts), do: default(:get, Stockable, identifiers, opts)
+  def update_stockable(identifiers, fields, opts), do: default(:update, identifiers, fields, opts, &get_stockable/2)
+  def delete_stockable(identifiers, opts), do: default(:delete, identifiers, opts, &get_stockable/2)
+  def delete_all_stockable(opts), do: default(:delete_all, Stockable, opts)
 
   #
   # MARK: Unlockable

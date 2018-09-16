@@ -25,6 +25,7 @@ defmodule BlueJet.DataCase do
       import Ecto.Query
 
       import Mox
+      import BlueJet.Identity.TestHelper
       import BlueJet.DataCase
 
       setup :verify_on_exit!

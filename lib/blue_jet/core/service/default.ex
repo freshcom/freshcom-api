@@ -4,22 +4,52 @@ defmodule BlueJet.Service.Default do
   import BlueJet.Query
   import BlueJet.Service.{Option, Preload, Helper}
 
-  # def default(:list, type, query, opts) do
-  #   account = extract_account(opts)
-  #   pagination = extract_pagination(opts)
-  #   filter = extract_filter(query)
-  #   preload = extract_preload(opts)
-  #   query_module = Module.concat([type, Query])
+  def default(:list, type, query, opts) do
+    account = extract_account(opts)
+    pagination = extract_pagination(opts)
+    filter = extract_filter(query)
+    preload = extract_preload(opts)
+    query_module = Module.concat([type, Query])
 
-  #   query_module.default()
-  #   |> query_module.search(fields[:search], opts[:locale], account.default_locale)
-  #   |> query_module.filter_by(filter)
-  #   |> for_account(account.id)
-  #   |> paginate(size: pagination[:size], number: pagination[:number])
-  #   |> sort_by(opts[:sort] || [desc: :updated_at])
-  #   |> Repo.all()
-  #   |> preload(preload[:path], preload[:opts])
-  # end
+    query_module.default()
+    |> query_module.search(query[:search], opts[:locale], account.default_locale)
+    |> query_module.filter_by(filter)
+    |> for_account(account.id)
+    |> sort_by(opts[:sort] || [desc: :updated_at])
+    |> paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preload[:path], preload[:opts])
+  end
+
+  def default(:count, type, query, opts) do
+    account = extract_account(opts)
+    filter = extract_filter(query)
+    query_module = Module.concat([type, Query])
+
+    query_module.default()
+    |> query_module.search(query[:search], opts[:locale], account.default_locale)
+    |> query_module.filter_by(filter)
+    |> for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def default(:create, type, fields, opts) do
+    account = extract_account(opts)
+    preload = extract_preload(opts)
+
+    changeset =
+      type
+      |> struct(%{account_id: account.id, account: account})
+      |> type.changeset(:insert, fields)
+
+    case Repo.insert(changeset) do
+      {:ok, data} ->
+        {:ok, preload(data, preload[:path], preload[:opts])}
+
+      other ->
+        other
+    end
+  end
 
   def default(:get, type, identifiers, opts) do
     account = extract_account(opts)
@@ -32,7 +62,13 @@ defmodule BlueJet.Service.Default do
     |> for_account(account.id)
     |> query_module.filter_by(filter)
     |> Repo.get_by(clauses)
+    |> put_account(account)
     |> preload(preload[:paths], preload[:opts])
+  end
+
+  def default(:delete, identifiers, opts, get_fun) do
+    get_fun.(identifiers, opts)
+    |> delete(opts)
   end
 
   def default(:update, identifiers, fields, opts, get_fun) do
@@ -40,9 +76,27 @@ defmodule BlueJet.Service.Default do
     |> update(fields, opts)
   end
 
-  def default(:delete, identifiers, opts, get_fun) do
-    get_fun.(identifiers, opts)
-    |> delete(opts)
+  def default(:delete_all, type, %{account: %{mode: "test"}} = opts) do
+    account = extract_account(opts)
+    batch_size = opts[:batch_size] || 1000
+    query_module = Module.concat([type, Query])
+
+    data_ids =
+      query_module.default()
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
+      |> id_only()
+      |> Repo.all()
+
+    query_module.default()
+    |> query_module.filter_by(%{ id: data_ids })
+    |> Repo.delete_all()
+
+    if length(data_ids) === batch_size do
+      delete_all(type, opts)
+    else
+      :ok
+    end
   end
 
   def list(type, fields, opts) do
@@ -133,7 +187,7 @@ defmodule BlueJet.Service.Default do
     |> Repo.delete()
   end
 
-  def delete_all(type, opts = %{ account: account = %{ mode: "test" }}) do
+  def delete_all(type, opts = %{account: %{mode: "test"} = account}) do
     batch_size = opts[:batch_size] || 1000
     query_module = Module.concat([type, Query])
 
@@ -153,5 +207,11 @@ defmodule BlueJet.Service.Default do
     else
       :ok
     end
+  end
+
+  def put_account(nil, _), do: nil
+
+  def put_account(data, account) do
+    %{data | account: account}
   end
 end

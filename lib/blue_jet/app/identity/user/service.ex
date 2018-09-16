@@ -152,12 +152,6 @@ defmodule BlueJet.Identity.User.Service do
     |> Repo.get_by(clauses)
   end
 
-  defp put_account(nil, _), do: nil
-
-  defp put_account(user, account) do
-    %{user | account: account}
-  end
-
   @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def update_user(%User{} = user, fields, opts) do
     account = extract_account(opts)

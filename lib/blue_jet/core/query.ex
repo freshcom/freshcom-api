@@ -43,6 +43,18 @@ defmodule BlueJet.Query do
     end)
   end
 
+  def search(query, columns, keyword), do: search_default_locale(query, columns, keyword)
+  def search(query, _, nil, _, _, _), do: query
+  def search(query, _, "", _, _, _), do: query
+
+  def search(query, columns, keyword, locale, default_locale, _) when is_nil(locale) or (locale == default_locale) do
+    search_default_locale(query, columns, keyword)
+  end
+
+  def search(query, columns, keyword, locale, _, translatable_columns) do
+    search_translations(query, columns, keyword, locale, translatable_columns)
+  end
+
   def search_default_locale(query, columns, keyword) do
     keyword = "%#{keyword}%"
 
@@ -62,17 +74,5 @@ defmodule BlueJet.Query do
         from q in query, or_where: ilike(fragment("?::varchar", field(q, ^column)), ^keyword)
       end
     end)
-  end
-
-  def search(query, columns, keyword), do: search_default_locale(query, columns, keyword)
-  def search(query, _, nil, _, _, _), do: query
-  def search(query, _, "", _, _, _), do: query
-
-  def search(query, columns, keyword, locale, default_locale, _) when locale == default_locale do
-    search_default_locale(query, columns, keyword)
-  end
-
-  def search(query, columns, keyword, locale, _, translatable_columns) do
-    search_translations(query, columns, keyword, locale, translatable_columns)
   end
 end

@@ -1,6 +1,5 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
-  use BlueJet.EventEmitter, namespace: :identity
 
   alias BlueJet.Identity.{Policy, Service}
 
