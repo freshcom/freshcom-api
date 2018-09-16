@@ -28,7 +28,7 @@ defmodule BlueJet.Identity.Account.Service do
       Multi.new()
       |> Multi.run(:account, fn(_) -> create_live_account(fields) end)
       |> Multi.run(:test_account, &create_test_account(&1, fields))
-      |> Multi.run(:dispatch, &dispatch("identity:account.create.success", &1))
+      |> Multi.run(:dispatch, &dispatch("identity:account.create.success", &1, skip: opts[:skip_dispatch]))
       |> Multi.run(:account_membership, fn(%{account: account}) ->
         if opts[:user] do
           do_create_account_membership!(%{account: account, user: opts[:user]}, %{is_owner: true, role: "administrator"})
@@ -139,5 +139,9 @@ defmodule BlueJet.Identity.Account.Service do
 
     {:ok, _} = Repo.transaction(statements)
     {:ok, account}
+  end
+
+  def reset_account(%Account{mode: "live"}) do
+    {:error, :unprocessable_for_live_account}
   end
 end

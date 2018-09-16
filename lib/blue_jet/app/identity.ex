@@ -4,11 +4,16 @@ defmodule BlueJet.Identity do
 
   alias BlueJet.Identity.{Policy, Service}
 
+  #
+  # MARK: Authentication
+  #
   def create_access_token(%{fields: fields}) do
-    with {:ok, token} <- Service.create_access_token(fields) do
-      {:ok, %ContextResponse{data: token}}
-    else
-      {:error, errors} -> {:error, %ContextResponse{ errors: errors }}
+    case Service.create_access_token(fields) do
+      {:ok, token} ->
+        {:ok, %ContextResponse{data: token}}
+
+      {:error, errors} ->
+        {:error, %ContextResponse{errors: errors}}
     end
   end
 
@@ -62,6 +67,14 @@ defmodule BlueJet.Identity do
   defp do_reset_account(other), do: other
 
   #
+  # MARK: User
+  #
+  def create_user(req), do: default(req, :create, :user, Policy, Service)
+  def get_user(req), do: default(req, :get, :user, Policy, Service)
+  def update_user(req), do: default(req, :update, :user, Policy, Service)
+  def delete_user(req), do: default(req, :delete, :user, Policy, Service)
+
+  #
   # MARK: Account Membership
   #
   def list_account_membership(req), do: default(req, :list, :account_membership, Policy, Service)
@@ -101,12 +114,4 @@ defmodule BlueJet.Identity do
   end
 
   defp do_get_refresh_token(other), do: other
-
-  #
-  # MARK: User
-  #
-  def create_user(req), do: default(req, :create, :user, Policy, Service)
-  def get_user(req), do: default(req, :get, :user, Policy, Service)
-  def update_user(req), do: default(req, :update, :user, Policy, Service)
-  def delete_user(req), do: default(req, :delete, :user, Policy, Service)
 end

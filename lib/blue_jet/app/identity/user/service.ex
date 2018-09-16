@@ -1,7 +1,7 @@
 defmodule BlueJet.Identity.User.Service do
   use BlueJet, :service
 
-  import BlueJet.Identity.Account.Service, only: [create_account: 1]
+  import BlueJet.Identity.Account.Service, only: [create_account: 2]
   import BlueJet.Identity.AccountMembership.Service, only: [create_account_membership!: 2]
   import BlueJet.Identity.RefreshToken.Service, only: [create_refresh_token!: 2]
 
@@ -25,13 +25,14 @@ defmodule BlueJet.Identity.User.Service do
 
     statements =
       Multi.new()
-      |> Multi.run(:account, fn(_) -> create_account(account_fields) end)
+      |> Multi.run(:account, fn(_) -> create_account(account_fields, %{skip_dispatch: true}) end)
       |> Multi.run(:user, &do_create_user(%{default_account: &1[:account]}, fields, create_opts))
       |> Multi.run(:account_membership, &do_create_account_membership!(&1, %{role: "administrator", is_owner: true}))
       |> Multi.run(:urt_live, &do_create_refresh_token!(&1))
       |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: &1[:account].test_account, user: &1[:user]}))
-      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", Map.take(&1, [:user, :account])))
-      |> Multi.run(:dispatch2, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:user, :account])))
+      |> Multi.run(:dispatch1, &dispatch("identity:account.create.success", Map.take(&1, [:account])))
+      |> Multi.run(:dispatch2, &dispatch("identity:user.create.success", Map.take(&1, [:user, :account])))
+      |> Multi.run(:dispatch3, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:user])))
 
     case Repo.transaction(statements) do
       {:ok, %{user: user, account: account}} ->
@@ -63,7 +64,7 @@ defmodule BlueJet.Identity.User.Service do
       |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{user: &1[:user], account: account}))
       |> Multi.run(:dispatch2, fn(%{user: user}) ->
         if user.email do
-          dispatch("identity:email_verification_token.create.success", %{user: user, account: account})
+          dispatch("identity:email_verification_token.create.success", %{user: user})
         else
           {:ok, nil}
         end
@@ -174,7 +175,7 @@ defmodule BlueJet.Identity.User.Service do
       end)
       |> Multi.run(:dispatch2, fn(%{user: user}) ->
         if changeset.changes[:email_verification_token] do
-          dispatch("identity:email_verification_token.create.success", %{user: user, account: account})
+          dispatch("identity:email_verification_token.create.success", %{user: user})
         else
           {:ok, nil}
         end

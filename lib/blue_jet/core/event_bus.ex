@@ -1,7 +1,11 @@
 defmodule BlueJet.EventBus do
   @subscribers Application.get_env(:blue_jet, :event_bus, %{})
 
-  def dispatch(name, data) do
+  def dispatch(name, data, opts \\ [])
+
+  def dispatch(_, _, skip: true), do: {:ok, :skipped}
+
+  def dispatch(name, data, _) do
     subscribers = (@subscribers[name] || []) ++ (@subscribers["*"] || [])
 
     Enum.reduce_while(subscribers, {:ok, []}, fn(subscriber, acc) ->

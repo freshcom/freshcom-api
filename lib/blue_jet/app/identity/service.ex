@@ -156,7 +156,7 @@ defmodule BlueJet.Identity.Service do
     statements =
       Multi.new()
       |> Multi.update(:user, changeset)
-      |> Multi.run(:dispatch, &dispatch("identity:email_verification.create.success", &1))
+      |> Multi.run(:dispatch, &dispatch("identity:email.verify.success", &1))
 
     case Repo.transaction(statements) do
       {:ok, %{user: user}} ->
@@ -211,7 +211,10 @@ defmodule BlueJet.Identity.Service do
   end
 
   defp do_create_password_reset_token(nil, opts, fields) do
-    data = Map.merge(%{username: fields["username"]}, opts)
+    data =
+      opts
+      |> Map.merge(%{username: fields["username"]})
+      |> Map.take([:username, :account, :type])
 
     Repo.transaction(fn ->
       dispatch("identity:password_reset_token.create.error.username_not_found", data)

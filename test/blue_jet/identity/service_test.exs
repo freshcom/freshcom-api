@@ -18,11 +18,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   def account_membership_fixture() do
     standard_user = standard_user_fixture()
-
-    membership = Repo.get_by!(AccountMembership,
-      user_id: standard_user.id,
-      account_id: standard_user.default_account.id
-    )
+    membership = Service.get_account_membership(%{user_id: user_id}, %{account: standard_user.default_account})
 
     %{membership | account: standard_user.default_account}
   end
@@ -30,11 +26,7 @@ defmodule BlueJet.Identity.ServiceTest do
   def account_membership_fixture(for: :managed) do
     standard_user = standard_user_fixture()
     managed_user = managed_user_fixture(standard_user.default_account)
-
-    membership = Repo.get_by!(AccountMembership,
-      user_id: managed_user.id,
-      account_id: managed_user.account.id
-    )
+    membership = Service.get_account_membership(%{user_id: managed_user.id}, %{account: managed_user.account})
 
     %{membership | account: managed_user.account}
   end
@@ -486,12 +478,6 @@ defmodule BlueJet.Identity.ServiceTest do
   #
   describe "create_user/2" do
     test "when fields given are invalid and account is nil" do
-      EventHandlerMock
-      |> expect(:handle_event, fn(event_name, _) ->
-          assert event_name == "identity:account.create.success"
-          {:ok, nil}
-         end)
-
       {:error, changeset} = Service.create_user(%{}, %{account: nil})
 
       assert changeset.valid? == false
@@ -508,7 +494,7 @@ defmodule BlueJet.Identity.ServiceTest do
       EventHandlerMock
       |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:account.create.success"
-          assert match_keys(data, [:account, :test_account])
+          assert match_keys(data, [:account])
 
           {:ok, nil}
          end)
@@ -520,7 +506,7 @@ defmodule BlueJet.Identity.ServiceTest do
          end)
       |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:email_verification_token.create.success"
-          assert match_keys(data, [:user, :account])
+          assert match_keys(data, [:user])
 
           {:ok, nil}
          end)
@@ -563,7 +549,7 @@ defmodule BlueJet.Identity.ServiceTest do
          end)
       |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:email_verification_token.create.success"
-          assert match_keys(data, [:user, :account])
+          assert match_keys(data, [:user])
 
           {:ok, nil}
          end)
@@ -608,7 +594,7 @@ defmodule BlueJet.Identity.ServiceTest do
          end)
       |> expect(:handle_event, fn(name, data) ->
           assert name == "identity:email_verification_token.create.success"
-          assert match_keys(data, [:user, :account])
+          assert match_keys(data, [:user])
 
           {:ok, nil}
          end)
@@ -1042,7 +1028,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, data) ->
-          assert name == "identity:email_verification.create.success"
+          assert name == "identity:email.verify.success"
           assert match_keys(data, [:user])
 
           {:ok, nil}

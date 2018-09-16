@@ -9,6 +9,7 @@ defmodule BlueJet.ContextCase do
 
       import BlueJet.Identity.TestHelper
       import BlueJet.ContextCase
+      import Mox
     end
   end
 
@@ -36,5 +37,13 @@ defmodule BlueJet.ContextCase do
         String.replace(acc, "%{#{key}}", to_string(value))
       end)
     end)
+  end
+
+  def match_keys(m, keys) when is_map(m) do
+    Enum.sort(Map.keys(m)) == Enum.sort(keys)
+  end
+
+  def match_keys(l, keys) when is_list(l) do
+    Enum.sort(Keyword.keys(l)) == Enum.sort(keys)
   end
 end

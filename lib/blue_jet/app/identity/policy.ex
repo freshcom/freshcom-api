@@ -80,6 +80,7 @@ defmodule BlueJet.Identity.Policy do
 
   def authorize(%{_role_: role} = req, :create_email_verification_token)
       when not is_nil(role) do
+    req = ContextRequest.put(req, :fields, "user_id", req.vas[:user_id])
     {:ok, req}
   end
 
