@@ -18,7 +18,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
   def account_membership_fixture() do
     standard_user = standard_user_fixture()
-    membership = Service.get_account_membership(%{user_id: user_id}, %{account: standard_user.default_account})
+    membership = Service.get_account_membership(%{user_id: standard_user.id}, %{account: standard_user.default_account})
 
     %{membership | account: standard_user.default_account}
   end

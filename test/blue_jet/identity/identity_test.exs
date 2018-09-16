@@ -1,4 +1,4 @@
-defmodule BlueJet.Identity.IdentityTest do
+defmodule BlueJet.IdentityTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity
