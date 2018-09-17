@@ -1,44 +1,10 @@
-defmodule BlueJet.Goods.DefaultServiceTest do
+defmodule BlueJet.Goods.ServiceTest do
   use BlueJet.DataCase
 
+  import BlueJet.Goods.TestHelper
+
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
-  alias BlueJet.Goods.DefaultService
-
-  def stockable_fixture(account, fields \\ %{}) do
-    default_fields = %{
-      name: Faker.Commerce.product_name(),
-      unit_of_measure: "EA"
-    }
-    fields = Map.merge(default_fields, fields)
-
-    {:ok, stockable} = DefaultService.create_stockable(fields, %{account: account})
-
-    stockable
-  end
-
-  def unlockable_fixture(account, fields \\ %{}) do
-    default_fields = %{
-      name: Faker.Commerce.product_name()
-    }
-    fields = Map.merge(default_fields, fields)
-
-    {:ok, unlockable} = DefaultService.create_unlockable(fields, %{account: account})
-
-    unlockable
-  end
-
-  def depositable_fixture(account, fields \\ %{}) do
-    default_fields = %{
-      name: Faker.Commerce.product_name(),
-      gateway: "freshcom",
-      amount: System.unique_integer([:positive])
-    }
-    fields = Map.merge(default_fields, fields)
-
-    {:ok, depositable} = DefaultService.create_depositable(fields, %{account: account})
-
-    depositable
-  end
+  alias BlueJet.Goods.Service
 
   #
   # MARK: Stockable
@@ -62,22 +28,22 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         search: "shirt"
       }
 
-      stockables = DefaultService.list_stockable(query, %{
+      stockables = Service.list_stockable(query, %{
         account: account1,
         pagination: %{size: 2, number: 1}
       })
 
       assert length(stockables) == 2
 
-      stockables = DefaultService.list_stockable(query, %{
+      stockables = Service.list_stockable(query, %{
         account: account1,
         pagination: %{size: 2, number: 2}
       })
 
       assert length(stockables) == 1
 
-      assert DefaultService.count_stockable(query, %{account: account1}) == 3
-      assert DefaultService.count_stockable(%{}, %{account: account1}) == 6
+      assert Service.count_stockable(query, %{account: account1}) == 3
+      assert Service.count_stockable(%{}, %{account: account1}) == 6
     end
   end
 
@@ -85,7 +51,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given invalid fields" do
       account = account_fixture()
 
-      {:error, %{errors: _}} = DefaultService.create_stockable(%{}, %{account: account})
+      {:error, %{errors: _}} = Service.create_stockable(%{}, %{account: account})
     end
 
     test "when given valid fields" do
@@ -96,7 +62,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "unit_of_measure" => "ea"
       }
 
-      {:ok, stockable} = DefaultService.create_stockable(fields, %{account: account})
+      {:ok, stockable} = Service.create_stockable(fields, %{account: account})
 
       assert stockable.name == fields["name"]
       assert stockable.unit_of_measure == fields["unit_of_measure"]
@@ -108,7 +74,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when give id does not exist" do
       account = account_fixture()
 
-      refute DefaultService.get_stockable(%{id: Ecto.UUID.generate()}, %{account: account})
+      refute Service.get_stockable(%{id: Ecto.UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -116,14 +82,14 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       account2 = account_fixture()
       stockable = stockable_fixture(account1)
 
-      refute DefaultService.get_stockable(%{id: stockable.id}, %{account: account2})
+      refute Service.get_stockable(%{id: stockable.id}, %{account: account2})
     end
 
     test "when given id" do
       account = account_fixture()
       target_stockable = stockable_fixture(account)
 
-      stockable = DefaultService.get_stockable(%{id: target_stockable.id}, %{account: account})
+      stockable = Service.get_stockable(%{id: target_stockable.id}, %{account: account})
 
       assert stockable.id == target_stockable.id
       assert stockable.account.id == account.id
@@ -136,7 +102,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
 
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
-      {:error, error} = DefaultService.update_stockable(identifiers, %{}, opts)
+      {:error, error} = Service.update_stockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -149,7 +115,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: stockable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.update_stockable(identifiers, %{}, opts)
+      {:error, error} = Service.update_stockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -162,7 +128,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, stockable} = DefaultService.update_stockable(identifiers, fields, opts)
+      {:ok, stockable} = Service.update_stockable(identifiers, fields, opts)
 
       assert stockable.name == fields["name"]
     end
@@ -175,7 +141,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
 
-      {:error, error} = DefaultService.delete_stockable(identifiers, opts)
+      {:error, error} = Service.delete_stockable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -188,7 +154,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: stockable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.delete_stockable(identifiers, opts)
+      {:error, error} = Service.delete_stockable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -200,7 +166,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: stockable.id}
       opts = %{account: account}
 
-      {:ok, stockable} = DefaultService.delete_stockable(identifiers, opts)
+      {:ok, stockable} = Service.delete_stockable(identifiers, opts)
 
       assert stockable
       refute Repo.get(Stockable, stockable.id)
@@ -214,7 +180,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       stockable1 = stockable_fixture(test_account)
       stockable2 = stockable_fixture(test_account)
 
-      :ok = DefaultService.delete_all_stockable(%{account: test_account})
+      :ok = Service.delete_all_stockable(%{account: test_account})
 
       refute Repo.get(Stockable, stockable1.id)
       refute Repo.get(Stockable, stockable2.id)
@@ -243,22 +209,22 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         search: "book"
       }
 
-      unlockables = DefaultService.list_unlockable(query, %{
+      unlockables = Service.list_unlockable(query, %{
         account: account1,
         pagination: %{size: 2, number: 1}
       })
 
       assert length(unlockables) == 2
 
-      unlockables = DefaultService.list_unlockable(query, %{
+      unlockables = Service.list_unlockable(query, %{
         account: account1,
         pagination: %{size: 2, number: 2}
       })
 
       assert length(unlockables) == 1
 
-      assert DefaultService.count_unlockable(query, %{account: account1}) == 3
-      assert DefaultService.count_unlockable(%{}, %{account: account1}) == 6
+      assert Service.count_unlockable(query, %{account: account1}) == 3
+      assert Service.count_unlockable(%{}, %{account: account1}) == 6
     end
   end
 
@@ -266,7 +232,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given invalid fields" do
       account = account_fixture()
 
-      {:error, %{errors: _}} = DefaultService.create_unlockable(%{}, %{account: account})
+      {:error, %{errors: _}} = Service.create_unlockable(%{}, %{account: account})
     end
 
     test "when given valid fields" do
@@ -276,7 +242,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "name" => Faker.Commerce.product_name()
       }
 
-      {:ok, unlockable} = DefaultService.create_unlockable(fields, %{account: account})
+      {:ok, unlockable} = Service.create_unlockable(fields, %{account: account})
 
       assert unlockable.name == fields["name"]
       assert unlockable.account.id == account.id
@@ -287,7 +253,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when give id does not exist" do
       account = account_fixture()
 
-      refute DefaultService.get_unlockable(%{id: Ecto.UUID.generate()}, %{account: account})
+      refute Service.get_unlockable(%{id: Ecto.UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -295,14 +261,14 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       account2 = account_fixture()
       unlockable = unlockable_fixture(account1)
 
-      refute DefaultService.get_unlockable(%{id: unlockable.id}, %{account: account2})
+      refute Service.get_unlockable(%{id: unlockable.id}, %{account: account2})
     end
 
     test "when given id" do
       account = account_fixture()
       target_unlockable = unlockable_fixture(account)
 
-      unlockable = DefaultService.get_unlockable(%{id: target_unlockable.id}, %{account: account})
+      unlockable = Service.get_unlockable(%{id: target_unlockable.id}, %{account: account})
 
       assert unlockable.id == target_unlockable.id
       assert unlockable.account.id == account.id
@@ -315,7 +281,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
 
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
-      {:error, error} = DefaultService.update_unlockable(identifiers, %{}, opts)
+      {:error, error} = Service.update_unlockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -328,7 +294,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: unlockable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.update_unlockable(identifiers, %{}, opts)
+      {:error, error} = Service.update_unlockable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -341,7 +307,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, unlockable} = DefaultService.update_unlockable(identifiers, fields, opts)
+      {:ok, unlockable} = Service.update_unlockable(identifiers, fields, opts)
 
       assert unlockable.name == fields["name"]
     end
@@ -354,7 +320,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
 
-      {:error, error} = DefaultService.delete_unlockable(identifiers, opts)
+      {:error, error} = Service.delete_unlockable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -367,7 +333,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: unlockable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.delete_unlockable(identifiers, opts)
+      {:error, error} = Service.delete_unlockable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -379,7 +345,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: unlockable.id}
       opts = %{account: account}
 
-      {:ok, unlockable} = DefaultService.delete_unlockable(identifiers, opts)
+      {:ok, unlockable} = Service.delete_unlockable(identifiers, opts)
 
       assert unlockable
       refute Repo.get(Unlockable, unlockable.id)
@@ -393,7 +359,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       unlockable1 = unlockable_fixture(test_account)
       unlockable2 = unlockable_fixture(test_account)
 
-      :ok = DefaultService.delete_all_unlockable(%{account: test_account})
+      :ok = Service.delete_all_unlockable(%{account: test_account})
 
       refute Repo.get(Unlockable, unlockable1.id)
       refute Repo.get(Unlockable, unlockable2.id)
@@ -419,22 +385,22 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         search: "gift"
       }
 
-      depositables = DefaultService.list_depositable(query, %{
+      depositables = Service.list_depositable(query, %{
         account: account1,
         pagination: %{size: 2, number: 1}
       })
 
       assert length(depositables) == 2
 
-      depositables = DefaultService.list_depositable(query, %{
+      depositables = Service.list_depositable(query, %{
         account: account1,
         pagination: %{size: 2, number: 2}
       })
 
       assert length(depositables) == 1
 
-      assert DefaultService.count_depositable(query, %{account: account1}) == 3
-      assert DefaultService.count_depositable(%{}, %{account: account1}) == 6
+      assert Service.count_depositable(query, %{account: account1}) == 3
+      assert Service.count_depositable(%{}, %{account: account1}) == 6
     end
   end
 
@@ -442,7 +408,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when given invalid fields" do
       account = account_fixture()
 
-      {:error, %{errors: _}} = DefaultService.create_depositable(%{}, %{account: account})
+      {:error, %{errors: _}} = Service.create_depositable(%{}, %{account: account})
     end
 
     test "when given valid fields" do
@@ -454,7 +420,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
         "amount" => 1234
       }
 
-      {:ok, depositable} = DefaultService.create_depositable(fields, %{account: account})
+      {:ok, depositable} = Service.create_depositable(fields, %{account: account})
 
       assert depositable.name == fields["name"]
       assert depositable.gateway == fields["gateway"]
@@ -467,7 +433,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
     test "when give id does not exist" do
       account = account_fixture()
 
-      refute DefaultService.get_depositable(%{id: Ecto.UUID.generate()}, %{account: account})
+      refute Service.get_depositable(%{id: Ecto.UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -475,14 +441,14 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       account2 = account_fixture()
       depositable = depositable_fixture(account1)
 
-      refute DefaultService.get_depositable(%{id: depositable.id}, %{account: account2})
+      refute Service.get_depositable(%{id: depositable.id}, %{account: account2})
     end
 
     test "when given id" do
       account = account_fixture()
       target_depositable = depositable_fixture(account)
 
-      depositable = DefaultService.get_depositable(%{id: target_depositable.id}, %{account: account})
+      depositable = Service.get_depositable(%{id: target_depositable.id}, %{account: account})
 
       assert depositable.id == target_depositable.id
       assert depositable.account.id == account.id
@@ -495,7 +461,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
 
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
-      {:error, error} = DefaultService.update_depositable(identifiers, %{}, opts)
+      {:error, error} = Service.update_depositable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -508,7 +474,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: depositable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.update_depositable(identifiers, %{}, opts)
+      {:error, error} = Service.update_depositable(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -521,7 +487,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, depositable} = DefaultService.update_depositable(identifiers, fields, opts)
+      {:ok, depositable} = Service.update_depositable(identifiers, fields, opts)
 
       assert depositable.name == fields["name"]
     end
@@ -534,7 +500,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: Ecto.UUID.generate()}
       opts = %{account: account}
 
-      {:error, error} = DefaultService.delete_depositable(identifiers, opts)
+      {:error, error} = Service.delete_depositable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -547,7 +513,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: depositable.id}
       opts = %{account: account2}
 
-      {:error, error} = DefaultService.delete_depositable(identifiers, opts)
+      {:error, error} = Service.delete_depositable(identifiers, opts)
 
       assert error == :not_found
     end
@@ -559,7 +525,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       identifiers = %{id: depositable.id}
       opts = %{account: account}
 
-      {:ok, depositable} = DefaultService.delete_depositable(identifiers, opts)
+      {:ok, depositable} = Service.delete_depositable(identifiers, opts)
 
       assert depositable
       refute Repo.get(Depositable, depositable.id)
@@ -573,7 +539,7 @@ defmodule BlueJet.Goods.DefaultServiceTest do
       depositable1 = depositable_fixture(test_account)
       depositable2 = depositable_fixture(test_account)
 
-      :ok = DefaultService.delete_all_depositable(%{account: test_account})
+      :ok = Service.delete_all_depositable(%{account: test_account})
 
       refute Repo.get(Depositable, depositable1.id)
       refute Repo.get(Depositable, depositable2.id)

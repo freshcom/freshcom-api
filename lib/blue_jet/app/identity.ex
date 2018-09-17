@@ -44,7 +44,7 @@ defmodule BlueJet.Identity do
     Service.update_account(req._vad_.account, req.fields, %{locale: req.locale})
     |> to_response(:update, resp)
     |> translate(req.locale, req._default_locale_)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_update_account(other), do: other
@@ -60,7 +60,7 @@ defmodule BlueJet.Identity do
     Service.reset_account(req._vad_.account)
     |> to_response(:update, resp)
     |> translate(req.locale, req._default_locale_)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_reset_account(other), do: other
@@ -109,7 +109,7 @@ defmodule BlueJet.Identity do
 
     Service.get_refresh_token(%{account: req._vad_.account})
     |> to_response(:get, resp)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_get_refresh_token(other), do: other

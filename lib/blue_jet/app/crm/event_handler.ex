@@ -5,7 +5,7 @@ defmodule BlueJet.Crm.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity.account.reset.success", %{account: account = %{mode: "test"}}) do
+  def handle_event("identity:account.reset.success", %{account: account = %{mode: "test"}}) do
     Task.start(fn -> Service.delete_all_customer(%{account: account}) end)
 
     {:ok, nil}

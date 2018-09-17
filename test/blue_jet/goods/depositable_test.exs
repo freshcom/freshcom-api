@@ -1,21 +1,16 @@
 defmodule BlueJet.Goods.DepositableTest do
   use BlueJet.DataCase
 
-  import Mox
+  import BlueJet.Goods.TestHelper
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Depositable
-  alias BlueJet.Goods.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted depositable should be automatically deleted" do
-      account = Repo.insert!(%Account{})
-      depositable = Repo.insert!(%Depositable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        amount: 500,
-        gateway: "freshcom"
-      })
+      account = account_fixture()
+      depositable = depositable_fixture(account)
+
       Repo.delete!(account)
 
       refute Repo.get(Depositable, depositable.id)
@@ -42,59 +37,53 @@ defmodule BlueJet.Goods.DepositableTest do
   describe "validate/1" do
     test "when missing required fields" do
       changeset =
-        change(%Depositable{ account_id: Ecto.UUID.generate() }, %{})
+        %Depositable{}
+        |> change(%{})
         |> Depositable.validate()
 
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name, :amount, :gateway]
+      assert changeset.valid? == false
+      assert match_keys(changeset.errors, [:name, :gateway, :amount])
     end
   end
 
-  describe "changeset/4" do
+  describe "changeset/5" do
     test "when given valid fields without locale" do
-      account = %Account{
-        id: Ecto.UUID.generate()
+      fields = %{
+        "name" => Faker.Commerce.product_name(),
+        "gateway" => "freshcom",
+        "amount" => System.unique_integer([:positive])
       }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
-
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
-        name: Faker.String.base64(5),
-        amount: 500,
-        gateway: "freshcom"
-      })
+      account = %Account{id: UUID.generate()}
+      depositable = %Depositable{account: account}
+      changeset = Depositable.changeset(depositable, :update, fields)
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:amount, :gateway, :name, :print_name]
+      assert changeset.action == :update
+      assert match_keys(changeset.changes, [:name, :print_name, :gateway, :amount])
     end
 
     test "when given valid fields with locale" do
-      account = %Account{
-        id: Ecto.UUID.generate()
+      fields = %{
+        "name" => Faker.Commerce.product_name(),
+        "gateway" => "freshcom",
+        "amount" => System.unique_integer([:positive])
       }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
-
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{
-        name: Faker.String.base64(5),
-        amount: 500,
-        gateway: "freshcom"
-      }, "en", "zh-CN")
+      account = %Account{id: UUID.generate()}
+      depositable = %Depositable{account: account}
+      changeset = Depositable.changeset(depositable, :update, fields, "en", "zh-CN")
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:amount, :gateway, :translations]
+      assert changeset.action == :update
+      assert match_keys(changeset.changes, [:translations, :gateway, :amount])
     end
 
     test "when given invalid fields" do
-      account = %Account{
-        id: Ecto.UUID.generate()
-      }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
+      account = %Account{id: UUID.generate()}
+      depositable = %Depositable{account: account}
 
-      changeset = Depositable.changeset(%Depositable{ account_id: account.id }, :update, %{})
+      changeset = Depositable.changeset(depositable, :update, %{})
 
-      refute changeset.valid?
+      assert changeset.valid? == false
     end
   end
 end

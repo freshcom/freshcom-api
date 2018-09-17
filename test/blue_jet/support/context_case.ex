@@ -4,6 +4,7 @@ defmodule BlueJet.ContextCase do
   using do
     quote do
       alias BlueJet.Repo
+      alias Ecto.UUID
       alias BlueJet.ContextRequest
       alias BlueJet.{AuthorizationMock, EventHandlerMock}
 
@@ -45,5 +46,9 @@ defmodule BlueJet.ContextCase do
 
   def match_keys(l, keys) when is_list(l) do
     Enum.sort(Keyword.keys(l)) == Enum.sort(keys)
+  end
+
+  def match(l1, l2) do
+    Enum.sort(l1) == Enum.sort(l2)
   end
 end

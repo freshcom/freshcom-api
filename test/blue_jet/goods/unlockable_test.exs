@@ -1,19 +1,16 @@
 defmodule BlueJet.Goods.UnlockableTest do
   use BlueJet.DataCase
 
-  import Mox
+  import BlueJet.Goods.TestHelper
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Unlockable
-  alias BlueJet.Goods.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted unlockable should be automatically deleted" do
-      account = Repo.insert!(%Account{})
-      unlockable = Repo.insert!(%Unlockable{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      unlockable = unlockable_fixture(account)
+
       Repo.delete!(account)
 
       refute Repo.get(Unlockable, unlockable.id)
@@ -39,55 +36,47 @@ defmodule BlueJet.Goods.UnlockableTest do
   describe "validate/1" do
     test "when missing required fields" do
       changeset =
-        change(%Unlockable{ account_id: Ecto.UUID.generate() }, %{})
+        %Unlockable{}
+        |> change(%{})
         |> Unlockable.validate()
 
-      refute changeset.valid?
-      assert Keyword.keys(changeset.errors) == [:name]
+      assert changeset.valid? == false
+      assert match_keys(changeset.errors, [:name])
     end
   end
 
-  describe "changeset/4" do
+  describe "changeset/5" do
     test "when given valid fields without locale" do
-      account = %Account{
-        id: Ecto.UUID.generate()
-      }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
+      fields = %{"name" => Faker.Commerce.product_name()}
+      account = %Account{id: UUID.generate()}
+      unlockable = %Unlockable{account: account}
 
-      changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, :update, %{
-        name: Faker.String.base64(5)
-      })
+      changeset = Unlockable.changeset(unlockable, :update, fields)
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:name, :print_name]
+      assert changeset.action == :update
+      assert match_keys(changeset.changes, [:name, :print_name])
     end
 
     test "when given valid fields with locale" do
-      account = %Account{
-        id: Ecto.UUID.generate()
-      }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
+      fields = %{"name" => Faker.Commerce.product_name()}
+      account = %Account{id: UUID.generate()}
+      unlockable = %Unlockable{account: account}
 
-      changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, :update, %{
-        name: Faker.String.base64(5)
-      }, "en", "zh-CN")
+      changeset = Unlockable.changeset(unlockable, :update, fields, "en", "zh-CN")
 
       assert changeset.valid?
-      assert Map.keys(changeset.changes) == [:translations]
+      assert changeset.action == :update
+      assert match_keys(changeset.changes, [:translations])
     end
 
     test "when given invalid fields" do
-      account = %Account{
-        id: Ecto.UUID.generate()
-      }
-      IdentityServiceMock
-      |> expect(:get_account, fn(_) -> account end)
+      account = %Account{id: UUID.generate()}
+      unlockable = %Unlockable{account: account}
 
-      changeset = Unlockable.changeset(%Unlockable{ account_id: account.id }, :update, %{})
+      changeset = Unlockable.changeset(unlockable, :update, %{})
 
-      refute changeset.valid?
+      assert changeset.valid? == false
     end
   end
 end

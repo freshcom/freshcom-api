@@ -19,7 +19,7 @@ defmodule BlueJet.Context do
     |> count_all(req, count_fun)
     |> process_list(req, list_fun)
     |> translate(req.locale, req._default_locale_)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_default({:ok, req}, :create, type, service_or_fun) do
@@ -28,7 +28,7 @@ defmodule BlueJet.Context do
     %ContextResponse{}
     |> ContextResponse.put_meta(:locale, req.locale)
     |> process_create(req, create_fun)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_default({:ok, req}, :get, type, service) do
@@ -38,7 +38,7 @@ defmodule BlueJet.Context do
     |> ContextResponse.put_meta(:locale, req.locale)
     |> process_get(req, get_fun)
     |> translate(req.locale, req._default_locale_)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_default({:ok, req}, :update, type, service) do
@@ -48,7 +48,7 @@ defmodule BlueJet.Context do
     |> ContextResponse.put_meta(:locale, req.locale)
     |> process_update(req, update_fun)
     |> translate(req.locale, req._default_locale_)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_default({:ok, req}, :delete, type, service) do
@@ -56,7 +56,7 @@ defmodule BlueJet.Context do
 
     %ContextResponse{}
     |> process_delete(req, delete_fun)
-    |> to_result_tuple()
+    |> to_tagged_tuple()
   end
 
   defp do_default(other, _, _, _), do: other
@@ -158,15 +158,15 @@ defmodule BlueJet.Context do
   def to_response({:ok, _}, :delete, resp), do: resp
   def to_response(other, _, _), do: other
 
-  def translate(%{"data" => data} = response, locale, default_locale) do
+  def translate(%{data: data} = response, locale, default_locale) do
     %{response | data: Translation.translate(data, locale, default_locale)}
   end
 
   def translate(other, _, _), do: other
 
-  def to_result_tuple(%{errors: errors} = response) when length(errors) > 0, do: {:error, response}
-  def to_result_tuple(%ContextResponse{} = response), do: {:ok, response}
-  def to_result_tuple(other), do: other
+  def to_tagged_tuple(%{errors: errors} = response) when length(errors) > 0, do: {:error, response}
+  def to_tagged_tuple(%ContextResponse{} = response), do: {:ok, response}
+  def to_tagged_tuple(other), do: other
 
   ########
   def list(type, request, module) do

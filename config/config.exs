@@ -93,11 +93,13 @@ config :blue_jet, :event_bus, %{
   "identity:account.create.success" => [
     Balance.EventHandler,
     Notification.EventHandler
+  ],
+  "identity:account.reset.success" => [
+    Goods.EventHandler
   ]
 }
 
 config :blue_jet, :identity, %{
-  service: BlueJet.Identity.DefaultService,
   listeners: [
     BlueJet.Balance.EventHandler,
     BlueJet.Crm.EventHandler,
@@ -119,7 +121,6 @@ config :blue_jet, :file_storage, %{
 }
 
 config :blue_jet, :goods, %{
-  service: BlueJet.Goods.DefaultService,
   identity_service: BlueJet.Identity.Service,
   file_storage_service: BlueJet.FileStorage.Service
 }

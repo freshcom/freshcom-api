@@ -7,7 +7,7 @@ defmodule BlueJet.Notification.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity.account.reset.success", %{account: account = %{mode: "test"}}) do
+  def handle_event("identity:account.reset.success", %{account: account = %{mode: "test"}}) do
     Task.start(fn ->
       Service.delete_all_trigger(%{account: account})
       Service.delete_all_email_template(%{account: account})
