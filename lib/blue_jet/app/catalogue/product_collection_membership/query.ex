@@ -38,7 +38,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
     )
   end
 
-  def search(query, keyword, locale, default_locale) do
+  def search(query, keyword, locale, _) do
     keyword = "%#{keyword}%"
 
     from(cm in query,

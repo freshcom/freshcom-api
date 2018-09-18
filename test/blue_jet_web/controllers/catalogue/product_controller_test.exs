@@ -15,30 +15,24 @@ defmodule BlueJetWeb.ProductControllerTest do
         "goods_id" => stockable.id,
         "goods_type" => "Stockable"
       },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      vas: %{account_id: user.default_account_id, user_id: user.id}
     })
 
     {:ok, _} = Catalogue.create_price(%ContextRequest{
-      params: %{
-        "product_id" => product.id
-      },
       fields: %{
         "name" => "Regular",
         "status" => "active",
         "charge_amount_cents" => 1000,
-        "charge_unit" => "EA"
+        "charge_unit" => "EA",
+        "product_id" => product.id
       },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      vas: %{account_id: user.default_account_id, user_id: user.id}
     })
 
     {:ok, %{data: product}} = Catalogue.update_product(%ContextRequest{
-      params: %{
-        "id" => product.id
-      },
-      fields: %{
-        "status" => fields[:status] || "active"
-      },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      identifiers: %{id: product.id},
+      fields: %{"status" => fields[:status] || "active"},
+      vas: %{account_id: user.default_account_id, user_id: user.id}
     })
 
     product

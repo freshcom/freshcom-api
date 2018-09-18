@@ -44,6 +44,10 @@ defmodule BlueJet.ContextRequest do
     Map.put(req, root_key, root_value)
   end
 
+  def put(req, root_key, root_value) do
+    Map.put(req, root_key, root_value)
+  end
+
   def valid_keys(:list) do
     [:params, :search, :filter, :sort, :pagination, :preloads, :locale]
   end

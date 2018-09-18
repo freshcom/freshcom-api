@@ -3,7 +3,7 @@ defmodule BlueJet.Catalogue.TestHelper do
 
   alias BlueJet.Catalogue.Service
 
-  def product_fixture(account, fields \\ %{}, opts \\ []) do
+  def product_fixture(account, fields \\ %{}, _ \\ []) do
     stockable = stockable_fixture(account)
     status = fields[:status] || "draft"
 

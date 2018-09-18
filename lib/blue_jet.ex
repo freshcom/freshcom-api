@@ -8,8 +8,11 @@ defmodule BlueJet do
 
   def policy do
     quote do
-      import BlueJet.Policy.AuthorizedRequest
       use BlueJet.Policy.Common
+
+      import BlueJet.Policy.AuthorizedRequest
+
+      alias BlueJet.ContextRequest
     end
   end
 

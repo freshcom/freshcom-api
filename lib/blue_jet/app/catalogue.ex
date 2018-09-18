@@ -1,14 +1,19 @@
 defmodule BlueJet.Catalogue do
   use BlueJet, :context
 
-  @policy BlueJet.Catalogue.Policy
-  @service BlueJet.Catalogue.Service
+  alias BlueJet.Catalogue.{Policy, Service}
 
-  def list_product(req), do: list("product", req, __MODULE__)
-  def create_product(req), do: create("product", req, __MODULE__)
-  def get_product(req), do: get("product", req, __MODULE__)
-  def update_product(req), do: update("product", req, __MODULE__)
-  def delete_product(req), do: delete("product", req, __MODULE__)
+  def list_product(req), do: default(req, :list, :product, Policy, Service)
+  def create_product(req), do: default(req, :create, :product, Policy, Service)
+  def get_product(req), do: default(req, :get, :product, Policy, Service)
+  def update_product(req), do: default(req, :update, :product, Policy, Service)
+  def delete_product(req), do: default(req, :delete, :product, Policy, Service)
+
+  def list_price(req), do: default(req, :list, :price, Policy, Service)
+  def create_price(req), do: default(req, :create, :price, Policy, Service)
+  def get_price(req), do: default(req, :get, :price, Policy, Service)
+  def update_price(req), do: default(req, :update, :price, Policy, Service)
+  def delete_price(req), do: default(req, :delete, :price, Policy, Service)
 
   def list_product_collection(req), do: list("product_collection", req, __MODULE__)
   def create_product_collection(req), do: create("product_collection", req, __MODULE__)
@@ -21,10 +26,4 @@ defmodule BlueJet.Catalogue do
   def get_product_collection_membership(req), do: get("product_collection_membership", req, __MODULE__)
   def update_product_collection_membership(req), do: update("product_collection_membership", req, __MODULE__)
   def delete_product_collection_membership(req), do: delete("product_collection_membership", req, __MODULE__)
-
-  def list_price(req), do: list("price", req, __MODULE__)
-  def create_price(req), do: create("price", req, __MODULE__)
-  def get_price(req), do: get("price", req, __MODULE__)
-  def update_price(req), do: update("price", req, __MODULE__)
-  def delete_price(req), do: delete("price", req, __MODULE__)
 end

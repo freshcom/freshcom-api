@@ -5,10 +5,8 @@ defmodule BlueJet.Catalogue.ServiceTest do
   import BlueJet.Goods.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.DefaultService
   alias BlueJet.Catalogue.{Product, Price, ProductCollection, ProductCollectionMembership}
-  alias BlueJet.Catalogue.GoodsServiceMock
 
   #
   # MARK: Product
@@ -478,6 +476,9 @@ defmodule BlueJet.Catalogue.ServiceTest do
     end
   end
 
+  #
+  # MARK: Product Collection Membership
+  #
   describe "list_product_collection_membership/2 and count_product_collection_membership/2" do
     test "with valid request" do
       account = account_fixture()
@@ -520,6 +521,111 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
       assert DefaultService.count_product_collection_membership(query, %{account: account}) == 3
       assert DefaultService.count_product_collection_membership(%{account: account}) == 6
+    end
+  end
+
+  describe "create_product_collection_membership/2" do
+    test "when given invalid fields" do
+      account = %Account{id: UUID.generate()}
+
+      {:error, %{errors: errors}} = DefaultService.create_product_collection_membership(%{}, %{account: account})
+
+      assert match_keys(errors, [:collection_id, :product_id])
+    end
+
+    test "when given valid fields" do
+      account = account_fixture()
+      product = product_fixture(account)
+      collection = product_collection_fixture(account)
+
+      fields = %{
+        "product_id" => product.id,
+        "collection_id" => collection.id,
+        "sort_index" => 1929
+      }
+
+      {:ok, membership} = DefaultService.create_product_collection_membership(fields, %{account: account})
+
+      assert membership.product_id == fields["product_id"]
+      assert membership.collection_id == fields["collection_id"]
+      assert membership.sort_index == fields["sort_index"]
+    end
+  end
+
+  describe "get_product_collection_membership/2" do
+    test "when given id doesn't exist" do
+      account = account_fixture()
+
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
+
+      refute DefaultService.get_product_collection_membership(identifiers, opts)
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      collection = product_collection_fixture(account2)
+      membership = product_collection_membership_fixture(account2, product, collection)
+
+      identifiers = %{id: membership.id}
+      opts = %{account: account1}
+
+      refute DefaultService.get_product_collection_membership(identifiers, opts)
+    end
+
+    test "when given id is valid" do
+      account = account_fixture()
+      product = product_fixture(account)
+      collection = product_collection_fixture(account)
+      target_membership = product_collection_membership_fixture(account, product, collection)
+
+      identifiers = %{id: target_membership.id}
+      opts = %{account: account, preload: %{paths: [:product]}}
+
+      membership = DefaultService.get_product_collection_membership(identifiers, opts)
+
+      assert membership.id == target_membership.id
+      assert membership.product.id
+    end
+  end
+
+  describe "delete_product_collection_membership/2" do
+    test "when given invalid id" do
+      account = %Account{id: UUID.generate()}
+
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
+
+      {:error, :not_found} = DefaultService.delete_product_collection_membership(identifiers, opts)
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      collection = product_collection_fixture(account2)
+      membership = product_collection_membership_fixture(account2, product, collection)
+
+      identifiers = %{id: membership.id}
+      opts = %{account: account1}
+
+      {:error, :not_found} = DefaultService.delete_product_collection_membership(identifiers, opts)
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      product = product_fixture(account)
+      collection = product_collection_fixture(account)
+      membership = product_collection_membership_fixture(account, product, collection)
+
+      identifiers = %{id: membership.id}
+      opts = %{account: account}
+
+      {:ok, _} = DefaultService.delete_product_collection_membership(identifiers, opts)
+
+      refute Repo.get(ProductCollectionMembership, membership.id)
     end
   end
 end
