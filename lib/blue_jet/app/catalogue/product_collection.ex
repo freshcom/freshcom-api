@@ -80,12 +80,6 @@ defmodule BlueJet.Catalogue.ProductCollection do
     |> validate_required([:status, :name])
   end
 
-  def delete_avatar(product_collection) do
-    Proxy.delete_avatar(product_collection)
-
-    {:ok, product_collection}
-  end
-
   def product_count(%__MODULE__{id: collection_id}) do
     ProductCollectionMembership.Query.default()
     |> ProductCollectionMembership.Query.for_collection(collection_id)

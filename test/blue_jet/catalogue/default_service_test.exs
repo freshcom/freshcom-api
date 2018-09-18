@@ -1,477 +1,525 @@
 defmodule BlueJet.Catalogue.ServiceTest do
   use BlueJet.ContextCase
 
+  import BlueJet.Catalogue.TestHelper
+  import BlueJet.Goods.TestHelper
+
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.DefaultService
-  alias BlueJet.Catalogue.{Product, ProductCollection, ProductCollectionMembership}
+  alias BlueJet.Catalogue.{Product, Price, ProductCollection, ProductCollectionMembership}
   alias BlueJet.Catalogue.GoodsServiceMock
 
-  describe "list_product/2" do
-    test "product for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #
+  # MARK: Product
+  #
+  describe "list_product/2 and count_product/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      products = DefaultService.list_product(%{ account: account })
+      product1 = product_fixture(account1, %{label: "bestseller", name: "Cool Product", status: "active"})
+      product2 = product_fixture(account1, %{label: "bestseller", name: "Best Product", status: "active"})
+      product3 = product_fixture(account1, %{label: "bestseller", name: "Awesome Product", status: "active"})
+      product4 = product_fixture(account1, %{name: "Best Product"})
+      product_fixture(account1, %{label: "bestseller", name: "Test Product"})
+      product_fixture(account2, %{label: "bestseller", name: "Test Product"})
+
+      collection = product_collection_fixture(account1)
+      product_collection_membership_fixture(account1, product1, collection)
+      product_collection_membership_fixture(account1, product2, collection)
+      product_collection_membership_fixture(account1, product3, collection)
+      product_collection_membership_fixture(account1, product4, collection)
+
+      query = %{search: "product", filter: %{label: "bestseller", collection_id: collection.id}}
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 1},
+        preload: %{paths: [:prices]}
+      }
+      products = DefaultService.list_product(query, opts)
+
       assert length(products) == 2
-    end
+      assert length(Enum.at(products, 0).prices) == 1
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 2}
+      }
+      products = DefaultService.list_product(query, opts)
 
-      products = DefaultService.list_product(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(products) == 3
+      assert length(products) == 1
 
-      products = DefaultService.list_product(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(products) == 2
+      assert DefaultService.count_product(query, %{account: account1}) == 3
+      assert DefaultService.count_product(%{account: account1}) == 5
     end
   end
 
   describe "create_product/2" do
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+      account = %Account{id: UUID.generate()}
 
-      {:error, changeset} = DefaultService.create_product(fields, %{ account: account })
+      {:error, %{errors: errors}} = DefaultService.create_product(%{}, %{account: account})
 
-      assert changeset.valid? == false
+      assert match_keys(errors, [:name, :goods_id, :goods_type])
     end
 
     test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
+      stockable = stockable_fixture(account)
 
       fields = %{
-        "name" => Faker.Commerce.product_name(),
-        "goods_id" => Ecto.UUID.generate(),
+        "name" => stockable.name,
+        "goods_id" => stockable.id,
         "goods_type" => "Stockable"
       }
 
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) ->
-          %Stockable{ account_id: account.id }
-         end)
+      {:ok, product} = DefaultService.create_product(fields, %{account: account})
 
-      {:ok, product} = DefaultService.create_product(fields, %{ account: account })
-
-      assert product
+      assert product.name == stockable.name
+      assert product.goods_id == stockable.id
+      assert product.goods_type == "Stockable"
     end
   end
 
   describe "get_product/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+    test "when given id doesn't exist" do
+      account = account_fixture()
 
-      assert DefaultService.get_product(%{ id: product.id }, %{ account: account })
+      refute DefaultService.get_product(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
 
-      refute DefaultService.get_product(%{ id: product.id }, %{ account: account })
+      refute DefaultService.get_product(%{id: product.id}, %{account: account1})
     end
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+    test "when given id is valid" do
+      account = account_fixture()
+      target_product = product_fixture(account, %{status: "active"})
 
-      refute DefaultService.get_product(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      identifiers = %{id: target_product.id}
+      opts = %{account: account, preload: %{paths: [:prices]}}
+
+      product = DefaultService.get_product(identifiers, opts)
+
+      assert product.id == target_product.id
+      assert length(product.prices) == 1
     end
   end
 
-  describe "update_product/2" do
-    test "when given nil for product" do
-      {:error, error} = DefaultService.update_product(nil, %{}, %{})
-
-      assert error == :not_found
-    end
-
+  describe "update_product/3" do
     test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      account = %Account{id: UUID.generate()}
 
-      {:error, error} = DefaultService.update_product(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
-
-      assert error == :not_found
+      {:error, :not_found} = DefaultService.update_product(%{id: UUID.generate()}, %{}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
 
-      {:error, error} = DefaultService.update_product(%{ id: product.id }, %{}, %{ account: account })
-
-      assert error == :not_found
+      {:error, :not_found} = DefaultService.update_product(%{id: product.id}, %{}, %{account: account1})
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name(),
-        goods_id: Ecto.UUID.generate(),
-        goods_type: "Stockable"
-      })
+      account = account_fixture()
+      target_product = product_fixture(account)
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+      identifiers = %{id: target_product.id}
+      fields = %{"name" => Faker.Commerce.product_name()}
+      opts = %{account: account}
 
-      {:ok, product} = DefaultService.update_product(%{ id: product.id }, fields, %{ account: account })
+      {:ok, product} = DefaultService.update_product(identifiers, fields, opts)
 
-      assert product
+      assert product.id == target_product.id
+      assert product.name == fields["name"]
     end
   end
 
   describe "delete_product/2" do
-    test "when given valid product" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+    test "when given invalid id" do
+      account = %Account{id: UUID.generate()}
 
-      {:ok, product} = DefaultService.delete_product(product, %{ account: account })
+      {:error, :not_found} = DefaultService.delete_product(%{id: UUID.generate()}, %{account: account})
+    end
 
-      assert product
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+
+      {:error, :not_found} = DefaultService.delete_product(%{id: product.id}, %{account: account1})
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      product = product_fixture(account)
+
+      {:ok, _} = DefaultService.delete_product(%{id: product.id}, %{account: account})
+
       refute Repo.get(Product, product.id)
     end
   end
 
-  describe "list_product_collection/2" do
-    test "product_collection for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+  #
+  # MARK: Price
+  #
+  describe "list_price/2 and count_price/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      product_collections = DefaultService.list_product_collection(%{ account: account })
-      assert length(product_collections) == 2
+      product1 = product_fixture(account1)
+      product2 = product_fixture(account1)
+      product3 = product_fixture(account2)
+
+      price_fixture(account1, product1)
+      price_fixture(account1, product1)
+      price_fixture(account1, product1)
+      price_fixture(account1, product2)
+      price_fixture(account2, product3)
+
+      query = %{filter: %{product_id: product1.id}}
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 1},
+        preload: %{paths: [:product]}
+      }
+      prices = DefaultService.list_price(query, opts)
+
+      assert length(prices) == 2
+      assert Enum.at(prices, 0).product.id
+
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 2}
+      }
+      prices = DefaultService.list_price(query, opts)
+
+      assert length(prices) == 1
+
+      assert DefaultService.count_price(query, %{account: account1}) == 3
+      assert DefaultService.count_price(%{account: account1}) == 4
+    end
+  end
+
+  describe "create_price/2" do
+    test "when given invalid fields" do
+      account = %Account{id: UUID.generate()}
+
+      {:error, %{errors: errors}} = DefaultService.create_price(%{}, %{account: account})
+
+      assert match_keys(errors, [:name, :product_id, :charge_amount_cents, :charge_unit])
     end
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+    test "when given valid fields" do
+      account = account_fixture()
+      product = product_fixture(account)
 
-      product_collections = DefaultService.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(product_collections) == 3
+      fields = %{
+        "name" => Faker.String.base64(12),
+        "product_id" => product.id,
+        "charge_amount_cents" => System.unique_integer([:positive]),
+        "charge_unit" => Faker.String.base64(2)
+      }
 
-      product_collections = DefaultService.list_product_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(product_collections) == 2
+      {:ok, price} = DefaultService.create_price(fields, %{account: account})
+
+      assert price.name == fields["name"]
+      assert price.product_id == fields["product_id"]
+      assert price.charge_amount_cents == fields["charge_amount_cents"]
+      assert price.charge_unit == fields["charge_unit"]
+    end
+  end
+
+  describe "get_price/2" do
+    test "when given id doesn't exist" do
+      account = account_fixture()
+
+      refute DefaultService.get_price(%{id: UUID.generate()}, %{account: account})
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      price = price_fixture(account2, product)
+
+      refute DefaultService.get_product(%{id: price.id}, %{account: account1})
+    end
+
+    test "when given id is valid" do
+      account = account_fixture()
+      product = product_fixture(account)
+      target_price = price_fixture(account, product)
+
+      identifiers = %{id: target_price.id}
+      opts = %{account: account, preload: %{paths: [:product]}}
+
+      price = DefaultService.get_price(identifiers, opts)
+
+      assert price.id == target_price.id
+      assert price.product.id
+    end
+  end
+
+  describe "update_price/3" do
+    test "when given id does not exist" do
+      account = %Account{id: UUID.generate()}
+
+      {:error, :not_found} = DefaultService.update_price(%{id: UUID.generate()}, %{}, %{account: account})
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      price = price_fixture(account2, product)
+
+      {:error, :not_found} = DefaultService.update_product(%{id: price.id}, %{}, %{account: account1})
+    end
+
+    test "when given valid id and valid fields" do
+      account = account_fixture()
+      product = product_fixture(account)
+      target_price = price_fixture(account, product)
+
+      identifiers = %{id: target_price.id}
+      fields = %{"name" => Faker.String.base64(12)}
+      opts = %{account: account}
+
+      {:ok, price} = DefaultService.update_price(identifiers, fields, opts)
+
+      assert price.id == target_price.id
+      assert price.name == fields["name"]
+    end
+  end
+
+  describe "delete_price/2" do
+    test "when given invalid id" do
+      account = %Account{id: UUID.generate()}
+
+      {:error, :not_found} = DefaultService.delete_price(%{id: UUID.generate()}, %{account: account})
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      price = price_fixture(account2, product)
+
+      {:error, :not_found} = DefaultService.delete_price(%{id: price.id}, %{account: account1})
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      product = product_fixture(account)
+      price = price_fixture(account, product)
+
+      {:ok, _} = DefaultService.delete_price(%{id: price.id}, %{account: account})
+
+      refute Repo.get(Price, price.id)
+    end
+  end
+
+  #
+  # MARK: Product Collection
+  #
+  describe "list_product_collection/2 and count_product_collection/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+
+      product_collection_fixture(account1, %{label: "bestseller", name: "Cool Product"})
+      product_collection_fixture(account1, %{label: "bestseller", name: "Best Product"})
+      product_collection_fixture(account1, %{label: "bestseller", name: "Awesome Product"})
+      product_collection_fixture(account1, %{name: "Best Product"})
+      product_collection_fixture(account2, %{label: "bestseller", name: "Test Product"})
+
+      query = %{search: "product", filter: %{label: "bestseller"}}
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 1}
+      }
+      collections = DefaultService.list_product_collection(query, opts)
+
+      assert length(collections) == 2
+
+      opts = %{
+        account: account1,
+        pagination: %{size: 2, number: 2}
+      }
+      collections = DefaultService.list_product_collection(query, opts)
+
+      assert length(collections) == 1
+
+      assert DefaultService.count_product_collection(query, %{account: account1}) == 3
+      assert DefaultService.count_product_collection(%{account: account1}) == 4
     end
   end
 
   describe "create_product_collection/2" do
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+      account = %Account{id: UUID.generate()}
 
-      {:error, changeset} = DefaultService.create_product_collection(fields, %{ account: account })
+      {:error, %{errors: errors}} = DefaultService.create_product_collection(%{}, %{account: account})
 
-      assert changeset.valid? == false
+      assert match_keys(errors, [:name])
     end
 
     test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+      fields = %{"name" => Faker.Commerce.product_name()}
 
-      {:ok, product_collection} = DefaultService.create_product_collection(fields, %{ account: account })
+      {:ok, product_collection} = DefaultService.create_product_collection(fields, %{account: account})
 
-      assert product_collection
+      assert product_collection.name == fields["name"]
     end
   end
 
   describe "get_product_collection/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      product_collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+    test "when given id does not exist" do
+      account = %Account{id: UUID.generate()}
 
-      assert DefaultService.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+      refute DefaultService.get_product_collection(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      product_collection = Repo.insert!(%ProductCollection{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      refute DefaultService.get_product_collection(%{ id: product_collection.id }, %{ account: account })
+      collection = product_collection_fixture(account2)
+
+      refute DefaultService.get_product_collection(%{id: collection.id}, %{account: account1})
     end
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+    test "when given valid id" do
+      account = account_fixture()
+      collection = product_collection_fixture(account)
 
-      refute DefaultService.get_product_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      assert DefaultService.get_product_collection(%{id: collection.id}, %{account: account})
     end
   end
 
   describe "update_product_collection/2" do
-    test "when given nil for product_collection" do
-      {:error, error} = DefaultService.update_product_collection(nil, %{}, %{})
-
-      assert error == :not_found
-    end
-
     test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      account = %Account{id: UUID.generate()}
 
-      {:error, error} = DefaultService.update_product_collection(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
 
-      assert error == :not_found
+      {:error, :not_found} = DefaultService.update_product_collection(identifiers, %{}, opts)
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      product_collection = Repo.insert!(%ProductCollection{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      {:error, error} = DefaultService.update_product_collection(%{ id: product_collection.id }, %{}, %{ account: account })
+      collection = product_collection_fixture(account2)
 
-      assert error == :not_found
+      identifiers = %{id: collection.id}
+      opts = %{account: account1}
+
+      {:error, :not_found} = DefaultService.update_product_collection(identifiers, %{}, opts)
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      product_collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+      account = account_fixture()
+      collection = product_collection_fixture(account)
 
-      fields = %{
-        "name" => Faker.Commerce.product_name()
-      }
+      identifiers = %{id: collection.id}
+      fields = %{"name" => Faker.Commerce.product_name()}
+      opts = %{account: account}
 
-      {:ok, product_collection} = DefaultService.update_product_collection(%{ id: product_collection.id }, fields, %{ account: account })
+      {:ok, collection} = DefaultService.update_product_collection(identifiers, fields, opts)
 
-      assert product_collection
+      assert collection.name == fields["name"]
     end
   end
 
   describe "delete_product_collection/2" do
-    test "when given valid product collection" do
-      account = Repo.insert!(%Account{})
-      product_collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
+    test "when given id does not exist" do
+      account = %Account{id: UUID.generate()}
 
-      {:ok, product_collection} = DefaultService.delete_product_collection(product_collection, %{ account: account })
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
 
-      assert product_collection
-      refute Repo.get(ProductCollection, product_collection.id)
+      {:error, :not_found} = DefaultService.delete_product_collection(identifiers, opts)
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+
+      collection = product_collection_fixture(account2)
+
+      identifiers = %{id: collection.id}
+      opts = %{account: account1}
+
+      {:error, :not_found} = DefaultService.delete_product_collection(identifiers, opts)
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      collection = product_collection_fixture(account)
+
+      identifiers = %{id: collection.id}
+      opts = %{account: account}
+
+      {:ok, _} = DefaultService.delete_product_collection(identifiers, opts)
+
+      refute Repo.get(ProductCollection, collection.id)
     end
   end
 
-  describe "list_product_collection_membership/2" do
-    test "product collection membership for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
+  describe "list_product_collection_membership/2 and count_product_collection_membership/2" do
+    test "with valid request" do
+      account = account_fixture()
 
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      product1 = product_fixture(account, %{name: "Cool Product", status: "active"})
+      product2 = product_fixture(account, %{name: "Best Product", status: "active"})
+      product3 = product_fixture(account, %{name: "Awesome Product", status: "active"})
+      product4 = product_fixture(account, %{name: "Something good", status: "active"})
+      product5 = product_fixture(account, %{name: "Something good"})
+      product6 = product_fixture(account, %{name: "Test Product"})
 
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      collection1 = product_collection_fixture(account)
+      collection2 = product_collection_fixture(account)
 
-      product = Repo.insert!(%Product{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: other_account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: other_account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      product_collection_membership_fixture(account, product1, collection1)
+      product_collection_membership_fixture(account, product2, collection1)
+      product_collection_membership_fixture(account, product3, collection1)
+      product_collection_membership_fixture(account, product4, collection1)
+      product_collection_membership_fixture(account, product5, collection1)
+      product_collection_membership_fixture(account, product6, collection2)
 
-      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account })
-      assert length(product_collection_memberships) == 2
-    end
+      query = %{search: "product", filter: %{product_status: "active", collection_id: collection1.id}}
+      opts = %{
+        account: account,
+        pagination: %{size: 2, number: 1},
+        preload: %{paths: [:product]}
+      }
+      memberships = DefaultService.list_product_collection_membership(query, opts)
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      assert length(memberships) == 2
+      assert Enum.at(memberships, 0).product.id
 
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      opts = %{
+        account: account,
+        pagination: %{size: 2, number: 2}
+      }
+      memberships = DefaultService.list_product_collection_membership(query, opts)
 
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
+      assert length(memberships) == 1
 
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
-
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      collection = Repo.insert!(%ProductCollection{
-        account_id: account.id,
-        name: Faker.Commerce.product_name()
-      })
-      Repo.insert!(%ProductCollectionMembership{
-        account_id: account.id,
-        product_id: product.id,
-        collection_id: collection.id
-      })
-
-      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(product_collection_memberships) == 3
-
-      product_collection_memberships = DefaultService.list_product_collection_membership(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(product_collection_memberships) == 2
+      assert DefaultService.count_product_collection_membership(query, %{account: account}) == 3
+      assert DefaultService.count_product_collection_membership(%{account: account}) == 6
     end
   end
 end

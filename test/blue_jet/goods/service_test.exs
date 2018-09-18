@@ -43,7 +43,7 @@ defmodule BlueJet.Goods.ServiceTest do
       assert length(stockables) == 1
 
       assert Service.count_stockable(query, %{account: account1}) == 3
-      assert Service.count_stockable(%{}, %{account: account1}) == 6
+      assert Service.count_stockable(%{account: account1}) == 6
     end
   end
 
@@ -96,7 +96,7 @@ defmodule BlueJet.Goods.ServiceTest do
     end
   end
 
-  describe "update_stockable/2" do
+  describe "update_stockable/3" do
     test "when given id does not exist" do
       account = account_fixture()
 

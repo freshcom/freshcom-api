@@ -139,7 +139,6 @@ defmodule BlueJet.Catalogue.Product do
     |> put_change(:translations, new_translations)
   end
 
-
   @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset = %{action: :insert}) do
     changeset
@@ -149,7 +148,7 @@ defmodule BlueJet.Catalogue.Product do
     |> validate_parent_id()
   end
 
-  def validate(changeset = %{action: :update}) do
+  def validate(%{action: :update} = changeset) do
     changeset
     |> validate_required(required_fields(changeset))
     |> validate_status()
@@ -190,7 +189,7 @@ defmodule BlueJet.Catalogue.Product do
     end
   end
 
-  defp validate_goods(changeset = %{valid?: true}) do
+  defp validate_goods(%{valid?: true} = changeset) do
     kind = get_field(changeset, :kind)
     validate_goods(changeset, kind)
   end
@@ -419,7 +418,7 @@ defmodule BlueJet.Catalogue.Product do
 
   defp validate_status(changeset, _), do: changeset
 
-  defp validate_parent_id(changeset = %{valid?: true, changes: %{product_id: product_id}}) do
+  defp validate_parent_id(%{valid?: true, changes: %{product_id: product_id}} = changeset) do
     account_id = get_field(changeset, :account_id)
     product = Repo.get_by(Product, account_id: account_id, id: product_id)
 
@@ -431,26 +430,4 @@ defmodule BlueJet.Catalogue.Product do
   end
 
   defp validate_parent_id(changeset), do: changeset
-
-  @doc """
-  Reset the `primary` field of related product base on the fields of the given product.
-
-  If the given product has `primary: true` then this function will mark all other
-  product that have the same parent as the given product as `primary: false`,
-  otherwise this function does nothing.
-
-  Returns `{:ok, given_product}` if successful.
-  """
-  @spec reset_primary(__MODULE__.t()) :: {:ok, __MODULE__.t()}
-  def reset_primary(%{parent_id: nil} = product), do: {:ok, product}
-  def reset_primary(%{primary: false} = product), do: {:ok, product}
-
-  def reset_primary(%{id: id, parent_id: parent_id} = product) do
-    Query.default()
-    |> Query.filter_by(%{parent_id: parent_id})
-    |> Query.except_id(id)
-    |> Repo.update_all(set: [primary: false])
-
-    {:ok, product}
-  end
 end

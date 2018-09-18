@@ -3,7 +3,7 @@ defmodule BlueJet.Catalogue.ProductCollection.Proxy do
 
   alias BlueJet.Catalogue.FileStorageService
 
-  def delete_avatar(product_collection = %{avatar_id: nil}), do: product_collection
+  def delete_avatar(product_collection = %{avatar_id: nil}), do: {:ok, nil}
 
   def delete_avatar(product_collection) do
     account = get_account(product_collection)

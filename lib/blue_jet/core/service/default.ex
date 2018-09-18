@@ -18,7 +18,7 @@ defmodule BlueJet.Service.Default do
     |> sort_by(opts[:sort] || [desc: :updated_at])
     |> paginate(size: pagination[:size], number: pagination[:number])
     |> Repo.all()
-    |> preload(preload[:path], preload[:opts])
+    |> preload(preload[:paths], preload[:opts])
   end
 
   def default(:count, type, query, opts) do
@@ -44,7 +44,7 @@ defmodule BlueJet.Service.Default do
 
     case Repo.insert(changeset) do
       {:ok, data} ->
-        {:ok, preload(data, preload[:path], preload[:opts])}
+        {:ok, preload(data, preload[:paths], preload[:opts])}
 
       other ->
         other
@@ -199,7 +199,7 @@ defmodule BlueJet.Service.Default do
       |> Repo.all()
 
     query_module.default()
-    |> query_module.filter_by(%{ id: data_ids })
+    |> query_module.filter_by(%{id: data_ids})
     |> Repo.delete_all()
 
     if length(data_ids) === batch_size do
