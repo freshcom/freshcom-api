@@ -126,22 +126,24 @@ defmodule BlueJet.Identity.Account.Service do
 
   def sync_to_test_account(account, _), do: {:ok, account}
 
-  @spec reset_account(Account.t()) :: {:ok, Account.t()}
-  def reset_account(%Account{mode: "test"} = account) do
+  @spec reset_account(Account.t(), map) :: {:ok, Account.t()}
+  def reset_account(account, opts \\ %{})
+
+  def reset_account(%Account{mode: "test"} = account, opts) do
     statements =
       Multi.new()
       |> Multi.delete_all(:_1, for_account(AccountMembership, account.id))
       |> Multi.delete_all(:_2, for_account(User, account.id))
       |> Multi.delete_all(:_3, for_account(PhoneVerificationCode, account.id))
       |> Multi.run(:dispatch, fn(_) ->
-        dispatch("identity:account.reset.success", %{account: account})
+        dispatch("identity:account.reset.success", %{account: account}, skip: opts[:skip_dispatch])
       end)
 
     {:ok, _} = Repo.transaction(statements)
     {:ok, account}
   end
 
-  def reset_account(%Account{mode: "live"}) do
+  def reset_account(%Account{mode: "live"}, _) do
     {:error, :unprocessable_for_live_account}
   end
 end

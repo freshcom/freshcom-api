@@ -45,8 +45,8 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT should create managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       email = Faker.Internet.email()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -76,25 +76,26 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/user")
 
       response = json_response(conn, 200)
-      assert response["data"]["id"] == standard_user.id
+      assert response["data"]["id"] == user.id
     end
 
     test "with test UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user, mode: :test)
+      user = standard_user_fixture()
+      test_account = user.default_account.test_account
+      uat = get_uat(test_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/user")
 
       response = json_response(conn, 200)
-      assert response["data"]["id"] == standard_user.id
+      assert response["data"]["id"] == user.id
     end
   end
 
@@ -107,22 +108,21 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT targeting a standard user", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      join_account(standard_user1.default_account_id, standard_user2.id)
-      uat = get_uat(standard_user1)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = get(conn, "/v1/users/#{standard_user2.id}")
+      conn = get(conn, "/v1/users/#{user2.id}")
 
       # This endpoint should not expose standard user
       assert conn.status == 404
     end
 
     test "with UAT targeting a managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      uat = get_uat(standard_user.default_account, standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/users/#{managed_user.id}")
@@ -132,9 +132,10 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with test UAT targeting a live managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user, mode: :test)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      test_account = standard_user.default_account.test_account
+      uat = get_uat(test_account, standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/users/#{managed_user.id}")
@@ -159,8 +160,8 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT of standard user", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -178,9 +179,9 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT of managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(managed_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
+      uat = get_uat(account, user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -198,8 +199,9 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with test UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user, mode: :test)
+      user = standard_user_fixture()
+      test_account = user.default_account.test_account
+      uat = get_uat(test_account, user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -232,13 +234,12 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT targeting a standard user", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      join_account(standard_user1.default_account_id, standard_user2.id)
-      uat = get_uat(standard_user1)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = patch(conn, "/v1/users/#{standard_user2.id}", %{
+      conn = patch(conn, "/v1/users/#{user2.id}", %{
         "data" => %{
           "type" => "User",
           "attributes" => %{
@@ -252,9 +253,9 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT targeting a managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      uat = get_uat(standard_user.default_account, standard_user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -273,9 +274,10 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with test UAT targeting a live managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user, mode: :test)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      test_account = standard_user.default_account.test_account
+      uat = get_uat(test_account, standard_user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -301,22 +303,21 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with UAT targeting a standard user", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      join_account(standard_user1.default_account_id, standard_user2.id)
-      uat = get_uat(standard_user1)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = delete(conn, "/v1/users/#{standard_user2.id}")
+      conn = delete(conn, "/v1/users/#{user2.id}")
 
       # This endpoint should not expose standard user
       assert conn.status == 404
     end
 
     test "with UAT targeting a managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      uat = get_uat(standard_user.default_account, standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = delete(conn, "/v1/users/#{managed_user.id}")
@@ -325,9 +326,10 @@ defmodule BlueJetWeb.UserControllerTest do
     end
 
     test "with test UAT targeting a live managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user, mode: :test)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      test_account = standard_user.default_account.test_account
+      uat = get_uat(test_account, standard_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = delete(conn, "/v1/users/#{managed_user.id}")

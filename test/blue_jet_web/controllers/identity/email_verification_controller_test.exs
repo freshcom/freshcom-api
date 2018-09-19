@@ -3,17 +3,6 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  def create_email_verification_token(user) do
-    {:ok, %{data: user}} = Identity.create_email_verification_token(%ContextRequest{
-      fields: %{
-        "user_id" => user.id
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    user.email_verification_token
-  end
-
   setup do
     conn =
       build_conn()
@@ -29,14 +18,13 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
   # - With UAT this endpoint create verification for both standard and managed user
   describe "POST /v1/email_verification" do
     test "without access token", %{conn: conn} do
-      user = create_standard_user()
-      evt = create_email_verification_token(user)
+      user = standard_user_fixture()
 
       conn = post(conn, "/v1/email_verifications", %{
         "data" => %{
           "type" => "EmailVerification",
           "attributes" => %{
-            "token" => evt
+            "token" => user.email_verification_token
           }
         }
       })
@@ -45,17 +33,16 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      pat = get_pat(standard_user)
-      evt = create_email_verification_token(managed_user)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      pat = get_pat(standard_user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/email_verifications", %{
         "data" => %{
           "type" => "EmailVerification",
           "attributes" => %{
-            "token" => evt
+            "token" => managed_user.email_verification_token
           }
         }
       })
@@ -64,17 +51,16 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
     end
 
     test "with UAT of managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(managed_user)
-      evt = create_email_verification_token(managed_user)
+      standard_user = standard_user_fixture()
+      managed_user = managed_user_fixture(standard_user.default_account)
+      uat = get_uat(managed_user.account, managed_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/email_verifications", %{
         "data" => %{
           "type" => "EmailVerification",
           "attributes" => %{
-            "token" => evt
+            "token" => managed_user.email_verification_token
           }
         }
       })
@@ -83,16 +69,15 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
     end
 
     test "with UAT of standard user", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      evt = create_email_verification_token(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/email_verifications", %{
         "data" => %{
           "type" => "EmailVerification",
           "attributes" => %{
-            "token" => evt
+            "token" => user.email_verification_token
           }
         }
       })

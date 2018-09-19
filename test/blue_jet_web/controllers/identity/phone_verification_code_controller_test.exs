@@ -25,8 +25,8 @@ defmodule BlueJetWeb.PhoneVerificationCodeControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      user = create_standard_user()
-      pat = get_pat(user)
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/phone_verification_codes", %{

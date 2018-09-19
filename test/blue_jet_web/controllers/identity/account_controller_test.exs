@@ -21,8 +21,8 @@ defmodule BlueJetWeb.AccountControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
       conn =
         conn
@@ -30,7 +30,7 @@ defmodule BlueJetWeb.AccountControllerTest do
         |> get("/v1/account")
 
       response = json_response(conn, 200)
-      assert response["data"]["id"] == standard_user.default_account_id
+      assert response["data"]["id"] == user.default_account.id
     end
   end
 
@@ -50,8 +50,8 @@ defmodule BlueJetWeb.AccountControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -69,8 +69,9 @@ defmodule BlueJetWeb.AccountControllerTest do
     end
 
     test "with test UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user, mode: :test)
+      user = standard_user_fixture()
+      test_account = user.default_account.test_account
+      uat = get_uat(test_account, user)
 
       new_name = Faker.Name.name()
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")

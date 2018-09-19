@@ -30,9 +30,9 @@ defmodule BlueJet.Identity.User.Service do
       |> Multi.run(:account_membership, &do_create_account_membership!(&1, %{role: "administrator", is_owner: true}))
       |> Multi.run(:urt_live, &do_create_refresh_token!(&1))
       |> Multi.run(:urt_test, &do_create_refresh_token!(%{account: &1[:account].test_account, user: &1[:user]}))
-      |> Multi.run(:dispatch1, &dispatch("identity:account.create.success", Map.take(&1, [:account])))
-      |> Multi.run(:dispatch2, &dispatch("identity:user.create.success", Map.take(&1, [:user, :account])))
-      |> Multi.run(:dispatch3, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:user])))
+      |> Multi.run(:dispatch1, &dispatch("identity:account.create.success", Map.take(&1, [:account]), skip: opts[:skip_dispatch]))
+      |> Multi.run(:dispatch2, &dispatch("identity:user.create.success", Map.take(&1, [:user, :account]), skip: opts[:skip_dispatch]))
+      |> Multi.run(:dispatch3, &dispatch("identity:email_verification_token.create.success", Map.take(&1, [:user]), skip: opts[:skip_dispatch]))
 
     case Repo.transaction(statements) do
       {:ok, %{user: user, account: account}} ->
@@ -61,10 +61,10 @@ defmodule BlueJet.Identity.User.Service do
         end
       end)
       |> Multi.run(:delete_all_pvc, &do_delete_all_pvc(&1))
-      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{user: &1[:user], account: account}))
+      |> Multi.run(:dispatch1, &dispatch("identity:user.create.success", %{user: &1[:user], account: account}, skip: opts[:skip_dispatch]))
       |> Multi.run(:dispatch2, fn(%{user: user}) ->
         if user.email do
-          dispatch("identity:email_verification_token.create.success", %{user: user})
+          dispatch("identity:email_verification_token.create.success", %{user: user}, skip: opts[:skip_dispatch])
         else
           {:ok, nil}
         end
@@ -165,11 +165,11 @@ defmodule BlueJet.Identity.User.Service do
       |> Multi.run(:account_membership, fn(_) -> do_update_account_membership(am, fields) end)
       |> Multi.run(:delete_all_pvc, &do_delete_all_pvc(&1))
       |> Multi.run(:dispatch1, fn(_) ->
-        dispatch("identity:user.update.success", %{changeset: changeset, account: account})
+        dispatch("identity:user.update.success", %{changeset: changeset, account: account}, skip: opts[:skip_dispatch])
       end)
       |> Multi.run(:dispatch2, fn(%{user: user}) ->
         if changeset.changes[:email_verification_token] do
-          dispatch("identity:email_verification_token.create.success", %{user: user})
+          dispatch("identity:email_verification_token.create.success", %{user: user}, skip: opts[:skip_dispatch])
         else
           {:ok, nil}
         end

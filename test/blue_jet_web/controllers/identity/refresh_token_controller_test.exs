@@ -21,8 +21,8 @@ defmodule BlueJetWeb.RefreshTokenControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/refresh_token")

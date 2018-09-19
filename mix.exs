@@ -27,8 +27,8 @@ defmodule BlueJet.Mixfile do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:test),        do: ["lib", "test/blue_jet/support"]
-  defp elixirc_paths(:integration), do: ["lib", "test/blue_jet_web/support"]
+  defp elixirc_paths(:test),        do: ["lib", "test/blue_jet/support", "test/support"]
+  defp elixirc_paths(:integration), do: ["lib", "test/blue_jet_web/support", "test/support"]
   defp elixirc_paths(_),            do: ["lib"]
 
   defp test_paths(:integration), do: ["test/blue_jet_web"]

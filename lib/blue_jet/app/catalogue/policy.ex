@@ -90,35 +90,25 @@ defmodule BlueJet.Catalogue.Policy do
   #
   # MARK: Price
   #
-  def authorize(request = %{role: role}, "list_price") when role in ["guest", "customer"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role} = req, :list_price) when role in ["guest", "customer"] do
+    req = ContextRequest.put(req, :filter, :status, "active")
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:product_id, :status]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_preload_, :opts, %{product: %{status: "active"}})
 
-    filter =
-      Map.merge(authorized_args[:filter], %{
-        product_id: request.params["product_id"],
-        status: "active"
-      })
-
-    all_count_filter = Map.take(filter, [:product_id, :status])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    authorized_args =
-      put_in(authorized_args, [:opts, :preloads, :opts, :filters], %{
-        product: %{status: "active"}
-      })
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "list_price")
+  def authorize(%{_role_: role} = req, :list_price)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    authorized_args = from_access_request(request, :list)
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:product_id]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    filter = Map.merge(authorized_args[:filter], %{product_id: request.params["product_id"]})
-    all_count_filter = Map.take(filter, [:product_id])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_price)

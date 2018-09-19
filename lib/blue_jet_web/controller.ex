@@ -31,6 +31,7 @@ defmodule BlueJetWeb.Controller do
     fields =
       params["data"]
       |> Params.to_attributes()
+      |> Map.merge(Map.take(params, opts[:params] || []))
       |> underscore_value(opts[:normalize] || [])
 
     %ContextRequest{
@@ -140,7 +141,7 @@ defmodule BlueJetWeb.Controller do
 
   def default(conn, :create, context_fun, opts) do
     conn
-    |> build_context_request(:create, Keyword.take(opts, [:normalize]))
+    |> build_context_request(:create, Keyword.take(opts, [:normalize, :params]))
     |> context_fun.()
     |> send_http_response(conn, :create, Keyword.take(opts, [:status]))
   end

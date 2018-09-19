@@ -3,25 +3,6 @@ defmodule BlueJetWeb.PasswordControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity
-
-  def create_password_reset_token(user) do
-    if user.account_id do
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
-        fields: %{"username" => user.username},
-        vas: %{account_id: user.account_id, user_id: nil}
-      })
-
-      user
-    else
-      {:ok, %{data: user}} = Identity.create_password_reset_token(%ContextRequest{
-        fields: %{"username" => user.username}
-      })
-
-      user
-    end
-  end
-
   setup do
     conn =
       build_conn()
@@ -49,32 +30,11 @@ defmodule BlueJetWeb.PasswordControllerTest do
       assert length(response["errors"]) == 1
     end
 
-    test "given password reset token that has expired", %{conn: conn} do
-      user = create_standard_user()
-      user = create_password_reset_token(user)
-
-      user
-      |> change(password_reset_token_expires_at: Timex.shift(Timex.now(), hours: -1))
-      |> Repo.update()
-
-      conn = patch(conn, "/v1/password?resetToken=#{user.password_reset_token}", %{
-        "data" => %{
-          "type" => "Password",
-          "attributes" => %{
-            "value" => "test1234"
-          }
-        }
-      })
-
-      response = json_response(conn, 422)
-      assert length(response["errors"]) == 1
-    end
-
     test "given valid password reset token for standard user", %{conn: conn} do
-      user = create_standard_user()
-      user = create_password_reset_token(user)
+      user = standard_user_fixture()
+      token = password_reset_token_fixture(user)
 
-      conn = patch(conn, "/v1/password?resetToken=#{user.password_reset_token}", %{
+      conn = patch(conn, "/v1/password?resetToken=#{token}", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
@@ -87,11 +47,13 @@ defmodule BlueJetWeb.PasswordControllerTest do
     end
 
     test "given valid password reset token for managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      managed_user = create_password_reset_token(managed_user)
+      managed_user =
+        account_fixture()
+        |> managed_user_fixture()
 
-      conn = patch(conn, "/v1/password?resetToken=#{managed_user.password_reset_token}", %{
+      token = password_reset_token_fixture(managed_user)
+
+      conn = patch(conn, "/v1/password?resetToken=#{token}", %{
         "data" => %{
           "type" => "Password",
           "attributes" => %{
@@ -108,8 +70,8 @@ defmodule BlueJetWeb.PasswordControllerTest do
 
   describe "PATCH /v1/passwords/:id" do
     test "given standard user", %{conn: conn} do
-      user = create_standard_user()
-      uat = get_uat(user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = patch(conn, "/v1/passwords/#{user.id}", %{
@@ -126,9 +88,9 @@ defmodule BlueJetWeb.PasswordControllerTest do
     end
 
     test "given managed user", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      uat = get_uat(standard_user)
+      account = account_fixture()
+      managed_user = managed_user_fixture(account)
+      uat = get_uat(managed_user.account, managed_user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = patch(conn, "/v1/passwords/#{managed_user.id}", %{

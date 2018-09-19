@@ -25,11 +25,9 @@ defmodule BlueJetWeb.AccountMembershipsControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      join_account(standard_user1.default_account_id, standard_user2.id)
-
-      uat = get_uat(standard_user1)
+      user = standard_user_fixture()
+      managed_user_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/account_memberships")
@@ -39,11 +37,9 @@ defmodule BlueJetWeb.AccountMembershipsControllerTest do
     end
 
     test "with UAT and targeting user", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      join_account(standard_user2.default_account_id, standard_user1.id)
-
-      uat = get_uat(standard_user1)
+      user = standard_user_fixture()
+      account_fixture(user)
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/account_memberships?target=user")
@@ -66,13 +62,10 @@ defmodule BlueJetWeb.AccountMembershipsControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-      membership = join_account(standard_user1.default_account_id, standard_user2.id)
+      membership = account_membership_fixture()
+      uat = get_uat(membership.account, membership.user)
 
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/account_memberships/#{membership.id}", %{
         "data" => %{
           "id" => membership.id,

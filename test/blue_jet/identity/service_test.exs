@@ -1,33 +1,10 @@
 defmodule BlueJet.Identity.ServiceTest do
   use BlueJet.DataCase
 
+  import BlueJet.Identity.TestHelper
+
   alias BlueJet.Identity.Service
   alias BlueJet.Identity.{User, Account, AccountMembership, RefreshToken}
-
-  def account_fixture(user) do
-    expect(EventHandlerMock, :handle_event, fn(_, _) -> {:ok, nil} end)
-
-    {:ok, account} = Service.create_account(%{
-      name: Faker.Company.name()
-    }, %{user: user})
-
-    account
-  end
-
-  def account_membership_fixture() do
-    standard_user = standard_user_fixture()
-    membership = Service.get_account_membership(%{user_id: standard_user.id}, %{account: standard_user.default_account})
-
-    %{membership | account: standard_user.default_account}
-  end
-
-  def account_membership_fixture(for: :managed) do
-    standard_user = standard_user_fixture()
-    managed_user = managed_user_fixture(standard_user.default_account)
-    membership = Service.get_account_membership(%{user_id: managed_user.id}, %{account: managed_user.account})
-
-    %{membership | account: managed_user.account}
-  end
 
   def refresh_tfa_code(user) do
     Service.refresh_tfa_code(user)
@@ -151,7 +128,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
     test "when using urt and no scope" do
       user = standard_user_fixture()
-      urt = get_urt(user.id, user.default_account_id)
+      urt = get_urt(user.default_account, user)
       {:ok, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => urt
@@ -165,14 +142,14 @@ defmodule BlueJet.Identity.ServiceTest do
 
     test "when using urt and scope containing test account id" do
       user = standard_user_fixture()
-      urt = get_urt(user.id, user.default_account_id)
-      test_account_id = user.default_account.test_account_id
-      urt_test = get_urt(user.id, test_account_id)
+      urt = get_urt(user.default_account, user)
+      test_account = user.default_account.test_account
+      urt_test = get_urt(test_account, user)
 
       {:ok, result} = Service.create_access_token(%{
         "grant_type" => "refresh_token",
         "refresh_token" => urt,
-        "scope" => "account_id:#{test_account_id}"
+        "scope" => "account_id:#{test_account.id}"
       })
 
       assert result.expires_in

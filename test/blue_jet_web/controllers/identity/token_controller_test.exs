@@ -3,13 +3,7 @@ defmodule BlueJetWeb.TokenControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias BlueJet.Identity.{Account, RefreshToken}
-
-  def get_prt(user) do
-    %{ id: prt } = Repo.get_by(RefreshToken.Query.publishable(), account_id: user.default_account_id)
-
-    prt
-  end
+  alias Ecto.UUID
 
   setup do
     conn =
@@ -72,13 +66,13 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid standard user credentials and invalid scope", %{conn: conn} do
-      create_standard_user()
+      user = standard_user_fixture()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => "standard_user1@example.com",
-        "password" => "standard1234",
-        "scope" => "aid:#{Ecto.UUID.generate()}"
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{UUID.generate()}"
       })
 
       response = json_response(conn, 400)
@@ -88,12 +82,12 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid standard user credentials and no scope", %{conn: conn} do
-      create_standard_user()
+      user = standard_user_fixture()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => "standard_user1@example.com",
-        "password" => "standard1234"
+        "username" => user.username,
+        "password" => "test1234"
       })
 
       response = json_response(conn, 200)
@@ -104,12 +98,12 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid standard user credentials and scope", %{conn: conn} do
-      user = create_standard_user()
+      user = standard_user_fixture()
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => "standard_user1@example.com",
-        "password" => "standard1234",
+        "username" => user.username,
+        "password" => "test1234",
         "scope" => "aid:#{user.default_account_id}"
       })
 
@@ -121,13 +115,13 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid managed user credentials and invalid scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => managed_user.username,
-        "password" => "managed1234",
+        "username" => user.username,
+        "password" => "test1234",
         "scope" => "aid:invalid"
       })
 
@@ -138,13 +132,13 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid managed user credentials and no scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => managed_user.username,
-        "password" => "managed1234"
+        "username" => user.username,
+        "password" => "test1234"
       })
 
       response = json_response(conn, 400)
@@ -155,14 +149,14 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid managed user credentials and valid scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => managed_user.username,
-        "password" => "managed1234",
-        "scope" => "aid:#{standard_user.default_account_id}"
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{user.default_account.id}"
       })
 
       response = json_response(conn, 200)
@@ -173,13 +167,13 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid customer user credentials and no scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user, role: "customer")
+      account = account_fixture()
+      user = managed_user_fixture(account, %{role: "customer"})
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => managed_user.username,
-        "password" => "managed1234"
+        "username" => user.username,
+        "password" => "test1234"
       })
 
       # Customer user should not be able to create token without setting scope
@@ -190,14 +184,14 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid customer user credentials and valid scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user, role: "customer")
+      account = account_fixture()
+      user = managed_user_fixture(account, %{role: "customer"})
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "password",
-        "username" => managed_user.username,
-        "password" => "managed1234",
-        "scope" => "aid:#{standard_user.default_account_id}"
+        "username" => user.username,
+        "password" => "test1234",
+        "scope" => "aid:#{user.default_account.id}"
       })
 
       response = json_response(conn, 200)
@@ -220,12 +214,12 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid refresh token and invalid scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_urt(standard_user)
+      user = standard_user_fixture()
+      urt = get_urt(user.default_account, user)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "urt-live-#{refresh_token}",
+        "refresh_token" => urt,
         "scope" => "aid:invalid"
       })
 
@@ -236,13 +230,13 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid refresh token and valid scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_urt(standard_user)
+      user = standard_user_fixture()
+      urt = get_urt(user.default_account, user)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "urt-live-#{refresh_token}",
-        "scope" => "aid:#{standard_user.default_account_id}"
+        "refresh_token" => urt,
+        "scope" => "aid:#{user.default_account.id}"
       })
 
       response = json_response(conn, 200)
@@ -253,14 +247,14 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with live refresh token and test account scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_urt(standard_user)
-      %{ id: test_account_id } = Repo.get_by(Account, mode: "test", live_account_id: standard_user.default_account_id)
+      user = standard_user_fixture()
+      urt = get_urt(user.default_account, user)
+      test_account = user.default_account.test_account
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "urt-live-#{refresh_token}",
-        "scope" => "aid:#{test_account_id}"
+        "refresh_token" => urt,
+        "scope" => "aid:#{test_account.id}"
       })
 
       response = json_response(conn, 200)
@@ -271,13 +265,14 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with test refresh token and live account scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_urt(standard_user, mode: :test)
+      user = standard_user_fixture()
+      test_account = user.default_account.test_account
+      urt_test = get_urt(test_account, user)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "urt-test-#{refresh_token}",
-        "scope" => "aid:#{standard_user.default_account_id}"
+        "refresh_token" => urt_test,
+        "scope" => "aid:#{user.default_account.id}"
       })
 
       response = json_response(conn, 400)
@@ -287,12 +282,12 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid refresh token and no scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_urt(standard_user)
+      user = standard_user_fixture()
+      urt = get_urt(user.default_account, user)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "urt-live-#{refresh_token}"
+        "refresh_token" => urt
       })
 
       response = json_response(conn, 200)
@@ -303,12 +298,12 @@ defmodule BlueJetWeb.TokenControllerTest do
     end
 
     test "with valid publishable refresh token and no scope", %{conn: conn} do
-      standard_user = create_standard_user()
-      refresh_token = get_prt(standard_user)
+      user = standard_user_fixture()
+      prt = get_prt(user.default_account)
 
       conn = post(conn, "/v1/token", %{
         "grant_type" => "refresh_token",
-        "refresh_token" => "prt-live-#{refresh_token}"
+        "refresh_token" => prt
       })
 
       response = json_response(conn, 200)

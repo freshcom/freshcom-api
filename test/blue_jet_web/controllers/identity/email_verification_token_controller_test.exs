@@ -25,8 +25,8 @@ defmodule BlueJetWeb.EmailVerificationTokenControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      user = create_standard_user()
-      uat = get_uat(user)
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/email_verification_tokens", %{

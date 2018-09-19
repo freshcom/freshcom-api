@@ -17,14 +17,14 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
   # - With PAT this endpoint only create the token for managed user
   describe "POST /v1/password_reset_tokens" do
     test "without access token and given a non existing standard user's username", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
 
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
           "type" => "PasswordResetToken",
           "attributes" => %{
-            "username" => managed_user.username
+            "username" => user.username
           }
         }
       })
@@ -35,7 +35,7 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "without access token and given a existing standard user's username", %{conn: conn} do
-      user = create_standard_user()
+      user = standard_user_fixture()
 
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
@@ -50,16 +50,16 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "with PAT and given a existing managed user's username", %{conn: conn} do
-      standard_user = create_standard_user()
-      managed_user = create_managed_user(standard_user)
-      pat = get_pat(standard_user)
+      account = account_fixture()
+      user = managed_user_fixture(account)
+      pat = get_pat(account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
           "type" => "PasswordResetToken",
           "attributes" => %{
-            "username" => managed_user.username
+            "username" => user.username
           }
         }
       })
@@ -68,15 +68,15 @@ defmodule BlueJetWeb.PasswordResetTokenControllerTest do
     end
 
     test "with PAT and given a existing standard user's username that is a member of target account", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/password_reset_tokens", %{
         "data" => %{
           "type" => "PasswordResetToken",
           "attributes" => %{
-            "username" => standard_user.username
+            "username" => user.username
           }
         }
       })

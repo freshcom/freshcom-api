@@ -15,31 +15,25 @@ defmodule BlueJetWeb.PriceControllerTest do
         "goods_id" => stockable.id,
         "goods_type" => "Stockable"
       },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      vas: %{account_id: user.default_account_id, user_id: user.id}
     })
 
     {:ok, _} = Catalogue.create_price(%ContextRequest{
-      params: %{
-        "product_id" => product.id
-      },
       fields: %{
         "name" => "Regular",
         "status" => "active",
         "charge_amount_cents" => 1000,
         "charge_unit" => "EA",
-        "minimum_order_quantity" => 99
+        "minimum_order_quantity" => 99,
+        "product_id" => product.id
       },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      vas: %{account_id: user.default_account_id, user_id: user.id }
     })
 
     {:ok, %{data: product}} = Catalogue.update_product(%ContextRequest{
-      params: %{
-        "id" => product.id
-      },
-      fields: %{
-        "status" => fields[:status] || "active"
-      },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      identifiers: %{id: product.id},
+      fields: %{"status" => fields[:status] || "active"},
+      vas: %{account_id: user.default_account_id, user_id: user.id }
     })
 
     product
@@ -49,16 +43,14 @@ defmodule BlueJetWeb.PriceControllerTest do
     product_id = fields[:product_id] || create_product(user).id
 
     {:ok, %{data: price}} = Catalogue.create_price(%ContextRequest{
-      params: %{
-        "product_id" => product_id
-      },
       fields: %{
         "name" => "Regular",
         "status" => fields[:status] || "active",
         "charge_amount_cents" => 1000,
-        "charge_unit" => "EA"
+        "charge_unit" => "EA",
+        "product_id" => product_id
       },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
+      vas: %{account_id: user.default_account_id, user_id: user.id}
     })
 
     price
@@ -70,7 +62,56 @@ defmodule BlueJetWeb.PriceControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
+  end
+
+  # List price
+  describe "GET /v1/products/:id/prices" do
+    test "without access token", %{conn: conn} do
+      conn = get(conn, "/v1/products/#{Ecto.UUID.generate()}/prices")
+
+      assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      product1 = create_product(standard_user1)
+      product2 = create_product(standard_user1)
+
+      create_price(standard_user1, %{product_id: product1.id})
+      create_price(standard_user1, %{product_id: product1.id, status: "draft"})
+      create_price(standard_user1, %{product_id: product2.id})
+      create_price(standard_user2)
+
+      pat = get_pat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+
+      conn = get(conn, "/v1/products/#{product1.id}/prices")
+
+      response = json_response(conn, 200)
+      assert length(response["data"]) == 2
+    end
+
+    test "with UAT", %{conn: conn} do
+      standard_user1 = create_standard_user()
+      standard_user2 = create_standard_user(n: 2)
+
+      product = create_product(standard_user1)
+
+      create_price(standard_user1, %{product_id: product.id})
+      create_price(standard_user1, %{product_id: product.id, status: "draft"})
+      create_price(standard_user2)
+
+      uat = get_uat(standard_user1)
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+
+      conn = get(conn, "/v1/products/#{product.id}/prices")
+
+      response = json_response(conn, 200)
+      assert length(response["data"]) == 3
+    end
   end
 
   # Create a price
@@ -332,53 +373,6 @@ defmodule BlueJetWeb.PriceControllerTest do
       conn = delete(conn, "/v1/prices/#{price.id}")
 
       assert conn.status == 204
-    end
-  end
-
-  # List price
-  describe "GET /v1/products/:id/prices" do
-    test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/products/#{Ecto.UUID.generate()}/prices")
-
-      assert conn.status == 401
-    end
-
-    test "with PAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-
-      product = create_product(standard_user1)
-
-      create_price(standard_user1, %{product_id: product.id})
-      create_price(standard_user1, %{product_id: product.id, status: "draft"})
-      create_price(standard_user2)
-
-      pat = get_pat(standard_user1)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
-      conn = get(conn, "/v1/products/#{product.id}/prices")
-
-      response = json_response(conn, 200)
-      assert length(response["data"]) == 2
-    end
-
-    test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-
-      product = create_product(standard_user1)
-
-      create_price(standard_user1, %{product_id: product.id})
-      create_price(standard_user1, %{product_id: product.id, status: "draft"})
-      create_price(standard_user2)
-
-      uat = get_uat(standard_user1)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
-      conn = get(conn, "/v1/products/#{product.id}/prices")
-
-      response = json_response(conn, 200)
-      assert length(response["data"]) == 3
     end
   end
 end
