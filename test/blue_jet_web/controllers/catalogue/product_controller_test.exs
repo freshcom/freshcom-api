@@ -270,7 +270,7 @@ defmodule BlueJetWeb.ProductControllerTest do
   # Delete a product
   describe "DELETE /v1/products/:id" do
     test "without access token", %{conn: conn} do
-      conn = delete(conn, "/v1/products/#{Ecto.UUID.generate()}")
+      conn = delete(conn, "/v1/products/#{UUID.generate()}")
 
       assert conn.status == 401
     end

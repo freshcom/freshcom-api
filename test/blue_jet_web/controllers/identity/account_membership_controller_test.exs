@@ -52,7 +52,7 @@ defmodule BlueJetWeb.AccountMembershipsControllerTest do
   # Update an account membership
   describe "PATCH /v1/account_memberships/:id" do
     test "without UAT", %{conn: conn} do
-      conn = patch(conn, "/v1/account_memberships/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/account_memberships/#{UUID.generate()}", %{
         "data" => %{
           "type" => "AccountMembership"
         }

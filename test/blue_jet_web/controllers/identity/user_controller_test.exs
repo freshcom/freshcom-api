@@ -102,7 +102,7 @@ defmodule BlueJetWeb.UserControllerTest do
   # Retrieve a managed user
   describe "GET /v1/users/:id" do
     test "without UAT", %{conn: conn} do
-      conn = get(conn, "/v1/users/#{Ecto.UUID.generate()}")
+      conn = get(conn, "/v1/users/#{UUID.generate()}")
 
       assert conn.status == 401
     end
@@ -221,7 +221,7 @@ defmodule BlueJetWeb.UserControllerTest do
   # Update a managed user
   describe "PATCH /v1/users/:id" do
     test "without UAT", %{conn: conn} do
-      conn = patch(conn, "/v1/users/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/users/#{UUID.generate()}", %{
         "data" => %{
           "type" => "User",
           "attributes" => %{
@@ -297,7 +297,7 @@ defmodule BlueJetWeb.UserControllerTest do
   # Delete a managed user
   describe "DELETE /v1/users/:id" do
     test "without UAT", %{conn: conn} do
-      conn = delete(conn, "/v1/users/#{Ecto.UUID.generate()}")
+      conn = delete(conn, "/v1/users/#{UUID.generate()}")
 
       assert conn.status == 401
     end

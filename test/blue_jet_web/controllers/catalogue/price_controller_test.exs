@@ -16,7 +16,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   # List price
   describe "GET /v1/products/:id/prices" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/products/#{Ecto.UUID.generate()}/prices")
+      conn = get(conn, "/v1/products/#{UUID.generate()}/prices")
 
       assert conn.status == 401
     end
@@ -65,7 +65,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   # Create a price
   describe "POST /v1/products/:id/prices" do
     test "without access token", %{conn: conn} do
-      conn = post(conn, "/v1/products/#{Ecto.UUID.generate()}/prices", %{
+      conn = post(conn, "/v1/products/#{UUID.generate()}/prices", %{
         "data" => %{
           "type" => "Price"
         }
@@ -129,7 +129,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   # Retrieve a price
   describe "GET /v1/prices/:id" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/prices/#{Ecto.UUID.generate()}")
+      conn = get(conn, "/v1/prices/#{UUID.generate()}")
 
       assert conn.status == 401
     end
@@ -200,7 +200,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   # Update a price
   describe "PATCH /v1/prices/:id" do
     test "without access token", %{conn: conn} do
-      conn = patch(conn, "/v1/prices/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/prices/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Price",
           "attributes" => %{
@@ -279,7 +279,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   # Delete a price
   describe "DELETE /v1/prices/:id" do
     test "without access token", %{conn: conn} do
-      conn = delete(conn, "/v1/prices/#{Ecto.UUID.generate()}")
+      conn = delete(conn, "/v1/prices/#{UUID.generate()}")
 
       assert conn.status == 401
     end
