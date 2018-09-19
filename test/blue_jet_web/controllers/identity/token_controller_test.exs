@@ -3,8 +3,6 @@ defmodule BlueJetWeb.TokenControllerTest do
 
   import BlueJet.Identity.TestHelper
 
-  alias Ecto.UUID
-
   setup do
     conn =
       build_conn()

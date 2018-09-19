@@ -29,6 +29,7 @@ defmodule BlueJetWeb.ConnCase do
       import Ecto.Changeset
       import Ecto.Query
 
+      alias Ecto.UUID
       alias BlueJet.Repo
       alias BlueJet.ContextRequest
       alias BlueJet.CreateRequest

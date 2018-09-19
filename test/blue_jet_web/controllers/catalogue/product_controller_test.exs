@@ -3,40 +3,7 @@ defmodule BlueJetWeb.ProductControllerTest do
 
   import BlueJet.Identity.TestHelper
   import BlueJet.Goods.TestHelper
-
-  alias BlueJet.Catalogue
-
-  def create_product(user, fields \\ %{}) do
-    stockable = create_stockable(user)
-
-    {:ok, %{data: product}} = Catalogue.create_product(%ContextRequest{
-      fields: %{
-        "name" => Faker.Commerce.product_name(),
-        "goods_id" => stockable.id,
-        "goods_type" => "Stockable"
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    {:ok, _} = Catalogue.create_price(%ContextRequest{
-      fields: %{
-        "name" => "Regular",
-        "status" => "active",
-        "charge_amount_cents" => 1000,
-        "charge_unit" => "EA",
-        "product_id" => product.id
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    {:ok, %{data: product}} = Catalogue.update_product(%ContextRequest{
-      identifiers: %{id: product.id},
-      fields: %{"status" => fields[:status] || "active"},
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    product
-  end
+  import BlueJet.Catalogue.TestHelper
 
   setup do
     conn =
@@ -45,6 +12,51 @@ defmodule BlueJetWeb.ProductControllerTest do
       |> put_req_header("content-type", "application/vnd.api+json")
 
     %{ conn: conn }
+  end
+
+  # List product
+  describe "GET /v1/products" do
+    test "without access token", %{conn: conn} do
+      conn = get(conn, "/v1/products")
+
+      assert conn.status == 401
+    end
+
+    test "with PAT", %{conn: conn} do
+      account1 = account_fixture()
+      account2 = account_fixture()
+
+      product_fixture(account1, %{status: "active"})
+      product_fixture(account1, %{status: "active"})
+      product_fixture(account1)
+      product_fixture(account2, %{status: "active"})
+
+      pat = get_pat(account1)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = get(conn, "/v1/products")
+
+      response = json_response(conn, 200)
+      assert length(response["data"]) == 2
+    end
+
+    test "with UAT", %{conn: conn} do
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+
+      product_fixture(user1.default_account, %{status: "active"})
+      product_fixture(user1.default_account, %{status: "active"})
+      product_fixture(user1.default_account)
+      product_fixture(user2.default_account)
+
+      uat = get_uat(user1.default_account, user1)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = get(conn, "/v1/products")
+
+      response = json_response(conn, 200)
+      assert length(response["data"]) == 3
+    end
   end
 
   # Create a product
@@ -60,10 +72,10 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      account = account_fixture()
+      pat = get_pat(account)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product"
@@ -74,10 +86,10 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with no attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product"
@@ -89,12 +101,11 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with valid attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      stockable = create_stockable(standard_user)
+      user = standard_user_fixture()
+      stockable = stockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = post(conn, "/v1/products", %{
         "data" => %{
           "type" => "Product",
@@ -119,70 +130,63 @@ defmodule BlueJetWeb.ProductControllerTest do
   # Retrieve a product
   describe "GET /v1/products/:id" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/products/#{Ecto.UUID.generate()}")
+      conn = get(conn, "/v1/products/#{UUID.generate()}")
 
       assert conn.status == 401
     end
 
     test "with PAT requesting inactive product", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user, %{status: "draft"})
+      account = account_fixture()
+      product = product_fixture(account)
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = get(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 404
     end
 
     test "with PAT requesting active product of different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2, %{status: "active"})
+      pat = get_pat(account1)
 
-      product = create_product(standard_user2)
-
-      pat = get_pat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = get(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 404
     end
 
     test "with PAT requesting active product", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      account = account_fixture()
+      product = product_fixture(account, %{status: "active"})
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = get(conn, "/v1/products/#{product.id}")
 
       assert json_response(conn, 200)
     end
 
     test "with UAT requesting inactive product", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user, %{status: "draft"})
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/products/#{product.id}")
 
       assert json_response(conn, 200)
     end
 
     test "with UAT requesting product of different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      product = create_product(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 404
@@ -192,7 +196,7 @@ defmodule BlueJetWeb.ProductControllerTest do
   # Update a product
   describe "PATCH /v1/products/:id" do
     test "without access token", %{conn: conn} do
-      conn = patch(conn, "/v1/products/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/products/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Product",
           "attributes" => %{
@@ -205,12 +209,11 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account, %{status: "active"})
+      pat = get_pat(user.default_account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = patch(conn, "/v1/products/#{product.id}", %{
         "data" => %{
           "id" => product.id,
@@ -225,14 +228,12 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with UAT requesting product of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account, %{status: "active"})
+      uat = get_uat(user1.default_account, user1)
 
-      product = create_product(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/products/#{product.id}", %{
         "data" => %{
           "id" => product.id,
@@ -247,12 +248,11 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/products/#{product.id}", %{
         "data" => %{
           "id" => product.id,
@@ -276,86 +276,37 @@ defmodule BlueJetWeb.ProductControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      account = account_fixture()
+      product = product_fixture(account, %{status: "active"})
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = delete(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 403
     end
 
     test "with UAT requesting product of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account, %{status: "active"})
+      uat = get_uat(user1.default_account, user1)
 
-      product = create_product(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/products/#{product.id}")
 
       assert conn.status == 204
-    end
-  end
-
-  # List product
-  describe "GET /v1/products" do
-    test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/products")
-
-      assert conn.status == 401
-    end
-
-    test "with PAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-
-      create_product(standard_user1)
-      create_product(standard_user1)
-      create_product(standard_user1, %{status: "draft"})
-      create_product(standard_user2)
-
-      pat = get_pat(standard_user1)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
-      conn = get(conn, "/v1/products")
-
-      response = json_response(conn, 200)
-      assert length(response["data"]) == 2
-    end
-
-    test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
-
-      create_product(standard_user1)
-      create_product(standard_user1)
-      create_product(standard_user1, %{status: "draft"})
-      create_product(standard_user2)
-
-      uat = get_uat(standard_user1)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
-      conn = get(conn, "/v1/products")
-
-      response = json_response(conn, 200)
-      assert length(response["data"]) == 3
     end
   end
 end

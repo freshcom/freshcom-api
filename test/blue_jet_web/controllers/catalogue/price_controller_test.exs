@@ -2,59 +2,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   use BlueJetWeb.ConnCase
 
   import BlueJet.Identity.TestHelper
-  import BlueJet.Goods.TestHelper
-
-  alias BlueJet.Catalogue
-
-  def create_product(user, fields \\ %{}) do
-    stockable = create_stockable(user)
-
-    {:ok, %{data: product}} = Catalogue.create_product(%ContextRequest{
-      fields: %{
-        "name" => Faker.Commerce.product_name(),
-        "goods_id" => stockable.id,
-        "goods_type" => "Stockable"
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    {:ok, _} = Catalogue.create_price(%ContextRequest{
-      fields: %{
-        "name" => "Regular",
-        "status" => "active",
-        "charge_amount_cents" => 1000,
-        "charge_unit" => "EA",
-        "minimum_order_quantity" => 99,
-        "product_id" => product.id
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id }
-    })
-
-    {:ok, %{data: product}} = Catalogue.update_product(%ContextRequest{
-      identifiers: %{id: product.id},
-      fields: %{"status" => fields[:status] || "active"},
-      vas: %{account_id: user.default_account_id, user_id: user.id }
-    })
-
-    product
-  end
-
-  def create_price(user, fields \\ %{}) do
-    product_id = fields[:product_id] || create_product(user).id
-
-    {:ok, %{data: price}} = Catalogue.create_price(%ContextRequest{
-      fields: %{
-        "name" => "Regular",
-        "status" => fields[:status] || "active",
-        "charge_amount_cents" => 1000,
-        "charge_unit" => "EA",
-        "product_id" => product_id
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    price
-  end
+  import BlueJet.Catalogue.TestHelper
 
   setup do
     conn =
@@ -74,20 +22,20 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      product1 = create_product(standard_user1)
-      product2 = create_product(standard_user1)
+      product1 = product_fixture(account1)
+      product2 = product_fixture(account2)
 
-      create_price(standard_user1, %{product_id: product1.id})
-      create_price(standard_user1, %{product_id: product1.id, status: "draft"})
-      create_price(standard_user1, %{product_id: product2.id})
-      create_price(standard_user2)
+      price_fixture(account1, product1)
+      price_fixture(account1, product1, %{status: "draft"})
+      price_fixture(account1, product1)
+      price_fixture(account2, product2)
 
-      pat = get_pat(standard_user1)
+      pat = get_pat(account1)
+
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = get(conn, "/v1/products/#{product1.id}/prices")
 
       response = json_response(conn, 200)
@@ -95,22 +43,22 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product1 = product_fixture(user1.default_account)
+      product2 = product_fixture(user2.default_account)
 
-      product = create_product(standard_user1)
+      price_fixture(user1.default_account, product1)
+      price_fixture(user1.default_account, product1, %{status: "draft"})
+      price_fixture(user2.default_account, product2)
 
-      create_price(standard_user1, %{product_id: product.id})
-      create_price(standard_user1, %{product_id: product.id, status: "draft"})
-      create_price(standard_user2)
+      uat = get_uat(user1.default_account, user1)
 
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
-      conn = get(conn, "/v1/products/#{product.id}/prices")
+      conn = get(conn, "/v1/products/#{product1.id}/prices")
 
       response = json_response(conn, 200)
-      assert length(response["data"]) == 3
+      assert length(response["data"]) == 2
     end
   end
 
@@ -127,12 +75,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      account = account_fixture()
+      product = product_fixture(account)
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = post(conn, "/v1/products/#{product.id}/prices", %{
         "data" => %{
           "type" => "Price"
@@ -143,12 +90,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with no attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = post(conn, "/v1/products/#{product.id}/prices", %{
         "data" => %{
           "type" => "Price"
@@ -160,12 +106,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with valid attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      product = create_product(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = post(conn, "/v1/products/#{product.id}/prices", %{
         "data" => %{
           "type" => "Price",
@@ -190,10 +135,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT requesting inactive price", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user, %{status: "draft"})
+      account = account_fixture()
+      product = product_fixture(account)
+      price = price_fixture(account, product, %{status: "draft"})
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = get(conn, "/v1/prices/#{price.id}")
 
@@ -201,10 +147,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT requesting active price", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user)
+      account = account_fixture()
+      product = product_fixture(account)
+      price = price_fixture(account, product)
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = get(conn, "/v1/prices/#{price.id}")
 
@@ -212,12 +159,12 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT requesting price of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      account1 = account_fixture()
+      account2 = account_fixture()
+      product = product_fixture(account2)
+      price = price_fixture(account2, product)
+      pat = get_pat(account1)
 
-      price = create_price(standard_user2)
-
-      pat = get_pat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = get(conn, "/v1/prices/#{price.id}")
 
@@ -225,10 +172,11 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with UAT requesting inactive price", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user, %{status: "draft"})
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      price = price_fixture(user.default_account, product, %{status: "draft"})
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/prices/#{price.id}")
 
@@ -236,12 +184,12 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with UAT requesting price of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account)
+      price = price_fixture(user2.default_account, product)
+      uat = get_uat(user1.default_account, user1)
 
-      price = create_price(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = get(conn, "/v1/prices/#{price.id}")
 
@@ -265,12 +213,12 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user)
+      account = account_fixture()
+      product = product_fixture(account)
+      price = price_fixture(account, product)
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = patch(conn, "/v1/prices/#{price.id}", %{
         "data" => %{
           "id" => price.id,
@@ -285,14 +233,13 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with UAT requesting price of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account)
+      price = price_fixture(user2.default_account, product)
+      uat = get_uat(user1.default_account, user1)
 
-      price = create_price(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/prices/#{price.id}", %{
         "data" => %{
           "id" => price.id,
@@ -307,13 +254,13 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user)
-
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      price = price_fixture(user.default_account, product)
+      uat = get_uat(user.default_account, user)
       new_name = "Employee"
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = patch(conn, "/v1/prices/#{price.id}", %{
         "data" => %{
           "id" => price.id,
@@ -338,38 +285,37 @@ defmodule BlueJetWeb.PriceControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user)
+      account = account_fixture()
+      product = product_fixture(account)
+      price = price_fixture(account, product)
+      pat = get_pat(account)
 
-      pat = get_pat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-
       conn = delete(conn, "/v1/prices/#{price.id}")
 
       assert conn.status == 403
     end
 
     test "with UAT requesting price of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      product = product_fixture(user2.default_account)
+      price = price_fixture(user2.default_account, product)
+      uat = get_uat(user1.default_account, user1)
 
-      price = create_price(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/prices/#{price.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      price = create_price(standard_user)
+      user = standard_user_fixture()
+      product = product_fixture(user.default_account)
+      price = price_fixture(user.default_account, product)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/prices/#{price.id}")
 
       assert conn.status == 204
