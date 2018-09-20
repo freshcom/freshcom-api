@@ -21,11 +21,11 @@ defmodule BlueJet.Catalogue.TestHelper do
 
     {:ok, product} = Service.create_product(fields, %{account: account})
 
-    if status == "active" do
-      price_fixture(account, product)
-      {:ok, product} = Service.update_product(%{id: product.id}, %{status: "active"}, %{account: account})
+    if status == "active" || status == "internal" do
+      price = price_fixture(account, product)
+      {:ok, product} = Service.update_product(%{id: product.id}, %{status: status}, %{account: account})
 
-      product
+      %{product | prices: [price]}
     else
       product
     end
@@ -59,7 +59,7 @@ defmodule BlueJet.Catalogue.TestHelper do
     collection
   end
 
-  def product_collection_membership_fixture(account, product, collection, fields \\ %{}) do
+  def product_collection_membership_fixture(account, collection, product, fields \\ %{}) do
     default_fields = %{
       product_id: product.id,
       collection_id: collection.id

@@ -1,60 +1,38 @@
 defmodule BlueJet.Catalogue.ProductTest do
   use BlueJet.DataCase
 
-  import Mox
+  import BlueJet.Catalogue.TestHelper
+  import BlueJet.Goods.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Goods.Stockable
   alias BlueJet.Catalogue.Product
-  alias BlueJet.Catalogue.Price
-  alias BlueJet.Catalogue.GoodsServiceMock
 
   describe "schema" do
     test "when account is deleted product is automatically deleted" do
-      account = Repo.insert!(%Account{})
-      product = Repo.insert!(%Product{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account)
+
       Repo.delete!(account)
 
       refute Repo.get(Product, product.id)
     end
 
     test "when parent is deleted variant should be automatically deleted" do
-      account = Repo.insert!(%Account{})
-      product_with_variants = Repo.insert!(%Product{
-        kind: "with_variants",
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      product_variant = Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_with_variants.id,
-        kind: "variant",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "with_variants"})
+      variant = product_fixture(account, %{kind: "variant", parent_id: parent.id})
 
-      Repo.delete!(product_with_variants)
-      refute Repo.get(Product, product_variant.id)
+      Repo.delete!(parent)
+      refute Repo.get(Product, variant.id)
     end
 
     test "when parent is deleted item should be automatically deleted" do
-      account = Repo.insert!(%Account{})
-      product_combo = Repo.insert!(%Product{
-        kind: "combo",
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      product_item = Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_combo.id,
-        kind: "item",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "combo"})
+      item = product_fixture(account, %{kind: "item", parent_id: parent.id})
 
-      Repo.delete!(product_combo)
-      refute Repo.get(Product, product_item.id)
+      Repo.delete!(parent)
+      refute Repo.get(Product, item.id)
     end
 
     test "defaults" do
@@ -105,7 +83,8 @@ defmodule BlueJet.Catalogue.ProductTest do
     #
     test "when missing required fields" do
       changeset =
-        change(%Product{}, %{})
+        %Product{}
+        |> change(%{})
         |> Map.put(:action, :insert)
         |> Product.validate()
 
@@ -114,44 +93,33 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given invalid goods" do
-      account = %Account{}
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) -> nil end)
+      account = %Account{id: UUID.generate()}
 
       changeset =
         change(%Product{}, %{
           account: account,
-          goods_id: Ecto.UUID.generate(),
+          goods_id: UUID.generate(),
           goods_type: "Stockable",
           name: Faker.String.base64(5)
         })
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      verify!()
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:goods]
     end
 
     test "when given valid goods" do
-      account_id = Ecto.UUID.generate()
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        account_id: account_id
-      }
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) -> stockable end)
+      account = account_fixture()
+      stockable = stockable_fixture(account)
+      product = %Product{account_id: account.id, account: account}
 
       changeset =
-        change(%Product{ account_id: account_id, account: %Account{} }, %{
-          goods_id: stockable.id,
-          goods_type: "Stockable",
-          name: Faker.String.base64(5)
-        })
+        product
+        |> change(goods_id: stockable.id, goods_type: "Stockable", name: Faker.Commerce.product_name())
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      verify!()
       assert changeset.valid?
     end
 
@@ -160,25 +128,23 @@ defmodule BlueJet.Catalogue.ProductTest do
     #
     test "when given product with variants and missing required fields" do
       changeset =
-        change(%Product{}, %{ kind: "with_variants" })
+        %Product{}
+        |> change(kind: "with_variants")
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:name]
     end
 
     test "when given product with variants with invalid internal status due to missing internal variant" do
       changeset =
-        change(%Product{}, %{
-          kind: "with_variants",
-          name: Faker.String.base64(5),
-          status: "internal"
-        })
+        %Product{}
+        |> change(kind: "with_variants", status: "internal", name: Faker.Commerce.product_name())
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -186,24 +152,14 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product with variants with valid internal status" do
-      account = Repo.insert!(%Account{})
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_with_variants.id,
-        kind: "variant",
-        status: "internal",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "with_variants"})
+      product_fixture(account, %{kind: "variant", status: "internal", parent_id: product.id})
 
       changeset =
-        change(product_with_variants, %{
-          status: "internal"
-        })
+        product
+        |> change(status: "internal")
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       assert changeset.valid?
@@ -211,15 +167,12 @@ defmodule BlueJet.Catalogue.ProductTest do
 
     test "when given product with variants with invalid active status due to missing active variant" do
       changeset =
-        change(%Product{}, %{
-          kind: "with_variants",
-          name: Faker.String.base64(5),
-          status: "active"
-        })
+        %Product{}
+        |> change(kind: "with_variants", status: "active", name: Faker.Commerce.product_name())
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -227,25 +180,13 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product with variants with valid active status" do
-      account = Repo.insert!(%Account{})
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_with_variants.id,
-        primary: true,
-        kind: "variant",
-        status: "active",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "with_variants"})
+      product_fixture(account, %{kind: "variant", status: "active", parent_id: product.id})
 
       changeset =
-        change(product_with_variants, %{
-          status: "active"
-        })
+        product
+        |> change(status: "active")
         |> Product.validate()
 
       assert changeset.valid?
@@ -256,25 +197,23 @@ defmodule BlueJet.Catalogue.ProductTest do
     #
     test "when given product combo and missing required fields" do
       changeset =
-        change(%Product{}, %{ kind: "combo" })
+        %Product{}
+        |> change(kind: "combo")
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:name]
     end
 
     test "when given product combo with invalid internal status due to missing internal item" do
       changeset =
-        change(%Product{}, %{
-          kind: "combo",
-          name: Faker.String.base64(5),
-          status: "internal"
-        })
+        %Product{}
+        |> change(kind: "combo", status: "internal", name: Faker.Commerce.product_name())
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -282,28 +221,17 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product combo with invalid internal status due to missing internal price" do
-      account = Repo.insert!(%Account{})
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_combo.id,
-        kind: "item",
-        status: "internal",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "combo"})
+      product_fixture(account, %{kind: "item", status: "internal", parent_id: product.id})
 
       changeset =
-        change(product_combo, %{
-          status: "internal"
-        })
+        product
+        |> change(status: "internal")
         |> Map.put(:action, :update)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -311,33 +239,14 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product combo with valid internal status" do
-      account = Repo.insert!(%Account{})
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_id: product_combo.id,
-        status: "internal",
-        charge_amount_cents: 500,
-        charge_unit: Faker.String.base64(2),
-        order_unit: Faker.String.base64(2),
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_combo.id,
-        kind: "item",
-        status: "internal",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "combo"})
+      price_fixture(account, product, %{status: "internal"})
+      product_fixture(account, %{kind: "item", status: "internal", parent_id: product.id})
 
       changeset =
-        change(product_combo, %{
-          status: "internal"
-        })
+        product
+        |> change(status: "internal")
         |> Product.validate()
 
       assert changeset.valid?
@@ -345,15 +254,12 @@ defmodule BlueJet.Catalogue.ProductTest do
 
     test "when given product combo with invalid active status due to missing active item" do
       changeset =
-        change(%Product{}, %{
-          kind: "combo",
-          name: Faker.String.base64(5),
-          status: "active"
-        })
+        %Product{}
+        |> change(kind: "combo", status: "active", name: Faker.Commerce.product_name())
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -361,28 +267,17 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product combo with invalid active status due to missing active price" do
-      account = Repo.insert!(%Account{})
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_combo.id,
-        kind: "item",
-        status: "active",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "combo"})
+      product_fixture(account, %{kind: "item", status: "active", parent_id: product.id})
 
       changeset =
-        change(product_combo, %{
-          status: "active"
-        })
+        product
+        |> change(status: "active")
         |> Map.put(:action, :update)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -390,33 +285,15 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product combo with valid active status" do
-      account = Repo.insert!(%Account{})
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        product_id: product_combo.id,
-        status: "active",
-        charge_amount_cents: 500,
-        charge_unit: Faker.String.base64(2),
-        order_unit: Faker.String.base64(2),
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%Product{
-        account_id: account.id,
-        parent_id: product_combo.id,
-        kind: "item",
-        status: "active",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      product = product_fixture(account, %{kind: "combo"})
+      price_fixture(account, product, %{status: "active"})
+      product_fixture(account, %{kind: "item", status: "active", parent_id: product.id})
 
       changeset =
-        change(product_combo, %{
-          status: "active"
-        })
+        product
+        |> change(status: "active")
+        |> Map.put(:action, :update)
         |> Product.validate()
 
       assert changeset.valid?
@@ -427,7 +304,8 @@ defmodule BlueJet.Catalogue.ProductTest do
     #
     test "when given product variant and missing required fields" do
       changeset =
-        change(%Product{}, %{ kind: "variant" })
+        %Product{}
+        |> change(kind: "variant")
         |> Map.put(:action, :insert)
         |> Product.validate()
 
@@ -436,31 +314,25 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product varaint with invalid internal status due to missing internal price" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "with_variants"})
+      stockable = stockable_fixture(account)
+
       changeset =
-        change(%Product{}, %{
+        %Product{}
+        |> change(
           account_id: account.id,
           status: "internal",
           kind: "variant",
-          parent_id: product_with_variants.id,
-          name: Faker.String.base64(5),
+          parent_id: parent.id,
+          name: Faker.Commerce.product_name(),
           goods_id: stockable.id,
           goods_type: "Stockable"
-        })
+        )
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
@@ -468,108 +340,58 @@ defmodule BlueJet.Catalogue.ProductTest do
     end
 
     test "when given product varaint with valid internal status" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "with_variants"})
+      variant = product_fixture(account, %{kind: "variant", parent_id: parent.id})
+      price_fixture(account, variant, %{status: "internal"})
 
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        account: account,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
-      product_variant = Repo.insert!(%Product{
-        account_id: account.id,
-        account: account,
-        kind: "variant",
-        parent_id: product_with_variants.id,
-        name: Faker.String.base64(5),
-        goods_id: Ecto.UUID.generate(),
-        goods_type: "Stockable"
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        account: account,
-        product_id: product_variant.id,
-        status: "internal",
-        charge_amount_cents: 500,
-        charge_unit: Faker.String.base64(2),
-        order_unit: Faker.String.base64(2),
-        name: Faker.String.base64(5)
-      })
       changeset =
-        change(product_variant, %{ status: "internal" })
+        variant
+        |> change(status: "internal")
         |> Map.put(:action, :update)
         |> Product.validate()
 
-      verify!()
       assert changeset.valid?
     end
 
-    test "when given product varaint with invalid active status due to missing internal price" do
-      account = Repo.insert!(%Account{})
-      stockable = Repo.insert!(%Stockable{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        unit_of_measure: Faker.String.base64(2)
-      })
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
+    test "when given product varaint with invalid active status due to missing active price" do
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "with_variants"})
+      stockable = stockable_fixture(account)
+
       changeset =
-        change(%Product{}, %{
+        %Product{}
+        |> change(
           account_id: account.id,
-          status: "internal",
+          status: "active",
           kind: "variant",
-          parent_id: product_with_variants.id,
-          name: Faker.String.base64(5),
+          parent_id: parent.id,
+          name: Faker.Commerce.product_name(),
           goods_id: stockable.id,
           goods_type: "Stockable"
-        })
+        )
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:status]
 
       {_, error_info} = changeset.errors[:status]
-      assert error_info[:code] == "cannot_be_internal"
+      assert error_info[:code] == "cannot_be_active"
     end
 
     test "when given product varaint with valid active status" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
+      parent = product_fixture(account, %{kind: "with_variants"})
+      variant = product_fixture(account, %{kind: "variant", parent_id: parent.id})
+      price_fixture(account, variant, %{status: "active"})
 
-      product_with_variants = Repo.insert!(%Product{
-        account_id: account.id,
-        account: account,
-        kind: "with_variants",
-        name: Faker.String.base64(5)
-      })
-      product_variant = Repo.insert!(%Product{
-        account_id: account.id,
-        account: account,
-        kind: "variant",
-        parent_id: product_with_variants.id,
-        name: Faker.String.base64(5),
-        goods_id: Ecto.UUID.generate(),
-        goods_type: "Stockable"
-      })
-      Repo.insert!(%Price{
-        account_id: account.id,
-        account: account,
-        product_id: product_variant.id,
-        status: "active",
-        charge_amount_cents: 500,
-        charge_unit: Faker.String.base64(2),
-        order_unit: Faker.String.base64(2),
-        name: Faker.String.base64(5)
-      })
       changeset =
-        change(product_variant, %{ status: "active" })
+        variant
+        |> change(status: "active")
         |> Map.put(:action, :update)
         |> Product.validate()
 
-      verify!()
       assert changeset.valid?
     end
 
@@ -578,102 +400,72 @@ defmodule BlueJet.Catalogue.ProductTest do
     #
     test "when given product item and missing required fields" do
       changeset =
-        change(%Product{}, %{ kind: "item" })
+        %Product{}
+        |> change(kind: "item")
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      refute changeset.valid?
+      assert changeset.valid? == false
       assert Keyword.keys(changeset.errors) == [:name, :parent_id, :goods_id, :goods_type]
     end
 
     test "when given product item with valid internal status" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
+      stockable = stockable_fixture(account)
+      parent = product_fixture(account, %{kind: "combo"})
 
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      }
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) -> stockable end)
-
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
       changeset =
         change(%Product{}, %{
           account_id: account.id,
           account: account,
           status: "internal",
           kind: "item",
-          parent_id: product_combo.id,
-          name: Faker.String.base64(5),
+          parent_id: parent.id,
+          name: Faker.Commerce.product_name(),
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      verify!()
       assert changeset.valid?
     end
 
     test "when given product item with valid active status" do
-      account = Repo.insert!(%Account{})
+      account = account_fixture()
+      stockable = stockable_fixture(account)
+      parent = product_fixture(account, %{kind: "combo"})
 
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        name: Faker.String.base64(5),
-        account_id: account.id
-      }
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) -> stockable end)
-
-      product_combo = Repo.insert!(%Product{
-        account_id: account.id,
-        kind: "combo",
-        name: Faker.String.base64(5)
-      })
       changeset =
         change(%Product{}, %{
           account_id: account.id,
           account: account,
           status: "active",
           kind: "item",
-          parent_id: product_combo.id,
-          name: Faker.String.base64(5),
+          parent_id: parent.id,
+          name: Faker.Commerce.product_name(),
           goods_id: stockable.id,
           goods_type: "Stockable"
         })
         |> Map.put(:action, :insert)
         |> Product.validate()
 
-      verify!()
       assert changeset.valid?
     end
   end
 
   describe "changeset/4" do
     test "when given name sync is sync with goods" do
-      account = %Account{ id: Ecto.UUID.generate() }
+      account = account_fixture()
+      stockable = stockable_fixture(account)
+      product = %Product{account_id: account.id, account: account}
 
-      stockable = %Stockable{
-        id: Ecto.UUID.generate(),
-        name: Faker.String.base64(5),
-        account_id: account.id
-      }
-      GoodsServiceMock
-      |> expect(:get_stockable, fn(_, _) -> stockable end)
-
-      changeset = Product.changeset(%Product{ account_id: account.id, account: account }, :insert, %{
+      changeset = Product.changeset(product, :insert, %{
         name_sync: "sync_with_goods",
         goods_id: stockable.id,
         goods_type: "Stockable"
       })
 
-      verify!()
       assert changeset.valid?
       assert changeset.changes[:name] == stockable.name
     end

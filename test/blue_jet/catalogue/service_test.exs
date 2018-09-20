@@ -5,7 +5,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
   import BlueJet.Goods.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Catalogue.DefaultService
+  alias BlueJet.Catalogue.Service
   alias BlueJet.Catalogue.{Product, Price, ProductCollection, ProductCollectionMembership}
 
   #
@@ -24,10 +24,10 @@ defmodule BlueJet.Catalogue.ServiceTest do
       product_fixture(account2, %{label: "bestseller", name: "Test Product"})
 
       collection = product_collection_fixture(account1)
-      product_collection_membership_fixture(account1, product1, collection)
-      product_collection_membership_fixture(account1, product2, collection)
-      product_collection_membership_fixture(account1, product3, collection)
-      product_collection_membership_fixture(account1, product4, collection)
+      product_collection_membership_fixture(account1, collection, product1)
+      product_collection_membership_fixture(account1, collection, product2)
+      product_collection_membership_fixture(account1, collection, product3)
+      product_collection_membership_fixture(account1, collection, product4)
 
       query = %{search: "product", filter: %{label: "bestseller", collection_id: collection.id}}
       opts = %{
@@ -35,7 +35,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         pagination: %{size: 2, number: 1},
         preload: %{paths: [:prices]}
       }
-      products = DefaultService.list_product(query, opts)
+      products = Service.list_product(query, opts)
 
       assert length(products) == 2
       assert length(Enum.at(products, 0).prices) == 1
@@ -44,12 +44,12 @@ defmodule BlueJet.Catalogue.ServiceTest do
         account: account1,
         pagination: %{size: 2, number: 2}
       }
-      products = DefaultService.list_product(query, opts)
+      products = Service.list_product(query, opts)
 
       assert length(products) == 1
 
-      assert DefaultService.count_product(query, %{account: account1}) == 3
-      assert DefaultService.count_product(%{account: account1}) == 5
+      assert Service.count_product(query, %{account: account1}) == 3
+      assert Service.count_product(%{account: account1}) == 5
     end
   end
 
@@ -57,7 +57,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid fields" do
       account = %Account{id: UUID.generate()}
 
-      {:error, %{errors: errors}} = DefaultService.create_product(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_product(%{}, %{account: account})
 
       assert match_keys(errors, [:name, :goods_id, :goods_type])
     end
@@ -72,7 +72,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "goods_type" => "Stockable"
       }
 
-      {:ok, product} = DefaultService.create_product(fields, %{account: account})
+      {:ok, product} = Service.create_product(fields, %{account: account})
 
       assert product.name == stockable.name
       assert product.goods_id == stockable.id
@@ -84,7 +84,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id doesn't exist" do
       account = account_fixture()
 
-      refute DefaultService.get_product(%{id: UUID.generate()}, %{account: account})
+      refute Service.get_product(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -92,7 +92,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account2 = account_fixture()
       product = product_fixture(account2)
 
-      refute DefaultService.get_product(%{id: product.id}, %{account: account1})
+      refute Service.get_product(%{id: product.id}, %{account: account1})
     end
 
     test "when given id is valid" do
@@ -102,7 +102,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: target_product.id}
       opts = %{account: account, preload: %{paths: [:prices]}}
 
-      product = DefaultService.get_product(identifiers, opts)
+      product = Service.get_product(identifiers, opts)
 
       assert product.id == target_product.id
       assert length(product.prices) == 1
@@ -113,7 +113,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = %Account{id: UUID.generate()}
 
-      {:error, :not_found} = DefaultService.update_product(%{id: UUID.generate()}, %{}, %{account: account})
+      {:error, :not_found} = Service.update_product(%{id: UUID.generate()}, %{}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -121,7 +121,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account2 = account_fixture()
       product = product_fixture(account2)
 
-      {:error, :not_found} = DefaultService.update_product(%{id: product.id}, %{}, %{account: account1})
+      {:error, :not_found} = Service.update_product(%{id: product.id}, %{}, %{account: account1})
     end
 
     test "when given valid id and valid fields" do
@@ -132,7 +132,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, product} = DefaultService.update_product(identifiers, fields, opts)
+      {:ok, product} = Service.update_product(identifiers, fields, opts)
 
       assert product.id == target_product.id
       assert product.name == fields["name"]
@@ -143,7 +143,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid id" do
       account = %Account{id: UUID.generate()}
 
-      {:error, :not_found} = DefaultService.delete_product(%{id: UUID.generate()}, %{account: account})
+      {:error, :not_found} = Service.delete_product(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -151,14 +151,14 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account2 = account_fixture()
       product = product_fixture(account2)
 
-      {:error, :not_found} = DefaultService.delete_product(%{id: product.id}, %{account: account1})
+      {:error, :not_found} = Service.delete_product(%{id: product.id}, %{account: account1})
     end
 
     test "when given valid id" do
       account = account_fixture()
       product = product_fixture(account)
 
-      {:ok, _} = DefaultService.delete_product(%{id: product.id}, %{account: account})
+      {:ok, _} = Service.delete_product(%{id: product.id}, %{account: account})
 
       refute Repo.get(Product, product.id)
     end
@@ -188,7 +188,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         pagination: %{size: 2, number: 1},
         preload: %{paths: [:product]}
       }
-      prices = DefaultService.list_price(query, opts)
+      prices = Service.list_price(query, opts)
 
       assert length(prices) == 2
       assert Enum.at(prices, 0).product.id
@@ -197,12 +197,12 @@ defmodule BlueJet.Catalogue.ServiceTest do
         account: account1,
         pagination: %{size: 2, number: 2}
       }
-      prices = DefaultService.list_price(query, opts)
+      prices = Service.list_price(query, opts)
 
       assert length(prices) == 1
 
-      assert DefaultService.count_price(query, %{account: account1}) == 3
-      assert DefaultService.count_price(%{account: account1}) == 4
+      assert Service.count_price(query, %{account: account1}) == 3
+      assert Service.count_price(%{account: account1}) == 4
     end
   end
 
@@ -210,7 +210,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid fields" do
       account = %Account{id: UUID.generate()}
 
-      {:error, %{errors: errors}} = DefaultService.create_price(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_price(%{}, %{account: account})
 
       assert match_keys(errors, [:name, :product_id, :charge_amount_cents, :charge_unit])
     end
@@ -226,7 +226,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "charge_unit" => Faker.String.base64(2)
       }
 
-      {:ok, price} = DefaultService.create_price(fields, %{account: account})
+      {:ok, price} = Service.create_price(fields, %{account: account})
 
       assert price.name == fields["name"]
       assert price.product_id == fields["product_id"]
@@ -239,7 +239,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id doesn't exist" do
       account = account_fixture()
 
-      refute DefaultService.get_price(%{id: UUID.generate()}, %{account: account})
+      refute Service.get_price(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -248,7 +248,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       product = product_fixture(account2)
       price = price_fixture(account2, product)
 
-      refute DefaultService.get_product(%{id: price.id}, %{account: account1})
+      refute Service.get_product(%{id: price.id}, %{account: account1})
     end
 
     test "when given id is valid" do
@@ -259,7 +259,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: target_price.id}
       opts = %{account: account, preload: %{paths: [:product]}}
 
-      price = DefaultService.get_price(identifiers, opts)
+      price = Service.get_price(identifiers, opts)
 
       assert price.id == target_price.id
       assert price.product.id
@@ -270,7 +270,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = %Account{id: UUID.generate()}
 
-      {:error, :not_found} = DefaultService.update_price(%{id: UUID.generate()}, %{}, %{account: account})
+      {:error, :not_found} = Service.update_price(%{id: UUID.generate()}, %{}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -279,7 +279,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       product = product_fixture(account2)
       price = price_fixture(account2, product)
 
-      {:error, :not_found} = DefaultService.update_product(%{id: price.id}, %{}, %{account: account1})
+      {:error, :not_found} = Service.update_product(%{id: price.id}, %{}, %{account: account1})
     end
 
     test "when given valid id and valid fields" do
@@ -291,7 +291,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       fields = %{"name" => Faker.String.base64(12)}
       opts = %{account: account}
 
-      {:ok, price} = DefaultService.update_price(identifiers, fields, opts)
+      {:ok, price} = Service.update_price(identifiers, fields, opts)
 
       assert price.id == target_price.id
       assert price.name == fields["name"]
@@ -302,7 +302,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid id" do
       account = %Account{id: UUID.generate()}
 
-      {:error, :not_found} = DefaultService.delete_price(%{id: UUID.generate()}, %{account: account})
+      {:error, :not_found} = Service.delete_price(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -311,7 +311,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       product = product_fixture(account2)
       price = price_fixture(account2, product)
 
-      {:error, :not_found} = DefaultService.delete_price(%{id: price.id}, %{account: account1})
+      {:error, :not_found} = Service.delete_price(%{id: price.id}, %{account: account1})
     end
 
     test "when given valid id" do
@@ -319,7 +319,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       product = product_fixture(account)
       price = price_fixture(account, product)
 
-      {:ok, _} = DefaultService.delete_price(%{id: price.id}, %{account: account})
+      {:ok, _} = Service.delete_price(%{id: price.id}, %{account: account})
 
       refute Repo.get(Price, price.id)
     end
@@ -344,7 +344,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         account: account1,
         pagination: %{size: 2, number: 1}
       }
-      collections = DefaultService.list_product_collection(query, opts)
+      collections = Service.list_product_collection(query, opts)
 
       assert length(collections) == 2
 
@@ -352,12 +352,12 @@ defmodule BlueJet.Catalogue.ServiceTest do
         account: account1,
         pagination: %{size: 2, number: 2}
       }
-      collections = DefaultService.list_product_collection(query, opts)
+      collections = Service.list_product_collection(query, opts)
 
       assert length(collections) == 1
 
-      assert DefaultService.count_product_collection(query, %{account: account1}) == 3
-      assert DefaultService.count_product_collection(%{account: account1}) == 4
+      assert Service.count_product_collection(query, %{account: account1}) == 3
+      assert Service.count_product_collection(%{account: account1}) == 4
     end
   end
 
@@ -365,7 +365,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid fields" do
       account = %Account{id: UUID.generate()}
 
-      {:error, %{errors: errors}} = DefaultService.create_product_collection(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_product_collection(%{}, %{account: account})
 
       assert match_keys(errors, [:name])
     end
@@ -375,7 +375,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
       fields = %{"name" => Faker.Commerce.product_name()}
 
-      {:ok, product_collection} = DefaultService.create_product_collection(fields, %{account: account})
+      {:ok, product_collection} = Service.create_product_collection(fields, %{account: account})
 
       assert product_collection.name == fields["name"]
     end
@@ -385,7 +385,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given id does not exist" do
       account = %Account{id: UUID.generate()}
 
-      refute DefaultService.get_product_collection(%{id: UUID.generate()}, %{account: account})
+      refute Service.get_product_collection(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -394,14 +394,14 @@ defmodule BlueJet.Catalogue.ServiceTest do
 
       collection = product_collection_fixture(account2)
 
-      refute DefaultService.get_product_collection(%{id: collection.id}, %{account: account1})
+      refute Service.get_product_collection(%{id: collection.id}, %{account: account1})
     end
 
     test "when given valid id" do
       account = account_fixture()
       collection = product_collection_fixture(account)
 
-      assert DefaultService.get_product_collection(%{id: collection.id}, %{account: account})
+      assert Service.get_product_collection(%{id: collection.id}, %{account: account})
     end
   end
 
@@ -412,7 +412,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      {:error, :not_found} = DefaultService.update_product_collection(identifiers, %{}, opts)
+      {:error, :not_found} = Service.update_product_collection(identifiers, %{}, opts)
     end
 
     test "when given id belongs to a different account" do
@@ -424,7 +424,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: collection.id}
       opts = %{account: account1}
 
-      {:error, :not_found} = DefaultService.update_product_collection(identifiers, %{}, opts)
+      {:error, :not_found} = Service.update_product_collection(identifiers, %{}, opts)
     end
 
     test "when given valid id and valid fields" do
@@ -435,7 +435,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, collection} = DefaultService.update_product_collection(identifiers, fields, opts)
+      {:ok, collection} = Service.update_product_collection(identifiers, fields, opts)
 
       assert collection.name == fields["name"]
     end
@@ -448,7 +448,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      {:error, :not_found} = DefaultService.delete_product_collection(identifiers, opts)
+      {:error, :not_found} = Service.delete_product_collection(identifiers, opts)
     end
 
     test "when given id belongs to a different account" do
@@ -460,7 +460,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: collection.id}
       opts = %{account: account1}
 
-      {:error, :not_found} = DefaultService.delete_product_collection(identifiers, opts)
+      {:error, :not_found} = Service.delete_product_collection(identifiers, opts)
     end
 
     test "when given valid id" do
@@ -470,7 +470,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: collection.id}
       opts = %{account: account}
 
-      {:ok, _} = DefaultService.delete_product_collection(identifiers, opts)
+      {:ok, _} = Service.delete_product_collection(identifiers, opts)
 
       refute Repo.get(ProductCollection, collection.id)
     end
@@ -493,12 +493,12 @@ defmodule BlueJet.Catalogue.ServiceTest do
       collection1 = product_collection_fixture(account)
       collection2 = product_collection_fixture(account)
 
-      product_collection_membership_fixture(account, product1, collection1)
-      product_collection_membership_fixture(account, product2, collection1)
-      product_collection_membership_fixture(account, product3, collection1)
-      product_collection_membership_fixture(account, product4, collection1)
-      product_collection_membership_fixture(account, product5, collection1)
-      product_collection_membership_fixture(account, product6, collection2)
+      product_collection_membership_fixture(account, collection1, product1)
+      product_collection_membership_fixture(account, collection1, product2)
+      product_collection_membership_fixture(account, collection1, product3)
+      product_collection_membership_fixture(account, collection1, product4)
+      product_collection_membership_fixture(account, collection1, product5)
+      product_collection_membership_fixture(account, collection2, product6)
 
       query = %{search: "product", filter: %{product_status: "active", collection_id: collection1.id}}
       opts = %{
@@ -506,7 +506,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         pagination: %{size: 2, number: 1},
         preload: %{paths: [:product]}
       }
-      memberships = DefaultService.list_product_collection_membership(query, opts)
+      memberships = Service.list_product_collection_membership(query, opts)
 
       assert length(memberships) == 2
       assert Enum.at(memberships, 0).product.id
@@ -515,12 +515,12 @@ defmodule BlueJet.Catalogue.ServiceTest do
         account: account,
         pagination: %{size: 2, number: 2}
       }
-      memberships = DefaultService.list_product_collection_membership(query, opts)
+      memberships = Service.list_product_collection_membership(query, opts)
 
       assert length(memberships) == 1
 
-      assert DefaultService.count_product_collection_membership(query, %{account: account}) == 3
-      assert DefaultService.count_product_collection_membership(%{account: account}) == 6
+      assert Service.count_product_collection_membership(query, %{account: account}) == 3
+      assert Service.count_product_collection_membership(%{account: account}) == 6
     end
   end
 
@@ -528,7 +528,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
     test "when given invalid fields" do
       account = %Account{id: UUID.generate()}
 
-      {:error, %{errors: errors}} = DefaultService.create_product_collection_membership(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_product_collection_membership(%{}, %{account: account})
 
       assert match_keys(errors, [:collection_id, :product_id])
     end
@@ -544,7 +544,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
         "sort_index" => 1929
       }
 
-      {:ok, membership} = DefaultService.create_product_collection_membership(fields, %{account: account})
+      {:ok, membership} = Service.create_product_collection_membership(fields, %{account: account})
 
       assert membership.product_id == fields["product_id"]
       assert membership.collection_id == fields["collection_id"]
@@ -559,7 +559,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      refute DefaultService.get_product_collection_membership(identifiers, opts)
+      refute Service.get_product_collection_membership(identifiers, opts)
     end
 
     test "when given id belongs to a different account" do
@@ -567,24 +567,24 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account2 = account_fixture()
       product = product_fixture(account2)
       collection = product_collection_fixture(account2)
-      membership = product_collection_membership_fixture(account2, product, collection)
+      membership = product_collection_membership_fixture(account2, collection, product)
 
       identifiers = %{id: membership.id}
       opts = %{account: account1}
 
-      refute DefaultService.get_product_collection_membership(identifiers, opts)
+      refute Service.get_product_collection_membership(identifiers, opts)
     end
 
     test "when given id is valid" do
       account = account_fixture()
       product = product_fixture(account)
       collection = product_collection_fixture(account)
-      target_membership = product_collection_membership_fixture(account, product, collection)
+      target_membership = product_collection_membership_fixture(account, collection, product)
 
       identifiers = %{id: target_membership.id}
       opts = %{account: account, preload: %{paths: [:product]}}
 
-      membership = DefaultService.get_product_collection_membership(identifiers, opts)
+      membership = Service.get_product_collection_membership(identifiers, opts)
 
       assert membership.id == target_membership.id
       assert membership.product.id
@@ -598,7 +598,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      {:error, :not_found} = DefaultService.delete_product_collection_membership(identifiers, opts)
+      {:error, :not_found} = Service.delete_product_collection_membership(identifiers, opts)
     end
 
     test "when given id belongs to a different account" do
@@ -606,24 +606,24 @@ defmodule BlueJet.Catalogue.ServiceTest do
       account2 = account_fixture()
       product = product_fixture(account2)
       collection = product_collection_fixture(account2)
-      membership = product_collection_membership_fixture(account2, product, collection)
+      membership = product_collection_membership_fixture(account2, collection, product)
 
       identifiers = %{id: membership.id}
       opts = %{account: account1}
 
-      {:error, :not_found} = DefaultService.delete_product_collection_membership(identifiers, opts)
+      {:error, :not_found} = Service.delete_product_collection_membership(identifiers, opts)
     end
 
     test "when given valid id" do
       account = account_fixture()
       product = product_fixture(account)
       collection = product_collection_fixture(account)
-      membership = product_collection_membership_fixture(account, product, collection)
+      membership = product_collection_membership_fixture(account, collection, product)
 
       identifiers = %{id: membership.id}
       opts = %{account: account}
 
-      {:ok, _} = DefaultService.delete_product_collection_membership(identifiers, opts)
+      {:ok, _} = Service.delete_product_collection_membership(identifiers, opts)
 
       refute Repo.get(ProductCollectionMembership, membership.id)
     end

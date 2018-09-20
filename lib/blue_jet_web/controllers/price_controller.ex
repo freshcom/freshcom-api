@@ -1,7 +1,6 @@
 defmodule BlueJetWeb.PriceController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.Catalogue
 
   action_fallback BlueJetWeb.FallbackController

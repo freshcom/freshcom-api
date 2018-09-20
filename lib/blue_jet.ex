@@ -18,6 +18,7 @@ defmodule BlueJet do
 
   def service do
     quote do
+      import Ecto.Changeset
       import BlueJet.Service.{Option, Preload, Helper, Default}
       import BlueJet.Query
       import BlueJet.EventBus

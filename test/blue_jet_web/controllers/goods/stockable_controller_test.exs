@@ -2,20 +2,7 @@ defmodule BlueJetWeb.StockableControllerTest do
   use BlueJetWeb.ConnCase
 
   import BlueJet.Identity.TestHelper
-
-  alias BlueJet.Goods
-
-  def create_stockable(user) do
-    {:ok, %{data: stockable}} = Goods.create_stockable(%ContextRequest{
-      fields: %{
-        "name" => Faker.Commerce.product_name(),
-        "unit_of_measure" => "EA"
-      },
-      vas: %{account_id: user.default_account_id, user_id: user.id}
-    })
-
-    stockable
-  end
+  import BlueJet.Goods.TestHelper
 
   setup do
     conn =
@@ -39,10 +26,10 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/stockables", %{
         "data" => %{
           "type" => "Stockable"
@@ -53,10 +40,10 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with no attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/stockables", %{
         "data" => %{
           "type" => "Stockable"
@@ -68,10 +55,10 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with valid attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/stockables", %{
         "data" => %{
           "type" => "Stockable",
@@ -89,42 +76,39 @@ defmodule BlueJetWeb.StockableControllerTest do
   # Retrieve a stockable
   describe "GET /v1/stockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+      conn = get(conn, "/v1/stockables/#{UUID.generate()}")
 
       assert conn.status == 401
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = get(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = get(conn, "/v1/stockables/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
     test "with UAT requesting a stockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      stockable = stockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      stockable = create_stockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/stockables/#{stockable.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      stockable = create_stockable(standard_user)
+      user = standard_user_fixture()
+      stockable = stockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/stockables/#{stockable.id}")
 
       assert json_response(conn, 200)
@@ -134,7 +118,7 @@ defmodule BlueJetWeb.StockableControllerTest do
   # Update a stockable
   describe "PATCH /v1/stockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = patch(conn, "/v1/stockables/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/stockables/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Stockable",
           "attributes" => %{
@@ -147,11 +131,11 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = patch(conn, "/v1/stockables/#{Ecto.UUID.generate()}", %{
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = patch(conn, "/v1/stockables/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Stockable",
           "attributes" => %{
@@ -164,14 +148,12 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with UAT requesting stockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      stockable = stockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      stockable = create_stockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/stockables/#{stockable.id}", %{
         "data" => %{
           "type" => "Stockable",
@@ -185,12 +167,11 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      stockable = create_stockable(standard_user)
+      user = standard_user_fixture()
+      stockable = stockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/stockables/#{stockable.id}", %{
         "data" => %{
           "type" => "Stockable",
@@ -207,42 +188,39 @@ defmodule BlueJetWeb.StockableControllerTest do
   # Delete a stockable
   describe "DELETE /v1/stockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = delete(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+      conn = delete(conn, "/v1/stockables/#{UUID.generate()}")
 
       assert conn.status == 401
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = delete(conn, "/v1/stockables/#{Ecto.UUID.generate()}")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = delete(conn, "/v1/stockables/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
     test "with UAT and requesting stockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      stockable = stockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      stockable = create_stockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/stockables/#{stockable.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      stockable = create_stockable(standard_user)
+      user = standard_user_fixture()
+      stockable = stockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/stockables/#{stockable.id}")
 
       assert conn.status == 204
@@ -258,16 +236,16 @@ defmodule BlueJetWeb.StockableControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
 
-      create_stockable(standard_user1)
-      create_stockable(standard_user1)
-      create_stockable(standard_user2)
+      stockable_fixture(user1.default_account)
+      stockable_fixture(user1.default_account)
+      stockable_fixture(user2.default_account)
 
-      uat = get_uat(standard_user1)
+      uat = get_uat(user1.default_account, user1)
+
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/stockables")
 
       response = json_response(conn, 200)

@@ -2,19 +2,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   use BlueJetWeb.ConnCase
 
   import BlueJet.Identity.TestHelper
-
-  alias BlueJet.Goods
-
-  def create_unlockable(user) do
-    {:ok, %{data: unlockable}} = Goods.create_unlockable(%ContextRequest{
-      fields: %{
-        "name" => Faker.Commerce.product_name()
-      },
-      vas: %{ account_id: user.default_account_id, user_id: user.id }
-    })
-
-    unlockable
-  end
+  import BlueJet.Goods.TestHelper
 
   setup do
     conn =
@@ -38,10 +26,10 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
       conn = post(conn, "/v1/unlockables", %{
         "data" => %{
           "type" => "Unlockable"
@@ -52,10 +40,10 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with no attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/unlockables", %{
         "data" => %{
           "type" => "Unlockable"
@@ -67,10 +55,10 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with valid attributes", %{conn: conn} do
-      standard_user = create_standard_user()
-      uat = get_uat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      user = standard_user_fixture()
+      uat = get_uat(user.default_account, user)
 
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
       conn = post(conn, "/v1/unlockables", %{
         "data" => %{
           "type" => "Unlockable",
@@ -87,42 +75,39 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   # Retrieve a unlockable
   describe "GET /v1/unlockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+      conn = get(conn, "/v1/unlockables/#{UUID.generate()}")
 
       assert conn.status == 401
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = get(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = get(conn, "/v1/unlockables/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
     test "with UAT requesting a unlockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      unlockable = unlockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      unlockable = create_unlockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/unlockables/#{unlockable.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      unlockable = create_unlockable(standard_user)
+      user = standard_user_fixture()
+      unlockable = unlockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/unlockables/#{unlockable.id}")
 
       assert json_response(conn, 200)
@@ -132,7 +117,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   # Update a unlockable
   describe "PATCH /v1/unlockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = patch(conn, "/v1/unlockables/#{Ecto.UUID.generate()}", %{
+      conn = patch(conn, "/v1/unlockables/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Unlockable",
           "attributes" => %{
@@ -145,11 +130,11 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = patch(conn, "/v1/unlockables/#{Ecto.UUID.generate()}", %{
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = patch(conn, "/v1/unlockables/#{UUID.generate()}", %{
         "data" => %{
           "type" => "Unlockable",
           "attributes" => %{
@@ -162,14 +147,12 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with UAT requesting unlockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      unlockable = unlockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      unlockable = create_unlockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/unlockables/#{unlockable.id}", %{
         "data" => %{
           "type" => "Unlockable",
@@ -183,12 +166,11 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      unlockable = create_unlockable(standard_user)
+      user = standard_user_fixture()
+      unlockable = unlockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = patch(conn, "/v1/unlockables/#{unlockable.id}", %{
         "data" => %{
           "type" => "Unlockable",
@@ -205,42 +187,39 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   # Delete a unlockable
   describe "DELETE /v1/unlockables/:id" do
     test "without access token", %{conn: conn} do
-      conn = delete(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+      conn = delete(conn, "/v1/unlockables/#{UUID.generate()}")
 
       assert conn.status == 401
     end
 
     test "with PAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      pat = get_pat(standard_user)
-      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-      conn = delete(conn, "/v1/unlockables/#{Ecto.UUID.generate()}")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = delete(conn, "/v1/unlockables/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
     test "with UAT and requesting unlockable of a different account", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+      unlockable = unlockable_fixture(user2.default_account)
+      uat = get_uat(user1.default_account, user1)
 
-      unlockable = create_unlockable(standard_user2)
-
-      uat = get_uat(standard_user1)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/unlockables/#{unlockable.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user = create_standard_user()
-      unlockable = create_unlockable(standard_user)
+      user = standard_user_fixture()
+      unlockable = unlockable_fixture(user.default_account)
+      uat = get_uat(user.default_account, user)
 
-      uat = get_uat(standard_user)
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = delete(conn, "/v1/unlockables/#{unlockable.id}")
 
       assert conn.status == 204
@@ -256,16 +235,16 @@ defmodule BlueJetWeb.UnlockableControllerTest do
     end
 
     test "with UAT", %{conn: conn} do
-      standard_user1 = create_standard_user()
-      standard_user2 = create_standard_user(n: 2)
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
 
-      create_unlockable(standard_user1)
-      create_unlockable(standard_user1)
-      create_unlockable(standard_user2)
+      unlockable_fixture(user1.default_account)
+      unlockable_fixture(user1.default_account)
+      unlockable_fixture(user2.default_account)
 
-      uat = get_uat(standard_user1)
+      uat = get_uat(user1.default_account, user1)
+
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-
       conn = get(conn, "/v1/unlockables")
 
       response = json_response(conn, 200)

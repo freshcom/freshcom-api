@@ -95,7 +95,8 @@ config :blue_jet, :event_bus, %{
     Notification.EventHandler
   ],
   "identity:account.reset.success" => [
-    Goods.EventHandler
+    Goods.EventHandler,
+    Catalogue.EventHandler
   ]
 }
 
@@ -147,7 +148,6 @@ config :blue_jet, :balance, %{
 }
 
 config :blue_jet, :catalogue, %{
-  service: BlueJet.Catalogue.DefaultService,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
   file_storage_service: BlueJet.FileStorage.Service

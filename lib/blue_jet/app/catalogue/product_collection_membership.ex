@@ -87,7 +87,7 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     |> validate()
   end
 
-  def changeset(membership, :update, params) do
+  def changeset(membership, :update, params, _) do
     membership
     |> cast(params, castable_fields(:update))
     |> Map.put(:action, :update)

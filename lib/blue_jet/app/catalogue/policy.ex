@@ -33,9 +33,11 @@ defmodule BlueJet.Catalogue.Policy do
       |> ContextRequest.put(:_scope_, scope)
       |> ContextRequest.put(:_preload_, :paths, req.preloads)
       |> ContextRequest.put(:_preload_, :opts, %{
-        prices: %{status: "active"},
-        items: %{status: "active"},
-        variants: %{status: "active"}
+        filters: %{
+          prices: %{status: "active"},
+          items: %{status: "active"},
+          variants: %{status: "active"}
+        }
       })
 
     {:ok, req}
@@ -96,7 +98,7 @@ defmodule BlueJet.Catalogue.Policy do
       req
       |> ContextRequest.put(:_scope_, Map.take(req.filter, [:product_id, :status]))
       |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{product: %{status: "active"}})
+      |> ContextRequest.put(:_preload_, :opts, %{filters: %{product: %{status: "active"}}})
 
     {:ok, req}
   end
@@ -149,102 +151,114 @@ defmodule BlueJet.Catalogue.Policy do
   #
   # MARK: Product Collection
   #
-  def authorize(request = %{role: role}, "list_product_collection")
+  def authorize(%{_role_: role} = req, :list_product_collection)
       when role in ["guest", "customer"] do
-    authorized_args = from_access_request(request, :list)
+    req = ContextRequest.put(req, :filter, :status, "active")
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_preload_, :opts, %{filters: %{memberships: %{product_status: "active"}}})
 
-    filter = Map.merge(authorized_args[:filter], %{status: "active"})
-    all_count_filter = Map.take(filter, [:status])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    authorized_args =
-      put_in(authorized_args, [:opts, :preloads, :opts, :filters], %{
-        memberships: %{product_status: "active"}
-      })
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "list_product_collection")
+  def authorize(%{_role_: role} = req, :list_product_collection)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_product_collection")
+  def authorize(%{_role_: role} = req, :create_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_product_collection")
+  def authorize(%{_role_: role} = req, :get_product_collection)
       when role in ["guest", "customer"] do
-    authorized_args = from_access_request(request, :get)
+    req =
+      req
+      |> ContextRequest.put(:identifiers, :status, "active")
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    identifiers = Map.merge(authorized_args.identifiers, %{status: "active"})
-    authorized_args = %{authorized_args | identifiers: identifiers}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_product_collection")
+  def authorize(%{_role_: role} = req, :get_product_collection)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_product_collection")
+  def authorize(%{_role_: role} = req, :update_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_product_collection")
+  def authorize(%{_role_: role} = req, :delete_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
   #
   # MARK: Product Collection Membership
   #
-  def authorize(request = %{role: role}, "list_product_collection_membership")
+  def authorize(%{_role_: role} = req, :list_product_collection_membership)
       when role in ["guest", "customer"] do
-    authorized_args = from_access_request(request, :list)
+    req = ContextRequest.put(req, :filter, :product_status, "active")
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id, :product_status]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_preload_, :opts, %{filters: %{product: %{status: "active"}}})
 
-    filter =
-      Map.merge(authorized_args[:filter], %{
-        collection_id: request.params["collection_id"],
-        product_status: "active"
-      })
-
-    all_count_filter = Map.take(filter, [:collection_id, :product_status])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    authorized_args =
-      put_in(authorized_args, [:opts, :preloads, :opts, :filters], %{
-        product: %{status: "active"}
-      })
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "list_product_collection_membership")
+  def authorize(%{_role_: role} = req, :list_product_collection_membership)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    authorized_args = from_access_request(request, :list)
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    filter =
-      Map.merge(authorized_args[:filter], %{collection_id: request.params["collection_id"]})
-
-    all_count_filter = Map.take(filter, [:collection_id])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_product_collection_membership")
+  def authorize(%{_role_: role} = req, :create_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_product_collection_membership")
+  def authorize(%{_role_: role} = req, :get_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :update_product_collection_membership)
+      when role in ["marketing_specialist", "developer", "administrator"] do
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :delete_product_collection_membership)
+      when role in ["marketing_specialist", "developer", "administrator"] do
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
   #

@@ -275,46 +275,4 @@ defmodule BlueJet.Catalogue.Price do
   end
 
   defp validate_status(changeset, _), do: changeset
-
-  @doc """
-  Balance the the given price base on its children. After balancing the
-  `charge_amount_cents` of the given price will be the sum of all its children's
-  `charge_amount_cents`.
-
-  If the given price has no child then this function updates its `charge_amount_cents`
-  to `0`.
-
-  Returns the updated price.
-  """
-  @spec balance(__MODULE__.t()) :: __MODULE__.t()
-  def balance(price) do
-    children = Ecto.assoc(price, :children) |> Repo.all()
-
-    charge_amount_cents =
-      Enum.reduce(children, 0, fn child, acc ->
-        acc + child.charge_amount_cents
-      end)
-
-    price
-    |> change(charge_amount_cents: charge_amount_cents)
-    |> Repo.update!()
-  end
-
-  @doc """
-  Similar to `balance` except this function attempt to balance the parent of the
-  given price. If the given price have no parent then this function does nothing.
-
-  Returns `{:ok, price}` where price is the balanced parent if there is one,
-  otherwise it will be nil.
-  """
-  @spec balance_parent(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:ok, nil}
-  def balance_parent(price) do
-    price = Repo.preload(price, :parent)
-
-    if price.parent do
-      {:ok, balance(price.parent)}
-    else
-      {:ok, price}
-    end
-  end
 end
