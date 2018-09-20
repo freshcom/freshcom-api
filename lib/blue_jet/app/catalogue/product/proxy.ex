@@ -3,17 +3,17 @@ defmodule BlueJet.Catalogue.Product.Proxy do
 
   alias BlueJet.Catalogue.{GoodsService, FileStorageService}
 
-  def get_goods(product = %{goods_type: "Stockable", goods_id: id}) do
+  def get_goods(%{goods_type: "Stockable", goods_id: id} = product) do
     account = get_account(product)
     GoodsService.get_stockable(%{id: id}, %{account: account})
   end
 
-  def get_goods(product = %{goods_type: "Unlockable", goods_id: id}) do
+  def get_goods(%{goods_type: "Unlockable", goods_id: id} = product) do
     account = get_account(product)
     GoodsService.get_unlockable(%{id: id}, %{account: account})
   end
 
-  def get_goods(product = %{goods_type: "Depositable", goods_id: id}) do
+  def get_goods(%{goods_type: "Depositable", goods_id: id} = product) do
     account = get_account(product)
     GoodsService.get_depositable(%{id: id}, %{account: account})
   end
@@ -27,21 +27,22 @@ defmodule BlueJet.Catalogue.Product.Proxy do
     FileStorageService.delete_file(%{id: product.avatar_id}, %{account: account})
   end
 
-  def put(product, {:file_collections, file_collection_path}, opts) do
-    preloads = %{path: file_collection_path, opts: opts}
+  def put(%{avatar_id: nil} = product, {:avatar, nil}, _), do: product
 
-    opts =
-      opts
-      |> Map.take([:account, :account_id])
-      |> Map.merge(%{preloads: preloads})
+  def put(product, {:avatar, nil}, opts) do
+    avatar = FileStorageService.get_file(%{id: product.avatar_id}, opts)
 
-    file_collections =
-      FileStorageService.list_file_collection(
-        %{filter: %{owner_id: product.id, owner_type: "Product"}},
-        opts
-      )
+    %{product | avatar: avatar}
+  end
 
-    %{product | file_collections: file_collections}
+  def put(product, {:file_collections, collection_paths}, opts) do
+    preload = %{paths: collection_paths, opts: opts}
+    opts = Map.put(opts, :preload, preload)
+    filter = %{owner_id: product.id, owner_type: "Product"}
+
+    collections = FileStorageService.list_file_collection(%{filter: filter}, opts)
+
+    %{product | file_collections: collections}
   end
 
   def put(product, _, _), do: product
