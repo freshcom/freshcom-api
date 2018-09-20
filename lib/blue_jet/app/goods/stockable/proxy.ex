@@ -3,24 +3,22 @@ defmodule BlueJet.Goods.Stockable.Proxy do
 
   alias BlueJet.Goods.FileStorageService
 
-  def put(stockable = %{ avatar_id: nil }, {:avatar, nil}, _), do: stockable
+  def put(%{avatar_id: nil} = stockable, {:avatar, nil}, _), do: stockable
 
   def put(stockable, {:avatar, nil}, opts) do
-    opts = Map.take(opts, [:account, :account_id])
+    avatar = FileStorageService.get_file(%{id: stockable.avatar_id}, opts)
 
-    avatar = FileStorageService.get_file(%{ id: stockable.avatar_id }, opts)
-    %{ stockable | avatar: avatar }
+    %{stockable | avatar: avatar}
   end
 
-  def put(stockable, {:file_collections, file_collection_path}, opts) do
-    preloads = %{ path: file_collection_path, opts: opts }
-    opts =
-      opts
-      |> Map.take([:account, :account_id])
-      |> Map.merge(%{ preloads: preloads })
+  def put(stockable, {:file_collections, collection_paths}, opts) do
+    preload = %{paths: collection_paths, opts: opts}
+    opts = Map.put(opts, :preload, preload)
+    filter = %{owner_id: stockable.id, owner_type: "Stockable"}
 
-    file_collections = FileStorageService.list_file_collection(%{ filter: %{ owner_id: stockable.id, owner_type: "Stockable" } }, opts)
-    %{ stockable | file_collections: file_collections }
+    collections = FileStorageService.list_file_collection(%{filter: filter}, opts)
+
+    %{stockable | file_collections: collections}
   end
 
   def put(stockable, _, _), do: stockable
