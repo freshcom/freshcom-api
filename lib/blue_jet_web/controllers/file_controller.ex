@@ -1,97 +1,24 @@
 defmodule BlueJetWeb.FileController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.FileStorage
 
   action_fallback BlueJetWeb.FallbackController
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, params) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      search: params["search"],
-      params: %{ account_id: params["account_id"] },
-      filter: assigns[:filter],
-      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
+  def index(conn, _),
+    do: default(conn, :index, &FileStorage.list_file/1)
 
-    {:ok, %ContextResponse{ data: stockables, meta: meta }} = FileStorage.list_file(request)
+  def create(conn, %{"data" => %{"type" => "File"}}),
+    do: default(conn, :create, &FileStorage.create_file/1)
 
-    render(conn, "index.json-api", data: stockables, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-  end
+  def show(conn, %{"id" => _}),
+    do: default(conn, :show, &FileStorage.get_file/1)
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "File" } }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      fields: Params.to_attributes(data),
-      preloads: assigns[:preloads]
-    }
+  def update(conn, %{"id" => _, "data" => %{"type" => "File"}}),
+    do: default(conn, :update, &FileStorage.update_file/1)
 
-    case FileStorage.create_file(request) do
-      {:ok, %{ data: file, meta: meta }} ->
-        conn
-        |> put_status(:created)
-        |> render("show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      {:error, %{ errors: errors }} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(errors))
-
-      other -> other
-    end
-  end
-
-  def show(conn = %{ assigns: assigns = %{ vas: %{ account_id: _ } } }, %{ "id" => ef_id }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "id" => ef_id },
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-
-    case FileStorage.get_file(request) do
-      {:ok, %{ data: file, meta: meta }} ->
-        render(conn, "show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      other -> other
-    end
-  end
-
-  def update(conn = %{ assigns: assigns }, %{ "id" => ef_id, "data" => data = %{ "type" => "File" } }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "id" => ef_id },
-      fields: Params.to_attributes(data),
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-
-    case FileStorage.update_file(request) do
-      {:ok, %ContextResponse{ data: file, meta: meta }} ->
-        render(conn, "show.json-api", data: file, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      {:error, %ContextResponse{ errors: errors }} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(errors))
-
-      other -> other
-    end
-  end
-
-  def delete(conn = %{ assigns: assigns }, %{ "id" => ef_id }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "id" => ef_id }
-    }
-
-    FileStorage.delete_file(request)
-
-    send_resp(conn, :no_content, "")
-  end
+  def delete(conn, %{"id" => _}),
+    do: default(conn, :delete, &FileStorage.delete_file/1)
 end

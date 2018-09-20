@@ -1,638 +1,332 @@
 defmodule BlueJet.FileStorage.ServiceTest do
   use BlueJet.ContextCase
 
+  import BlueJet.FileStorage.TestHelper
+
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
   alias BlueJet.FileStorage.DefaultService
-  alias BlueJet.FileStorage.{S3ClientMock, CloudfrontClientMock}
 
-  describe "list_file/2" do
-    test "file for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: other_account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+  describe "list_file/2 and count_file/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      file_fixture(account1, %{status: "uploaded"})
+      file_fixture(account1, %{status: "uploaded"})
+      file_fixture(account1, %{status: "uploaded"})
+      file_fixture(account1)
+      file_fixture(account2)
 
-      S3ClientMock
-      |> expect(:get_presigned_url, 2, fn(_, _) -> nil end)
+      opts = %{account: account1, pagination: %{number: 1, size: 2}}
+      query = %{filter: %{status: "uploaded"}}
 
-      files = DefaultService.list_file(%{ account: account })
+      files = DefaultService.list_file(query, opts)
+
       assert length(files) == 2
-    end
-
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-
-      S3ClientMock
-      |> expect(:get_presigned_url, 5, fn(_, _) -> nil end)
-
-      files = DefaultService.list_file(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(files) == 3
-
-      files = DefaultService.list_file(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(files) == 2
-    end
-  end
-
-  describe "count_file/2" do
-    test "file for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: other_account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-
-      assert DefaultService.count_file(%{ account: account }) == 2
-    end
-
-    test "only file matching filter is counted" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Account{})
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890,
-        label: "test"
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-
-      assert DefaultService.count_file(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+      assert DefaultService.count_file(query, opts) == 3
     end
   end
 
   describe "create_file/2" do
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
+    test "when given invalid fields" do
+      account = account_fixture()
 
-      S3ClientMock
-      |> expect(:get_presigned_url, fn(_, _) -> nil end)
+      {:error, %{errors: errors}} = DefaultService.create_file(%{}, %{account: account})
+
+      assert match_keys(errors, [:name, :content_type, :size_bytes])
+    end
+
+    test "when given valid fields" do
+      account = account_fixture()
 
       fields = %{
-        "name" => Faker.String.base64(5),
-        "content_type" => "image/png",
-        "size_bytes" => 19203
+        "name" => Faker.File.file_name(),
+        "content_type" => Faker.File.mime_type(),
+        "size_bytes" => System.unique_integer([:positive])
       }
+      opts = %{account: account}
 
-      {:ok, file} = DefaultService.create_file(fields, %{ account: account })
+      {:ok, file} = DefaultService.create_file(fields, opts)
 
-      assert file
+      assert file.name == fields["name"]
+      assert file.content_type == fields["content_type"]
+      assert file.size_bytes == fields["size_bytes"]
     end
   end
 
   describe "get_file/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+    test "when given invalid id" do
+      account = %Account{id: UUID.generate()}
 
-      S3ClientMock
-      |> expect(:get_presigned_url, fn(_, _) -> nil end)
-
-      assert DefaultService.get_file(%{ id: file.id }, %{ account: account })
+      refute DefaultService.get_file(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: other_account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      file = file_fixture(account2)
 
-      refute DefaultService.get_file(%{ id: file.id }, %{ account: account })
+      refute DefaultService.get_file(%{id: file.id}, %{account: account1})
     end
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+    test "when given valid id" do
+      account = account_fixture()
+      target_file = file_fixture(account)
 
-      refute DefaultService.get_file(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      file = DefaultService.get_file(%{id: target_file.id}, %{account: account})
+
+      assert file.id == target_file.id
     end
   end
 
   describe "update_file/2" do
-    test "when given nil for file" do
-      {:error, error} = DefaultService.update_file(nil, %{}, %{})
-      assert error == :not_found
-    end
+    test "when given id not exist" do
+      account = %Account{id: UUID.generate()}
 
-    test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      {:error, error} = DefaultService.update_file(%{id: UUID.generate()}, %{}, %{account: account})
 
-      {:error, error} = DefaultService.update_file(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
       assert error == :not_found
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: other_account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      file = file_fixture(account2)
 
-      {:error, error} =DefaultService.update_file(%{ id: file.id }, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_file(%{id: file.id}, %{}, %{account: account1})
+
       assert error == :not_found
     end
 
     test "when given valid id and invalid fields" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account = account_fixture()
+      file = file_fixture(account)
 
-      {:error, changeset} = DefaultService.update_file(%{ id: file.id }, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
+      {:error, %{errors: errors}} = DefaultService.update_file(%{id: file.id}, %{"status" => nil}, %{account: account})
+
+      assert match_keys(errors, [:status])
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account = account_fixture()
+      file = file_fixture(account)
 
-      is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
-      if is_cdn_enabled do
-        CloudfrontClientMock
-        |> expect(:get_presigned_url, fn(_) -> nil end)
-      else
-        S3ClientMock
-        |> expect(:get_presigned_url, fn(_, _) -> nil end)
-      end
+      identifiers = %{id: file.id}
+      fields = %{"status" => "uploaded"}
+      opts = %{account: account}
 
-      fields = %{
-        "status" => "uploaded"
-      }
+      {:ok, file} = DefaultService.update_file(identifiers, fields, opts)
 
-      {:ok, file} = DefaultService.update_file(%{ id: file.id }, fields, %{ account: account })
-      assert file
-    end
-
-    test "when given file and invalid fields" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-
-      {:error, changeset} = DefaultService.update_file(file, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
-    end
-
-    test "when given file and valid fields" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-
-      is_cdn_enabled = System.get_env("CDN_ROOT_URL") && String.length(System.get_env("CDN_ROOT_URL")) > 0
-      if is_cdn_enabled do
-        CloudfrontClientMock
-        |> expect(:get_presigned_url, fn(_) -> nil end)
-      else
-        S3ClientMock
-        |> expect(:get_presigned_url, fn(_, _) -> nil end)
-      end
-
-      fields = %{
-        "status" => "uploaded"
-      }
-
-      {:ok, file} = DefaultService.update_file(file, fields, %{ account: account })
-      assert file
+      assert file.status == fields["status"]
     end
   end
 
   describe "delete_file/2" do
-    test "when given valid file" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+    test "when given id not exist" do
+      account = %Account{id: UUID.generate()}
 
-      S3ClientMock
-      |> expect(:delete_object, fn(_) -> nil end)
+      {:error, error} = DefaultService.delete_file(%{id: UUID.generate()}, %{account: account})
 
-      {:ok, file} = DefaultService.delete_file(file, %{ account: account })
+      assert error == :not_found
+    end
 
-      assert file
-      refute Repo.get(File, file.id)
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      file = file_fixture(account2)
+
+      {:error, error} = DefaultService.delete_file(%{id: file.id}, %{account: account1})
+
+      assert error == :not_found
     end
 
     test "when given valid id" do
-      account = Repo.insert!(%Account{})
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account = account_fixture()
+      file = file_fixture(account)
 
-      S3ClientMock
-      |> expect(:delete_object, fn(_) -> nil end)
+      {:ok, file} = DefaultService.delete_file(%{id: file.id}, %{account: account})
 
-      {:ok, file} = DefaultService.delete_file(%{ id: file.id }, %{ account: account })
-
-      assert file
       refute Repo.get(File, file.id)
     end
   end
 
-  describe "list_file_collection/2" do
-    test "file collection for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: other_account.id,
-        name: Faker.String.base64(5)
-      })
+  describe "list_file_collection/2 and count_file_collection/2" do
+    test "with valid request" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      file_collection_fixture(account1, %{status: "draft"})
+      file_collection_fixture(account1, %{status: "draft"})
+      file_collection_fixture(account1, %{status: "draft"})
+      file_collection_fixture(account1)
+      file_collection_fixture(account2)
 
-      file_collections = DefaultService.list_file_collection(%{ account: account })
-      assert length(file_collections) == 2
-    end
+      opts = %{account: account1, pagination: %{number: 1, size: 2}}
+      query = %{filter: %{status: "draft"}}
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      collections = DefaultService.list_file_collection(query, opts)
 
-      file_collections = DefaultService.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(file_collections) == 3
-
-      file_collections = DefaultService.list_file_collection(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(file_collections) == 2
-    end
-  end
-
-  describe "count_file_collection/2" do
-    test "file collection for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: other_account.id,
-        name: Faker.String.base64(5)
-      })
-
-      assert DefaultService.count_file_collection(%{ account: account }) == 2
-    end
-
-    test "only file collection matching filter is counted" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Account{})
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        label: "test"
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
-      assert DefaultService.count_file_collection(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+      assert length(collections) == 2
+      assert DefaultService.count_file_collection(query, opts) == 3
     end
   end
 
   describe "create_file_collection/2" do
+    test "when given invalid fields" do
+      account = %Account{id: UUID.generate()}
+
+      {:error, %{errors: errors}} = DefaultService.create_file_collection(%{}, %{account: account})
+
+      assert match_keys(errors, [:name])
+    end
+
     test "when given valid fields" do
-      account = Repo.insert!(%Account{})
-      file1 = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      file2 = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
+      account = account_fixture()
+      file1 = file_fixture(account)
+      file2 = file_fixture(account)
 
       fields = %{
-        "name" => Faker.String.base64(5),
+        "name" => Faker.Commerce.product_name(),
         "file_ids" => [file1.id, file2.id]
       }
+      opts = %{account: account}
 
-      {:ok, file_collection} = DefaultService.create_file_collection(fields, %{ account: account })
+      {:ok, collection} = DefaultService.create_file_collection(fields, opts)
 
-      assert file_collection
-      assert Repo.get_by(FileCollectionMembership, file_id: file1.id, collection_id: file_collection.id)
-      assert Repo.get_by(FileCollectionMembership, file_id: file2.id, collection_id: file_collection.id)
+      assert collection.name == fields["name"]
+      assert Repo.get_by(FileCollectionMembership, file_id: file1.id, collection_id: collection.id)
+      assert Repo.get_by(FileCollectionMembership, file_id: file2.id, collection_id: collection.id)
     end
   end
 
   describe "get_file_collection/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+    test "when give id does not exist" do
+      account = %Account{id: UUID.generate()}
 
-      assert DefaultService.get_file_collection(%{ id: file_collection.id }, %{ account: account })
+      refute DefaultService.get_file_collection(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: other_account.id,
-        name: Faker.String.base64(5)
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      collection = file_collection_fixture(account2)
 
-      refute DefaultService.get_file_collection(%{ id: file_collection.id }, %{ account: account })
+      refute DefaultService.get_file_collection(%{id: collection.id}, %{account: account1})
     end
 
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
+    test "when given valid id" do
+      account = account_fixture()
+      target_collection = file_collection_fixture(account)
 
-      refute DefaultService.get_file_collection(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      identifiers = %{id: target_collection.id}
+      opts = %{account: account}
+
+      collection = DefaultService.get_file_collection(identifiers, opts)
+
+      assert collection.id == target_collection.id
     end
   end
 
   describe "update_file_collection/2" do
-    test "when given nil for file collection" do
-      {:error, error} = DefaultService.update_file_collection(nil, %{}, %{})
-      assert error == :not_found
-    end
+    test "when give id does not exist" do
+      account = %Account{id: UUID.generate()}
 
-    test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
 
-      {:error, error} = DefaultService.update_file_collection(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+      {:error, error} = DefaultService.update_file_collection(identifiers, %{}, opts)
+
       assert error == :not_found
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: other_account.id,
-        name: Faker.String.base64(5)
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      collection = file_collection_fixture(account2)
 
-      {:error, error} = DefaultService.update_file_collection(%{ id: file_collection.id }, %{}, %{ account: account })
+      identifiers = %{id: collection.id}
+      opts = %{account: account1}
+
+      {:error, error} = DefaultService.update_file_collection(identifiers, %{}, opts)
+
       assert error == :not_found
     end
 
     test "when given valid id and invalid fields" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      collection = file_collection_fixture(account)
 
-      {:error, changeset} = DefaultService.update_file_collection(%{ id: file_collection.id }, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
+      identifiers = %{id: collection.id}
+      fields = %{"status" => nil}
+      opts = %{account: account}
+
+      {:error, %{errors: errors}} = DefaultService.update_file_collection(identifiers, fields, opts)
+
+      assert match_keys(errors, [:status])
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      target_collection = file_collection_fixture(account)
 
-      fields = %{
-        "status" => "draft"
-      }
+      identifiers = %{id: target_collection.id}
+      fields = %{"name" => Faker.Commerce.product_name()}
+      opts = %{account: account}
 
-      {:ok, _} = DefaultService.update_file_collection(%{ id: file_collection.id }, fields, %{ account: account })
-    end
+      {:ok, collection} = DefaultService.update_file_collection(identifiers, fields, opts)
 
-    test "when given file collection and invalid fields" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
-      {:error, changeset} = DefaultService.update_file_collection(file_collection, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
-    end
-
-    test "when given file collection and valid fields" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-
-      fields = %{
-        "status" => "draft"
-      }
-
-      {:ok, _} = DefaultService.update_file_collection(file_collection, fields, %{ account: account })
+      assert collection.name == fields["name"]
     end
   end
 
   describe "delete_file_collection/2" do
-    test "when given valid file collection" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+    test "when give id does not exist" do
+      account = %Account{id: UUID.generate()}
 
-      {:ok, file_collection} = DefaultService.delete_file_collection(file_collection, %{ account: account })
-      assert file_collection
-      refute Repo.get(FileCollection, file_collection.id)
+      identifiers = %{id: UUID.generate()}
+      opts = %{account: account}
+
+      {:error, error} = DefaultService.delete_file_collection(identifiers, opts)
+
+      assert error == :not_found
+    end
+
+    test "when given id belongs to a different account" do
+      account1 = account_fixture()
+      account2 = account_fixture()
+      collection = file_collection_fixture(account2)
+
+      identifiers = %{id: collection.id}
+      opts = %{account: account1}
+
+      {:error, error} = DefaultService.delete_file_collection(identifiers, opts)
+
+      assert error == :not_found
     end
 
     test "when given valid id" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
+      account = account_fixture()
+      collection = file_collection_fixture(account)
 
-      {:ok, file_collection} = DefaultService.delete_file_collection(%{ id: file_collection.id }, %{ account: account })
-      assert file_collection
-      refute Repo.get(FileCollection, file_collection.id)
+      {:ok, collection} = DefaultService.delete_file_collection(%{id: collection.id}, %{account: account})
+
+      assert collection
+      refute Repo.get(FileCollection, collection.id)
     end
   end
 
   describe "delete_file_collection_membership/2" do
-    test "when given valid file collection" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      fcm = Repo.insert!(%FileCollectionMembership{
-        account_id: account.id,
-        collection_id: file_collection.id,
-        file_id: file.id
-      })
-
-
-      {:ok, fcm} = DefaultService.delete_file_collection_membership(fcm, %{ account: account })
-
-      assert fcm
-      refute Repo.get(FileCollectionMembership, fcm.id)
-    end
-
     test "when given valid id" do
-      account = Repo.insert!(%Account{})
-      file_collection = Repo.insert!(%FileCollection{
-        account_id: account.id,
-        name: Faker.String.base64(5)
-      })
-      file = Repo.insert!(%File{
-        account_id: account.id,
-        name: Faker.String.base64(5),
-        content_type: "image/png",
-        size_bytes: 19890
-      })
-      fcm = Repo.insert!(%FileCollectionMembership{
-        account_id: account.id,
-        collection_id: file_collection.id,
-        file_id: file.id
-      })
+      account = account_fixture()
+      collection = file_collection_fixture(account)
+      file = file_fixture(account)
+      membership = file_collection_membership_fixture(account, collection, file)
 
-      {:ok, fcm} = DefaultService.delete_file_collection_membership(%{ id: fcm.id }, %{ account: account })
+      identifiers = %{id: membership.id}
+      opts = %{account: account}
 
-      assert fcm
-      refute Repo.get(FileCollection, fcm.id)
+      {:ok, _} = DefaultService.delete_file_collection_membership(identifiers, opts)
+
+      refute Repo.get(FileCollection, membership.id)
     end
   end
 end

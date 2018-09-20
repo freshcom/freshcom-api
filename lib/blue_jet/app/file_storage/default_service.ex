@@ -1,6 +1,8 @@
 defmodule BlueJet.FileStorage.DefaultService do
   use BlueJet, :service
 
+  import BlueJet.ControlFlow
+
   alias Ecto.Multi
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
 
@@ -9,50 +11,31 @@ defmodule BlueJet.FileStorage.DefaultService do
   #
   # MARK: File
   #
-  def list_file(fields \\ %{}, opts) do
-    list(File, fields, opts)
+  def list_file(query \\ %{}, opts) do
+    default(:list, File, query, opts)
     |> File.put_url()
   end
 
-  def count_file(fields \\ %{}, opts) do
-    count(File, fields, opts)
-  end
+  def count_file(query \\ %{}, opts), do: default(:count, File, query, opts)
 
   def create_file(fields, opts) do
-    case create(File, fields, opts) do
-      {:ok, file} ->
-        {:ok, File.put_url(file)}
-
-      other ->
-        other
-    end
+    default(:create, File, fields, opts)
+    ~> File.put_url()
   end
 
   def get_file(identifiers, opts) do
-    get(File, identifiers, opts)
+    default(:get, File, identifiers, opts)
     |> File.put_url()
   end
 
-  def update_file(nil, _, _), do: {:error, :not_found}
-
-  def update_file(file = %File{}, fields, opts) do
-    case update(file, fields, opts) do
-      {:ok, file} ->
-        {:ok, File.put_url(file)}
-
-      other ->
-        other
-    end
-  end
-
   def update_file(identifiers, fields, opts) do
-    get(File, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_file(fields, opts)
+    default(:update, identifiers, fields, opts, &get_file/2)
+    ~> File.put_url()
   end
 
   def delete_file(nil, _), do: {:error, :not_found}
 
-  def delete_file(file = %File{}, opts) do
+  def delete_file(%File{} = file, opts) do
     account = extract_account(opts)
 
     changeset =
@@ -62,9 +45,7 @@ defmodule BlueJet.FileStorage.DefaultService do
     statements =
       Multi.new()
       |> Multi.delete(:file, changeset)
-      |> Multi.run(:_, fn %{file: file} ->
-        File.delete_s3_object(file)
-      end)
+      |> Multi.run(:_, &File.Proxy.delete_s3_object(&1[:file]))
 
     case Repo.transaction(statements) do
       {:ok, %{file: file}} ->
@@ -76,7 +57,7 @@ defmodule BlueJet.FileStorage.DefaultService do
   end
 
   def delete_file(identifiers, opts) do
-    get(File, identifiers, Map.merge(opts, %{preloads: %{}}))
+    get_file(identifiers, Map.drop(opts, [:preload]))
     |> delete_file(opts)
   end
 
@@ -95,7 +76,7 @@ defmodule BlueJet.FileStorage.DefaultService do
     |> File.Query.filter_by(%{id: file_ids})
     |> Repo.delete_all()
 
-    File.delete_s3_object(files)
+    File.Proxy.delete_s3_object(files)
 
     if length(file_ids) === batch_size do
       delete_all_file(opts)
@@ -107,19 +88,17 @@ defmodule BlueJet.FileStorage.DefaultService do
   #
   # MARK: File Collection
   #
-  def list_file_collection(fields \\ %{}, opts) do
-    list(FileCollection, fields, opts)
+  def list_file_collection(query \\ %{}, opts) do
+    default(:list, FileCollection, query, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
 
-  def count_file_collection(fields \\ %{}, opts) do
-    count(FileCollection, fields, opts)
-  end
+  def count_file_collection(query \\ %{}, opts), do: default(:count, FileCollection, query, opts)
 
   def create_file_collection(fields, opts) do
     account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    preload = extract_preload(opts)
 
     changeset =
       %FileCollection{account_id: account.id, account: account}
@@ -128,110 +107,72 @@ defmodule BlueJet.FileStorage.DefaultService do
     statements =
       Multi.new()
       |> Multi.insert(:file_collection, changeset)
-      |> Multi.run(:_, fn %{file_collection: file_collection} ->
-        FileCollection.create_memberships_for_file_ids(file_collection)
-      end)
+      |> Multi.run(:_, &create_memberships(&1[:file_collection]))
 
     case Repo.transaction(statements) do
-      {:ok, %{file_collection: file_collection}} ->
-        file_collection =
-          file_collection
-          |> preload(preloads[:path], preloads[:opts])
+      {:ok, %{file_collection: collection}} ->
+        collection =
+          collection
+          |> preload(preload[:paths], preload[:opts])
           |> FileCollection.put_file_urls()
 
-        {:ok, file_collection}
+        {:ok, collection}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
     end
   end
 
+  defp create_memberships(collection) do
+    sort_index_step = 10000
+
+    Enum.reduce(collection.file_ids, 10000, fn(file_id, acc) ->
+      Repo.insert!(%FileCollectionMembership{
+        account_id: collection.account_id,
+        collection_id: collection.id,
+        file_id: file_id,
+        sort_index: acc
+      })
+
+      acc + sort_index_step
+    end)
+
+    {:ok, collection}
+  end
+
   def get_file_collection(identifiers, opts) do
-    get(FileCollection, identifiers, opts)
+    default(:get, FileCollection, identifiers, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
 
-  def update_file_collection(nil, _, _), do: {:error, :not_found}
-
-  def update_file_collection(file_collection = %FileCollection{}, fields, opts) do
-    case update(file_collection, fields, opts) do
-      {:ok, file_collection} ->
-        file_collection =
-          file_collection
-          |> FileCollection.put_file_urls()
-          |> FileCollection.put_file_count()
-
-        {:ok, file_collection}
-
-      other ->
-        other
-    end
-  end
-
   def update_file_collection(identifiers, fields, opts) do
-    get(FileCollection, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_file_collection(fields, opts)
+    default(:update, identifiers, fields, opts, &get_file_collection/2)
+    ~> FileCollection.put_file_urls()
+    ~> FileCollection.put_file_count()
   end
 
-  def delete_file_collection(nil, _), do: {:error, :not_found}
-
-  def delete_file_collection(file_collection = %FileCollection{}, opts) do
-    delete(file_collection, opts)
-  end
-
-  def delete_file_collection(identifiers, opts) do
-    get(FileCollection, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_file_collection(opts)
-  end
-
-  def delete_all_file_collection(opts = %{account: account = %{mode: "test"}}) do
-    batch_size = opts[:batch_size] || 1000
-
-    file_collection_ids =
-      FileCollection.Query.default()
-      |> for_account(account.id)
-      |> paginate(size: batch_size, number: 1)
-      |> id_only()
-      |> Repo.all()
-
-    FileCollection.Query.default()
-    |> FileCollection.Query.filter_by(%{id: file_collection_ids})
-    |> Repo.delete_all()
-
-    if length(file_collection_ids) === batch_size do
-      delete_all_file_collection(opts)
-    else
-      :ok
-    end
-  end
+  def delete_file_collection(identifiers, opts), do: default(:delete, identifiers, opts, &get_file_collection/2)
+  def delete_all_file_collection(opts), do: default(:delete_all, FileCollection, opts)
 
   #
   # MARK: File Collection Membership
   #
-  def create_file_collection_membership(fields, opts) do
-    create(FileCollectionMembership, fields, opts)
-  end
+  def list_file_collection_membership(query \\ %{}, opts),
+    do: default(:list, FileCollectionMembership, query, opts)
 
-  def update_file_collection_membership(nil, _, _), do: {:error, :not_found}
+  def count_file_collection_membership(query \\ %{}, opts),
+    do: default(:count, FileCollectionMembership, query, opts)
 
-  def update_file_collection_membership(fcm = %FileCollectionMembership{}, fields, opts) do
-    update(fcm, fields, opts)
-  end
+  def create_file_collection_membership(fields, opts),
+    do: default(:create, FileCollectionMembership, fields, opts)
 
-  def update_file_collection_membership(identifiers, fields, opts) do
-    get(FileCollectionMembership, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_file_collection_membership(fields, opts)
-  end
+  def get_file_collection_membership(identifiers, opts),
+    do: default(:get, FileCollectionMembership, identifiers, opts)
 
-  def delete_file_collection_membership(nil, _), do: {:error, :not_found}
+  def update_file_collection_membership(identifiers, fields, opts),
+    do: default(:update, identifiers, fields, opts, &get_file_collection_membership/2)
 
-  def delete_file_collection_membership(fcm = %FileCollectionMembership{}, opts) do
-    delete(fcm, opts)
-  end
-
-  def delete_file_collection_membership(identifiers, opts) do
-    get(FileCollectionMembership, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_file_collection_membership(opts)
-  end
+  def delete_file_collection_membership(identifiers, opts),
+    do: default(:delete, identifiers, opts, &get_file_collection_membership/2)
 end

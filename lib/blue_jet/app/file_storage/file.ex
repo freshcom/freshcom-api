@@ -102,19 +102,6 @@ defmodule BlueJet.FileStorage.File do
     |> validate_required(required_fields())
   end
 
-  @spec delete_s3_object(list | __MODULE__.t()) :: :ok | {:ok, __MODULE__.t()}
-  def delete_s3_object(files) when is_list(files) do
-    Proxy.delete_s3_object(files)
-
-    :ok
-  end
-
-  def delete_s3_object(file) do
-    Proxy.delete_s3_object(file)
-
-    {:ok, file}
-  end
-
   @spec put_url(list | __MODULE__.t()) :: list | __MODULE__.t()
   def put_url(structs) when is_list(structs) do
     Enum.map(structs, fn ef ->
@@ -122,7 +109,7 @@ defmodule BlueJet.FileStorage.File do
     end)
   end
 
-  def put_url(struct = %__MODULE__{}), do: %{struct | url: get_url(struct)}
+  def put_url(%__MODULE__{} = struct), do: %{struct | url: get_url(struct)}
   def put_url(struct), do: struct
 
   @spec get_url(__MODULE__.t()) :: __MODULE__.t()

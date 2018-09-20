@@ -7,5 +7,7 @@ defmodule BlueJet.FileStorage.File.Proxy do
   def delete_s3_object(file_or_files) do
     File.get_s3_key(file_or_files)
     |> S3Client.delete_object()
+
+    {:ok, file_or_files}
   end
 end

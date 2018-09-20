@@ -101,24 +101,6 @@ defmodule BlueJet.FileStorage.FileCollection do
     Map.put(file_collection, :files, File.put_url(file_collection.files))
   end
 
-  @spec create_memberships_for_file_ids(__MODULE__.t()) :: {:ok, __MODULE__.t()}
-  def create_memberships_for_file_ids(file_collection) do
-    sort_index_step = 10000
-
-    Enum.reduce(file_collection.file_ids, 10000, fn file_id, acc ->
-      Repo.insert!(%FileCollectionMembership{
-        account_id: file_collection.account_id,
-        collection_id: file_collection.id,
-        file_id: file_id,
-        sort_index: acc
-      })
-
-      acc + sort_index_step
-    end)
-
-    {:ok, file_collection}
-  end
-
   @spec file_count(__MODULE__.t()) :: integer
   def file_count(%__MODULE__{id: collection_id}) do
     FileCollectionMembership.Query.default()
