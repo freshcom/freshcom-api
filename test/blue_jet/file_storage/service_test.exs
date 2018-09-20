@@ -5,7 +5,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
-  alias BlueJet.FileStorage.DefaultService
+  alias BlueJet.FileStorage.Service
 
   describe "list_file/2 and count_file/2" do
     test "with valid request" do
@@ -20,10 +20,10 @@ defmodule BlueJet.FileStorage.ServiceTest do
       opts = %{account: account1, pagination: %{number: 1, size: 2}}
       query = %{filter: %{status: "uploaded"}}
 
-      files = DefaultService.list_file(query, opts)
+      files = Service.list_file(query, opts)
 
       assert length(files) == 2
-      assert DefaultService.count_file(query, opts) == 3
+      assert Service.count_file(query, opts) == 3
     end
   end
 
@@ -31,7 +31,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given invalid fields" do
       account = account_fixture()
 
-      {:error, %{errors: errors}} = DefaultService.create_file(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_file(%{}, %{account: account})
 
       assert match_keys(errors, [:name, :content_type, :size_bytes])
     end
@@ -46,7 +46,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       }
       opts = %{account: account}
 
-      {:ok, file} = DefaultService.create_file(fields, opts)
+      {:ok, file} = Service.create_file(fields, opts)
 
       assert file.name == fields["name"]
       assert file.content_type == fields["content_type"]
@@ -58,7 +58,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given invalid id" do
       account = %Account{id: UUID.generate()}
 
-      refute DefaultService.get_file(%{id: UUID.generate()}, %{account: account})
+      refute Service.get_file(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -66,14 +66,14 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account2 = account_fixture()
       file = file_fixture(account2)
 
-      refute DefaultService.get_file(%{id: file.id}, %{account: account1})
+      refute Service.get_file(%{id: file.id}, %{account: account1})
     end
 
     test "when given valid id" do
       account = account_fixture()
       target_file = file_fixture(account)
 
-      file = DefaultService.get_file(%{id: target_file.id}, %{account: account})
+      file = Service.get_file(%{id: target_file.id}, %{account: account})
 
       assert file.id == target_file.id
     end
@@ -83,7 +83,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given id not exist" do
       account = %Account{id: UUID.generate()}
 
-      {:error, error} = DefaultService.update_file(%{id: UUID.generate()}, %{}, %{account: account})
+      {:error, error} = Service.update_file(%{id: UUID.generate()}, %{}, %{account: account})
 
       assert error == :not_found
     end
@@ -93,7 +93,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account2 = account_fixture()
       file = file_fixture(account2)
 
-      {:error, error} = DefaultService.update_file(%{id: file.id}, %{}, %{account: account1})
+      {:error, error} = Service.update_file(%{id: file.id}, %{}, %{account: account1})
 
       assert error == :not_found
     end
@@ -102,7 +102,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account = account_fixture()
       file = file_fixture(account)
 
-      {:error, %{errors: errors}} = DefaultService.update_file(%{id: file.id}, %{"status" => nil}, %{account: account})
+      {:error, %{errors: errors}} = Service.update_file(%{id: file.id}, %{"status" => nil}, %{account: account})
 
       assert match_keys(errors, [:status])
     end
@@ -115,7 +115,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       fields = %{"status" => "uploaded"}
       opts = %{account: account}
 
-      {:ok, file} = DefaultService.update_file(identifiers, fields, opts)
+      {:ok, file} = Service.update_file(identifiers, fields, opts)
 
       assert file.status == fields["status"]
     end
@@ -125,7 +125,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given id not exist" do
       account = %Account{id: UUID.generate()}
 
-      {:error, error} = DefaultService.delete_file(%{id: UUID.generate()}, %{account: account})
+      {:error, error} = Service.delete_file(%{id: UUID.generate()}, %{account: account})
 
       assert error == :not_found
     end
@@ -135,7 +135,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account2 = account_fixture()
       file = file_fixture(account2)
 
-      {:error, error} = DefaultService.delete_file(%{id: file.id}, %{account: account1})
+      {:error, error} = Service.delete_file(%{id: file.id}, %{account: account1})
 
       assert error == :not_found
     end
@@ -144,7 +144,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account = account_fixture()
       file = file_fixture(account)
 
-      {:ok, file} = DefaultService.delete_file(%{id: file.id}, %{account: account})
+      {:ok, file} = Service.delete_file(%{id: file.id}, %{account: account})
 
       refute Repo.get(File, file.id)
     end
@@ -163,10 +163,10 @@ defmodule BlueJet.FileStorage.ServiceTest do
       opts = %{account: account1, pagination: %{number: 1, size: 2}}
       query = %{filter: %{status: "draft"}}
 
-      collections = DefaultService.list_file_collection(query, opts)
+      collections = Service.list_file_collection(query, opts)
 
       assert length(collections) == 2
-      assert DefaultService.count_file_collection(query, opts) == 3
+      assert Service.count_file_collection(query, opts) == 3
     end
   end
 
@@ -174,7 +174,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when given invalid fields" do
       account = %Account{id: UUID.generate()}
 
-      {:error, %{errors: errors}} = DefaultService.create_file_collection(%{}, %{account: account})
+      {:error, %{errors: errors}} = Service.create_file_collection(%{}, %{account: account})
 
       assert match_keys(errors, [:name])
     end
@@ -190,7 +190,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       }
       opts = %{account: account}
 
-      {:ok, collection} = DefaultService.create_file_collection(fields, opts)
+      {:ok, collection} = Service.create_file_collection(fields, opts)
 
       assert collection.name == fields["name"]
       assert Repo.get_by(FileCollectionMembership, file_id: file1.id, collection_id: collection.id)
@@ -202,7 +202,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
     test "when give id does not exist" do
       account = %Account{id: UUID.generate()}
 
-      refute DefaultService.get_file_collection(%{id: UUID.generate()}, %{account: account})
+      refute Service.get_file_collection(%{id: UUID.generate()}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
@@ -210,7 +210,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account2 = account_fixture()
       collection = file_collection_fixture(account2)
 
-      refute DefaultService.get_file_collection(%{id: collection.id}, %{account: account1})
+      refute Service.get_file_collection(%{id: collection.id}, %{account: account1})
     end
 
     test "when given valid id" do
@@ -220,7 +220,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: target_collection.id}
       opts = %{account: account}
 
-      collection = DefaultService.get_file_collection(identifiers, opts)
+      collection = Service.get_file_collection(identifiers, opts)
 
       assert collection.id == target_collection.id
     end
@@ -233,7 +233,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      {:error, error} = DefaultService.update_file_collection(identifiers, %{}, opts)
+      {:error, error} = Service.update_file_collection(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -246,7 +246,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: collection.id}
       opts = %{account: account1}
 
-      {:error, error} = DefaultService.update_file_collection(identifiers, %{}, opts)
+      {:error, error} = Service.update_file_collection(identifiers, %{}, opts)
 
       assert error == :not_found
     end
@@ -259,7 +259,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       fields = %{"status" => nil}
       opts = %{account: account}
 
-      {:error, %{errors: errors}} = DefaultService.update_file_collection(identifiers, fields, opts)
+      {:error, %{errors: errors}} = Service.update_file_collection(identifiers, fields, opts)
 
       assert match_keys(errors, [:status])
     end
@@ -272,7 +272,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       fields = %{"name" => Faker.Commerce.product_name()}
       opts = %{account: account}
 
-      {:ok, collection} = DefaultService.update_file_collection(identifiers, fields, opts)
+      {:ok, collection} = Service.update_file_collection(identifiers, fields, opts)
 
       assert collection.name == fields["name"]
     end
@@ -285,7 +285,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: UUID.generate()}
       opts = %{account: account}
 
-      {:error, error} = DefaultService.delete_file_collection(identifiers, opts)
+      {:error, error} = Service.delete_file_collection(identifiers, opts)
 
       assert error == :not_found
     end
@@ -298,7 +298,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: collection.id}
       opts = %{account: account1}
 
-      {:error, error} = DefaultService.delete_file_collection(identifiers, opts)
+      {:error, error} = Service.delete_file_collection(identifiers, opts)
 
       assert error == :not_found
     end
@@ -307,7 +307,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       account = account_fixture()
       collection = file_collection_fixture(account)
 
-      {:ok, collection} = DefaultService.delete_file_collection(%{id: collection.id}, %{account: account})
+      {:ok, collection} = Service.delete_file_collection(%{id: collection.id}, %{account: account})
 
       assert collection
       refute Repo.get(FileCollection, collection.id)
@@ -324,7 +324,7 @@ defmodule BlueJet.FileStorage.ServiceTest do
       identifiers = %{id: membership.id}
       opts = %{account: account}
 
-      {:ok, _} = DefaultService.delete_file_collection_membership(identifiers, opts)
+      {:ok, _} = Service.delete_file_collection_membership(identifiers, opts)
 
       refute Repo.get(FileCollection, membership.id)
     end

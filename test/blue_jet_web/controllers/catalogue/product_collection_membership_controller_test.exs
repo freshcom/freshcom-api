@@ -72,7 +72,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
     end
   end
 
-  # Create a product collection
+  # Create a product collection membership
   describe "POST /v1/product_collections/:id/memberships" do
     test "without access token", %{conn: conn} do
       conn = post(conn, "/v1/product_collections/#{UUID.generate()}/memberships", %{
@@ -124,9 +124,6 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
       conn = post(conn, "/v1/product_collections/#{collection.id}/memberships", %{
         "data" => %{
           "type" => "ProductCollectionMembership",
-          "attributes" => %{
-            "name" => Faker.Commerce.product_name()
-          },
           "relationships" => %{
             "collection" => %{
               "data" => %{
@@ -183,7 +180,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
     end
   end
 
-  # Update a product
+  # Update a product collection membership
   describe "PATCH /v1/product_collection_memberships/:id" do
     test "without access token", %{conn: conn} do
       conn = patch(conn, "/v1/product_collection_memberships/#{UUID.generate()}", %{
@@ -241,7 +238,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
     end
   end
 
-  # Delete a product
+  # Delete a product collection membership
   describe "DELETE /v1/product_collection_memberships/:id" do
     test "without access token", %{conn: conn} do
       conn = delete(conn, "/v1/products/#{UUID.generate()}")
@@ -262,6 +259,7 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
       assert conn.status == 403
     end
 
+    @tag :focus
     test "with UAT", %{conn: conn} do
       user = standard_user_fixture()
       collection = product_collection_fixture(user.default_account)

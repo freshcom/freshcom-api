@@ -54,9 +54,9 @@ defmodule BlueJetWeb.Router do
     ####
     resources "/files", FileController, except: [:new, :edit]
     resources "/file_collections", FileCollectionController, except: [:new, :edit] do
-      resources "/memberships", FileCollectionMembershipController, only: [:create]
+      resources "/memberships", FileCollectionMembershipController, only: [:index, :create]
     end
-    resources "/file_collection_memberships", FileCollectionMembershipController, only: [:delete, :update]
+    resources "/file_collection_memberships", FileCollectionMembershipController, only: [:show, :delete, :update]
 
     #####
     # Goods

@@ -19,5 +19,5 @@ defmodule BlueJet.FileStorage do
   def create_file_collection_membership(req), do: default(req, :create, :file_collection_membership, Policy, Service)
   def get_file_collection_membership(req), do: default(req, :get, :file_collection_membership, Policy, Service)
   def update_file_collection_membership(req), do: default(req, :update, :file_collection_membership, Policy, Service)
-  def delete_file_collection_membership(req), do: default(req, :delete, :file_collection, Policy, Service)
+  def delete_file_collection_membership(req), do: default(req, :delete, :file_collection_membership, Policy, Service)
 end

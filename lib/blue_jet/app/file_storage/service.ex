@@ -1,48 +1,196 @@
 defmodule BlueJet.FileStorage.Service do
-  @service Application.get_env(:blue_jet, :file_storage)[:service]
+  use BlueJet, :service
 
-  @callback list_file(map, map) :: [File.t()]
-  @callback count_file(map, map) :: integer
-  @callback create_file(map, map) :: {:ok, File.t()} | {:error, any}
-  @callback get_file(map, map) :: File.t() | nil
-  @callback update_file(String.t() | File.t(), map, map) :: {:ok, File.t()} | {:error, any}
-  @callback delete_file(String.t() | File.t(), map) :: {:ok, File.t()} | {:error, any}
-  @callback delete_all_file(map) :: :ok
+  import BlueJet.ControlFlow
 
-  @callback list_file_collection(map, map) :: [FileCollection.t()]
-  @callback count_file_collection(map, map) :: integer
-  @callback create_file_collection(map, map) :: {:ok, FileCollection.t()} | {:error, any}
-  @callback get_file_collection(map, map) :: FileCollection.t() | nil
-  @callback update_file_collection(String.t() | FileCollection.t(), map, map) ::
-              {:ok, FileCollection.t()} | {:error, any}
-  @callback delete_file_collection(String.t() | FileCollection.t(), map) ::
-              {:ok, FileCollection.t()} | {:error, any}
-  @callback delete_all_file_collection(map) :: :ok
+  alias Ecto.Multi
+  alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
 
-  @callback create_file_collection_membership(map, map) ::
-              {:ok, FileCollectionMembership.t()} | {:error, any}
-  @callback update_file_collection_membership(String.t() | FileCollectionMembership.t(), map, map) ::
-              {:ok, FileCollectionMembership.t()} | {:error, any}
-  @callback delete_file_collection_membership(String.t() | FileCollectionMembership.t(), map) ::
-              {:ok, FileCollectionMembership.t()} | {:error, any}
+  #
+  # MARK: File
+  #
+  def list_file(query \\ %{}, opts) do
+    default(:list, File, query, opts)
+    |> File.put_url()
+  end
 
-  defdelegate list_file(params, opts), to: @service
-  defdelegate count_file(params \\ %{}, opts), to: @service
-  defdelegate create_file(fields, opts), to: @service
-  defdelegate get_file(identifiers, opts), to: @service
-  defdelegate update_file(id_or_file, fields, opts), to: @service
-  defdelegate delete_file(id_or_file, opts), to: @service
-  defdelegate delete_all_file(opts), to: @service
+  def count_file(query \\ %{}, opts), do: default(:count, File, query, opts)
 
-  defdelegate list_file_collection(params, opts), to: @service
-  defdelegate count_file_collection(params \\ %{}, opts), to: @service
-  defdelegate create_file_collection(fields, opts), to: @service
-  defdelegate get_file_collection(identifiers, opts), to: @service
-  defdelegate update_file_collection(id_or_file_collection, fields, opts), to: @service
-  defdelegate delete_file_collection(id_or_file_collection, opts), to: @service
-  defdelegate delete_all_file_collection(opts), to: @service
+  def create_file(fields, opts) do
+    default(:create, File, fields, opts)
+    ~> File.put_url()
+  end
 
-  defdelegate create_file_collection_membership(fields, opts), to: @service
-  defdelegate delete_file_collection_membership(id_or_fcm, opts), to: @service
-  defdelegate update_file_collection_membership(id_or_fcm, fields, opts), to: @service
+  def get_file(identifiers, opts) do
+    default(:get, File, identifiers, opts)
+    |> File.put_url()
+  end
+
+  def update_file(identifiers, fields, opts) do
+    default(:update, identifiers, fields, opts, &get_file/2)
+    ~> File.put_url()
+  end
+
+  def delete_file(nil, _), do: {:error, :not_found}
+
+  def delete_file(%File{} = file, opts) do
+    account = extract_account(opts)
+
+    changeset =
+      %{file | account: account}
+      |> File.changeset(:delete)
+
+    statements =
+      Multi.new()
+      |> Multi.delete(:file, changeset)
+      |> Multi.run(:_, &File.Proxy.delete_s3_object(&1[:file]))
+
+    case Repo.transaction(statements) do
+      {:ok, %{file: file}} ->
+        {:ok, file}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def delete_file(identifiers, opts) do
+    get_file(identifiers, Map.drop(opts, [:preload]))
+    |> delete_file(opts)
+  end
+
+  def delete_all_file(opts = %{account: account = %{mode: "test"}}) do
+    batch_size = opts[:batch_size] || 500
+
+    files =
+      File.Query.default()
+      |> for_account(account.id)
+      |> paginate(size: batch_size, number: 1)
+      |> Repo.all()
+
+    file_ids = Enum.map(files, fn file -> file.id end)
+
+    File.Query.default()
+    |> File.Query.filter_by(%{id: file_ids})
+    |> Repo.delete_all()
+
+    File.Proxy.delete_s3_object(files)
+
+    if length(file_ids) === batch_size do
+      delete_all_file(opts)
+    else
+      :ok
+    end
+  end
+
+  #
+  # MARK: File Collection
+  #
+  def list_file_collection(query \\ %{}, opts) do
+    default(:list, FileCollection, query, opts)
+    |> FileCollection.put_file_urls()
+    |> FileCollection.put_file_count()
+  end
+
+  def count_file_collection(query \\ %{}, opts), do: default(:count, FileCollection, query, opts)
+
+  def create_file_collection(fields, opts) do
+    account = extract_account(opts)
+    preload = extract_preload(opts)
+
+    changeset =
+      %FileCollection{account_id: account.id, account: account}
+      |> FileCollection.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:file_collection, changeset)
+      |> Multi.run(:_, &create_memberships(&1[:file_collection]))
+
+    case Repo.transaction(statements) do
+      {:ok, %{file_collection: collection}} ->
+        collection =
+          collection
+          |> preload(preload[:paths], preload[:opts])
+          |> FileCollection.put_file_urls()
+
+        {:ok, collection}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  defp create_memberships(collection) do
+    sort_index_step = 10000
+
+    Enum.reduce(collection.file_ids, 10000, fn(file_id, acc) ->
+      Repo.insert!(%FileCollectionMembership{
+        account_id: collection.account_id,
+        collection_id: collection.id,
+        file_id: file_id,
+        sort_index: acc
+      })
+
+      acc + sort_index_step
+    end)
+
+    {:ok, collection}
+  end
+
+  def get_file_collection(identifiers, opts) do
+    default(:get, FileCollection, identifiers, opts)
+    |> FileCollection.put_file_urls()
+    |> FileCollection.put_file_count()
+  end
+
+  def update_file_collection(identifiers, fields, opts) do
+    default(:update, identifiers, fields, opts, &get_file_collection/2)
+    ~> FileCollection.put_file_urls()
+    ~> FileCollection.put_file_count()
+  end
+
+  def delete_file_collection(identifiers, opts), do: default(:delete, identifiers, opts, &get_file_collection/2)
+  def delete_all_file_collection(opts), do: default(:delete_all, FileCollection, opts)
+
+  #
+  # MARK: File Collection Membership
+  #
+  def list_file_collection_membership(query \\ %{}, opts) do
+    account = extract_account(opts)
+    pagination = extract_pagination(opts)
+    preload = extract_preload(opts)
+    filter = extract_filter(query)
+
+    FileCollectionMembership.Query.default()
+    |> FileCollectionMembership.Query.filter_by(filter)
+    |> FileCollectionMembership.Query.with_file_status(filter[:file_status])
+    |> for_account(account.id)
+    |> paginate(size: pagination[:size], number: pagination[:number])
+    |> Repo.all()
+    |> preload(preload[:paths], preload[:opts])
+  end
+
+  def count_file_collection_membership(query \\ %{}, opts) do
+    account = extract_account(opts)
+    filter = extract_filter(query)
+
+    FileCollectionMembership.Query.default()
+    |> FileCollectionMembership.Query.filter_by(filter)
+    |> FileCollectionMembership.Query.with_file_status(filter[:file_status])
+    |> for_account(account.id)
+    |> Repo.aggregate(:count, :id)
+  end
+
+  def create_file_collection_membership(fields, opts),
+    do: default(:create, FileCollectionMembership, fields, opts)
+
+  def get_file_collection_membership(identifiers, opts),
+    do: default(:get, FileCollectionMembership, identifiers, opts)
+
+  def update_file_collection_membership(identifiers, fields, opts),
+    do: default(:update, identifiers, fields, opts, &get_file_collection_membership/2)
+
+  def delete_file_collection_membership(identifiers, opts),
+    do: default(:delete, identifiers, opts, &get_file_collection_membership/2)
 end

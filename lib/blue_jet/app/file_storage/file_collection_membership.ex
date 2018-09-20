@@ -29,21 +29,21 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
   end
 
   @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
-  def changeset(fcm, :delete) do
-    change(fcm)
+  def changeset(membership, :delete) do
+    change(membership)
     |> Map.put(:action, :delete)
   end
 
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(fcm, :insert, params) do
-    fcm
+  def changeset(membership, :insert, params) do
+    membership
     |> cast(params, castable_fields(:insert))
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(fcm, :update, params) do
-    fcm
+  def changeset(membership, :update, params, _) do
+    membership
     |> cast(params, castable_fields(:update))
     |> Map.put(:action, :update)
     |> validate()

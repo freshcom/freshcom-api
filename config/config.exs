@@ -115,7 +115,6 @@ config :blue_jet, :identity, %{
 }
 
 config :blue_jet, :file_storage, %{
-  service: BlueJet.FileStorage.DefaultService,
   identity_service: BlueJet.Identity.Service,
   s3_client: BlueJet.S3.Client,
   cloudfront_client: BlueJet.Cloudfront.Client

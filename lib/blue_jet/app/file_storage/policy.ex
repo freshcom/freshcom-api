@@ -1,8 +1,6 @@
 defmodule BlueJet.FileStorage.Policy do
   use BlueJet, :policy
 
-  alias BlueJet.FileStorage.Service
-
   # TODO: Fix this
   def authorize(%{vas: vas, _role_: nil} = req, endpoint) do
     identity_service =
@@ -37,7 +35,7 @@ defmodule BlueJet.FileStorage.Policy do
     {:ok, req}
   end
 
-  def authorize(%{_role_: role}, :list_file), do: {:error, :access_denied}
+  def authorize(%{_role_: _}, :list_file), do: {:error, :access_denied}
 
   def authorize(%{_role_: "anonymous"}, :create_file), do: {:error, :access_denied}
 
@@ -104,7 +102,7 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{role: "anonymous"}, :list_file_collection), do: {:error, :access_denied}
 
   # Guest and customer can only list active file collection for a specific owner
-  def authorize(%{_role_: role} = req, "list_file_collection")
+  def authorize(%{_role_: role} = req, :list_file_collection)
       when role in ["guest", "customer"] do
     if req.filter[:owner_id] && req.filter[:owner_id] do
       req =
@@ -120,7 +118,7 @@ defmodule BlueJet.FileStorage.Policy do
   end
 
   # Developer and adminstrator can list all file collection
-  def authorize(%{_role_: role} = req, "list_file_collection")
+  def authorize(%{_role_: role} = req, :list_file_collection)
       when role in ["developer", "administrator"] do
     req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
 
@@ -128,7 +126,7 @@ defmodule BlueJet.FileStorage.Policy do
   end
 
   # Other role can only list file collection for a specific owner
-  def authorize(%{_role_: role} = req, "list_file_collection") when not is_nil(role) do
+  def authorize(%{_role_: role} = req, :list_file_collection) when not is_nil(role) do
     if req.filter[:owner_id] && req.filter[:owner_id] do
       req =
         req
@@ -189,12 +187,44 @@ defmodule BlueJet.FileStorage.Policy do
   #
   # MARK: File Collection Membership
   #
+  def authorize(%{_role_: "anonymous"}, :list_file_collection_membership), do: {:error, :access_denied}
+
+  def authorize(%{_role_: role} = req, :list_file_collection_membership) when role in ["guest", "customer"] do
+    req = ContextRequest.put(req, :filter, :file_status, "uploaded")
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id, :file_status]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_preload_, :opts, %{filters: %{file: %{status: "uploaded"}}})
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :list_file_collection_membership) when not is_nil(role) do
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+
+    {:ok, req}
+  end
+
   def authorize(%{_role_: role}, :create_file_collection_membership)
       when role in ["anonymous", "guest", "customer"],
       do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :create_file_collection_membership)
       when not is_nil(role) do
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role}, :get_file_collection_membership)
+      when role in ["anonymous", "guest", "customer"],
+      do: {:error, :access_denied}
+
+  def authorize(%{_role_: role} = req, :get_file_collection_membership) when not is_nil(role) do
     req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
 
     {:ok, req}
