@@ -96,7 +96,8 @@ config :blue_jet, :event_bus, %{
   ],
   "identity:account.reset.success" => [
     Goods.EventHandler,
-    Catalogue.EventHandler
+    Catalogue.EventHandler,
+    FileStorage.EventHandler
   ]
 }
 
