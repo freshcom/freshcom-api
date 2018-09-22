@@ -3,9 +3,12 @@ defmodule BlueJet.Crm.Customer.Proxy do
 
   alias BlueJet.Crm.{FileStorageService, IdentityService}
 
-  def sync_to_user(customer, opts \\ %{}) do
-    account = get_account(customer)
+  def sync_to_user(customer, opts \\ %{})
 
+  def sync_to_user(%{user_id: nil}, _), do: {:ok, nil}
+
+  def sync_to_user(%{user_id: user_id} = customer, opts) do
+    identifiers = %{id: user_id}
     fields =
       Map.take(customer, [
         :email,
@@ -15,28 +18,31 @@ defmodule BlueJet.Crm.Customer.Proxy do
         :first_name,
         :last_name
       ])
-
-    IdentityService.update_user(customer.user_id, fields, %{
-      account: account,
+    opts = %{
+      account: get_account(customer),
       bypass_pvc_validation: !!opts[:bypass_user_pvc_validation]
-    })
+    }
+
+    IdentityService.update_user(identifiers, fields, opts)
   end
 
-  def put(customer, {:file_collections, file_collection_path}, opts) do
-    preloads = %{path: file_collection_path, opts: opts}
+  def delete_user(%{user_id: nil}), do: {:ok, nil}
 
-    opts =
-      opts
-      |> Map.take([:account, :account_id])
-      |> Map.merge(%{preloads: preloads})
+  def delete_user(%{user_id: user_id} = customer) do
+    identifiers = %{id: user_id}
+    opts = %{account: get_account(customer)}
 
-    file_collections =
-      FileStorageService.list_file_collection(
-        %{filter: %{owner_id: customer.id, owner_type: "Customer"}},
-        opts
-      )
+    IdentityService.delete_user(identifiers, opts)
+  end
 
-    %{customer | file_collections: file_collections}
+  def put(customer, {:file_collections, collection_paths}, opts) do
+    preload = %{paths: collection_paths, opts: opts}
+    opts = Map.put(opts, :preload, preload)
+    filter = %{owner_id: customer.id, owner_type: "Customer"}
+
+    collections = FileStorageService.list_file_collection(%{filter: filter}, opts)
+
+    %{customer | file_collections: collections}
   end
 
   def put(customer, _, _), do: customer

@@ -7,7 +7,6 @@ Mox.defmock(BlueJet.FileStorage.CloudfrontClientMock, for: BlueJet.FileStorage.C
 Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
 Mox.defmock(BlueJet.Goods.FileStorageServiceMock, for: BlueJet.Goods.FileStorageService)
 
-Mox.defmock(BlueJet.Crm.ServiceMock, for: BlueJet.Crm.Service)
 Mox.defmock(BlueJet.Crm.StripeClientMock, for: BlueJet.Crm.StripeClient)
 Mox.defmock(BlueJet.Crm.IdentityServiceMock, for: BlueJet.Crm.IdentityService)
 Mox.defmock(BlueJet.Crm.FileStorageServiceMock, for: BlueJet.Crm.FileStorageService)

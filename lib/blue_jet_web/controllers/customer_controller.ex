@@ -1,101 +1,25 @@
 defmodule BlueJetWeb.CustomerController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.Crm
 
   action_fallback BlueJetWeb.FallbackController
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, params) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      search: params["search"],
-      filter: assigns[:filter],
-      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
+  def index(conn, _),
+    do: default(conn, :index, &Crm.list_customer/1)
 
-    case Crm.list_customer(request) do
-      {:ok, %ContextResponse{ data: customers, meta: meta }} ->
-        render(conn, "index.json-api", data: customers, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  def create(conn, %{"data" => %{"type" => "Customer"}}),
+    do: default(conn, :create, &Crm.create_customer/1)
 
-      other -> other
-    end
-  end
+  @valid_identifiers [:id, :code, :phone_number, :email, :name]
+  def show(conn, _),
+    do: default(conn, :show, &Crm.get_customer/1, identifiers: @valid_identifiers)
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "Customer" } }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      fields: Params.to_attributes(data),
-      preloads: assigns[:preloads]
-    }
+  def update(conn, %{"id" => _, "data" => %{"type" => "Customer"}}),
+    do: default(conn, :update, &Crm.update_customer/1)
 
-    case Crm.create_customer(request) do
-      {:ok, %{ data: customer, meta: meta }} ->
-        conn
-        |> put_status(:created)
-        |> render("show.json-api", data: customer, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      {:error, %{ errors: errors }} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(errors))
-
-      other -> other
-    end
-  end
-
-  def show(conn = %{ assigns: assigns }, params) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: params,
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-
-    case Crm.get_customer(request) do
-      {:ok, %{ data: customer, meta: meta }} ->
-        render(conn, "show.json-api", data: customer, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      other -> other
-    end
-  end
-
-  def update(conn = %{ assigns: assigns }, %{ "id" => id, "data" => data = %{ "type" => "Customer" } }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "id" => id },
-      fields: Params.to_attributes(data),
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
-
-    case Crm.update_customer(request) do
-      {:ok, %{ data: customer, meta: meta }} ->
-        render(conn, "show.json-api", data: customer, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
-
-      {:error, %{ errors: errors }} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(errors))
-
-      other -> other
-    end
-  end
-
-  def delete(conn = %{ assigns: assigns }, %{ "id" => id }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "id" => id }
-    }
-
-    case Crm.delete_customer(request) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
-
-      other -> other
-    end
-  end
+  def delete(conn, %{"id" => _}),
+    do: default(conn, :delete, &Crm.delete_customer/1)
 end

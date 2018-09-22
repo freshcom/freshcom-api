@@ -1,11 +1,10 @@
 defmodule BlueJet.Crm.Customer do
   use BlueJet, :data
 
-  alias BlueJet.Utils
+  import BlueJet.Utils
 
   alias __MODULE__.Proxy
   alias BlueJet.Crm.PointAccount
-  alias BlueJet.Crm.IdentityService
 
   schema "customers" do
     field :account_id, Ecto.UUID
@@ -69,7 +68,7 @@ defmodule BlueJet.Crm.Customer do
     |> cast(params, writable_fields())
     |> Map.put(:action, :insert)
     |> put_name()
-    |> Utils.put_clean_email()
+    |> put_parameterized(:email)
     |> validate()
   end
 
@@ -83,7 +82,7 @@ defmodule BlueJet.Crm.Customer do
     |> cast(params, writable_fields())
     |> Map.put(:action, :update)
     |> put_name()
-    |> Utils.put_clean_email()
+    |> put_parameterized(:email)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
@@ -141,14 +140,8 @@ defmodule BlueJet.Crm.Customer do
     leftover =
       Enum.reject(matcher, fn {k, v} ->
         case k do
-          :first_name ->
-            String.downcase(v) == remove_space(downcase(customer.first_name))
-
-          :last_name ->
-            String.downcase(v) == remove_space(downcase(customer.last_name))
-
           :name ->
-            remove_space(String.downcase(v)) == remove_space(downcase(customer.name))
+            remove_space(downcase(v)) == remove_space(downcase(customer.name))
 
           :phone_number ->
             digit_only(v) == digit_only(customer.phone_number)
@@ -161,76 +154,6 @@ defmodule BlueJet.Crm.Customer do
     case length(leftover) do
       0 -> customer
       _ -> nil
-    end
-  end
-
-  defp downcase(nil) do
-    nil
-  end
-
-  defp downcase(value) do
-    String.downcase(value)
-  end
-
-  defp digit_only(nil) do
-    nil
-  end
-
-  defp digit_only(value) do
-    String.replace(value, ~r/[^0-9]/, "")
-  end
-
-  defp remove_space(nil) do
-    nil
-  end
-
-  defp remove_space(value) do
-    String.replace(value, " ", "")
-  end
-
-  @doc """
-  If customer is changing status to `registered` this function will create a user
-  and add its ID as `user_id` to the customer's changeset, otherwise does nothing.
-  """
-  @spec put_user_id(Changeset.t()) :: {:ok | :error, Changeset.t()}
-  def put_user_id(%{data: customer, changes: %{status: "registered"} = changes} = changeset) do
-    account = Proxy.get_account(customer)
-    fields = Map.merge(changes, %{role: "customer"})
-
-    with {:ok, user} <- IdentityService.create_user(fields, %{account: account}) do
-      changeset = put_change(changeset, :user_id, user.id)
-
-      {:ok, changeset}
-    else
-      other -> other
-    end
-  end
-
-  def put_user_id(changeset), do: {:ok, changeset}
-
-  @spec sync_to_user(Customer.t(), map) :: {:ok, Customer.t()}
-  def sync_to_user(customer, opts \\ %{})
-
-  def sync_to_user(%{user_id: nil} = customer, _), do: {:ok, customer}
-
-  def sync_to_user(customer, opts) do
-    with {:ok, _} <- Proxy.sync_to_user(customer, opts) do
-      {:ok, customer}
-    else
-      other -> other
-    end
-  end
-
-  @spec delete_user(Customer.t()) :: {:ok, Customer.t()}
-  def delete_user(%{user_id: nil} = customer, _), do: {:ok, customer}
-
-  def delete_user(customer) do
-    account = Proxy.get_account(customer)
-
-    with {:ok, _} <- IdentityService.delete_user(customer.user_id, %{account: account}) do
-      {:ok, customer}
-    else
-      other -> other
     end
   end
 end

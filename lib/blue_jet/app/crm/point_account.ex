@@ -5,6 +5,7 @@ defmodule BlueJet.Crm.PointAccount do
 
   schema "point_accounts" do
     field :account_id, Ecto.UUID
+    field :account, :map, virtual: true
 
     field :status, :string, default: "active"
     field :balance, :integer, default: 0

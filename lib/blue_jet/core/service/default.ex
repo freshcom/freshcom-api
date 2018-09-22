@@ -71,10 +71,14 @@ defmodule BlueJet.Service.Default do
     |> delete(opts)
   end
 
+  def default(:update, data, fields, opts), do: update(data, fields, opts)
+
   def default(:update, identifiers, fields, opts, get_fun) do
     get_fun.(identifiers, opts)
     |> update(fields, opts)
   end
+
+  def default(:delete, data, opts), do: delete(data, opts)
 
   def default(:delete_all, type, %{account: %{mode: "test"}} = opts) do
     account = extract_account(opts)
@@ -89,7 +93,7 @@ defmodule BlueJet.Service.Default do
       |> Repo.all()
 
     query_module.default()
-    |> query_module.filter_by(%{ id: data_ids })
+    |> query_module.filter_by(%{id: data_ids})
     |> Repo.delete_all()
 
     if length(data_ids) === batch_size do

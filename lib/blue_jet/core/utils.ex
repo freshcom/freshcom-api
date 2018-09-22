@@ -1,4 +1,6 @@
 defmodule BlueJet.Utils do
+  alias Ecto.Changeset
+
   def parameterize(s) do
     s
     |> String.downcase()
@@ -12,26 +14,27 @@ defmodule BlueJet.Utils do
   end
 
   def put_parameterized(changeset, attribute) do
-    value = Ecto.Changeset.get_change(changeset, attribute)
+    value = Changeset.get_change(changeset, attribute)
 
     if value do
-      Ecto.Changeset.put_change(changeset, attribute, parameterize(value))
+      Changeset.put_change(changeset, attribute, parameterize(value))
     else
       changeset
     end
   end
 
-  def clean_email(nil), do: nil
+  def downcase(nil), do: nil
+  def downcase(value), do: String.downcase(value)
 
-  def clean_email(email) do
-    email
-    |> String.downcase()
-    |> String.replace(" ", "")
+  def digit_only(nil), do: nil
+  def digit_only(value), do: String.replace(value, ~r/[^0-9]/, "")
+
+  def remove_space(nil), do: nil
+  def remove_space(value), do: String.replace(value, " ", "")
+
+  def stringify_keys(m) do
+    Enum.reduce(m, %{}, fn({k, v}, acc) ->
+      Map.put(acc, Atom.to_string(k), v)
+    end)
   end
-
-  def put_clean_email(changeset = %{ changes: %{ email: email } }) do
-    Ecto.Changeset.put_change(changeset, :email, clean_email(email))
-  end
-
-  def put_clean_email(changeset), do: changeset
 end

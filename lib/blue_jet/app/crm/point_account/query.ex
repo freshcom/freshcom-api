@@ -3,6 +3,12 @@ defmodule BlueJet.Crm.PointAccount.Query do
 
   alias BlueJet.Crm.{PointAccount, PointTransaction}
 
+  use BlueJet.Query.Filter,
+    for: [
+      :id,
+      :status
+    ]
+
   def default() do
     from(pa in PointAccount)
   end

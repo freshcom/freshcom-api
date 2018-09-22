@@ -1,15 +1,17 @@
 defmodule BlueJet.Crm do
   use BlueJet, :context
 
-  def list_customer(req), do: list("customer", req, __MODULE__)
-  def create_customer(req), do: create("customer", req, __MODULE__)
-  def get_customer(req), do: get("customer", req, __MODULE__)
-  def update_customer(req), do: update("customer", req, __MODULE__)
-  def delete_customer(req), do: delete("customer", req, __MODULE__)
+  alias BlueJet.Crm.{Policy, Service}
 
-  def list_point_transaction(req), do: list("point_transaction", req, __MODULE__)
-  def create_point_transaction(req), do: create("point_transaction", req, __MODULE__)
-  def get_point_transaction(req), do: get("point_transaction", req, __MODULE__)
-  def update_point_transaction(req), do: update("point_transaction", req, __MODULE__)
-  def delete_point_transaction(req), do: delete("point_transaction", req, __MODULE__)
+  def list_customer(req), do: default(req, :list, :customer, Policy, Service)
+  def create_customer(req), do: default(req, :create, :customer, Policy, Service)
+  def get_customer(req), do: default(req, :get, :customer, Policy, Service)
+  def update_customer(req), do: default(req, :update, :customer, Policy, Service)
+  def delete_customer(req), do: default(req, :delete, :customer, Policy, Service)
+
+  def list_point_transaction(req), do: default(req, :list, :point_transaction, Policy, Service)
+  def create_point_transaction(req), do: default(req, :create, :point_transaction, Policy, Service)
+  def get_point_transaction(req), do: default(req, :get, :point_transaction, Policy, Service)
+  def update_point_transaction(req), do: default(req, :update, :point_transaction, Policy, Service)
+  def delete_point_transaction(req), do: default(req, :delete, :point_transaction, Policy, Service)
 end

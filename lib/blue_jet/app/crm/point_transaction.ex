@@ -65,7 +65,6 @@ defmodule BlueJet.Crm.PointTransaction do
     point_transaction
     |> cast(params, writable_fields())
     |> put_committed_at()
-    |> put_balance_after_commit()
     |> validate()
   end
 
@@ -78,7 +77,6 @@ defmodule BlueJet.Crm.PointTransaction do
     point_transaction
     |> cast(params, writable_fields())
     |> put_committed_at()
-    |> put_balance_after_commit()
     |> validate()
     |> Translation.put_change(translatable_fields(), locale)
   end
@@ -102,29 +100,12 @@ defmodule BlueJet.Crm.PointTransaction do
 
   defp put_committed_at(changeset), do: changeset
 
-  defp put_balance_after_commit(
-         changeset = %{
-           valid?: true,
-           data: %{status: "pending"},
-           changes: %{status: "committed"}
-         }
-       ) do
-    point_account_id = get_field(changeset, :point_account_id)
-    point_account = Repo.get(PointAccount, point_account_id)
-
-    amount = get_field(changeset, :amount)
-    new_balance = point_account.balance + amount
-    put_change(changeset, :balance_after_commit, new_balance)
-  end
-
-  defp put_balance_after_commit(changeset), do: changeset
-
   @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset = %{action: :delete}) do
-    if get_field(changeset, :amount) == 0 do
+    if get_field(changeset, :status) == "pending" do
       changeset
     else
-      add_error(changeset, :amount, {"must be zero", code: :must_be_zero})
+      add_error(changeset, :status, {"Only pending transaction can be deleted.", code: :undeletable})
     end
   end
 

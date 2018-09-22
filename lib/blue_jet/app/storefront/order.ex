@@ -123,7 +123,7 @@ defmodule BlueJet.Storefront.Order do
     |> cast(params, castable_fields)
     |> Map.put(:action, :insert)
     |> put_name()
-    |> Utils.put_clean_email()
+    |> Utils.put_parameterized(:email)
     |> validate()
   end
 
@@ -136,7 +136,7 @@ defmodule BlueJet.Storefront.Order do
     |> cast(params, castable_fields(order, :update))
     |> Map.put(:action, :update)
     |> put_name()
-    |> Utils.put_clean_email()
+    |> Utils.put_parameterized(:email)
     |> validate()
     |> put_opened_at()
     |> Translation.put_change(translatable_fields(), locale, default_locale)

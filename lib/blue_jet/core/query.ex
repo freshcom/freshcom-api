@@ -75,4 +75,8 @@ defmodule BlueJet.Query do
       end
     end)
   end
+
+  def lock_exclusively(query) do
+    lock(query, "FOR UPDATE")
+  end
 end

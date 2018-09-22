@@ -3,202 +3,205 @@ defmodule BlueJet.Crm.Policy do
 
   alias BlueJet.Crm.Service
 
+  # TODO: Fix this
+  def authorize(%{vas: vas, _role_: nil} = req, endpoint) do
+    identity_service =
+      Atom.to_string(__MODULE__)
+      |> String.split(".")
+      |> Enum.drop(-1)
+      |> Enum.join(".")
+      |> Module.concat(IdentityService)
+
+    vad = identity_service.get_vad(vas)
+    role = identity_service.get_role(vad)
+    default_locale = if vad[:account], do: vad[:account].default_locale, else: nil
+
+    req
+    |> Map.put(:_vad_, vad)
+    |> Map.put(:_role_, role)
+    |> Map.put(:_default_locale_, default_locale)
+    |> authorize(endpoint)
+  end
+
   #
   # MARK: Customer
   #
-  def authorize(request = %{role: role}, "list_customer")
+  def authorize(%{_role_: role} = req, :list_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_customer") when role in ["guest"] do
-    authorized_args = from_access_request(request, :create)
+  def authorize(%{_role_: role} = req, :create_customer) when role in ["guest"] do
+    req =
+      req
+      |> ContextRequest.put(:fields, "status", "registered")
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    fields = Map.merge(authorized_args[:fields], %{"status" => "registered"})
-    authorized_args = %{authorized_args | fields: fields}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_customer")
+  def authorize(%{_role_: role} = req, :create_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_customer") when role in ["guest"] do
-    authorized_args = from_access_request(request, :get)
+  def authorize(%{_role_: role} = req, :get_customer) when role in ["guest"] do
+    req =
+      req
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.drop(:identifiers, [:id])
 
-    identifiers =
-      authorized_args[:identifiers]
-      |> Map.merge(atom_map(request.params))
-      |> Map.drop([:id])
-
-    authorized_args = %{authorized_args | identifiers: identifiers}
-
-    {:ok, authorized_args}
+    if (req.identifiers[:code] || req.identifiers[:email]) && map_size(req.identifiers) >= 3 do
+      {:ok, req}
+    else
+      {:error, :access_denied}
+    end
   end
 
-  def authorize(request = %{role: role}, "get_customer")
+  def authorize(%{_role_: role} = req, :get_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{account: account, user: user, role: role}, "update_customer")
+  def authorize(%{_role_: role} = req, :update_customer)
       when role in ["customer"] do
-    authorized_args = from_access_request(request, :update)
+    req =
+      req
+      |> ContextRequest.put(:identifiers, :user_id, req._vad_[:user].id)
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    customer = Service.get_customer(%{user_id: user.id}, %{account: account})
-    authorized_args = %{authorized_args | identifiers: %{id: customer.id}}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_customer")
+  def authorize(%{_role_: role} = req, "update_customer")
       when role in ["support_specialist", "developer", "administrator"] do
-    authorized_args = from_access_request(request, :update)
+    req =
+      req
+      |> ContextRequest.put(:_opts_, :bypass_user_pvc_validation, true)
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    opts = Map.merge(authorized_args[:opts], %{bypass_user_pvc_validation: true})
-    authorized_args = %{authorized_args | opts: opts}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_customer")
+  def authorize(%{_role_: role} = req, :delete_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    {:ok, req}
   end
 
   #
   # Point Transaction
   #
-  def authorize(request = %{account: account, user: user, role: role}, "list_point_transaction")
+  def authorize(%{_role_: role, filter: %{point_account_id: pa_id}} = req, :list_point_transaction)
       when role in ["customer"] do
-    authorized_args = from_access_request(request, :list)
+    identifiers = %{user_id: req._vad_[:user].id}
+    opts = %{account: req._vad_[:account]}
+    customer = Service.get_customer(identifiers, opts)
 
-    filter =
-      Map.merge(authorized_args[:filter], %{
-        point_account_id: request.params["point_account_id"],
-        status: "committed"
-      })
-
-    customer = Service.get_customer(%{user_id: user.id}, %{account: account})
-
-    point_account =
-      Service.get_point_account(
-        %{
-          id: filter[:point_account_id],
-          customer_id: customer.id
-        },
-        %{account: account}
-      )
+    identifiers = %{id: pa_id, customer_id: customer.id}
+    opts = %{account: req._vad_[:account]}
+    point_account = Service.get_point_account(identifiers, opts)
 
     if point_account do
-      all_count_filter = Map.take(filter, [:status, :point_account_id])
-      authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
+      req = ContextRequest.put(req, :filter, :status, "committed")
+      req =
+        req
+        |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :point_account_id]))
+        |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-      {:ok, authorized_args}
+      {:ok, req}
     else
       {:error, :access_denied}
     end
   end
 
-  def authorize(request = %{role: role}, "list_point_transaction")
+  def authorize(%{_role_: role} = req, :list_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    authorized_args = from_access_request(request, :list)
+    req = ContextRequest.put(req, :filter, :status, "committed")
+    req =
+      req
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :point_account_id]))
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
-    filter =
-      Map.merge(authorized_args[:filter], %{
-        point_account_id: request.params["point_account_id"],
-        status: "committed"
-      })
-
-    all_count_filter = Map.take(filter, [:status, :point_account_id])
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{account: account, user: user, role: role}, "create_point_transaction")
+  def authorize(%{_role_: role, fields: %{"point_account_id" => pa_id}} = req, :create_point_transaction)
       when role in ["customer"] do
-    authorized_args = from_access_request(request, :create)
+    identifiers = %{user_id: req._vad_[:user].id}
+    opts = %{account: req._vad_[:account]}
+    customer = Service.get_customer(identifiers, opts)
 
-    fields =
-      Map.merge(authorized_args[:fields], %{
-        "point_account_id" => request.params["point_account_id"],
-        "status" => "pending"
-      })
-
-    customer = Service.get_customer(%{user_id: user.id}, %{account: account})
-
-    point_account =
-      Service.get_point_account(
-        %{
-          id: fields["point_account_id"],
-          customer_id: customer.id
-        },
-        %{account: account}
-      )
+    identifiers = %{id: pa_id, customer_id: customer.id}
+    opts = %{account: req._vad_[:account]}
+    point_account = Service.get_point_account(identifiers, opts)
 
     if point_account do
-      authorized_args = %{authorized_args | fields: fields}
-      {:ok, authorized_args}
+      req =
+        req
+        |> ContextRequest.put(:fields, "status", "pending")
+        |> ContextRequest.put(:_preload_, :paths, req.preloads)
+
+      {:ok, req}
     else
       {:error, :access_denied}
     end
   end
 
-  def authorize(request = %{role: role}, "create_point_transaction")
+  def authorize(%{_role_: role} = req, :create_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    authorized_args = from_access_request(request, :create)
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
 
-    fields =
-      Map.merge(authorized_args[:fields], %{
-        "point_account_id" => request.params["point_account_id"]
-      })
-
-    authorized_args = %{authorized_args | fields: fields}
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_point_transaction")
+  def authorize(%{_role_: role} = req, :get_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_point_transaction")
+  def authorize(%{_role_: role} = req, :update_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{account: account, user: user, role: role}, "delete_point_transaction")
+  def authorize(%{_role_: role, identifiers: %{id: transaction_id}} = req, :delete_point_transaction)
       when role in ["customer"] do
-    authorized_args = from_access_request(request, :delete)
+    identifiers = %{user_id: req._vad_[:user].id}
+    opts = %{account: req._vad_[:account]}
+    customer = Service.get_customer(identifiers, opts)
 
-    customer = Service.get_customer(%{user_id: user.id}, %{account: account})
+    identifiers = %{id: transaction_id}
+    opts = %{account: req._vad_[:account]}
+    transaction = Service.get_point_transaction(identifiers, opts)
 
-    point_transaction =
-      Service.get_point_transaction(%{id: authorized_args[:id]}, %{account: account})
-
-    point_account =
-      Service.get_point_account(
-        %{
-          id: point_transaction.point_account_id,
-          customer_id: customer.id
-        },
-        %{account: account}
-      )
+    identifiers = %{id: transaction.point_account_id, customer_id: customer.id}
+    opts = %{account: req._vad_[:account]}
+    point_account = Service.get_point_account(identifiers, opts)
 
     if point_account do
-      {:ok, authorized_args}
+      req = ContextRequest.put(req, :identifiers, "status", "pending")
+
+      {:ok, req}
     else
       {:error, :access_denied}
     end
   end
 
-  def authorize(request = %{role: role}, "delete_point_transaction")
+  def authorize(%{_role_: role} = req, :delete_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    req = ContextRequest.put(req, :identifiers, "status", "pending")
+
+    {:ok, req}
   end
 
   #
@@ -206,9 +209,5 @@ defmodule BlueJet.Crm.Policy do
   #
   def authorize(_, _) do
     {:error, :access_denied}
-  end
-
-  defp atom_map(m) do
-    for {key, val} <- m, into: %{}, do: {String.to_atom(key), val}
   end
 end

@@ -19,6 +19,7 @@ defmodule BlueJet.Catalogue.TestHelper do
     }
     fields = Map.merge(default_fields, Map.drop(fields, [:status]))
 
+
     {:ok, product} = Service.create_product(fields, %{account: account})
 
     if status == "active" || status == "internal" do

@@ -59,7 +59,7 @@ defmodule BlueJet.Mixfile do
       {:jose, "~> 1.8.3"},
       {:timex_ecto, "~> 3.3"},
       {:httpoison, "~> 0.13"},
-      {:ex_doc, "~> 0.16", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:uri_query, "~> 0.1.2"},
       {:csv, "~> 2.0.0"},
       {:bbmustache, "~> 1.5.0"},

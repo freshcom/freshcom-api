@@ -16,7 +16,7 @@ defmodule BlueJetWeb.PriceController do
   end
 
   def create(conn, %{"data" => %{"type" => "Price"}}),
-    do: default(conn, :create, &Catalogue.create_price/1, params: ["product_id"])
+    do: default(conn, :create, &Catalogue.create_price/1, fields: ["product_id"])
 
   def show(conn, %{"id" => _}),
     do: default(conn, :show, &Catalogue.get_price/1)

@@ -127,7 +127,6 @@ config :blue_jet, :goods, %{
 }
 
 config :blue_jet, :crm, %{
-  service: BlueJet.Crm.DefaultService,
   stripe_client: BlueJet.Stripe.Client,
   identity_service: BlueJet.Identity.Service,
   file_storage_service: BlueJet.FileStorage.Service
