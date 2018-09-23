@@ -33,7 +33,25 @@ defmodule BlueJet.ContextRequest do
             _default_locale_: nil,
             _opts_: %{}
 
-  @type t :: map
+  @type t :: %__MODULE__{
+    vas: %{account_id: binary, user_id: binary},
+    preloads: list,
+    locale: binary,
+    identifiers: %{required(binary) => binary},
+    fields: %{required(binary) => binary},
+    params: %{required(binary) => binary},
+    search: binary,
+    filter: %{required(binary) => binary},
+    sort: list,
+    pagination: %{size: integer, number: integer},
+
+    _vad_: %{account: map, user: map},
+    _role_: binary,
+    _preload_: %{paths: list, opts: map},
+    _scope_: %{required(atom) => binary},
+    _default_locale_: binary,
+    _opts_: map
+  }
 
   def put(req, root_key, key, value) do
     root_value =
