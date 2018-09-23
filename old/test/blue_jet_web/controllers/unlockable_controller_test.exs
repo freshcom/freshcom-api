@@ -40,7 +40,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   end
 
   describe "POST /v1/unlockables" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = post(conn, "/v1/unlockables", %{
         "data" => %{
           "type" => "Unlockable",
@@ -121,7 +121,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   end
 
   describe "GET /v1/unlockables/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/unlockables/test")
 
       assert conn.status == 401
@@ -262,7 +262,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   end
 
   describe "PATCH /v1/unlockables/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/unlockables/test", %{
         "data" => %{
           "id" => "test",
@@ -460,7 +460,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   end
 
   describe "GET /v1/unlockables" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/unlockables")
 
       assert conn.status == 401
@@ -776,7 +776,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
   end
 
   describe "DELETE /v1/unlockables/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, "/v1/unlockables/test")
 
       assert conn.status == 401

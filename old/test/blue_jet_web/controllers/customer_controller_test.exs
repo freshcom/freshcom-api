@@ -41,7 +41,7 @@ defmodule BlueJetWeb.CustomerControllerTest do
   end
 
   describe "POST /v1/customers" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = post(conn, "/v1/customers", %{
         "data" => %{
           "type" => "Customer",
@@ -85,7 +85,7 @@ defmodule BlueJetWeb.CustomerControllerTest do
   end
 
   describe "GET /v1/customers/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/customers/test")
 
       assert conn.status == 401
@@ -181,7 +181,7 @@ defmodule BlueJetWeb.CustomerControllerTest do
   end
 
   describe "PATCH /v1/customers/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/customers/test", %{
         "data" => %{
           "id" => "test",
@@ -300,7 +300,7 @@ defmodule BlueJetWeb.CustomerControllerTest do
   end
 
   describe "GET /v1/customers" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/customers")
 
       assert conn.status == 401
@@ -459,7 +459,7 @@ defmodule BlueJetWeb.CustomerControllerTest do
   end
 
   describe "DELETE /v1/customers/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, "/v1/customers/test")
 
       assert conn.status == 401

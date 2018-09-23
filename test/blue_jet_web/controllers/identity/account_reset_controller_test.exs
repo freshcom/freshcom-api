@@ -7,7 +7,7 @@ defmodule BlueJetWeb.AccountResetControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
   end
 
   # Create an account reset (internal)

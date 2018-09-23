@@ -5,7 +5,8 @@ defmodule BlueJet.Crm.TestHelper do
   def customer_fixture(account, fields \\ %{}) do
     default_fields = %{
       name: Faker.Name.name(),
-      email: Faker.Internet.safe_email()
+      email: Faker.Internet.safe_email(),
+      password: "test1234"
     }
     fields =
       default_fields

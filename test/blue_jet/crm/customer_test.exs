@@ -1,18 +1,16 @@
 defmodule BlueJet.Crm.CustomerTest do
   use BlueJet.DataCase
 
-  import Mox
+  import BlueJet.Crm.TestHelper
 
   alias BlueJet.Identity.Account
   alias BlueJet.Crm.Customer
-  alias BlueJet.Crm.IdentityServiceMock
 
   describe "schema" do
     test "when account is deleted customer is automatically deleted" do
-      account = Repo.insert!(%Account{})
-      customer = Repo.insert!(%Customer{
-        account_id: account.id
-      })
+      account = account_fixture()
+      customer = customer_fixture(account)
+
       Repo.delete!(account)
 
       refute Repo.get(Customer, customer.id)
@@ -63,13 +61,14 @@ defmodule BlueJet.Crm.CustomerTest do
   end
 
   test "changeset/5" do
+    account = %Account{id: UUID.generate()}
     fields = %{
       "first_name" => Faker.Name.first_name(),
       "last_name" => Faker.Name.last_name(),
       "email" => " tEst@examp le.com "
     }
 
-    changeset = Customer.changeset(%Customer{ account: %Account{} }, :update, fields)
+    changeset = Customer.changeset(%Customer{account: account}, :update, fields)
 
     assert changeset.action == :update
     assert changeset.changes.name == fields["first_name"] <> " " <> fields["last_name"]
@@ -85,7 +84,8 @@ defmodule BlueJet.Crm.CustomerTest do
   describe "validate/1" do
     test "when status is guest" do
       changeset =
-        change(%Customer{}, %{})
+        %Customer{}
+        |> change(%{})
         |> Customer.validate()
 
       assert changeset.valid? == true
@@ -93,38 +93,12 @@ defmodule BlueJet.Crm.CustomerTest do
 
     test "when status is registered" do
       changeset =
-        change(%Customer{ status: "registered" }, %{})
+        %Customer{status: "registered"}
+        |> change(%{})
         |> Customer.validate()
 
       assert changeset.valid? == false
-      assert Keyword.keys(changeset.errors) == [:name, :email]
-    end
-  end
-
-  describe "put_user_id/1" do
-    test "when status is changed to registered" do
-      user_id = Ecto.UUID.generate()
-
-      IdentityServiceMock
-      |> expect(:create_user, fn(fields, _) ->
-          assert fields[:role] == "customer"
-
-          {:ok, %{ id: user_id }}
-         end)
-
-      {:ok, changeset} =
-        change(%Customer{ account: %Account{} }, %{ status: "registered" })
-        |> Customer.put_user_id()
-
-      assert changeset.changes.user_id == user_id
-    end
-
-    test "when status did not change to registered" do
-      {:ok, changeset} =
-        change(%Customer{ account: %Account{} }, %{})
-        |> Customer.put_user_id()
-
-      assert changeset.changes[:user_id] == nil
+      assert match_keys(changeset.errors, [:name, :email])
     end
   end
 end

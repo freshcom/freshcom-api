@@ -129,7 +129,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   end
 
   describe "GET /v1/prices/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/prices/test")
 
       assert conn.status == 401
@@ -297,7 +297,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   end
 
   describe "PATCH /v1/prices/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/prices/test", %{
         "data" => %{
           "id" => "test",
@@ -563,7 +563,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   end
 
   describe "GET /v1/prices" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/prices")
 
       assert conn.status == 401
@@ -1048,7 +1048,7 @@ defmodule BlueJetWeb.PriceControllerTest do
   end
 
   describe "DELETE /v1/prices/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, "/v1/prices/test")
 
       assert conn.status == 401

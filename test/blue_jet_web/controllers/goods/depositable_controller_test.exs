@@ -10,7 +10,7 @@ defmodule BlueJetWeb.DepositableControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
   end
 
   # Create a depositable
@@ -232,7 +232,7 @@ defmodule BlueJetWeb.DepositableControllerTest do
 
   # List depositable
   describe "GET /v1/depositables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/depositables")
 
       assert conn.status == 401

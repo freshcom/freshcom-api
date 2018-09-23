@@ -10,7 +10,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
   end
 
   # Create a unlockable
@@ -228,7 +228,7 @@ defmodule BlueJetWeb.UnlockableControllerTest do
 
   # List unlockable
   describe "GET /v1/unlockables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/unlockables")
 
       assert conn.status == 401

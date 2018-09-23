@@ -43,7 +43,7 @@ defmodule BlueJetWeb.SkuControllerTest do
   end
 
   describe "POST /v1/skus" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = post(conn, "/v1/skus", %{
         "data" => %{
           "type" => "Sku",
@@ -126,7 +126,7 @@ defmodule BlueJetWeb.SkuControllerTest do
   end
 
   describe "GET /v1/skus/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/skus/test")
 
       assert conn.status == 401
@@ -271,7 +271,7 @@ defmodule BlueJetWeb.SkuControllerTest do
   end
 
   describe "PATCH /v1/skus/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/skus/test", %{
         "data" => %{
           "id" => "test",
@@ -474,7 +474,7 @@ defmodule BlueJetWeb.SkuControllerTest do
   end
 
   describe "GET /v1/skus" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, sku_path(conn, :index))
 
       assert conn.status == 401
@@ -824,7 +824,7 @@ defmodule BlueJetWeb.SkuControllerTest do
   end
 
   describe "DELETE /v1/skus/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, sku_path(conn, :delete, "test"))
 
       assert conn.status == 401

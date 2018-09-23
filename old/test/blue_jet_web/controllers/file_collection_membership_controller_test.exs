@@ -169,7 +169,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
   end
 
   describe "PATCH /v1/file_collection_memberships/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/file_collection_memberships/#{Ecto.UUID.generate()}", %{
         "data" => %{
           "id" => "test",
@@ -327,7 +327,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
   end
 
   describe "GET /v1/file_collection_memberships" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, sku_path(conn, :index))
 
       assert conn.status == 401
@@ -437,7 +437,7 @@ defmodule BlueJetWeb.FileCollectionMembershipControllerTest do
   end
 
   describe "DELETE /v1/file_collection_memberships/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, file_collection_membership_path(conn, :delete, "test"))
 
       assert conn.status == 401

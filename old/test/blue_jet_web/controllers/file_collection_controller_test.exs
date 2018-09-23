@@ -36,7 +36,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
   end
 
   describe "POST /v1/file_collections" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = post(conn, "/v1/file_collections", %{
         "data" => %{
           "type" => "FileCollection",
@@ -112,7 +112,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
   end
 
   describe "GET /v1/file_collections/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/file_collections/test")
 
       assert conn.status == 401
@@ -247,7 +247,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
   end
 
   describe "PATCH /v1/file_collections/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/file_collections/test", %{
         "data" => %{
           "id" => "test",
@@ -422,7 +422,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
   end
 
   describe "GET /v1/file_collections" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/file_collections")
 
       assert conn.status == 401
@@ -653,7 +653,7 @@ defmodule BlueJetWeb.FileCollectionControllerTest do
   end
 
   describe "DELETE /v1/file_collections/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, "/v1/file_collections/test")
 
       assert conn.status == 401

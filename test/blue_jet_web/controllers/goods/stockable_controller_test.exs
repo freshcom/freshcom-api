@@ -10,7 +10,7 @@ defmodule BlueJetWeb.StockableControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
   end
 
   # Create a stockable
@@ -229,7 +229,7 @@ defmodule BlueJetWeb.StockableControllerTest do
 
   # List stockable
   describe "GET /v1/stockables" do
-    test "without UAT", %{conn: conn} do
+    test "without access token", %{conn: conn} do
       conn = get(conn, "/v1/stockables")
 
       assert conn.status == 401

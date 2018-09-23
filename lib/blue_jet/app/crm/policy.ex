@@ -34,10 +34,13 @@ defmodule BlueJet.Crm.Policy do
   end
 
   def authorize(%{_role_: role} = req, :create_customer) when role in ["guest"] do
-    req =
+    req = if Enum.member?(["guest", "registered"], req.fields["status"]) do
       req
-      |> ContextRequest.put(:fields, "status", "registered")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+    else
+      ContextRequest.put(req, :fields, "status", "registered")
+    end
+
+    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
 
     {:ok, req}
   end
@@ -62,6 +65,15 @@ defmodule BlueJet.Crm.Policy do
     end
   end
 
+  def authorize(%{_role_: role} = req, :get_customer) when role in ["customer"] do
+    req =
+      req
+      |> ContextRequest.put(:identifiers, %{user_id: req._vad_[:user].id})
+      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+
+    {:ok, req}
+  end
+
   def authorize(%{_role_: role} = req, :get_customer)
       when role in ["support_specialist", "developer", "administrator"] do
     req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
@@ -73,13 +85,13 @@ defmodule BlueJet.Crm.Policy do
       when role in ["customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, :user_id, req._vad_[:user].id)
+      |> ContextRequest.put(:identifiers, %{user_id: req._vad_[:user].id})
       |> ContextRequest.put(:_preload_, :paths, req.preloads)
 
     {:ok, req}
   end
 
-  def authorize(%{_role_: role} = req, "update_customer")
+  def authorize(%{_role_: role} = req, :update_customer)
       when role in ["support_specialist", "developer", "administrator"] do
     req =
       req

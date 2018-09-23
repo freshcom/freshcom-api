@@ -8,19 +8,29 @@ defmodule BlueJetWeb.PointTransactionController do
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def index(conn = %{ assigns: assigns }, %{ "point_account_id" => point_account_id }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      params: %{ "point_account_id" => point_account_id },
-      pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
-      preloads: assigns[:preloads],
-      locale: assigns[:locale]
-    }
+  def index(%{assigns: assigns} = conn, params) do
+    filter =
+      (assigns[:filter] || %{})
+      |> Map.put(:point_account_id, params["point_account_id"])
 
-    {:ok, %ContextResponse{ data: point_transactions, meta: meta }} = Crm.list_point_transaction(request)
-
-    render(conn, "index.json-api", data: point_transactions, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+    conn
+    |> assign(:filter, filter)
+    |> default(:index, &Crm.list_point_transaction/1)
   end
+
+  # def index(conn = %{ assigns: assigns }, %{ "point_account_id" => point_account_id }) do
+  #   request = %ContextRequest{
+  #     vas: assigns[:vas],
+  #     params: %{ "point_account_id" => point_account_id },
+  #     pagination: %{ size: assigns[:page_size], number: assigns[:page_number] },
+  #     preloads: assigns[:preloads],
+  #     locale: assigns[:locale]
+  #   }
+
+  #   {:ok, %ContextResponse{ data: point_transactions, meta: meta }} = Crm.list_point_transaction(request)
+
+  #   render(conn, "index.json-api", data: point_transactions, opts: [meta: camelize_map(meta), include: conn.query_params["include"]])
+  # end
 
   def create(conn = %{ assigns: assigns }, %{ "point_account_id" => point_account_id, "data" => data = %{ "type" => "PointTransaction" } }) do
     request = %ContextRequest{

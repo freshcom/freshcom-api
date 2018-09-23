@@ -11,17 +11,17 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
       |> put_req_header("accept", "application/vnd.api+json")
       |> put_req_header("content-type", "application/vnd.api+json")
 
-    %{ conn: conn }
+    %{conn: conn}
   end
 
   describe "GET /v1/email_templates" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/email_templates")
 
       assert conn.status == 401
     end
 
-    test "with a valid request", %{ conn: conn } do
+    test "with a valid request", %{conn: conn} do
       %{ user: user } = create_global_identity("administrator")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -33,7 +33,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
   end
 
   describe "POST /v1/email_templates" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = post(conn, "/v1/email_templates", %{
         "data" => %{
           "type" => "EmailTemplate",
@@ -46,7 +46,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
       assert conn.status == 401
     end
 
-    test "with a valid request", %{ conn: conn } do
+    test "with a valid request", %{conn: conn} do
       %{ user: user } = create_global_identity("administrator")
       uat = create_access_token(user.username, "test1234")
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
@@ -66,13 +66,13 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
   end
 
   describe "GET /v1/email_templates/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = get(conn, "/v1/email_templates/invalid")
 
       assert conn.status == 401
     end
 
-    test "with a valid request", %{ conn: conn } do
+    test "with a valid request", %{conn: conn} do
       %{ user: user, account: account } = create_global_identity("administrator")
       {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,
@@ -94,7 +94,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
   end
 
   describe "PATCH /v1/email_templates/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = patch(conn, "/v1/email_templates/invalid", %{
         "data" => %{
           "id" => "invalid",
@@ -108,7 +108,7 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
       assert conn.status == 401
     end
 
-    test "with a valid request", %{ conn: conn } do
+    test "with a valid request", %{conn: conn} do
       %{ user: user, account: account } = create_global_identity("administrator")
       {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,
@@ -138,13 +138,13 @@ defmodule BlueJetWeb.EmailTemplateControllerTest do
   end
 
   describe "DELETE /v1/email_templates/:id" do
-    test "with no access token", %{ conn: conn } do
+    test "with no access token", %{conn: conn} do
       conn = delete(conn, "/v1/email_templates/invalid")
 
       assert conn.status == 401
     end
 
-    test "with a valid request", %{ conn: conn } do
+    test "with a valid request", %{conn: conn} do
       %{ user: user, account: account } = create_global_identity("administrator")
       {:ok, %{ data: email_template }} = Notification.do_create_email_template(%ContextRequest{
         account: account,

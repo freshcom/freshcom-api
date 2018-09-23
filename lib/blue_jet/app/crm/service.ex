@@ -6,9 +6,6 @@ defmodule BlueJet.Crm.Service do
   alias BlueJet.Utils
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
 
-  #
-  # MARK: Customer
-  #
   @spec list_customer(map, map) :: [Customer.t()]
   def list_customer(query \\ %{}, opts), do: default(:list, Customer, query, opts)
 
@@ -16,10 +13,10 @@ defmodule BlueJet.Crm.Service do
   def count_customer(query \\ %{}, opts), do: default(:count, Customer, query, opts)
 
   @doc """
-  Creates a customer. If the status of the customer is set to `"registered"` but
-  no `:user_id` is found inside the given fields, then a user with role customer
-  will be created and the newly created customer will have its `:user_id` set to
-  the new created user's ID.
+  Creates a customer.
+
+  If the status of the customer is set to `"registered"` a user will also be created
+  together with the customer. The created user will have role `"customer"`.
   """
   @spec create_customer(map, map) :: {:ok, Customer.t()} | {:error, %{errors: Keyword.t()}}
   def create_customer(fields, opts) do
@@ -38,8 +35,8 @@ defmodule BlueJet.Crm.Service do
       |> Multi.run(:point_account, &create_point_account(&1[:customer]))
 
     case Repo.transaction(statements) do
-      {:ok, %{customer: customer, point_account: point_account}} ->
-        {:ok, %{customer | point_account: point_account}}
+      {:ok, %{customer: customer, point_account: point_account, user: user}} ->
+        {:ok, %{customer | point_account: point_account, user: user}}
 
       {:error, _, changeset, _} ->
         {:error, changeset}

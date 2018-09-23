@@ -49,7 +49,11 @@ defmodule BlueJet.ContextRequest do
   end
 
   def drop(req, root_key, keys) do
-    root_value = Map.drop(req[root_key], keys)
+    root_value =
+      req
+      |> Map.get(root_key)
+      |> Map.drop(keys)
+
     Map.put(req, root_key, root_value)
   end
 
