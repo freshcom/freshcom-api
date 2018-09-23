@@ -41,181 +41,170 @@ defmodule BlueJetWeb.PointTransactionControllerTest do
     end
   end
 
-  # # Create a point_transaction
-  # describe "POST /v1/point_transactions" do
-  #   test "without access token", %{conn: conn} do
-  #     conn = post(conn, "/v1/point_transactions", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction"
-  #       }
-  #     })
+  # Create a point transaction
+  describe "POST /v1/point_transactions" do
+    test "without access token", %{conn: conn} do
+      conn = post(conn, "/v1/point_accounts/#{UUID.generate()}/transactions", %{
+        "data" => %{
+          "type" => "PointTransaction"
+        }
+      })
 
-  #     assert conn.status == 401
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with PAT and invalid fields", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     pat = get_pat(user.default_account)
+    test "with PAT", %{conn: conn} do
+      user = standard_user_fixture()
+      customer = customer_fixture(user.default_account)
+      point_account = customer.point_account
+      pat = get_pat(user.default_account)
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-  #     conn = post(conn, "/v1/point_transactions", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction"
-  #       }
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = post(conn, "/v1/point_accounts/#{point_account.id}/transactions", %{
+        "data" => %{
+          "type" => "PointTransaction"
+        }
+      })
 
-  #     response = json_response(conn, 422)
-  #     assert length(response["errors"]) == 3
-  #   end
+      assert conn.status == 403
+    end
 
-  #   test "with PAT and valid fields", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     pat = get_pat(user.default_account)
+    test "with UAT and invalid fields", %{conn: conn} do
+      account = account_fixture()
+      customer = customer_fixture(account, %{status: "registered"})
+      point_account = customer.point_account
+      user = customer.user
+      uat = get_uat(account, user)
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-  #     conn = post(conn, "/v1/point_transactions", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction",
-  #         "attributes" => %{
-  #           "status" => "guest"
-  #         }
-  #       }
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = post(conn, "/v1/point_accounts/#{point_account.id}/transactions", %{
+        "data" => %{
+          "type" => "PointTransaction"
+        }
+      })
 
-  #     assert json_response(conn, 201)
-  #   end
-  # end
+      response = json_response(conn, 422)
+      assert length(response["errors"]) == 1
+    end
+  end
 
-  # # Retrieve current point_transaction
-  # describe "GET /v1/point_transaction" do
-  #   test "without access token", %{conn: conn} do
-  #     conn = get(conn, "/v1/point_transaction")
+  # Retrieve a point transaction
+  describe "GET /v1/point_transactions/:id" do
+    test "without access token", %{conn: conn} do
+      conn = get(conn, "/v1/point_transactions/#{UUID.generate()}")
 
-  #     assert conn.status == 401
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with UAT", %{conn: conn} do
-  #     account = account_fixture()
-  #     point_transaction = point_transaction_fixture(account, %{status: "registered"})
-  #     user = point_transaction.user
-  #     uat = get_uat(account, user)
+    test "with PAT", %{conn: conn} do
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-  #     conn = get(conn, "/v1/point_transaction")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = get(conn, "/v1/point_transactions/#{UUID.generate()}")
 
-  #     response = json_response(conn, 200)
-  #     assert response["data"]["id"] == point_transaction.id
-  #   end
-  # end
+      assert conn.status == 403
+    end
 
-  # # Retrieve a point_transaction
-  # describe "GET /v1/point_transactions/:id" do
-  #   test "without access token", %{conn: conn} do
-  #     conn = get(conn, "/v1/point_transactions/#{UUID.generate()}")
+    test "with UAT", %{conn: conn} do
+      user = standard_user_fixture()
+      customer = customer_fixture(user.default_account)
+      point_account = customer.point_account
+      point_transaction = point_transaction_fixture(user.default_account, point_account)
+      uat = get_uat(user.default_account, user)
 
-  #     assert conn.status == 401
-  #   end
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = get(conn, "/v1/point_transactions/#{point_transaction.id}")
 
-  #   test "with PAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     pat = get_pat(user.default_account)
+      assert json_response(conn, 200)
+    end
+  end
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-  #     conn = get(conn, "/v1/point_transactions/#{UUID.generate()}")
+  # Update a point transaction
+  describe "PATCH /v1/point_transactions/:id" do
+    test "without access token", %{conn: conn} do
+      conn = patch(conn, "/v1/point_transactions/#{UUID.generate()}", %{
+        "data" => %{
+          "type" => "PointTransaction",
+          "attributes" => %{
+            "name" => Faker.Name.name()
+          }
+        }
+      })
 
-  #     assert conn.status == 403
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with UAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     point_transaction = point_transaction_fixture(user.default_account)
-  #     uat = get_uat(user.default_account, user)
+    test "with PAT", %{conn: conn} do
+      user = standard_user_fixture()
+      pat = get_pat(user.default_account)
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-  #     conn = get(conn, "/v1/point_transactions/#{point_transaction.id}")
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = patch(conn, "/v1/point_transactions/#{UUID.generate()}", %{
+        "data" => %{
+          "type" => "PointTransaction",
+          "attributes" => %{
+            "name" => Faker.Name.name()
+          }
+        }
+      })
 
-  #     assert json_response(conn, 200)
-  #   end
-  # end
+      assert conn.status == 403
+    end
 
-  # # Update a point_transaction
-  # describe "PATCH /v1/point_transactions/:id" do
-  #   test "without access token", %{conn: conn} do
-  #     conn = patch(conn, "/v1/point_transactions/#{UUID.generate()}", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction",
-  #         "attributes" => %{
-  #           "name" => Faker.Name.name()
-  #         }
-  #       }
-  #     })
+    test "with UAT", %{conn: conn} do
+      user = standard_user_fixture()
+      customer = customer_fixture(user.default_account)
+      point_account = customer.point_account
+      point_transaction = point_transaction_fixture(user.default_account, point_account)
+      uat = get_uat(user.default_account, user)
 
-  #     assert conn.status == 401
-  #   end
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = patch(conn, "/v1/point_transactions/#{point_transaction.id}", %{
+        "data" => %{
+          "type" => "PointTransaction",
+          "attributes" => %{
+            "status" => "committed"
+          }
+        }
+      })
 
-  #   test "with PAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     pat = get_pat(user.default_account)
+      assert json_response(conn, 200)
+    end
+  end
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-  #     conn = patch(conn, "/v1/point_transactions/#{UUID.generate()}", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction",
-  #         "attributes" => %{
-  #           "name" => Faker.Name.name()
-  #         }
-  #       }
-  #     })
+  # Delete a point transaction
+  describe "DELETE /v1/point_transactions/:id" do
+    test "without access token", %{conn: conn} do
+      conn = delete(conn, "/v1/point_transactions/#{UUID.generate()}")
 
-  #     assert conn.status == 403
-  #   end
+      assert conn.status == 401
+    end
 
-  #   test "with UAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     point_transaction = point_transaction_fixture(user.default_account)
-  #     uat = get_uat(user.default_account, user)
+    test "with PAT", %{conn: conn} do
+      user = standard_user_fixture()
+      customer = customer_fixture(user.default_account)
+      point_account = customer.point_account
+      point_transaction = point_transaction_fixture(user.default_account, point_account)
+      pat = get_pat(user.default_account)
 
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-  #     conn = patch(conn, "/v1/point_transactions/#{point_transaction.id}", %{
-  #       "data" => %{
-  #         "type" => "PointTransaction",
-  #         "attributes" => %{
-  #           "name" => Faker.Name.name()
-  #         }
-  #       }
-  #     })
+      conn = put_req_header(conn, "authorization", "Bearer #{pat}")
+      conn = delete(conn, "/v1/point_transactions/#{point_transaction.id}")
 
-  #     assert json_response(conn, 200)
-  #   end
-  # end
+      assert conn.status == 403
+    end
 
-  # # Delete a point_transaction
-  # describe "DELETE /v1/point_transactions/:id" do
-  #   test "without access token", %{conn: conn} do
-  #     conn = delete(conn, "/v1/point_transactions/#{UUID.generate()}")
+    test "with UAT", %{conn: conn} do
+      user = standard_user_fixture()
+      customer = customer_fixture(user.default_account)
+      point_account = customer.point_account
+      point_transaction = point_transaction_fixture(user.default_account, point_account)
+      uat = get_uat(user.default_account, user)
 
-  #     assert conn.status == 401
-  #   end
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = delete(conn, "/v1/point_transactions/#{point_transaction.id}")
 
-  #   test "with PAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     pat = get_pat(user.default_account)
-
-  #     conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-  #     conn = delete(conn, "/v1/point_transactions/#{UUID.generate()}")
-
-  #     assert conn.status == 403
-  #   end
-
-  #   test "with UAT", %{conn: conn} do
-  #     user = standard_user_fixture()
-  #     point_transaction = point_transaction_fixture(user.default_account)
-  #     uat = get_uat(user.default_account, user)
-
-  #     conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-  #     conn = delete(conn, "/v1/point_transactions/#{point_transaction.id}")
-
-  #     assert conn.status == 204
-  #   end
-  # end
+      assert conn.status == 204
+    end
+  end
 end

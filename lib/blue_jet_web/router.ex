@@ -73,7 +73,7 @@ defmodule BlueJetWeb.Router do
     resources "/point_accounts", PointAccountController, only: [:show] do
       resources "/transactions", PointTransactionController, only: [:create, :index]
     end
-    resources "/point_transactions", PointTransactionController, only: [:show, :delete]
+    resources "/point_transactions", PointTransactionController, only: [:show, :update, :delete]
 
     #
     # Catalogue

@@ -211,7 +211,7 @@ defmodule BlueJet.Crm.Policy do
 
   def authorize(%{_role_: role} = req, :delete_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :identifiers, "status", "pending")
+    req = ContextRequest.put(req, :identifiers, :status, "pending")
 
     {:ok, req}
   end
