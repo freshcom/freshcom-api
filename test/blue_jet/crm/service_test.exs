@@ -1,11 +1,11 @@
-defmodule BlueJet.Crm.ServiceTest do
+defmodule BlueJet.CRM.ServiceTest do
   use BlueJet.DataCase
 
-  import BlueJet.Crm.TestHelper
+  import BlueJet.CRM.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Crm.{Customer}
-  alias BlueJet.Crm.Service
+  alias BlueJet.CRM.{Customer}
+  alias BlueJet.CRM.Service
 
   #
   # MARK: Customer

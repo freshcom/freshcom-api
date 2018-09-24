@@ -1,4 +1,6 @@
 defmodule BlueJet.Identity.Account.Service do
+  @moduledoc false
+
   use BlueJet, :service
 
   import Ecto.Changeset

@@ -1,29 +1,19 @@
-defmodule BlueJet.Crm.PointTransaction.Query do
+defmodule BlueJet.CRM.PointTransaction.Query do
+  @behaviour BlueJet.Query
+
   use BlueJet, :query
 
-  use BlueJet.Query.Search,
-    for: [
-      :name,
-      :caption
-    ]
+  alias BlueJet.CRM.{PointTransaction, PointAccount}
 
-  use BlueJet.Query.Filter,
-    for: [
-      :status,
-      :label,
-      :point_account_id,
-      :reason_label
-    ]
+  def identifiable_fields, do: [:id, :status, :point_account_id]
+  def filterable_fields, do: [:id, :status, :label, :point_account_id, :reason_label]
+  def searchable_fields, do: [:name, :caption]
 
-  alias BlueJet.Crm.{PointTransaction, PointAccount}
-
-  def default() do
-    from(pt in PointTransaction)
-  end
-
-  def for_point_account(query, point_account_id) do
-    from(pt in query, where: pt.point_account_id == ^point_account_id)
-  end
+  def default(), do: from(pt in PointTransaction)
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
+  def search(q, k, l, d),
+    do: search(q, k, l, d, searchable_fields(), PointTransaction.translatable_fields())
 
   def preloads({:point_account, point_account_preloads}, options) do
     [
@@ -35,5 +25,9 @@ defmodule BlueJet.Crm.PointTransaction.Query do
 
   def preloads(_, _) do
     []
+  end
+
+  def for_point_account(query, point_account_id) do
+    from(pt in query, where: pt.point_account_id == ^point_account_id)
   end
 end

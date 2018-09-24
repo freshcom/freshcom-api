@@ -1,7 +1,7 @@
 defmodule BlueJetWeb.PointTransactionController do
   use BlueJetWeb, :controller
 
-  alias BlueJet.Crm
+  alias BlueJet.CRM
 
   action_fallback BlueJetWeb.FallbackController
 
@@ -10,22 +10,22 @@ defmodule BlueJetWeb.PointTransactionController do
   def index(%{assigns: assigns} = conn, params) do
     filter =
       (assigns[:filter] || %{})
-      |> Map.put(:point_account_id, params["point_account_id"])
+      |> Map.put("point_account_id", params["point_account_id"])
 
     conn
     |> assign(:filter, filter)
-    |> default(:index, &Crm.list_point_transaction/1)
+    |> default(:index, &CRM.list_point_transaction/1)
   end
 
   def create(conn, %{"data" => %{"type" => "PointTransaction"}}),
-    do: default(conn, :create, &Crm.create_point_transaction/1, fields: ["point_account_id"])
+    do: default(conn, :create, &CRM.create_point_transaction/1, fields: ["point_account_id"])
 
   def show(conn, %{"id" => _}),
-    do: default(conn, :show, &Crm.get_point_transaction/1)
+    do: default(conn, :show, &CRM.get_point_transaction/1)
 
   def update(conn, %{"id" => _, "data" => %{"type" => "PointTransaction"}}),
-    do: default(conn, :update, &Crm.update_point_transaction/1)
+    do: default(conn, :update, &CRM.update_point_transaction/1)
 
   def delete(conn, %{"id" => _}),
-    do: default(conn, :delete, &Crm.delete_point_transaction/1)
+    do: default(conn, :delete, &CRM.delete_point_transaction/1)
 end

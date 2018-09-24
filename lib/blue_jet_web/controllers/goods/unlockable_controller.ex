@@ -1,4 +1,6 @@
 defmodule BlueJetWeb.UnlockableController do
+  @moduledoc false
+
   use BlueJetWeb, :controller
 
   alias BlueJet.Goods

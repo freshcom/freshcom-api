@@ -1,7 +1,7 @@
-defmodule BlueJet.Crm.Customer.Proxy do
+defmodule BlueJet.CRM.Customer.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Crm.{FileStorageService, IdentityService}
+  alias BlueJet.CRM.{FileStorageService, IdentityService}
 
   def sync_to_user(customer, opts \\ %{})
 

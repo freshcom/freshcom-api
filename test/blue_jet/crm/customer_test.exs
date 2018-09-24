@@ -1,10 +1,10 @@
-defmodule BlueJet.Crm.CustomerTest do
+defmodule BlueJet.CRM.CustomerTest do
   use BlueJet.DataCase
 
-  import BlueJet.Crm.TestHelper
+  import BlueJet.CRM.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Crm.Customer
+  alias BlueJet.CRM.Customer
 
   describe "schema" do
     test "when account is deleted customer is automatically deleted" do

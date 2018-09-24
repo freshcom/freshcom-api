@@ -1,7 +1,7 @@
 defmodule BlueJet.Fulfillment.Unlock.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Fulfillment.{GoodsService, CrmService}
+  alias BlueJet.Fulfillment.{GoodsService, CRMService}
 
   def put(order, {:customer, customer_path}, opts) do
     preloads = %{path: customer_path, opts: opts}
@@ -11,7 +11,7 @@ defmodule BlueJet.Fulfillment.Unlock.Proxy do
       |> Map.take([:account, :account_id])
       |> Map.merge(%{preloads: preloads})
 
-    customer = CrmService.get_customer(%{id: order.customer_id}, opts)
+    customer = CRMService.get_customer(%{id: order.customer_id}, opts)
     %{order | customer: customer}
   end
 

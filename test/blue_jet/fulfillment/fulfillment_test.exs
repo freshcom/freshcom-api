@@ -4,7 +4,7 @@ defmodule BlueJet.FulfillmentTest do
   alias BlueJet.Identity.{Account, User}
 
   alias BlueJet.Fulfillment
-  alias BlueJet.Fulfillment.{CrmServiceMock}
+  alias BlueJet.Fulfillment.{CRMServiceMock}
   alias BlueJet.Fulfillment.{ServiceMock, FulfillmentPackage, FulfillmentItem, ReturnPackage, ReturnItem, Unlock}
 
   #
@@ -460,7 +460,7 @@ defmodule BlueJet.FulfillmentTest do
         role: "customer"
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers[:user_id] == user.id
 

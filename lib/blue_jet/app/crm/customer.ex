@@ -1,13 +1,15 @@
-defmodule BlueJet.Crm.Customer do
+defmodule BlueJet.CRM.Customer do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
-  import BlueJet.Utils
+  import BlueJet.Utils, only: [put_parameterized: 2, downcase: 1, remove_space: 1, digit_only: 1]
 
   alias __MODULE__.Proxy
-  alias BlueJet.Crm.PointAccount
+  alias BlueJet.CRM.PointAccount
 
   schema "customers" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "guest"
@@ -27,7 +29,7 @@ defmodule BlueJet.Crm.Customer do
 
     field :stripe_customer_id, :string
 
-    field :user_id, Ecto.UUID
+    field :user_id, UUID
     field :user, :map, virtual: true
     field :username, :string, virtual: true
     field :password, :string, virtual: true
@@ -72,10 +74,10 @@ defmodule BlueJet.Crm.Customer do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(customer, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t()) :: Changeset.t()
+  def changeset(customer, :update, params, locale \\ nil) do
     customer = Proxy.put_account(customer)
-    default_locale = default_locale || customer.account.default_locale
+    default_locale = customer.account.default_locale
     locale = locale || default_locale
 
     customer

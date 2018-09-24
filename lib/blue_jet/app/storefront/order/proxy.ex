@@ -1,14 +1,14 @@
 defmodule BlueJet.Storefront.Order.Proxy do
   use BlueJet, :proxy
 
-  alias BlueJet.Storefront.{CrmService, FulfillmentService, BalanceService}
+  alias BlueJet.Storefront.{CRMService, FulfillmentService, BalanceService}
   alias BlueJet.Storefront.OrderLineItem
 
   def get_customer(%{ customer_id: nil }), do: nil
 
   def get_customer(order) do
     opts = get_sopts(order)
-    order.customer || CrmService.get_customer(%{ id: order.customer_id }, opts)
+    order.customer || CRMService.get_customer(%{ id: order.customer_id }, opts)
   end
 
   def put_customer(order) do
@@ -49,7 +49,7 @@ defmodule BlueJet.Storefront.Order.Proxy do
       |> Map.take([:account, :account_id])
       |> Map.merge(%{ preloads: preloads })
 
-    customer = CrmService.get_customer(%{ id: order.customer_id }, opts)
+    customer = CRMService.get_customer(%{ id: order.customer_id }, opts)
     %{ order | customer: customer }
   end
 

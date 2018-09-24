@@ -1,28 +1,30 @@
-defmodule BlueJet.Crm.EventHandler do
-  alias BlueJet.Repo
-  alias BlueJet.Crm.Customer
-  alias BlueJet.Crm.Service
+defmodule BlueJet.CRM.EventHandler do
+  @moduledoc false
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity:account.reset.success", %{account: account = %{mode: "test"}}) do
+  alias BlueJet.CRM.Service
+
+  @account_reset "identity:account.reset.success"
+  @user_updated "identity:user.update.success"
+
+  def handle_event(@account_reset, %{account: account = %{mode: "test"}}) do
     Task.start(fn -> Service.delete_all_customer(%{account: account}) end)
 
     {:ok, nil}
   end
 
-  def handle_event("identity.user.update.success", %{
-        user: user,
-        changeset: changeset,
-        account: account
-      }) do
-    customer = Repo.get_by(Customer, user_id: user.id)
+  def handle_event(@user_updated, %{changeset: changeset, account: account}) do
+    identifires = %{user_id: changeset.data.id}
+    fields = Map.take(changeset.changes, [:email, :phone_number, :name, :first_name, :last_name])
+    opts = %{account: account}
 
-    if customer do
-      fields = Map.take(changeset.changes, [:email, :phone_number, :name, :first_name, :last_name])
-      Service.update_customer(customer, fields, %{account: account})
-    else
-      {:ok, nil}
+    case Service.update_customer(identifires, fields, opts) do
+      {:error, :not_found} ->
+        {:ok, nil}
+
+      {:ok, customer} ->
+        {:ok, customer}
     end
   end
 

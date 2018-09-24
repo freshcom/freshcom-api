@@ -1,4 +1,6 @@
 defmodule BlueJet.FileStorage.IdentityService do
+  @moduledoc false
+
   @identity_service Application.get_env(:blue_jet, :file_storage)[:identity_service]
 
   @callback get_vad(map) :: map

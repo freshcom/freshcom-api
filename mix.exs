@@ -12,6 +12,7 @@ defmodule BlueJet.Mixfile do
       start_permanent: Mix.env == :prod,
       aliases: aliases(),
       deps: deps(),
+      docs: docs(),
       test_coverage: [tool: ExCoveralls]
     ]
   end
@@ -59,6 +60,7 @@ defmodule BlueJet.Mixfile do
       {:jose, "~> 1.8.3"},
       {:timex_ecto, "~> 3.3"},
       {:httpoison, "~> 0.13"},
+      {:cmark, "~> 0.7.0", only: :dev},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:uri_query, "~> 0.1.2"},
       {:csv, "~> 2.0.0"},
@@ -84,6 +86,49 @@ defmodule BlueJet.Mixfile do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       "test": ["ecto.create --quiet", "ecto.migrate", "test"],
       "test.web": ["ecto.create --quiet", "ecto.migrate", "test"]
+    ]
+  end
+
+  defp docs do
+    [
+      source_url: "https://github.com/freshcom/freshcom-api",
+      groups_for_modules: groups_for_modules(),
+      markdown_processor: ExDoc.Markdown.Cmark
+    ]
+  end
+
+  defp groups_for_modules do
+    [
+      "Identity": [
+        BlueJet.Identity,
+        BlueJet.Identity.Service,
+        BlueJet.Identity.Account,
+        BlueJet.Identity.Account.Query,
+        BlueJet.Identity.User,
+        BlueJet.Identity.User.Query,
+        BlueJet.Identity.User.Proxy
+      ],
+      "Goods": [
+        BlueJet.Goods,
+        BlueJet.Goods.Service
+      ],
+      "CRM": [
+        BlueJet.CRM,
+        BlueJet.CRM.Policy,
+        BlueJet.CRM.Service,
+
+        BlueJet.CRM.Customer,
+        BlueJet.CRM.Customer.Query,
+        BlueJet.CRM.Customer.Proxy,
+
+        BlueJet.CRM.PointAccount,
+        BlueJet.CRM.PointAccount.Query,
+        BlueJet.CRM.PointAccount.Proxy,
+
+        BlueJet.CRM.PointTransaction,
+        BlueJet.CRM.PointTransaction.Query,
+        BlueJet.CRM.PointTransaction.Proxy
+      ]
     ]
   end
 end

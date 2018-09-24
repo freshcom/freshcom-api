@@ -1,5 +1,5 @@
-defmodule BlueJet.Crm.TestHelper do
-  alias BlueJet.Crm.Service
+defmodule BlueJet.CRM.TestHelper do
+  alias BlueJet.CRM.Service
   import BlueJet.Utils, only: [stringify_keys: 1]
 
   def customer_fixture(account, fields \\ %{}) do

@@ -3,7 +3,7 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   """
   use BlueJet, :data
 
-  alias BlueJet.Fulfillment.CrmService
+  alias BlueJet.Fulfillment.CRMService
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, Unlock}
   alias __MODULE__.Proxy
 
@@ -331,10 +331,10 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   end
 
   defp return_depositable(pt_id, fulfilled_quantity, return_quantity, opts) do
-    point_transaction = CrmService.get_point_transaction(%{id: pt_id}, opts)
+    point_transaction = CRMService.get_point_transaction(%{id: pt_id}, opts)
     return_amount = -div(point_transaction.amount, fulfilled_quantity) * return_quantity
 
-    CrmService.create_point_transaction(
+    CRMService.create_point_transaction(
       %{
         point_account_id: point_transaction.point_account_id,
         status: "committed",
@@ -346,9 +346,9 @@ defmodule BlueJet.Fulfillment.ReturnItem do
   end
 
   defp return_point_transaction(pt_id, opts) do
-    point_transaction = CrmService.get_point_transaction(%{id: pt_id}, opts)
+    point_transaction = CRMService.get_point_transaction(%{id: pt_id}, opts)
 
-    CrmService.create_point_transaction(
+    CRMService.create_point_transaction(
       %{
         point_account_id: point_transaction.point_account_id,
         status: "committed",

@@ -1,5 +1,5 @@
-defmodule BlueJet.DataTrading.CrmService do
-  alias BlueJet.Crm.Customer
+defmodule BlueJet.DataTrading.CRMService do
+  alias BlueJet.CRM.Customer
 
   @crm_service Application.get_env(:blue_jet, :data_trading)[:crm_service]
 

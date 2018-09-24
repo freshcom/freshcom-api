@@ -1,4 +1,6 @@
 defmodule BlueJet.Catalogue.GoodsService do
+  @moduledoc false
+
   alias BlueJet.Goods.{Stockable, Unlockable, Depositable}
 
   @goods_service Application.get_env(:blue_jet, :catalogue)[:goods_service]

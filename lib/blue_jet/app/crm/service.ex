@@ -1,16 +1,35 @@
-defmodule BlueJet.Crm.Service do
+defmodule BlueJet.CRM.Service do
   use BlueJet, :service
 
-  alias Ecto.Multi
-  alias BlueJet.Crm.IdentityService
-  alias BlueJet.Utils
-  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
+  import BlueJet.Utils, only: [atomize_keys: 2]
 
+  alias BlueJet.CRM.IdentityService
+  alias BlueJet.Utils
+  alias BlueJet.CRM.{Customer, PointAccount, PointTransaction}
+
+  @doc """
+  List customer that matches the given query.
+
+  For usage example please see `BlueJet.Service.Default`.
+
+  ## Query
+
+  All keys are optional.
+
+  * `filter` - see source code of `BlueJet.CRM.Customer.Query.filterable_fields/0`
+               for valid filter keys.
+  * `search` - see source code of `BlueJet.CRM.Customer.Query.searchable_fields/0`
+               for fields that it will search against.
+
+  ## Options
+
+  See "Shared Options" section in the module documentation of `BlueJet.Service.Default`.
+  """
   @spec list_customer(map, map) :: [Customer.t()]
-  def list_customer(query \\ %{}, opts), do: default_list(Customer, query, opts)
+  def list_customer(query \\ %{}, opts), do: default_list(Customer.Query, query, opts)
 
   @spec count_customer(map, map) :: integer
-  def count_customer(query \\ %{}, opts), do: default_count(Customer, query, opts)
+  def count_customer(query \\ %{}, opts), do: default_count(Customer.Query, query, opts)
 
   @doc """
   Creates a customer.
@@ -71,11 +90,13 @@ defmodule BlueJet.Crm.Service do
   def get_customer(identifiers, opts) do
     account = extract_account(opts)
     preload = extract_preload(opts)
-    primary_identifiers = Map.take(identifiers, [:id, :code, :email, :user_id, :status])
+    identifiable_fields = Customer.Query.identifiable_fields() ++ [:name, :email, :phone_number]
+    identifiers = atomize_keys(identifiers, identifiable_fields)
 
     Customer.Query.default()
     |> for_account(account.id)
-    |> Repo.get_by(primary_identifiers)
+    |> Customer.Query.get_by(identifiers)
+    |> Repo.one()
     |> Customer.match_by(identifiers)
     |> preload(preload[:paths], preload[:opts])
   end
@@ -155,22 +176,22 @@ defmodule BlueJet.Crm.Service do
   # this function is only called when account reset happens and when that
   # happens all user will already be deleted
   @spec delete_all_customer(map) :: :ok
-  def delete_all_customer(opts), do: default_delete_all(Customer, opts)
+  def delete_all_customer(opts), do: default_delete_all(Customer.Query, opts)
 
   #
   # MARK: Point Account
   #
   @spec get_point_account(map, map) :: PointAccount.t() | nil
-  def get_point_account(identifiers, opts), do: default_get(PointAccount, identifiers, opts)
+  def get_point_account(identifiers, opts), do: default_get(PointAccount.Query, identifiers, opts)
 
   #
   # MARK: Point Transaction
   #
   @spec list_point_transaction(map, map) :: [PointTransaction.t()]
-  def list_point_transaction(query \\ %{}, opts), do: default_list(PointTransaction, query, opts)
+  def list_point_transaction(query \\ %{}, opts), do: default_list(PointTransaction.Query, query, opts)
 
   @spec count_point_transaction(map, map) :: integer
-  def count_point_transaction(query \\ %{}, opts), do: default_count(PointTransaction, query, opts)
+  def count_point_transaction(query \\ %{}, opts), do: default_count(PointTransaction.Query, query, opts)
 
   @spec create_point_transaction(map, map) :: {:ok, PointTransaction.t()} | {:error, %{errors: Keyword.t()}}
   def create_point_transaction(fields, opts) do
@@ -231,7 +252,7 @@ defmodule BlueJet.Crm.Service do
   defp sync_to_point_account(_, _), do: {:ok, nil}
 
   @spec get_point_transaction(map, map) :: PointTransaction.t() | nil
-  def get_point_transaction(identifiers, opts), do: default_get(PointTransaction, identifiers, opts)
+  def get_point_transaction(identifiers, opts), do: default_get(PointTransaction.Query, identifiers, opts)
 
   @spec update_point_transaction(map, map, map) ::
     {:ok, PointTransaction.t()} | {:error, %{errors: Keyword.t()}} | {:error, :not_found}

@@ -2,7 +2,7 @@ defmodule BlueJet.Balance.Payment.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.{CrmService, StripeClient}
+  alias BlueJet.Balance.{CRMService, StripeClient}
 
   @spec get_owner(Payment.t()) :: map
   def get_owner(payment = %{owner_type: "Customer"}) do
@@ -10,7 +10,7 @@ defmodule BlueJet.Balance.Payment.Proxy do
 
     owner =
       Map.get(payment, :owner) ||
-        CrmService.get_customer(%{id: payment.owner_id}, %{account: account})
+        CRMService.get_customer(%{id: payment.owner_id}, %{account: account})
 
     if owner, do: Map.put(owner, :account, account), else: owner
   end
@@ -20,7 +20,7 @@ defmodule BlueJet.Balance.Payment.Proxy do
   @spec update_owner(String.t(), map, map) :: {:ok, map} | {:error, map}
   def update_owner("Customer", customer, fields) do
     account = get_account(customer)
-    CrmService.update_customer(customer, fields, %{account: account})
+    CRMService.update_customer(customer, fields, %{account: account})
   end
 
   @spec create_stripe_charge(Payment.t(), String.t(), Settings.t()) :: {:ok, map} | {:error, map}

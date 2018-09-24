@@ -1,11 +1,13 @@
-defmodule BlueJet.Crm.PointTransaction do
+defmodule BlueJet.CRM.PointTransaction do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
-  alias BlueJet.Crm.PointAccount
+  alias BlueJet.CRM.PointAccount
   alias __MODULE__.Proxy
 
   schema "point_transactions" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "pending"
@@ -24,7 +26,7 @@ defmodule BlueJet.Crm.PointTransaction do
 
     field :committed_at, :utc_datetime
 
-    field :source_id, Ecto.UUID
+    field :source_id, UUID
     field :source_type, :string
     field :source, :map, virtual: true
 
@@ -68,10 +70,10 @@ defmodule BlueJet.Crm.PointTransaction do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(point_transaction, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t()) :: Changeset.t()
+  def changeset(point_transaction, :update, params, locale \\ nil) do
     point_transaction = Proxy.put_account(point_transaction)
-    default_locale = default_locale || point_transaction.account.default_locale
+    default_locale = point_transaction.account.default_locale
     locale = locale || default_locale
 
     point_transaction
@@ -114,19 +116,4 @@ defmodule BlueJet.Crm.PointTransaction do
     |> validate_required([:status, :amount])
     |> validate_number(:balance_after_commit, greater_than_or_equal_to: 0)
   end
-
-  @spec sync_to_point_account(__MODULE__.t()) :: {:ok, __MODULE__.t()}
-  def sync_to_point_account(
-        %{status: "committed", balance_after_commit: balance} = point_transaction
-      ) do
-    point_transaction = Repo.preload(point_transaction, :point_account)
-    point_account = point_transaction.point_account
-
-    changeset = change(point_account, %{balance: balance})
-    {:ok, _} = Repo.update(changeset)
-
-    {:ok, point_transaction}
-  end
-
-  def sync_to_point_account(point_transaction), do: {:ok, point_transaction}
 end

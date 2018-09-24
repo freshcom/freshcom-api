@@ -1,4 +1,6 @@
 defmodule BlueJet.Identity.Authentication.Service do
+  @moduledoc false
+
   import BlueJet.ControlFlow
   import BlueJet.Identity.User.Service, only: [get_user: 2]
   alias BlueJet.EventBus
@@ -11,27 +13,27 @@ defmodule BlueJet.Identity.Authentication.Service do
     invalid_request: {:error, %{error: :invalid_request, error_description: "Your request is missing required parameters or is otherwise malformed."}}
   ]
 
-  @moduledoc """
-  Publishable Refresh Token
-  %{ user_id: nil, account_id: "test-test-test-test" }
 
-  User Refresh Token
-  %{ user_id: "test-test-test-test", account_id: "test-test-test-test" }
+  # Publishable Refresh Token
+  # %{ user_id: nil, account_id: "test-test-test-test" }
 
-  Publishable Access Token
-  %{ exp: 3600, aud: "", prn: "test-test-test-test", typ: "publishable" }
+  # User Refresh Token
+  # %{ user_id: "test-test-test-test", account_id: "test-test-test-test" }
 
-  User Access Token
-  %{ exp: 3600, aud: "account-id", prn": "user-id", typ: "user" }
+  # Publishable Access Token
+  # %{ exp: 3600, aud: "", prn: "test-test-test-test", typ: "publishable" }
 
-  Request for Publishable Access Token
-  %{ "grant_type" => "refresh_token", "refresh_token" => "publishable-refresh-token" }
+  # User Access Token
+  # %{ exp: 3600, aud: "account-id", prn": "user-id", typ: "user" }
 
-  Request for User Access Token
-  %{ "grant_type" => "password", "username" => "test1@example.com", "password" => "test1234", "scope" => "account_id:test-test-test-test" }
-  %{ "grant_type" => "password", "username" => "test1@example.com", "password" => "test1234" }
-  %{ "grant_type" => "refresh_token", "refresh_token" => "user-refresh-token" }
-  """
+  # Request for Publishable Access Token
+  # %{ "grant_type" => "refresh_token", "refresh_token" => "publishable-refresh-token" }
+
+  # Request for User Access Token
+  # %{ "grant_type" => "password", "username" => "test1@example.com", "password" => "test1234", "scope" => "account_id:test-test-test-test" }
+  # %{ "grant_type" => "password", "username" => "test1@example.com", "password" => "test1234" }
+  # %{ "grant_type" => "refresh_token", "refresh_token" => "user-refresh-token" }
+
 
   alias BlueJet.Repo
   alias BlueJet.Identity.{User, Account, Jwt, RefreshToken}

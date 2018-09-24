@@ -66,7 +66,7 @@ defmodule BlueJetWeb.Router do
     resources "/depositables", DepositableController, except: [:new, :edit]
 
     #
-    # Crm
+    # CRM
     #
     resources "/customers", CustomerController, except: [:new, :edit]
     get "/customer", CustomerController, :show

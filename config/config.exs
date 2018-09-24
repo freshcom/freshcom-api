@@ -104,7 +104,7 @@ config :blue_jet, :event_bus, %{
 config :blue_jet, :identity, %{
   listeners: [
     BlueJet.Balance.EventHandler,
-    BlueJet.Crm.EventHandler,
+    BlueJet.CRM.EventHandler,
     BlueJet.Goods.EventHandler,
     BlueJet.Catalogue.EventHandler,
     BlueJet.DataTrading.EventHandler,
@@ -142,7 +142,7 @@ config :blue_jet, :balance, %{
   stripe_client: BlueJet.Stripe.Client,
   oauth_client: BlueJet.OauthClient,
   identity_service: BlueJet.Identity.Service,
-  crm_service: BlueJet.Crm.Service,
+  crm_service: BlueJet.CRM.Service,
   listeners: [BlueJet.Storefront.EventHandler]
 }
 
@@ -156,14 +156,14 @@ config :blue_jet, :data_trading, %{
   service: BlueJet.DataTrading.DefaultService,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
-  crm_service: BlueJet.Crm.Service,
+  crm_service: BlueJet.CRM.Service,
   catalogue_service: BlueJet.Catalogue.Service
 }
 
 config :blue_jet, :fulfillment, %{
   service: BlueJet.Fulfillment.DefaultService,
   identity_service: BlueJet.Identity.Service,
-  crm_service: BlueJet.Crm.Service,
+  crm_service: BlueJet.CRM.Service,
   goods_service: BlueJet.Goods.Service,
   listeners: [BlueJet.Storefront.EventHandler]
 }
@@ -175,7 +175,7 @@ config :blue_jet, :storefront, %{
   catalogue_service: BlueJet.Catalogue.Service,
   identity_service: BlueJet.Identity.Service,
   goods_service: BlueJet.Goods.Service,
-  crm_service: BlueJet.Crm.Service,
+  crm_service: BlueJet.CRM.Service,
   listeners: [BlueJet.Notification.EventHandler]
 }
 

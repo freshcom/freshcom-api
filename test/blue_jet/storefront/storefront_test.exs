@@ -4,7 +4,7 @@ defmodule BlueJet.StorefrontTest do
   alias BlueJet.Identity.{Account, User}
 
   alias BlueJet.Storefront
-  alias BlueJet.Storefront.{CrmServiceMock}
+  alias BlueJet.Storefront.{CRMServiceMock}
   alias BlueJet.Storefront.{ServiceMock, Order, OrderLineItem}
 
   #
@@ -31,7 +31,7 @@ defmodule BlueJet.StorefrontTest do
         role: "customer"
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -116,7 +116,7 @@ defmodule BlueJet.StorefrontTest do
         role: "customer"
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -201,7 +201,7 @@ defmodule BlueJet.StorefrontTest do
         params: %{ "id" => order.id }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -286,7 +286,7 @@ defmodule BlueJet.StorefrontTest do
         params: %{ "id" => Ecto.UUID.generate() }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -376,7 +376,7 @@ defmodule BlueJet.StorefrontTest do
         params: %{ "id" => Ecto.UUID.generate() }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -468,7 +468,7 @@ defmodule BlueJet.StorefrontTest do
         fields: %{ "name" => Faker.Commerce.product_name(), "order_id" => order.id }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -499,7 +499,7 @@ defmodule BlueJet.StorefrontTest do
         fields: %{ "order_id" => order.id, "name" => Faker.Commerce.product_name() }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -608,7 +608,7 @@ defmodule BlueJet.StorefrontTest do
         }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -649,7 +649,7 @@ defmodule BlueJet.StorefrontTest do
         }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -762,7 +762,7 @@ defmodule BlueJet.StorefrontTest do
         params: %{ "id" => Ecto.UUID.generate() }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 
@@ -800,7 +800,7 @@ defmodule BlueJet.StorefrontTest do
         params: %{ "id" => Ecto.UUID.generate() }
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(identifiers, _) ->
           assert identifiers.user_id == user.id
 

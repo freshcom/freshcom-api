@@ -2,10 +2,10 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Crm.Customer
+  alias BlueJet.CRM.Customer
   alias BlueJet.Catalogue.Product
 
-  alias BlueJet.Storefront.{CrmServiceMock, CatalogueServiceMock, BalanceServiceMock}
+  alias BlueJet.Storefront.{CRMServiceMock, CatalogueServiceMock, BalanceServiceMock}
   alias BlueJet.Storefront.DefaultService
   alias BlueJet.Storefront.{Order, OrderLineItem}
 
@@ -74,7 +74,7 @@ defmodule BlueJet.Storefront.DefaultServiceTest do
         auto_fulfill: true
       })
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(_, _) ->
           customer
          end)

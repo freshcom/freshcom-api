@@ -1,4 +1,6 @@
-defmodule BlueJet.Crm.IdentityService do
+defmodule BlueJet.CRM.IdentityService do
+  @moduledoc false
+
   alias BlueJet.Identity.{User}
 
   @identity_service Application.get_env(:blue_jet, :crm)[:identity_service]

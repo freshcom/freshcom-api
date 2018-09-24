@@ -1,4 +1,6 @@
 defmodule BlueJetWeb.StockableController do
+  @moduledoc false
+
   use BlueJetWeb, :controller
 
   alias BlueJet.Goods

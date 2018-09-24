@@ -3,11 +3,11 @@ defmodule BlueJet.Goods.EventHandler do
 
   alias BlueJet.Goods.Service
 
-  def handle_event("identity:account.reset.success", %{ account: account = %{ mode: "test" } }) do
+  def handle_event("identity:account.reset.success", %{account: account = %{mode: "test"}}) do
     Task.start(fn ->
-      Service.delete_all_stockable(%{ account: account })
-      Service.delete_all_unlockable(%{ account: account })
-      Service.delete_all_depositable(%{ account: account })
+      Service.delete_all_stockable(%{account: account})
+      Service.delete_all_unlockable(%{account: account})
+      Service.delete_all_depositable(%{account: account})
     end)
 
     {:ok, nil}

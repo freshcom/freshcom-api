@@ -1,4 +1,6 @@
 defmodule BlueJet.FileStorage.S3Client do
+  @moduledoc false
+
   @s3_client Application.get_env(:blue_jet, :file_storage)[:s3_client]
 
   @callback get_presigned_url(String.t(), String.t()) :: String.t()

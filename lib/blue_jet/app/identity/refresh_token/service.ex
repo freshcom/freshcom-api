@@ -1,4 +1,6 @@
 defmodule BlueJet.Identity.RefreshToken.Service do
+  @moduledoc false
+
   use BlueJet, :service
 
   alias BlueJet.Identity.RefreshToken

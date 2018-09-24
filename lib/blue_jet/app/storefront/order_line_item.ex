@@ -2,7 +2,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
   use BlueJet, :data
 
   alias Decimal, as: D
-  alias BlueJet.Storefront.{CatalogueService, CrmService, FulfillmentService}
+  alias BlueJet.Storefront.{CatalogueService, CRMService, FulfillmentService}
   alias BlueJet.Storefront.Order
   alias __MODULE__.Proxy
 
@@ -337,7 +337,7 @@ defmodule BlueJet.Storefront.OrderLineItem do
 
   defp put_amount_fields(changeset = %{ changes: %{ target_id: target_id, target_type: "PointTransaction" } }, :no_price) do
     account = Proxy.get_account(changeset.data)
-    point_transaction = CrmService.get_point_transaction(%{ id: target_id }, %{ account: account })
+    point_transaction = CRMService.get_point_transaction(%{ id: target_id }, %{ account: account })
     sub_total_cents = point_transaction.amount
 
     changeset

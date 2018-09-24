@@ -2,7 +2,7 @@ defmodule BlueJet.DataTrading.DataImport do
   require Logger
   use BlueJet, :data
 
-  alias BlueJet.DataTrading.{GoodsService, CrmService, CatalogueService}
+  alias BlueJet.DataTrading.{GoodsService, CRMService, CatalogueService}
 
   schema "data_imports" do
     field :account_id, Ecto.UUID
@@ -84,10 +84,10 @@ defmodule BlueJet.DataTrading.DataImport do
 
     case customer do
       nil ->
-        {:ok, _} = CrmService.create_customer(fields, %{account: account})
+        {:ok, _} = CRMService.create_customer(fields, %{account: account})
 
       customer ->
-        {:ok, _} = CrmService.update_customer(customer.id, fields, %{account: account})
+        {:ok, _} = CRMService.update_customer(customer.id, fields, %{account: account})
     end
   end
 
@@ -176,7 +176,7 @@ defmodule BlueJet.DataTrading.DataImport do
         row[id_key]
 
       row[code_key] && row[code_key] != "" ->
-        customer = CrmService.get_customer(%{code: row[code_key]}, %{account: account})
+        customer = CRMService.get_customer(%{code: row[code_key]}, %{account: account})
 
         if customer do
           customer.id
@@ -235,11 +235,11 @@ defmodule BlueJet.DataTrading.DataImport do
   end
 
   defp get_customer(%{"id" => id}, account) when byte_size(id) > 0 do
-    CrmService.get_customer(%{id: id}, %{account: account})
+    CRMService.get_customer(%{id: id}, %{account: account})
   end
 
   defp get_customer(%{"code" => code}, account) when byte_size(code) > 0 do
-    CrmService.get_customer(%{code: code}, %{account: account})
+    CRMService.get_customer(%{code: code}, %{account: account})
   end
 
   defp get_unlockable(%{"id" => id}, account) when byte_size(id) > 0 do

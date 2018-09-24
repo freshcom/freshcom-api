@@ -1,5 +1,5 @@
-defmodule BlueJet.Fulfillment.CrmService do
-  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
+defmodule BlueJet.Fulfillment.CRMService do
+  alias BlueJet.CRM.{Customer, PointAccount, PointTransaction}
 
   @crm_service Application.get_env(:blue_jet, :fulfillment)[:crm_service]
 

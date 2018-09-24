@@ -10,7 +10,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
   def run(_) do
     alias BlueJet.Repo
 
-    alias BlueJet.{Identity, Goods, Catalogue, Crm}
+    alias BlueJet.{Identity, Goods, Catalogue, CRM}
     alias BlueJet.Identity.Account
     alias BlueJet.ContextRequest
 
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       #
       # MARK: Customer
       #
-      {:ok, _} = Crm.create_customer(%ContextRequest{
+      {:ok, _} = CRM.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "guest",
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       })
 
       email = Faker.Internet.safe_email()
-      {:ok, _} = Crm.create_customer(%ContextRequest{
+      {:ok, _} = CRM.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "registered",
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.BlueJet.Db.Sample do
       })
 
       email = Faker.Internet.safe_email()
-      {:ok, _} = Crm.create_customer(%ContextRequest{
+      {:ok, _} = CRM.create_customer(%ContextRequest{
         vas: %{ user_id: user.id, account_id: test_account.id },
         fields: %{
           "status" => "registered",

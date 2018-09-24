@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.PaymentTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Balance.{Payment, Settings}
-  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock, CrmServiceMock}
+  alias BlueJet.Balance.{StripeClientMock, IdentityServiceMock, CRMServiceMock}
 
   test "writable_fields/0" do
     assert Payment.writable_fields() == [
@@ -117,7 +117,7 @@ defmodule BlueJet.Balance.PaymentTest do
       StripeClientMock
       |> expect(:post, fn(_, _, _) -> {:ok, stripe_customer} end)
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(_, _) ->
           owner
          end)

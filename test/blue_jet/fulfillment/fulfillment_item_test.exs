@@ -5,9 +5,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
 
   alias BlueJet.Identity.Account
   alias BlueJet.Goods.{Unlockable, Depositable}
-  alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
+  alias BlueJet.CRM.{Customer, PointAccount, PointTransaction}
   alias BlueJet.Storefront.{Order, OrderLineItem}
-  alias BlueJet.Fulfillment.{GoodsServiceMock, CrmServiceMock}
+  alias BlueJet.Fulfillment.{GoodsServiceMock, CRMServiceMock}
   alias BlueJet.Fulfillment.{FulfillmentPackage, FulfillmentItem, ReturnPackage, ReturnItem, Unlock}
 
   test "writable_fields/0" do
@@ -299,7 +299,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
         id: Ecto.UUID.generate()
       }
 
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_point_account, fn(fields, _) ->
           assert fields[:customer_id] == customer.id
           point_account
@@ -334,7 +334,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItemTest do
       point_transaction = %PointTransaction{
         id: Ecto.UUID.generate()
       }
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:update_point_transaction, fn(id, _, _) ->
           assert id == point_transaction.id
           {:ok, point_transaction}

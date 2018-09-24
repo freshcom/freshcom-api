@@ -4,7 +4,7 @@ defmodule BlueJet.BalanceTest do
   alias BlueJet.Identity.{Account, User}
   alias BlueJet.Balance
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
-  alias BlueJet.Balance.{CrmServiceMock}
+  alias BlueJet.Balance.{CRMServiceMock}
   alias BlueJet.Balance.ServiceMock
 
   #
@@ -92,7 +92,7 @@ defmodule BlueJet.BalanceTest do
       }
 
       customer = %{ id: Ecto.UUID.generate() }
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(_, _) ->
           customer
          end)
@@ -258,7 +258,7 @@ defmodule BlueJet.BalanceTest do
       }
 
       customer = %{ id: Ecto.UUID.generate() }
-      CrmServiceMock
+      CRMServiceMock
       |> expect(:get_customer, fn(_, _) ->
           customer
          end)

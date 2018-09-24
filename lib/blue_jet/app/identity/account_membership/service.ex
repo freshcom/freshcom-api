@@ -1,4 +1,6 @@
 defmodule BlueJet.Identity.AccountMembership.Service do
+  @moduledoc false
+
   use BlueJet, :service
 
   import BlueJet.Utils, only: [atomize_keys: 2]

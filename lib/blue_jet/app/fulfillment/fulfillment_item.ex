@@ -3,7 +3,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   """
   use BlueJet, :data
 
-  alias BlueJet.Fulfillment.{GoodsService, CrmService}
+  alias BlueJet.Fulfillment.{GoodsService, CRMService}
   alias BlueJet.Fulfillment.{FulfillmentPackage, ReturnItem, Unlock}
   alias __MODULE__.Proxy
 
@@ -357,9 +357,9 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
     depositable = GoodsService.get_depositable(%{id: depositable_id}, opts)
 
     if depositable.gateway == "freshcom" do
-      point_account = CrmService.get_point_account(%{customer_id: customer_id}, opts)
+      point_account = CRMService.get_point_account(%{customer_id: customer_id}, opts)
 
-      CrmService.create_point_transaction(
+      CRMService.create_point_transaction(
         %{
           point_account_id: point_account.id,
           status: "committed",
@@ -374,7 +374,7 @@ defmodule BlueJet.Fulfillment.FulfillmentItem do
   end
 
   defp fulfill_point_transaction(pt_id, opts) do
-    CrmService.update_point_transaction(pt_id, %{status: "committed"}, opts)
+    CRMService.update_point_transaction(pt_id, %{status: "committed"}, opts)
   end
 
   @spec sync_to_package(__MODULE__.t()) :: {:ok, __MODULE__.t()}

@@ -2,7 +2,7 @@ defmodule BlueJet.Storefront.Policy do
   use BlueJet, :policy
 
   alias BlueJet.Storefront.Service
-  alias BlueJet.Storefront.CrmService
+  alias BlueJet.Storefront.CRMService
 
   #
   # MARK: Order
@@ -10,7 +10,7 @@ defmodule BlueJet.Storefront.Policy do
   def authorize(request = %{ role: role, account: account, user: user }, "list_order") when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     filter = Map.merge(request.filter, %{ customer_id: customer.id, status: ["opened", "closed"] })
     all_count_filter = Map.take(filter, [:customer_id, :status])
 
@@ -35,7 +35,7 @@ defmodule BlueJet.Storefront.Policy do
   def authorize(request = %{ role: role, account: account, user: user }, "create_order") when role in ["customer"] do
     authorized_args = from_access_request(request, :create)
 
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     fields = Map.merge(authorized_args.fields, %{ customer_id: customer.id })
     authorized_args = %{ authorized_args | fields: fields }
 
@@ -58,7 +58,7 @@ defmodule BlueJet.Storefront.Policy do
   def authorize(request = %{ role: role, account: account, user: user }, "get_order") when role in ["customer"] do
     authorized_args = from_access_request(request, :get)
 
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     identifiers = Map.merge(authorized_args.identifiers, %{ customer_id: customer.id })
     authorized_args = %{ authorized_args | identifiers: identifiers }
 
@@ -89,7 +89,7 @@ defmodule BlueJet.Storefront.Policy do
     request = %{ request | role: "guest" }
     {:ok, authorized_args} = authorize(request, "update_order")
 
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     identifiers = Map.merge(authorized_args.identifiers, %{ customer_id: customer.id })
     authorized_args = %{ authorized_args | identifiers: identifiers }
 
@@ -112,7 +112,7 @@ defmodule BlueJet.Storefront.Policy do
   def authorize(request = %{ role: role, account: account, user: user }, "delete_order") when role in ["customer"] do
     authorized_args = from_access_request(request, :delete)
 
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     identifiers = Map.merge(authorized_args.identifiers, %{ status: "cart", customer_id: customer.id })
     authorized_args = %{ authorized_args | identifiers: identifiers }
 
@@ -144,7 +144,7 @@ defmodule BlueJet.Storefront.Policy do
 
   def authorize(request = %{ role: role, account: account, user: user }, "create_order_line_item") when role in ["customer"] do
     authorized_args = from_access_request(request, :create)
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     order = Service.get_order(%{
       id: authorized_args.fields["order_id"],
       status: "cart",
@@ -183,7 +183,7 @@ defmodule BlueJet.Storefront.Policy do
     authorized_args = from_access_request(request, :update)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     order = Service.get_order(%{
       id: oli.order_id,
       status: "cart",
@@ -222,7 +222,7 @@ defmodule BlueJet.Storefront.Policy do
     authorized_args = from_access_request(request, :delete)
 
     oli = Service.get_order_line_item(authorized_args.identifiers, %{ account: account })
-    customer = CrmService.get_customer(%{ user_id: user.id }, %{ account: account })
+    customer = CRMService.get_customer(%{ user_id: user.id }, %{ account: account })
     order = Service.get_order(%{
       id: oli.order_id,
       status: "cart",

@@ -48,10 +48,10 @@ config :blue_jet, :event_bus, %{
 # }
 
 # config :blue_jet, :crm, %{
-#   service: BlueJet.Crm.ServiceMock,
-#   stripe_client: BlueJet.Crm.StripeClientMock,
-#   identity_service: BlueJet.Crm.IdentityServiceMock,
-#   file_storage_service: BlueJet.Crm.FileStorageServiceMock
+#   service: BlueJet.CRM.ServiceMock,
+#   stripe_client: BlueJet.CRM.StripeClientMock,
+#   identity_service: BlueJet.CRM.IdentityServiceMock,
+#   file_storage_service: BlueJet.CRM.FileStorageServiceMock
 # }
 
 # config :blue_jet, :notification, %{
@@ -64,7 +64,7 @@ config :blue_jet, :event_bus, %{
 #   stripe_client: BlueJet.Balance.StripeClientMock,
 #   oauth_client: BlueJet.Balance.OauthClientMock,
 #   identity_service: BlueJet.Balance.IdentityServiceMock,
-#   crm_service: BlueJet.Balance.CrmServiceMock,
+#   crm_service: BlueJet.Balance.CRMServiceMock,
 #   listeners: [BlueJet.EventHandlerMock]
 # }
 
@@ -79,14 +79,14 @@ config :blue_jet, :event_bus, %{
 #   service: BlueJet.DataTrading.ServiceMock,
 #   identity_service: BlueJet.DataTrading.IdentityServiceMock,
 #   goods_service: BlueJet.DataTrading.GoodsServiceMock,
-#   crm_service: BlueJet.DataTrading.CrmServiceMock,
+#   crm_service: BlueJet.DataTrading.CRMServiceMock,
 #   catalogue_service: BlueJet.DataTrading.CatalogueServiceMock,
 # }
 
 # config :blue_jet, :fulfillment, %{
 #   service: BlueJet.Fulfillment.ServiceMock,
 #   identity_service: BlueJet.Fulfillment.IdentityServiceMock,
-#   crm_service: BlueJet.Fulfillment.CrmServiceMock,
+#   crm_service: BlueJet.Fulfillment.CRMServiceMock,
 #   goods_service: BlueJet.Fulfillment.GoodsServiceMock,
 #   listeners: [BlueJet.EventHandlerMock]
 # }
@@ -98,5 +98,5 @@ config :blue_jet, :event_bus, %{
 #   catalogue_service: BlueJet.Storefront.CatalogueServiceMock,
 #   identity_service: BlueJet.Storefront.IdentityServiceMock,
 #   goods_service: BlueJet.Storefront.GoodsServiceMock,
-#   crm_service: BlueJet.Storefront.CrmServiceMock
+#   crm_service: BlueJet.Storefront.CRMServiceMock
 # }

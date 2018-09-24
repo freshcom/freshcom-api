@@ -1,7 +1,7 @@
-defmodule BlueJet.Crm.Policy do
+defmodule BlueJet.CRM.Policy do
   use BlueJet, :policy
 
-  alias BlueJet.Crm.Service
+  alias BlueJet.CRM.Service
 
   # TODO: Fix this
   def authorize(%{vas: vas, _role_: nil} = req, endpoint) do
@@ -28,7 +28,7 @@ defmodule BlueJet.Crm.Policy do
   #
   def authorize(%{_role_: role} = req, :list_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -40,14 +40,14 @@ defmodule BlueJet.Crm.Policy do
       ContextRequest.put(req, :fields, "status", "registered")
     end
 
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -55,8 +55,8 @@ defmodule BlueJet.Crm.Policy do
   def authorize(%{_role_: role} = req, :get_customer) when role in ["guest"] do
     req =
       req
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.drop(:identifiers, [:id])
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.drop(:identifiers, ["id"])
 
     if (req.identifiers[:code] || req.identifiers[:email]) && map_size(req.identifiers) >= 3 do
       {:ok, req}
@@ -68,15 +68,15 @@ defmodule BlueJet.Crm.Policy do
   def authorize(%{_role_: role} = req, :get_customer) when role in ["customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, %{user_id: req._vad_[:user].id})
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:identifiers, %{"user_id" => req._vad_[:user].id})
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_customer)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -85,8 +85,8 @@ defmodule BlueJet.Crm.Policy do
       when role in ["customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, %{user_id: req._vad_[:user].id})
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:identifiers, %{"user_id" => req._vad_[:user].id})
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -96,7 +96,7 @@ defmodule BlueJet.Crm.Policy do
     req =
       req
       |> ContextRequest.put(:_opts_, :bypass_user_pvc_validation, true)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -109,22 +109,22 @@ defmodule BlueJet.Crm.Policy do
   #
   # Point Transaction
   #
-  def authorize(%{_role_: role, filter: %{point_account_id: pa_id}} = req, :list_point_transaction)
+  def authorize(%{_role_: role, filter: %{"point_account_id" => pa_id}} = req, :list_point_transaction)
       when role in ["customer"] do
-    identifiers = %{user_id: req._vad_[:user].id}
+    identifiers = %{"user_id" => req._vad_[:user].id}
     opts = %{account: req._vad_[:account]}
     customer = Service.get_customer(identifiers, opts)
 
-    identifiers = %{id: pa_id, customer_id: customer.id}
+    identifiers = %{"id" => pa_id, "customer_id" => customer.id}
     opts = %{account: req._vad_[:account]}
     point_account = Service.get_point_account(identifiers, opts)
 
     if point_account do
-      req = ContextRequest.put(req, :filter, :status, "committed")
+      req = ContextRequest.put(req, :filter, "status", "committed")
       req =
         req
-        |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :point_account_id]))
-        |> ContextRequest.put(:_preload_, :paths, req.preloads)
+        |> ContextRequest.put(:_scope_, Map.take(req.filter, ["status", "point_account_id"]))
+        |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
     else
@@ -134,22 +134,22 @@ defmodule BlueJet.Crm.Policy do
 
   def authorize(%{_role_: role} = req, :list_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :filter, :status, "committed")
+    req = ContextRequest.put(req, :filter, "status", "committed")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :point_account_id]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["status", "point_account_id"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role, fields: %{"point_account_id" => pa_id}} = req, :create_point_transaction)
       when role in ["customer"] do
-    identifiers = %{user_id: req._vad_[:user].id}
+    identifiers = %{"user_id" => req._vad_[:user].id}
     opts = %{account: req._vad_[:account]}
     customer = Service.get_customer(identifiers, opts)
 
-    identifiers = %{id: pa_id, customer_id: customer.id}
+    identifiers = %{"id" => pa_id, "customer_id" => customer.id}
     opts = %{account: req._vad_[:account]}
     point_account = Service.get_point_account(identifiers, opts)
 
@@ -157,7 +157,7 @@ defmodule BlueJet.Crm.Policy do
       req =
         req
         |> ContextRequest.put(:fields, "status", "pending")
-        |> ContextRequest.put(:_preload_, :paths, req.preloads)
+        |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
     else
@@ -167,36 +167,36 @@ defmodule BlueJet.Crm.Policy do
 
   def authorize(%{_role_: role} = req, :create_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
-  def authorize(%{_role_: role, identifiers: %{id: transaction_id}} = req, :delete_point_transaction)
+  def authorize(%{_role_: role, identifiers: %{"id" => transaction_id}} = req, :delete_point_transaction)
       when role in ["customer"] do
-    identifiers = %{user_id: req._vad_[:user].id}
+    identifiers = %{"user_id" => req._vad_[:user].id}
     opts = %{account: req._vad_[:account]}
     customer = Service.get_customer(identifiers, opts)
 
-    identifiers = %{id: transaction_id}
+    identifiers = %{"id" => transaction_id}
     opts = %{account: req._vad_[:account]}
     transaction = Service.get_point_transaction(identifiers, opts)
 
-    identifiers = %{id: transaction.point_account_id, customer_id: customer.id}
+    identifiers = %{"id" => transaction.point_account_id, "customer_id" => customer.id}
     opts = %{account: req._vad_[:account]}
     point_account = Service.get_point_account(identifiers, opts)
 
@@ -211,7 +211,7 @@ defmodule BlueJet.Crm.Policy do
 
   def authorize(%{_role_: role} = req, :delete_point_transaction)
       when role in ["support_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :identifiers, :status, "pending")
+    req = ContextRequest.put(req, :identifiers, "status", "pending")
 
     {:ok, req}
   end

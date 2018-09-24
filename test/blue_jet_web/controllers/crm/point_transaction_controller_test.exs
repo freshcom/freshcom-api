@@ -2,7 +2,7 @@ defmodule BlueJetWeb.PointTransactionControllerTest do
   use BlueJetWeb.ConnCase
 
   import BlueJet.Identity.TestHelper
-  import BlueJet.Crm.TestHelper
+  import BlueJet.CRM.TestHelper
 
   setup do
     conn =

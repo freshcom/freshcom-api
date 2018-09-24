@@ -1,4 +1,6 @@
 defmodule BlueJet.Goods.IdentityService do
+  @moduledoc false
+
   @identity_service Application.get_env(:blue_jet, :goods)[:identity_service]
 
   @callback get_vad(map) :: map

@@ -2,7 +2,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.{Repo, Translation}
-  alias BlueJet.Storefront.{CrmService, CatalogueService, GoodsService, FulfillmentService}
+  alias BlueJet.Storefront.{CRMService, CatalogueService, GoodsService, FulfillmentService}
 
   def get_goods(oli = %{ product: %{ goods_type: "Stockable", goods_id: id }}) do
     account = get_account(oli)
@@ -32,7 +32,7 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
   def get_point_account(oli) do
     opts = get_sopts(oli)
     oli = Repo.preload(oli, :order)
-    CrmService.get_point_account(%{ customer_id: oli.order.customer_id }, opts)
+    CRMService.get_point_account(%{ customer_id: oli.order.customer_id }, opts)
   end
 
   def create_point_transaction(fields, oli) do
@@ -44,14 +44,14 @@ defmodule BlueJet.Storefront.OrderLineItem.Proxy do
       |> Map.put(:point_account_id, point_account.id)
       |> Map.put(:source_type, "OrderLineItem")
       |> Map.put(:source_id, oli.id)
-      |> CrmService.create_point_transaction(opts)
+      |> CRMService.create_point_transaction(opts)
 
     pt
   end
 
   def commit_point_transaction(id, oli) do
     opts = get_sopts(oli)
-    {:ok, pt} = CrmService.update_point_transaction(id, %{ status: "committed" }, opts)
+    {:ok, pt} = CRMService.update_point_transaction(id, %{ status: "committed" }, opts)
 
     pt
   end

@@ -2,7 +2,7 @@ defmodule BlueJet.Fulfillment.DefaultServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Crm.Customer
+  alias BlueJet.CRM.Customer
   alias BlueJet.Goods.Unlockable
 
   alias BlueJet.Fulfillment.DefaultService

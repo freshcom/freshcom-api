@@ -1,7 +1,7 @@
 defmodule BlueJet.Balance.Policy do
   use BlueJet, :policy
 
-  alias BlueJet.Balance.CrmService
+  alias BlueJet.Balance.CRMService
 
   #
   # MARK: Settings
@@ -23,7 +23,7 @@ defmodule BlueJet.Balance.Policy do
       when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{user_id: user.id}, %{account: account})
+    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
 
     filter =
       Map.merge(authorized_args[:filter], %{
@@ -81,7 +81,7 @@ defmodule BlueJet.Balance.Policy do
       when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{user_id: user.id}, %{account: account})
+    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
     filter = Map.merge(authorized_args[:filter], %{owner_id: customer.id, owner_type: "Customer"})
     all_count_filter = Map.take(filter, [:owner_id, :owner_type])
 

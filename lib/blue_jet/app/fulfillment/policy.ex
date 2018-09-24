@@ -1,7 +1,7 @@
 defmodule BlueJet.Fulfillment.Policy do
   use BlueJet, :policy
 
-  alias BlueJet.Fulfillment.CrmService
+  alias BlueJet.Fulfillment.CRMService
 
   #
   # MARK: Fulfillment Package
@@ -10,7 +10,7 @@ defmodule BlueJet.Fulfillment.Policy do
       when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{user_id: user.id}, %{account: account})
+    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
     filter = Map.merge(request.filter, %{customer_id: customer.id})
 
     authorized_args = %{
@@ -100,7 +100,7 @@ defmodule BlueJet.Fulfillment.Policy do
       when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{user_id: user.id}, %{account: account})
+    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
     filter = Map.merge(request.filter, %{customer_id: customer.id})
 
     authorized_args = %{
@@ -148,7 +148,7 @@ defmodule BlueJet.Fulfillment.Policy do
       when role in ["customer"] do
     authorized_args = from_access_request(request, :list)
 
-    customer = CrmService.get_customer(%{user_id: user.id}, %{account: account})
+    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
     filter = Map.merge(request.filter, %{customer_id: customer.id})
 
     authorized_args = %{

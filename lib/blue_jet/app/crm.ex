@@ -1,7 +1,7 @@
-defmodule BlueJet.Crm do
+defmodule BlueJet.CRM do
   use BlueJet, :context
 
-  alias BlueJet.Crm.{Policy, Service}
+  alias BlueJet.CRM.{Policy, Service}
 
   def list_customer(req), do: default(req, :list, :customer, Policy, Service)
   def create_customer(req), do: default(req, :create, :customer, Policy, Service)
