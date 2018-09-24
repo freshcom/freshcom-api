@@ -18,7 +18,7 @@ defmodule BlueJet.FileStorage.FileCollectionMembership.Query do
   def filter_by(q, f), do: filter_by(q, f, filterable_fields())
 
   def search(q, k, l, d),
-    do: search(q, k, l, d, searchable_fields(), FileCollectionMembership.translatable_fields())
+    do: search(q, k, l, d, searchable_fields(), [])
 
   def preloads({:files, ef_preloads}, options) do
     query = File.Query.default() |> File.Query.filter_by(%{status: "uploaded"})

@@ -26,10 +26,10 @@ defmodule BlueJet.FileStorage.Policy do
   #
   def authorize(%{_role_: role} = req, :list_file)
       when role in ["developer", "administrator"] do
-    req = ContextRequest.put(req, :filter, :status, "uploaded")
+    req = ContextRequest.put(req, :filter, "status", "uploaded")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status]))
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["status"]))
       |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
@@ -59,7 +59,7 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{_role_: role} = req, :get_file) when not is_nil(role) do
     req =
       req
-      |> ContextRequest.put(:identifiers, :status, "uploaded")
+      |> ContextRequest.put(:identifiers, "status", "uploaded")
       |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
@@ -70,7 +70,7 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{_role_: role} = req, :update_file) when role in ["guest", "customer"] do
     req =
       req
-      |> ContextRequest.put(:fields, Map.take(req.fields, [:status]))
+      |> ContextRequest.put(:fields, Map.take(req.fields, ["status"]))
       |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
@@ -104,11 +104,11 @@ defmodule BlueJet.FileStorage.Policy do
   # Guest and customer can only list active file collection for a specific owner
   def authorize(%{_role_: role} = req, :list_file_collection)
       when role in ["guest", "customer"] do
-    if req.filter[:owner_id] && req.filter[:owner_id] do
+    if req.filter["owner_id"] && req.filter["owner_type"] do
       req =
         req
-        |> ContextRequest.put(:filter, :status, "active")
-        |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :owner_id, :owner_type]))
+        |> ContextRequest.put(:filter, "status", "active")
+        |> ContextRequest.put(:_scope_, Map.take(req.filter, ["status", "owner_id", "owner_type"]))
         |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
@@ -127,10 +127,10 @@ defmodule BlueJet.FileStorage.Policy do
 
   # Other role can only list file collection for a specific owner
   def authorize(%{_role_: role} = req, :list_file_collection) when not is_nil(role) do
-    if req.filter[:owner_id] && req.filter[:owner_id] do
+    if req.filter["owner_id"] && req.filter["owner_type"] do
       req =
         req
-        |> ContextRequest.put(:_scope_, Map.take(req.filter, [:owner_id, :owner_type]))
+        |> ContextRequest.put(:_scope_, Map.take(req.filter, ["owner_id", "owner_type"]))
         |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
@@ -154,7 +154,7 @@ defmodule BlueJet.FileStorage.Policy do
       when role in ["guest", "customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, :status, "active")
+      |> ContextRequest.put(:identifiers, "status", "active")
       |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
@@ -190,10 +190,10 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{_role_: "anonymous"}, :list_file_collection_membership), do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :list_file_collection_membership) when role in ["guest", "customer"] do
-    req = ContextRequest.put(req, :filter, :file_status, "uploaded")
+    req = ContextRequest.put(req, :filter, "file_status", "uploaded")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id, :file_status]))
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["collection_id", "file_status"]))
       |> ContextRequest.put(:_include_, :paths, req.include)
       |> ContextRequest.put(:_include_, :opts, %{filters: %{file: %{status: "uploaded"}}})
 
@@ -203,7 +203,7 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{_role_: role} = req, :list_file_collection_membership) when not is_nil(role) do
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id]))
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["collection_id"]))
       |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
