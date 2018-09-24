@@ -1,4 +1,6 @@
 defmodule BlueJet.Notification.Trigger do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias Bamboo.Email, as: E
@@ -7,7 +9,7 @@ defmodule BlueJet.Notification.Trigger do
   alias BlueJet.Notification.{Email, EmailTemplate, Sms, SmsTemplate}
 
   schema "notification_triggers" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "active"
@@ -38,10 +40,6 @@ defmodule BlueJet.Notification.Trigger do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  def translatable_fields do
-    []
-  end
-
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(trigger, :insert, fields) do
     trigger
@@ -50,7 +48,7 @@ defmodule BlueJet.Notification.Trigger do
     |> validate()
   end
 
-  def changeset(trigger, :update, fields) do
+  def changeset(trigger, :update, fields, _) do
     trigger
     |> cast(fields, castable_fields(:update))
     |> Map.put(:action, :update)
@@ -62,8 +60,6 @@ defmodule BlueJet.Notification.Trigger do
     change(trigger)
     |> Map.put(:action, :delete)
   end
-
-  def changeset(trigger, :update, fields, _), do: changeset(trigger, :update, fields)
 
   @spec validate(Changeset.t()) :: Changeset.t()
   def validate(changeset) do
@@ -145,75 +141,5 @@ defmodule BlueJet.Notification.Trigger do
 
   def fire_action(trigger, _) do
     {:ok, trigger}
-  end
-
-  defmodule AccountDefault do
-    alias BlueJet.Notification.Trigger
-
-    def send_password_reset_email(account, email_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send password reset email",
-        event: "identity:password_reset_token.create.success",
-        action_type: "send_email",
-        action_target: email_template.id
-      }
-    end
-
-    def send_password_reset_not_registered_email(account, email_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send password reset not registered email",
-        event: "identity:password_reset_token.create.error.username_not_found",
-        action_type: "send_email",
-        action_target: email_template.id
-      }
-    end
-
-    def send_email_verification_email(account, email_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send email confirmation email",
-        event: "identity:email_verification_token.create.success",
-        action_type: "send_email",
-        action_target: email_template.id
-      }
-    end
-
-    def send_order_confirmation_email(account, email_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send order confirmation email",
-        event: "storefront.order.opened.success",
-        action_type: "send_email",
-        action_target: email_template.id
-      }
-    end
-
-    def send_phone_verification_code_sms(account, sms_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send phone verification code sms",
-        event: "identity:phone_verification_code.create.success",
-        action_type: "send_sms",
-        action_target: sms_template.id
-      }
-    end
-
-    def send_tfa_code_sms(account, sms_template) do
-      %Trigger{
-        account_id: account.id,
-        system_label: "default",
-        name: "Send TFA code sms",
-        event: "identity:user.tfa_code.create.success",
-        action_type: "send_sms",
-        action_target: sms_template.id
-      }
-    end
   end
 end

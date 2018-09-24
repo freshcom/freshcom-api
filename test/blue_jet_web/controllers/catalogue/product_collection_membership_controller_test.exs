@@ -21,7 +21,6 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
       assert conn.status == 401
     end
 
-    @tag :focus
     test "with PAT", %{conn: conn} do
       account1 = account_fixture()
       account2 = account_fixture()
@@ -260,7 +259,6 @@ defmodule BlueJetWeb.ProductCollectionMembershipControllerTest do
       assert conn.status == 403
     end
 
-    @tag :focus
     test "with UAT", %{conn: conn} do
       user = standard_user_fixture()
       collection = product_collection_fixture(user.default_account)

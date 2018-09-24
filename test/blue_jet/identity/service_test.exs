@@ -327,7 +327,7 @@ defmodule BlueJet.Identity.ServiceTest do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
           assert event_name == "identity:account.create.success"
-          assert Map.keys(data) == [:account, :test_account]
+          assert Map.keys(data) == [:account]
 
           {:ok, nil}
          end)
@@ -355,7 +355,7 @@ defmodule BlueJet.Identity.ServiceTest do
       EventHandlerMock
       |> expect(:handle_event, fn(event_name, data) ->
           assert event_name == "identity:account.create.success"
-          assert Map.keys(data) == [:account, :test_account]
+          assert Map.keys(data) == [:account]
 
           {:ok, nil}
          end)

@@ -1,22 +1,16 @@
-defmodule BlueJet.Notification.DefaultServiceTest do
+defmodule BlueJet.Notification.ServiceTest do
   use BlueJet.ContextCase
 
   alias BlueJet.Identity.Account
 
-  alias BlueJet.Notification.DefaultService
+  alias BlueJet.Notification.Service
   alias BlueJet.Notification.{Trigger, Email, Sms, SmsTemplate}
 
   describe "update_trigger/2" do
-    test "when given nil for trigger" do
-      {:error, error} = DefaultService.update_trigger(nil, %{}, %{})
-
-      assert error == :not_found
-    end
-
     test "when given id does not exist" do
       account = Repo.insert!(%Account{})
 
-      {:error, error} = DefaultService.update_trigger(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
+      {:error, error} = Service.update_trigger(%{ id: Ecto.UUID.generate() }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -33,7 +27,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         action_target: Faker.Internet.url()
       })
 
-      {:error, error} = DefaultService.update_trigger(%{ id: trigger.id }, %{}, %{ account: account })
+      {:error, error} = Service.update_trigger(%{ id: trigger.id }, %{}, %{ account: account })
 
       assert error == :not_found
     end
@@ -52,7 +46,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         "name" => Faker.Lorem.sentence(5)
       }
 
-      {:ok, trigger} = DefaultService.update_trigger(%{ id: trigger.id }, fields, %{ account: account })
+      {:ok, trigger} = Service.update_trigger(%{ id: trigger.id }, fields, %{ account: account })
 
       assert trigger
     end
@@ -62,7 +56,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given identifiers has no match" do
       account = Repo.insert!(%Account{})
 
-      refute DefaultService.get_email(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute Service.get_email(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
 
     test "when given identifiers belongs to a different account" do
@@ -72,7 +66,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         account_id: other_account.id
       })
 
-      refute DefaultService.get_email(%{ id: email.id }, %{ account: account })
+      refute Service.get_email(%{ id: email.id }, %{ account: account })
     end
 
     test "when given valid identifiers" do
@@ -81,7 +75,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         account_id: account.id
       })
 
-      assert DefaultService.get_email(%{ id: email.id }, %{ account: account })
+      assert Service.get_email(%{ id: email.id }, %{ account: account })
     end
   end
 
@@ -89,7 +83,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given identifiers has no match" do
       account = Repo.insert!(%Account{})
 
-      refute DefaultService.get_sms(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      refute Service.get_sms(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
 
     test "when given identifiers belongs to a different account" do
@@ -99,7 +93,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         account_id: other_account.id
       })
 
-      refute DefaultService.get_sms(%{ id: sms.id }, %{ account: account })
+      refute Service.get_sms(%{ id: sms.id }, %{ account: account })
     end
 
     test "when given valid identifiers" do
@@ -108,7 +102,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         account_id: account.id
       })
 
-      assert DefaultService.get_sms(%{ id: sms.id }, %{ account: account })
+      assert Service.get_sms(%{ id: sms.id }, %{ account: account })
     end
   end
 
@@ -116,7 +110,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
 
-      {:error, _} = DefaultService.create_sms_template(%{}, %{ account: account })
+      {:error, _} = Service.create_sms_template(%{}, %{ account: account })
     end
 
     test "when given valid fields" do
@@ -127,7 +121,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         "body" => Faker.Lorem.sentence(5)
       }
 
-      {:ok, _} = DefaultService.create_sms_template(fields, %{ account: account })
+      {:ok, _} = Service.create_sms_template(fields, %{ account: account })
     end
   end
 
@@ -135,7 +129,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
     test "when given identifiers has no match" do
       account = Repo.insert!(%Account{})
 
-      {:error, :not_found} =  DefaultService.delete_sms_template(%{ id: Ecto.UUID.generate() }, %{ account: account })
+      {:error, :not_found} =  Service.delete_sms_template(%{ id: Ecto.UUID.generate() }, %{ account: account })
     end
 
     test "when given identifiers belongs to a different account" do
@@ -146,7 +140,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:error, :not_found} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
+      {:error, :not_found} = Service.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
     end
 
     test "when given valid identifiers" do
@@ -156,7 +150,7 @@ defmodule BlueJet.Notification.DefaultServiceTest do
         name: Faker.Lorem.sentence(5)
       })
 
-      {:ok, _} = DefaultService.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
+      {:ok, _} = Service.delete_sms_template(%{ id: sms_template.id }, %{ account: account })
     end
   end
 end

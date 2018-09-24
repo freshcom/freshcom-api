@@ -102,28 +102,4 @@ defmodule BlueJet.Notification.SmsTemplate do
   def render_to(%{to: to}, variables) do
     :bbmustache.render(to, variables, key_type: :atom)
   end
-
-  defmodule AccountDefault do
-    alias BlueJet.Notification.SmsTemplate
-
-    def phone_verification_code(account) do
-      %SmsTemplate{
-        account_id: account.id,
-        system_label: "default",
-        name: "Phone Verification Code",
-        to: "{{phone_number}}",
-        body: "Your {{account.name}} verification code: {{code}}"
-      }
-    end
-
-    def tfa_code(account) do
-      %SmsTemplate{
-        account_id: account.id,
-        system_label: "default",
-        name: "TFA Code",
-        to: "{{user.phone_number}}",
-        body: "Your {{account.name}} verification code: {{code}}"
-      }
-    end
-  end
 end

@@ -13,6 +13,7 @@ defmodule BlueJet.Catalogue.Service do
     pagination = extract_pagination(opts)
     preload = extract_preload(opts)
     filter = atomize_keys(query[:filter], Product.Query.filterable_fields() ++ [:collection_id])
+    filter = Map.put(filter, :parent_id, filter[:parent_id])
 
     Product.Query.default()
     |> Product.Query.search(query[:search], opts[:locale], account.default_locale)

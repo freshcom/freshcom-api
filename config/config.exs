@@ -87,17 +87,21 @@ config :blue_jet, :phone_regex, ~r/\+(9[976]\d|8[987530]\d|6[987]\d|5[90]\d|42\d
 
 config :blue_jet, :s3, prefix: "uploads"
 
-alias BlueJet.{Balance, Notification}
+alias BlueJet.{Balance, Notification, CRM}
 
 config :blue_jet, :event_bus, %{
+  "*" => [Notification.EventHandler],
   "identity:account.create.success" => [
-    Balance.EventHandler,
-    Notification.EventHandler
+    Balance.EventHandler
   ],
   "identity:account.reset.success" => [
     Goods.EventHandler,
     Catalogue.EventHandler,
-    FileStorage.EventHandler
+    FileStorage.EventHandler,
+    CRM.EventHandler
+  ],
+  "identity:user.update.success" => [
+    CRM.EventHandler
   ]
 }
 
@@ -127,13 +131,11 @@ config :blue_jet, :goods, %{
 }
 
 config :blue_jet, :crm, %{
-  stripe_client: BlueJet.Stripe.Client,
   identity_service: BlueJet.Identity.Service,
   file_storage_service: BlueJet.FileStorage.Service
 }
 
 config :blue_jet, :notification, %{
-  service: BlueJet.Notification.DefaultService,
   identity_service: BlueJet.Identity.Service
 }
 

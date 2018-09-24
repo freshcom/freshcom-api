@@ -1,28 +1,14 @@
 Mox.defmock(BlueJet.EventHandlerMock, for: BlueJet.EventHandler)
 
-Mox.defmock(BlueJet.FileStorage.IdentityServiceMock, for: BlueJet.FileStorage.IdentityService)
-Mox.defmock(BlueJet.FileStorage.S3ClientMock, for: BlueJet.FileStorage.S3Client)
-Mox.defmock(BlueJet.FileStorage.CloudfrontClientMock, for: BlueJet.FileStorage.CloudfrontClient)
-
-Mox.defmock(BlueJet.Goods.IdentityServiceMock, for: BlueJet.Goods.IdentityService)
-Mox.defmock(BlueJet.Goods.FileStorageServiceMock, for: BlueJet.Goods.FileStorageService)
-
-Mox.defmock(BlueJet.CRM.StripeClientMock, for: BlueJet.CRM.StripeClient)
-Mox.defmock(BlueJet.CRM.IdentityServiceMock, for: BlueJet.CRM.IdentityService)
-Mox.defmock(BlueJet.CRM.FileStorageServiceMock, for: BlueJet.CRM.FileStorageService)
-
-Mox.defmock(BlueJet.Notification.ServiceMock, for: BlueJet.Notification.Service)
-Mox.defmock(BlueJet.Notification.IdentityServiceMock, for: BlueJet.Notification.IdentityService)
+Mox.defmock(BlueJet.Catalogue.GoodsServiceMock, for: BlueJet.Catalogue.GoodsService)
+Mox.defmock(BlueJet.Catalogue.IdentityServiceMock, for: BlueJet.Catalogue.IdentityService)
+Mox.defmock(BlueJet.Catalogue.FileStorageServiceMock, for: BlueJet.Catalogue.FileStorageService)
 
 Mox.defmock(BlueJet.Balance.ServiceMock, for: BlueJet.Balance.Service)
 Mox.defmock(BlueJet.Balance.StripeClientMock, for: BlueJet.Balance.StripeClient)
 Mox.defmock(BlueJet.Balance.OauthClientMock, for: BlueJet.Balance.OauthClient)
 Mox.defmock(BlueJet.Balance.IdentityServiceMock, for: BlueJet.Balance.IdentityService)
 Mox.defmock(BlueJet.Balance.CRMServiceMock, for: BlueJet.Balance.CRMService)
-
-Mox.defmock(BlueJet.Catalogue.GoodsServiceMock, for: BlueJet.Catalogue.GoodsService)
-Mox.defmock(BlueJet.Catalogue.IdentityServiceMock, for: BlueJet.Catalogue.IdentityService)
-Mox.defmock(BlueJet.Catalogue.FileStorageServiceMock, for: BlueJet.Catalogue.FileStorageService)
 
 Mox.defmock(BlueJet.DataTrading.ServiceMock, for: BlueJet.DataTrading.Service)
 Mox.defmock(BlueJet.DataTrading.IdentityServiceMock, for: BlueJet.DataTrading.IdentityService)

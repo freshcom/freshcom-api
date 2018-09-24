@@ -27,7 +27,7 @@ defmodule BlueJetWeb.UserControllerTest do
       assert length(response["errors"]) == 3
     end
 
-    test "without UAT should create standard user", %{conn: conn} do
+    test "without access token should create standard user", %{conn: conn} do
       email = Faker.Internet.email()
       conn = post(conn, "/v1/users", %{
         "data" => %{
