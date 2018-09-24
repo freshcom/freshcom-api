@@ -68,9 +68,9 @@ defmodule BlueJet.Goods.DepositableTest do
         "gateway" => "freshcom",
         "amount" => System.unique_integer([:positive])
       }
-      account = %Account{id: UUID.generate()}
+      account = %Account{id: UUID.generate(), default_locale: "zh-CN"}
       depositable = %Depositable{account: account}
-      changeset = Depositable.changeset(depositable, :update, fields, "en", "zh-CN")
+      changeset = Depositable.changeset(depositable, :update, fields, "en")
 
       assert changeset.valid?
       assert changeset.action == :update

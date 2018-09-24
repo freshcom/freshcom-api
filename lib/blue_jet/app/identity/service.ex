@@ -249,11 +249,11 @@ defmodule BlueJet.Identity.Service do
     |> do_update_password(identifiers, fields)
   end
 
-  defp do_update_password(nil, %{reset_token: _}, _) do
+  defp do_update_password(nil, %{"reset_token" => _}, _) do
     {:error, %{errors: [reset_token: {"Reset token is invalid or has expired.", code: :invalid}]}}
   end
 
-  defp do_update_password(nil, %{id: _}, _) do
+  defp do_update_password(nil, %{"id" => _}, _) do
     {:error, :not_found}
   end
 
@@ -269,27 +269,27 @@ defmodule BlueJet.Identity.Service do
     end
   end
 
-  defp get_password(%{reset_token: reset_token}, %{account: nil}) do
+  defp get_password(%{"reset_token" => reset_token}, %{account: nil}) do
     Password.Query.default()
     |> Password.Query.standard()
     |> Password.Query.with_valid_reset_token()
     |> Repo.get_by(reset_token: reset_token)
   end
 
-  defp get_password(%{reset_token: reset_token}, %{account: account}) do
+  defp get_password(%{"reset_token" => reset_token}, %{account: account}) do
     Password.Query.default()
     |> for_account(account.id)
     |> Password.Query.with_valid_reset_token()
     |> Repo.get_by(reset_token: reset_token)
   end
 
-  defp get_password(%{id: id}, %{account: nil}) do
+  defp get_password(%{"id" => id}, %{account: nil}) do
     Password.Query.default()
     |> Password.Query.standard()
     |> Repo.get(id)
   end
 
-  defp get_password(%{id: id}, %{account: account}) do
+  defp get_password(%{"id" => id}, %{account: account}) do
     Password.Query.default()
     |> for_account(account.id)
     |> Repo.get(id)

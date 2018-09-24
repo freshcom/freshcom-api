@@ -47,9 +47,9 @@ defmodule BlueJet.Identity.Policy do
   def authorize(%{_vad_: %{user: user}, params: %{"target" => "user"}} = req, :list_account_membership) do
     req =
       req
-      |> ContextRequest.put(:filter, :user_id, user.id)
-      |> ContextRequest.put(:_scope_, :user_id, user.id)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:filter, "user_id", user.id)
+      |> ContextRequest.put(:_scope_, "user_id", user.id)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -57,15 +57,15 @@ defmodule BlueJet.Identity.Policy do
   def authorize(%{_role_: role, _vad_: %{account: account}} = req, :list_account_membership) when role in ["administrator"] do
     req =
       req
-      |> ContextRequest.put(:filter, :account_id, account.id)
-      |> ContextRequest.put(:_scope_, :account_id, account.id)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:filter, "account_id", account.id)
+      |> ContextRequest.put(:_scope_, "account_id", account.id)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_account_membership) when role in ["administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -106,11 +106,11 @@ defmodule BlueJet.Identity.Policy do
     {:ok, req}
   end
 
-  def authorize(%{_role_: role, identifiers: %{reset_token: _}} = req, :update_password) when not is_nil(role) do
+  def authorize(%{_role_: role, identifiers: %{"reset_token" => _}} = req, :update_password) when not is_nil(role) do
     {:ok, req}
   end
 
-  def authorize(%{_role_: role, identifiers: %{id: _}} = req, :update_password) when role in ["administrator"] do
+  def authorize(%{_role_: role, identifiers: %{"id" => _}} = req, :update_password) when role in ["administrator"] do
     {:ok, req}
   end
 
@@ -141,19 +141,19 @@ defmodule BlueJet.Identity.Policy do
 
   def authorize(%{_role_: role, _vad_: %{user: user}} = req, :get_user)
       when role in ["developer", "administrator"] do
-    id = req.identifiers[:id] || user.id
+    id = req.identifiers["id"] || user.id
     type = if id == user.id, do: :standard, else: :managed
 
     req =
       req
-      |> ContextRequest.put(:identifiers, :id, id)
+      |> ContextRequest.put(:identifiers, "id", id)
       |> ContextRequest.put(:_opts_, :type, type)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role, _vad_: %{user: user}} = req, :get_user) when not is_nil(role) do
-    req = ContextRequest.put(req, :identifiers, :id, user.id)
+    req = ContextRequest.put(req, :identifiers, "id", user.id)
 
     {:ok, req}
   end
@@ -164,30 +164,30 @@ defmodule BlueJet.Identity.Policy do
 
   def authorize(%{_role_: role, _vad_: %{user: user}} = req, :update_user)
       when role in ["developer", "administrator"] do
-    id = req.identifiers[:id] || user.id
+    id = req.identifiers["id"] || user.id
     type = if id == user.id, do: :standard, else: :managed
 
     req =
       req
-      |> ContextRequest.put(:identifiers, :id, id)
+      |> ContextRequest.put(:identifiers, "id", id)
       |> ContextRequest.put(:_opts_, :type, type)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role, _vad_: %{user: user}} = req, :update_user) when not is_nil(role) do
-    req = ContextRequest.put(req, :identifiers, :id, user.id)
+    req = ContextRequest.put(req, :identifiers, "id", user.id)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role, _vad_: %{user: user}} = req, :delete_user)
       when role in ["developer", "administrator"] do
-    id = req.identifiers[:id] || user.id
+    id = req.identifiers["id"] || user.id
 
     req =
       req
-      |> ContextRequest.put(:identifiers, :id, id)
+      |> ContextRequest.put(:identifiers, "id", id)
       |> ContextRequest.put(:_opts_, :type, :managed)
 
     {:ok, req}

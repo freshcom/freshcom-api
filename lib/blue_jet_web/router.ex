@@ -11,7 +11,7 @@ defmodule BlueJetWeb.Router do
     plug BlueJet.Plugs.Pagination
     plug BlueJet.Plugs.Fields
     plug BlueJet.Plugs.Filter, default: %{}
-    plug BlueJet.Plugs.Include, default: []
+    plug BlueJet.Plugs.Include, default: ""
     plug BlueJet.Plugs.ContentTypeNegotiation
     plug JaSerializer.Deserializer
   end

@@ -1,18 +1,20 @@
 defmodule BlueJet.Identity.AccountMembership.Query do
+  @behaviour BlueJet.Query
+
   use BlueJet, :query
 
-  use BlueJet.Query.Filter, for: [
-    :id,
-    :role,
-    :user_id,
-    :account_id
-  ]
-
   alias BlueJet.Identity.{Account, User, AccountMembership}
+
+  def filterable_fields, do: [:id, :role, :user_id, :account_id]
+  def identifiable_fields, do: [:id, :user_id, :account_id]
 
   def default() do
     from(am in AccountMembership)
   end
+
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
 
   def search(query, nil), do: query
   def search(query, ""), do: query
@@ -28,6 +30,8 @@ defmodule BlueJet.Identity.AccountMembership.Query do
       or_where: ilike(fragment("?::varchar", u.username), ^keyword)
     )
   end
+
+  def search(q, k, _, _), do: search(q, k)
 
   def preloads({:account, _}, _) do
     [account: Account.Query.default()]

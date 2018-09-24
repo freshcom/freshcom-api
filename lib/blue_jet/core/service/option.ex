@@ -8,7 +8,7 @@ defmodule BlueJet.Service.Option do
   end
 
   def extract_pagination(opts) do
-    Map.merge(%{ size: 20, number: 1 }, opts[:pagination] || %{})
+    Map.merge(%{size: 20, number: 1}, opts[:pagination] || %{})
   end
 
   def extract_preloads(opts, account \\ nil) do

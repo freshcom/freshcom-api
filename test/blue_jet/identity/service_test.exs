@@ -829,7 +829,7 @@ defmodule BlueJet.Identity.ServiceTest do
       standard_user = standard_user_fixture()
       managed_user_fixture(standard_user.default_account)
 
-      opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
+      opts = %{account: standard_user.default_account, include: %{paths: "user"}}
 
       memberships = Service.list_account_membership(%{}, opts)
 
@@ -843,7 +843,7 @@ defmodule BlueJet.Identity.ServiceTest do
       account_fixture(standard_user)
 
       filter = %{user_id: standard_user.id}
-      opts = %{preload: %{paths: [:account]}}
+      opts = %{include: %{paths: "account"}}
 
       memberships = Service.list_account_membership(%{filter: filter}, opts)
 
@@ -864,7 +864,7 @@ defmodule BlueJet.Identity.ServiceTest do
       standard_user = standard_user_fixture()
       managed_user_fixture(standard_user.default_account)
 
-      opts = %{account: standard_user.default_account, preload: %{paths: [:user]}}
+      opts = %{account: standard_user.default_account, include: %{paths: "user"}}
 
       assert Service.count_account_membership(%{}, opts) == 2
     end
@@ -875,7 +875,7 @@ defmodule BlueJet.Identity.ServiceTest do
       account_fixture(standard_user)
 
       filter = %{user_id: standard_user.id}
-      opts = %{preload: %{paths: [:account]}}
+      opts = %{include: %{paths: "account"}}
 
       assert Service.count_account_membership(%{filter: filter}, opts) == 2
     end
@@ -893,7 +893,7 @@ defmodule BlueJet.Identity.ServiceTest do
       target_membership = account_membership_fixture()
 
       identifiers = %{id: target_membership.id}
-      opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
+      opts = %{account: target_membership.account, include: %{paths: "user,account"}}
 
       membership = Service.get_account_membership(identifiers, opts)
 
@@ -929,7 +929,7 @@ defmodule BlueJet.Identity.ServiceTest do
 
       identifiers = %{id: target_membership.id}
       fields = %{"role" => "developer"}
-      opts = %{account: target_membership.account, preload: %{paths: [:user, :account]}}
+      opts = %{account: target_membership.account, include: %{paths: "user,account"}}
 
       {:ok, membership} = Service.update_account_membership(identifiers, fields, opts)
 
@@ -1140,7 +1140,7 @@ defmodule BlueJet.Identity.ServiceTest do
     test "when password_reset_token is invalid" do
       account = Repo.insert!(%Account{})
 
-      {:error, _} = Service.update_password(%{ reset_token: "invalid" }, %{"value" => "test1234"}, %{ account: account })
+      {:error, _} = Service.update_password(%{"reset_token" => "invalid" }, %{"value" => "test1234"}, %{ account: account })
     end
 
     test "when password_reset_token is valid" do
@@ -1155,7 +1155,7 @@ defmodule BlueJet.Identity.ServiceTest do
         encrypted_password: "original"
       })
 
-      {:ok, password} = Service.update_password(%{ reset_token: "token" }, %{"value" => "test1234"}, %{ account: account })
+      {:ok, password} = Service.update_password(%{"reset_token" => "token" }, %{"value" => "test1234"}, %{ account: account })
       assert password.encrypted_value != target_user.encrypted_password
     end
 
@@ -1171,7 +1171,7 @@ defmodule BlueJet.Identity.ServiceTest do
         encrypted_password: "original"
       })
 
-      {:error, changeset} = Service.update_password(%{ reset_token: "token" }, %{"value" => "test"}, %{ account: account })
+      {:error, changeset} = Service.update_password(%{"reset_token" => "token" }, %{"value" => "test"}, %{ account: account })
 
       assert changeset.valid? == false
       assert changeset.changes[:value]

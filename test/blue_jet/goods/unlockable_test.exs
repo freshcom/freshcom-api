@@ -60,10 +60,10 @@ defmodule BlueJet.Goods.UnlockableTest do
 
     test "when given valid fields with locale" do
       fields = %{"name" => Faker.Commerce.product_name()}
-      account = %Account{id: UUID.generate()}
+      account = %Account{id: UUID.generate(), default_locale: "zh-CN"}
       unlockable = %Unlockable{account: account}
 
-      changeset = Unlockable.changeset(unlockable, :update, fields, "en", "zh-CN")
+      changeset = Unlockable.changeset(unlockable, :update, fields, "en")
 
       assert changeset.valid?
       assert changeset.action == :update

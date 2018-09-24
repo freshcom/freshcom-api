@@ -1,11 +1,13 @@
 defmodule BlueJet.Catalogue.Product do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.Catalogue.Price
   alias __MODULE__.{Query, Proxy}
 
   schema "products" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "draft"
@@ -30,11 +32,11 @@ defmodule BlueJet.Catalogue.Product do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :goods_id, Ecto.UUID
+    field :goods_id, UUID
     field :goods_type, :string
     field :goods, :map, virtual: true
 
-    field :avatar_id, Ecto.UUID
+    field :avatar_id, UUID
     field :avatar, :map, virtual: true
 
     field :file_collections, {:array, :map}, default: [], virtual: true
@@ -74,7 +76,8 @@ defmodule BlueJet.Catalogue.Product do
     ]
   end
 
-  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(product, action, fields)
   def changeset(product, :insert, params) do
     product
     |> cast(params, castable_fields(:insert))
@@ -83,9 +86,11 @@ defmodule BlueJet.Catalogue.Product do
     |> validate()
   end
 
-  def changeset(product, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), :update, map, String.t() | nil) :: Changeset.t()
+  def changeset(product, action, fields, locale \\ nil)
+  def changeset(product, :update, params, locale) do
     product = Proxy.put_account(product)
-    default_locale = default_locale || product.account.default_locale
+    default_locale = product.account.default_locale
     locale = locale || default_locale
 
     product
@@ -96,6 +101,8 @@ defmodule BlueJet.Catalogue.Product do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(product, action)
   def changeset(product, :delete) do
     change(product)
     |> Map.put(:action, :delete)

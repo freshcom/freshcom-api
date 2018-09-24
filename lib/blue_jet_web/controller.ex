@@ -22,7 +22,7 @@ defmodule BlueJetWeb.Controller do
       search: params["search"],
       filter: filter,
       pagination: %{size: assigns[:page_size], number: assigns[:page_number]},
-      preloads: assigns[:preloads],
+      include: assigns[:include],
       locale: assigns[:locale]
     }
   end
@@ -37,7 +37,7 @@ defmodule BlueJetWeb.Controller do
     %ContextRequest{
       vas: assigns[:vas],
       fields: fields,
-      preloads: assigns[:preloads]
+      include: assigns[:include]
     }
   end
 
@@ -47,7 +47,7 @@ defmodule BlueJetWeb.Controller do
     %ContextRequest{
       vas: assigns[:vas],
       identifiers: identifiers,
-      preloads: assigns[:preloads],
+      include: assigns[:include],
       locale: assigns[:locale]
     }
   end
@@ -63,7 +63,7 @@ defmodule BlueJetWeb.Controller do
       vas: assigns[:vas],
       identifiers: identifiers,
       fields: fields,
-      preloads: assigns[:preloads],
+      include: assigns[:include],
       locale: assigns[:locale]
     }
   end
@@ -71,18 +71,16 @@ defmodule BlueJetWeb.Controller do
   def build_context_request(%{assigns: assigns, params: params}, :delete, _) do
     %ContextRequest{
       vas: assigns[:vas],
-      identifiers: %{id: params["id"]}
+      identifiers: %{"id" => params["id"]}
     }
   end
 
   defp extract_identifiers(params, identifiers: valid_keys) do
-    valid_keys = Enum.map(valid_keys, &Atom.to_string/1)
-    valid_params = Map.take(params, valid_keys)
-    Enum.reduce(valid_params, %{}, fn({k, v}, acc) -> Map.put(acc, String.to_atom(k), v) end)
+    Map.take(params, valid_keys)
   end
 
   defp extract_identifiers(params, _) do
-    %{id: params["id"]}
+    Map.take(params, ["id"])
   end
 
   @doc """

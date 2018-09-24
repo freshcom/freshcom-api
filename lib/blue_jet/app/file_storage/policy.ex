@@ -30,7 +30,7 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -40,7 +40,7 @@ defmodule BlueJet.FileStorage.Policy do
   def authorize(%{_role_: "anonymous"}, :create_file), do: {:error, :access_denied}
 
   def authorize(%{_role_: "guest"} = req, :create_file) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -49,7 +49,7 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:fields, "user_id", req._vad_[:user].id)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -60,7 +60,7 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:identifiers, :status, "uploaded")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -71,13 +71,13 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:fields, Map.take(req.fields, [:status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_file) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -109,7 +109,7 @@ defmodule BlueJet.FileStorage.Policy do
         req
         |> ContextRequest.put(:filter, :status, "active")
         |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status, :owner_id, :owner_type]))
-        |> ContextRequest.put(:_preload_, :paths, req.preloads)
+        |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
     else
@@ -120,7 +120,7 @@ defmodule BlueJet.FileStorage.Policy do
   # Developer and adminstrator can list all file collection
   def authorize(%{_role_: role} = req, :list_file_collection)
       when role in ["developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -131,7 +131,7 @@ defmodule BlueJet.FileStorage.Policy do
       req =
         req
         |> ContextRequest.put(:_scope_, Map.take(req.filter, [:owner_id, :owner_type]))
-        |> ContextRequest.put(:_preload_, :paths, req.preloads)
+        |> ContextRequest.put(:_include_, :paths, req.include)
 
       {:ok, req}
     else
@@ -143,7 +143,7 @@ defmodule BlueJet.FileStorage.Policy do
       do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :create_file_collection) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -155,13 +155,13 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:identifiers, :status, "active")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_file_collection) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -170,7 +170,7 @@ defmodule BlueJet.FileStorage.Policy do
     do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :update_file_collection) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -179,7 +179,7 @@ defmodule BlueJet.FileStorage.Policy do
     do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :delete_file_collection) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -194,8 +194,8 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id, :file_status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{filters: %{file: %{status: "uploaded"}}})
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.put(:_include_, :opts, %{filters: %{file: %{status: "uploaded"}}})
 
     {:ok, req}
   end
@@ -204,7 +204,7 @@ defmodule BlueJet.FileStorage.Policy do
     req =
       req
       |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -215,7 +215,7 @@ defmodule BlueJet.FileStorage.Policy do
 
   def authorize(%{_role_: role} = req, :create_file_collection_membership)
       when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -225,7 +225,7 @@ defmodule BlueJet.FileStorage.Policy do
       do: {:error, :access_denied}
 
   def authorize(%{_role_: role} = req, :get_file_collection_membership) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -236,7 +236,7 @@ defmodule BlueJet.FileStorage.Policy do
 
   def authorize(%{_role_: role} = req, :update_file_collection_membership)
       when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end

@@ -25,14 +25,14 @@ defmodule BlueJet.Catalogue.Policy do
   # MARK: Product
   #
   def authorize(%{_role_: role} = req, :list_product) when role in ["guest", "customer"] do
-    req = ContextRequest.put(req, :filter, :status, "active")
-    scope = Map.take(req.filter, [:status, :collection_id, :parent_id])
+    req = ContextRequest.put(req, :filter, "status", "active")
+    scope = Map.take(req.filter, ["status", "collection_id", "parent_id"])
 
     req =
       req
       |> ContextRequest.put(:_scope_, scope)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.put(:_include_, :opts, %{
         filters: %{
           prices: %{status: "active"},
           items: %{status: "active"},
@@ -45,18 +45,18 @@ defmodule BlueJet.Catalogue.Policy do
 
   def authorize(%{_role_: role} = req, :list_product)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    scope = Map.take(req.filter, [:collection_id, :parent_id])
+    scope = Map.take(req.filter, ["collection_id", "parent_id"])
     req =
       req
       |> ContextRequest.put(:_scope_, scope)
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_product)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -64,22 +64,22 @@ defmodule BlueJet.Catalogue.Policy do
   def authorize(%{_role_: role} = req, :get_product) when role in ["guest", "customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, :status, "active")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:identifiers, "status", "active")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_product)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_product)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -93,12 +93,12 @@ defmodule BlueJet.Catalogue.Policy do
   # MARK: Price
   #
   def authorize(%{_role_: role} = req, :list_price) when role in ["guest", "customer"] do
-    req = ContextRequest.put(req, :filter, :status, "active")
+    req = ContextRequest.put(req, :filter, "status", "active")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:product_id, :status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{filters: %{product: %{status: "active"}}})
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["product_id", "status"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.put(:_include_, :opts, %{filters: %{product: %{status: "active"}}})
 
     {:ok, req}
   end
@@ -107,15 +107,15 @@ defmodule BlueJet.Catalogue.Policy do
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:product_id]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["product_id"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_price)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -123,22 +123,22 @@ defmodule BlueJet.Catalogue.Policy do
   def authorize(%{_role_: role} = req, :get_price) when role in ["guest", "customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, :status, "active")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:identifiers, "status", "active")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_price)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_price)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -153,26 +153,26 @@ defmodule BlueJet.Catalogue.Policy do
   #
   def authorize(%{_role_: role} = req, :list_product_collection)
       when role in ["guest", "customer"] do
-    req = ContextRequest.put(req, :filter, :status, "active")
+    req = ContextRequest.put(req, :filter, "status", "active")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{filters: %{memberships: %{product_status: "active"}}})
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["status"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.put(:_include_, :opts, %{filters: %{memberships: %{product_status: "active"}}})
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :list_product_collection)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -181,29 +181,29 @@ defmodule BlueJet.Catalogue.Policy do
       when role in ["guest", "customer"] do
     req =
       req
-      |> ContextRequest.put(:identifiers, :status, "active")
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:identifiers, "status", "active")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_product_collection)
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :delete_product_collection)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
@@ -213,12 +213,12 @@ defmodule BlueJet.Catalogue.Policy do
   #
   def authorize(%{_role_: role} = req, :list_product_collection_membership)
       when role in ["guest", "customer"] do
-    req = ContextRequest.put(req, :filter, :product_status, "active")
+    req = ContextRequest.put(req, :filter, "product_status", "active")
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id, :product_status]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
-      |> ContextRequest.put(:_preload_, :opts, %{filters: %{product: %{status: "active"}}})
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["collection_id", "product_status"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
+      |> ContextRequest.put(:_include_, :opts, %{filters: %{product: %{status: "active"}}})
 
     {:ok, req}
   end
@@ -227,36 +227,36 @@ defmodule BlueJet.Catalogue.Policy do
       when role in ["support_specialist", "marketing_specialist", "developer", "administrator"] do
     req =
       req
-      |> ContextRequest.put(:_scope_, Map.take(req.filter, [:collection_id]))
-      |> ContextRequest.put(:_preload_, :paths, req.preloads)
+      |> ContextRequest.put(:_scope_, Map.take(req.filter, ["collection_id"]))
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :get_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :delete_product_collection_membership)
       when role in ["marketing_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
 
     {:ok, req}
   end

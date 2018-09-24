@@ -1,4 +1,6 @@
 defmodule BlueJet.FileStorage.File do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.FileStorage.{S3Client, CloudfrontClient}
@@ -6,7 +8,7 @@ defmodule BlueJet.FileStorage.File do
   alias __MODULE__.Proxy
 
   schema "files" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "pending"
@@ -21,14 +23,14 @@ defmodule BlueJet.FileStorage.File do
     field :version_name, :string
     field :version_label, :string
     field :system_tag, :string
-    field :original_id, Ecto.UUID
+    field :original_id, UUID
 
     field :caption, :string
     field :description, :string
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
 
-    field :user_id, Ecto.UUID
+    field :user_id, UUID
 
     timestamps()
 
@@ -64,29 +66,32 @@ defmodule BlueJet.FileStorage.File do
   end
 
   @doc """
-  Builds a changeset based on the `struct` and `params`.
+  Builds a changeset based on the `struct` and `fields`.
   """
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(file, :insert, params) do
+  def changeset(file, action, fields)
+  def changeset(file, :insert, fields) do
     file
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(file, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t() | nil) :: Changeset.t()
+  def changeset(file, action, fields, locale \\ nil)
+  def changeset(file, :update, fields, locale) do
     file = %{file | account: Proxy.get_account(file)}
-    default_locale = default_locale || file.account.default_locale
+    default_locale = file.account.default_locale
     locale = locale || default_locale
 
     file
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  def changeset(file, action)
   def changeset(file, :delete) do
     change(file)
     |> Map.put(:action, :delete)

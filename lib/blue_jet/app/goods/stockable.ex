@@ -1,10 +1,12 @@
 defmodule BlueJet.Goods.Stockable do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias __MODULE__.Proxy
 
   schema "stockables" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "active"
@@ -28,7 +30,7 @@ defmodule BlueJet.Goods.Stockable do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :avatar_id, Ecto.UUID
+    field :avatar_id, UUID
     field :avatar, :map, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
@@ -62,30 +64,33 @@ defmodule BlueJet.Goods.Stockable do
     ]
   end
 
-  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(stockable, :insert, params) do
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(stockable, action, fields)
+  def changeset(stockable, :insert, fields) do
     stockable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(stockable, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), :update, map, String.t()) :: Changeset.t()
+  def changeset(stockable, action, fields, locale \\ nil)
+  def changeset(stockable, :update, fields, locale) do
     stockable = Proxy.put_account(stockable)
-    default_locale = default_locale || stockable.account.default_locale
+    default_locale = stockable.account.default_locale
     locale = locale || default_locale
 
     stockable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(stockable, action)
   def changeset(stockable, :delete) do
     change(stockable)
     |> Map.put(:action, :delete)

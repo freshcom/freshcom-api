@@ -1,36 +1,27 @@
 defmodule BlueJet.FileStorage.FileCollection.Query do
+  @behaviour BlueJet.Query
+
   use BlueJet, :query
 
-  use BlueJet.Query.Search,
-    for: [
-      :name,
-      :content_type,
-      :code,
-      :id
-    ]
-
-  use BlueJet.Query.Filter,
-    for: [
-      :id,
-      :status,
-      :label,
-      :owner_id,
-      :owner_type,
-      :content_type
-    ]
-
   alias BlueJet.FileStorage.{FileCollection, File, FileCollectionMembership}
+
+  def identifiable_fields, do: [:id, :status]
+  def filterable_fields, do: [:id, :status, :label, :owner_id, :owner_type, :content_type]
+  def searchable_fields, do: [:id, :name, :content_type, :code]
 
   def default() do
     from(fc in FileCollection)
   end
 
-  def for_owner_type(owner_type) do
-    from(fc in FileCollection, where: fc.owner_type == ^owner_type)
-  end
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
+
+  def search(q, k, l, d),
+    do: search(q, k, l, d, searchable_fields(), FileCollection.translatable_fields())
 
   def preloads({:files, ef_preloads}, options) do
-    query = File.Query.default() |> File.Query.uploaded()
+    query = File.Query.default() |> File.Query.filter_by(%{status: "uploaded"})
     [files: {query, File.Query.preloads(ef_preloads, options)}]
   end
 

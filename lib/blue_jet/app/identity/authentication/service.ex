@@ -112,13 +112,13 @@ defmodule BlueJet.Identity.Authentication.Service do
   end
 
   defp get_user_for_token(account, username) do
-    %{username: username}
+    %{"username" => username}
     |> get_user(%{account: account, type: :managed})
     |> tt()
   end
 
   defp get_user_for_token(username) do
-    %{username: username}
+    %{"username" => username}
     |> get_user(%{account: nil})
     |> tt()
   end

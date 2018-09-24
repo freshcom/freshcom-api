@@ -2,6 +2,7 @@ defmodule BlueJet.FileStorage.Service do
   use BlueJet, :service
 
   import BlueJet.ControlFlow
+  import BlueJet.Utils, only: [atomize_keys: 2]
 
   alias Ecto.Multi
   alias BlueJet.FileStorage.{File, FileCollection, FileCollectionMembership}
@@ -10,24 +11,24 @@ defmodule BlueJet.FileStorage.Service do
   # MARK: File
   #
   def list_file(query \\ %{}, opts) do
-    default(:list, File, query, opts)
+    default_list(File.Query, query, opts)
     |> File.put_url()
   end
 
-  def count_file(query \\ %{}, opts), do: default(:count, File, query, opts)
+  def count_file(query \\ %{}, opts), do: default_count(File.Query, query, opts)
 
   def create_file(fields, opts) do
-    default(:create, File, fields, opts)
+    default_create(File, fields, opts)
     ~> File.put_url()
   end
 
   def get_file(identifiers, opts) do
-    default(:get, File, identifiers, opts)
+    default_get(File.Query, identifiers, opts)
     |> File.put_url()
   end
 
   def update_file(identifiers, fields, opts) do
-    default(:update, identifiers, fields, opts, &get_file/2)
+    default_update(identifiers, fields, opts, &get_file/2)
     ~> File.put_url()
   end
 
@@ -87,12 +88,12 @@ defmodule BlueJet.FileStorage.Service do
   # MARK: File Collection
   #
   def list_file_collection(query \\ %{}, opts) do
-    default(:list, FileCollection, query, opts)
+    default_list(FileCollection.Query, query, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
 
-  def count_file_collection(query \\ %{}, opts), do: default(:count, FileCollection, query, opts)
+  def count_file_collection(query \\ %{}, opts), do: default_count(FileCollection.Query, query, opts)
 
   def create_file_collection(fields, opts) do
     account = extract_account(opts)
@@ -139,19 +140,19 @@ defmodule BlueJet.FileStorage.Service do
   end
 
   def get_file_collection(identifiers, opts) do
-    default(:get, FileCollection, identifiers, opts)
+    default_get(FileCollection.Query, identifiers, opts)
     |> FileCollection.put_file_urls()
     |> FileCollection.put_file_count()
   end
 
   def update_file_collection(identifiers, fields, opts) do
-    default(:update, identifiers, fields, opts, &get_file_collection/2)
+    default_update(identifiers, fields, opts, &get_file_collection/2)
     ~> FileCollection.put_file_urls()
     ~> FileCollection.put_file_count()
   end
 
-  def delete_file_collection(identifiers, opts), do: default(:delete, identifiers, opts, &get_file_collection/2)
-  def delete_all_file_collection(opts), do: default(:delete_all, FileCollection, opts)
+  def delete_file_collection(identifiers, opts), do: default_delete(identifiers, opts, &get_file_collection/2)
+  def delete_all_file_collection(opts), do: default_delete_all(FileCollection, opts)
 
   #
   # MARK: File Collection Membership
@@ -160,7 +161,7 @@ defmodule BlueJet.FileStorage.Service do
     account = extract_account(opts)
     pagination = extract_pagination(opts)
     preload = extract_preload(opts)
-    filter = extract_filter(query)
+    filter = atomize_keys(query[:filter], FileCollectionMembership.Query.filterable_fields() ++ [:file_status])
 
     FileCollectionMembership.Query.default()
     |> FileCollectionMembership.Query.filter_by(filter)
@@ -173,7 +174,7 @@ defmodule BlueJet.FileStorage.Service do
 
   def count_file_collection_membership(query \\ %{}, opts) do
     account = extract_account(opts)
-    filter = extract_filter(query)
+    filter = atomize_keys(query[:filter], FileCollectionMembership.Query.filterable_fields() ++ [:file_status])
 
     FileCollectionMembership.Query.default()
     |> FileCollectionMembership.Query.filter_by(filter)
@@ -183,14 +184,14 @@ defmodule BlueJet.FileStorage.Service do
   end
 
   def create_file_collection_membership(fields, opts),
-    do: default(:create, FileCollectionMembership, fields, opts)
+    do: default_create(FileCollectionMembership, fields, opts)
 
   def get_file_collection_membership(identifiers, opts),
-    do: default(:get, FileCollectionMembership, identifiers, opts)
+    do: default_get(FileCollectionMembership.Query, identifiers, opts)
 
   def update_file_collection_membership(identifiers, fields, opts),
-    do: default(:update, identifiers, fields, opts, &get_file_collection_membership/2)
+    do: default_update(identifiers, fields, opts, &get_file_collection_membership/2)
 
   def delete_file_collection_membership(identifiers, opts),
-    do: default(:delete, identifiers, opts, &get_file_collection_membership/2)
+    do: default_delete(identifiers, opts, &get_file_collection_membership/2)
 end

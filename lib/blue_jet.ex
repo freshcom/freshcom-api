@@ -19,7 +19,7 @@ defmodule BlueJet do
   def service do
     quote do
       import Ecto.Changeset
-      import BlueJet.Service.{Option, Preload, Helper, Default}
+      import BlueJet.Service.{Preload, Default}
       import BlueJet.Query
       import BlueJet.EventBus
 
@@ -30,13 +30,13 @@ defmodule BlueJet do
 
   def data do
     quote do
+      use Ecto.Schema
+
       import Ecto
       import Ecto.Changeset
       import BlueJet.{Query, Validation}
 
-      use Ecto.Schema
-
-      alias Ecto.Changeset
+      alias Ecto.{Changeset, UUID}
       alias BlueJet.{Repo, Translation}
 
       @primary_key {:id, :binary_id, autogenerate: true}
@@ -46,10 +46,11 @@ defmodule BlueJet do
 
   def query do
     quote do
-      import Ecto.Query
-      import BlueJet.Query.Helper
-
       use BlueJet.Query.Preloads
+
+      import Ecto.Query
+      import BlueJet.Query
+      import BlueJet.Query.Helper
     end
   end
 

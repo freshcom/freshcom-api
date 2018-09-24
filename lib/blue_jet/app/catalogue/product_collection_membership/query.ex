@@ -1,29 +1,20 @@
 defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
+  @behaviour BlueJet.Query
+
   use BlueJet, :query
 
-  use BlueJet.Query.Filter,
-    for: [
-      :collection_id,
-      :product_id
-    ]
-
   alias BlueJet.Catalogue.{Product, ProductCollectionMembership}
+
+  def identifiable_fields, do: [:id]
+  def filterable_fields, do: [:collection_id, :product_id]
 
   def default() do
     from(pcm in ProductCollectionMembership, order_by: [desc: pcm.sort_index])
   end
 
-  def for_collection(query, collection_id) do
-    from(pcm in query, where: pcm.collection_id == ^collection_id)
-  end
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
 
-  def with_product_status(query, nil) do
-    query
-  end
-
-  def with_product_status(query, status) do
-    from(pcm in query, join: p in Product, on: p.id == pcm.product_id, where: p.status == ^status)
-  end
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
 
   def search(query, nil, _, _), do: query
   def search(query, "", _, _), do: query
@@ -55,5 +46,17 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership.Query do
 
   def preloads(_, _) do
     []
+  end
+
+  def for_collection(query, collection_id) do
+    from(pcm in query, where: pcm.collection_id == ^collection_id)
+  end
+
+  def with_product_status(query, nil) do
+    query
+  end
+
+  def with_product_status(query, status) do
+    from(pcm in query, join: p in Product, on: p.id == pcm.product_id, where: p.status == ^status)
   end
 end

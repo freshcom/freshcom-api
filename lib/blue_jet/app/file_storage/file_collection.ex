@@ -1,11 +1,13 @@
 defmodule BlueJet.FileStorage.FileCollection do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.FileStorage.{File, FileCollectionMembership}
   alias __MODULE__.Proxy
 
   schema "file_collections" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "active"
@@ -18,9 +20,9 @@ defmodule BlueJet.FileStorage.FileCollection do
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
 
-    field :file_ids, {:array, Ecto.UUID}, default: [], virtual: true
+    field :file_ids, {:array, UUID}, default: [], virtual: true
 
-    field :owner_id, Ecto.UUID
+    field :owner_id, UUID
     field :owner_type, :string
 
     field :file_count, :integer, virtual: true
@@ -54,31 +56,34 @@ defmodule BlueJet.FileStorage.FileCollection do
   end
 
   @doc """
-  Builds a changeset based on the `struct` and `params`.
+  Builds a changeset based on the `struct` and `fields`.
   """
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(file_collection, :insert, params) do
-    file_collection
-    |> cast(params, writable_fields())
+  def changeset(collection, action, fields)
+  def changeset(collection, :insert, fields) do
+    collection
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(file_collection, :update, params, locale \\ nil, default_locale \\ nil) do
-    file_collection = %{file_collection | account: Proxy.get_account(file_collection)}
-    default_locale = default_locale || file_collection.account.default_locale
+  @spec changeset(__MODULE__.t(), atom, map, String.t() | nil) :: Changeset.t()
+  def changeset(collection, action, fields, locale \\ nil)
+  def changeset(collection, :update, fields, locale) do
+    collection = %{collection | account: Proxy.get_account(collection)}
+    default_locale = collection.account.default_locale
     locale = locale || default_locale
 
-    file_collection
-    |> cast(params, writable_fields())
+    collection
+    |> cast(fields, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
   @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
-  def changeset(file_collection, :delete) do
-    change(file_collection)
+  def changeset(collection, action)
+  def changeset(collection, :delete) do
+    change(collection)
     |> Map.put(:action, :delete)
   end
 
@@ -91,14 +96,14 @@ defmodule BlueJet.FileStorage.FileCollection do
   @spec put_file_urls(list | __MODULE__.t() | nil) :: list | __MODULE__.t() | nil
   def put_file_urls(nil), do: nil
 
-  def put_file_urls(file_collections) when is_list(file_collections) do
-    Enum.map(file_collections, fn file_collection ->
-      put_file_urls(file_collection)
+  def put_file_urls(collections) when is_list(collections) do
+    Enum.map(collections, fn collection ->
+      put_file_urls(collection)
     end)
   end
 
-  def put_file_urls(file_collection = %__MODULE__{}) do
-    Map.put(file_collection, :files, File.put_url(file_collection.files))
+  def put_file_urls(collection = %__MODULE__{}) do
+    Map.put(collection, :files, File.put_url(collection.files))
   end
 
   @spec file_count(__MODULE__.t()) :: integer
@@ -112,13 +117,13 @@ defmodule BlueJet.FileStorage.FileCollection do
   @spec put_file_count(list | __MODULE__.t() | nil) :: list | __MODULE__.t() | nil
   def put_file_count(nil), do: nil
 
-  def put_file_count(file_collections) when is_list(file_collections) do
-    Enum.map(file_collections, fn file_collection ->
-      put_file_count(file_collection)
+  def put_file_count(collections) when is_list(collections) do
+    Enum.map(collections, fn collection ->
+      put_file_count(collection)
     end)
   end
 
-  def put_file_count(file_collection) do
-    %{file_collection | file_count: file_count(file_collection)}
+  def put_file_count(collection) do
+    %{collection | file_count: file_count(collection)}
   end
 end

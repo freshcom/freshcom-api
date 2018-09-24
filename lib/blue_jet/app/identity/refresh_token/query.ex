@@ -1,5 +1,5 @@
 defmodule BlueJet.Identity.RefreshToken.Query do
-  use BlueJet, :query
+  import Ecto.Query
 
   alias BlueJet.Identity.RefreshToken
 

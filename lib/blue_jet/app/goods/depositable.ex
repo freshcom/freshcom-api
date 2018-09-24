@@ -1,10 +1,12 @@
 defmodule BlueJet.Goods.Depositable do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias __MODULE__.Proxy
 
   schema "depositables" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "draft"
@@ -21,7 +23,7 @@ defmodule BlueJet.Goods.Depositable do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :avatar_id, Ecto.UUID
+    field :avatar_id, UUID
     field :avatar, :map, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
@@ -52,30 +54,33 @@ defmodule BlueJet.Goods.Depositable do
     ]
   end
 
-  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(depositable, :insert, params) do
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(depositable, action, fields)
+  def changeset(depositable, :insert, fields) do
     depositable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(depositable, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), :update, map, String.t()) :: Changeset.t()
+  def changeset(depositable, action, fields, locale \\ nil)
+  def changeset(depositable, :update, fields, locale) do
     depositable = Proxy.put_account(depositable)
-    default_locale = default_locale || depositable.account.default_locale
+    default_locale = depositable.account.default_locale
     locale = locale || default_locale
 
     depositable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(depositable, action)
   def changeset(depositable, :delete) do
     change(depositable)
     |> Map.put(:action, :delete)

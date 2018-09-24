@@ -3,6 +3,7 @@ defmodule BlueJet.Catalogue.PriceTest do
 
   import BlueJet.Catalogue.TestHelper
 
+  alias BlueJet.Identity.Account
   alias BlueJet.Catalogue.Price
 
   describe "schema" do
@@ -152,56 +153,17 @@ defmodule BlueJet.Catalogue.PriceTest do
     end
 
     test "when given locale is different than default_locale" do
-      price = %Price{account_id: UUID.generate()}
+      account = %Account{id: UUID.generate(), default_locale: "zh-CN"}
+      price = %Price{account_id: account.id, account: account}
       fields = %{
         name: Faker.String.base64(5),
         charge_unit: Faker.String.base64(2),
         order_unit: Faker.String.base64(2)
       }
 
-      changeset = Price.changeset(price, :update, fields, "en", "zh-CN")
+      changeset = Price.changeset(price, :update, fields, "en")
 
       assert Map.keys(changeset.changes) == [:translations]
     end
   end
-
-  # describe "balance/1" do
-  #   test "when price charge_amount_cents is different than the sum of children" do
-  #     account = Repo.insert!(%Account{})
-  #     product = Repo.insert!(%Product{
-  #       account_id: account.id,
-  #       name: Faker.String.base64(5)
-  #     })
-  #     price = Repo.insert!(%Price{
-  #       account_id: account.id,
-  #       product_id: product.id,
-  #       name: Faker.String.base64(5),
-  #       charge_amount_cents: 100,
-  #       order_unit: Faker.String.base64(2),
-  #       charge_unit: Faker.String.base64(2)
-  #     })
-  #     Repo.insert!(%Price{
-  #       account_id: account.id,
-  #       product_id: product.id,
-  #       parent_id: price.id,
-  #       name: Faker.String.base64(5),
-  #       charge_amount_cents: 200,
-  #       order_unit: Faker.String.base64(2),
-  #       charge_unit: Faker.String.base64(2)
-  #     })
-  #     Repo.insert!(%Price{
-  #       account_id: account.id,
-  #       product_id: product.id,
-  #       parent_id: price.id,
-  #       name: Faker.String.base64(5),
-  #       charge_amount_cents: 800,
-  #       order_unit: Faker.String.base64(2),
-  #       charge_unit: Faker.String.base64(2)
-  #     })
-
-  #     price = Price.balance(price)
-
-  #     assert price.charge_amount_cents == 1000
-  #   end
-  # end
 end

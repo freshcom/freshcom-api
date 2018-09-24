@@ -244,7 +244,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: user.default_account.id, user_id: user.id},
-        identifiers: %{id: managed_user.id}
+        identifiers: %{"id" => managed_user.id}
       }
 
       {:ok, response} = Identity.get_user(request)
@@ -291,7 +291,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: user.default_account.id, user_id: user.id},
-        identifiers: %{id: managed_user.id},
+        identifiers: %{"id" => managed_user.id},
         fields: %{"name" => Faker.Name.name()}
       }
 
@@ -325,7 +325,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: user.default_account.id, user_id: user.id},
-        identifiers: %{id: managed_user.id}
+        identifiers: %{"id" => managed_user.id}
       }
 
       {:ok, _} = Identity.delete_user(request)
@@ -388,7 +388,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: user.default_account.id, user_id: user.id},
-        identifiers: %{id: account_membership.id},
+        identifiers: %{"id" => account_membership.id},
         fields: %{"role" => "developer"}
       }
 
@@ -563,7 +563,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: account.id, user_id: nil},
-        identifiers: %{reset_token: "invalid"},
+        identifiers: %{"reset_token" => "invalid"},
         fields: %{"value" => "test1234"}
       }
 
@@ -579,7 +579,7 @@ defmodule BlueJet.IdentityTest do
 
       request = %ContextRequest{
         vas: %{account_id: account.id, user_id: nil},
-        identifiers: %{reset_token: token},
+        identifiers: %{"reset_token" => token},
         fields: %{"value" => "test1234"}
       }
 

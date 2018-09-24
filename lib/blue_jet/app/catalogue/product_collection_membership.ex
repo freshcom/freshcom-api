@@ -1,10 +1,12 @@
 defmodule BlueJet.Catalogue.ProductCollectionMembership do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.Catalogue.{Product, ProductCollection}
 
   schema "product_collection_memberships" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
     field :sort_index, :integer, default: 1000
 
@@ -27,9 +29,50 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  #
-  # MARK: Validation
-  #
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(membership, action, fields)
+  def changeset(membership, :insert, params) do
+    membership
+    |> cast(params, castable_fields(:insert))
+    |> Map.put(:action, :insert)
+    |> validate()
+  end
+
+  @spec changeset(__MODULE__.t(), :update, map, String.t()) :: Changeset.t()
+  def changeset(membership, action, fields, locale \\ nil)
+  def changeset(membership, :update, params, _) do
+    membership
+    |> cast(params, castable_fields(:update))
+    |> Map.put(:action, :update)
+    |> validate()
+  end
+
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(membership, action)
+  def changeset(membership, :delete) do
+    change(membership)
+    |> Map.put(:action, :delete)
+  end
+
+  defp castable_fields(:insert) do
+    writable_fields()
+  end
+
+  defp castable_fields(:update) do
+    writable_fields() -- [:collection_id, :product_id]
+  end
+
+  def validate(changeset) do
+    changeset
+    |> validate_required([:collection_id, :product_id])
+    |> unique_constraint(
+      :product_id,
+      name: :product_collection_memberships_product_id_collection_id_index
+    )
+    |> validate_collection_id()
+    |> validate_product_id()
+  end
+
   defp validate_collection_id(
          changeset = %{valid?: true, changes: %{collection_id: collection_id}}
        ) do
@@ -57,45 +100,4 @@ defmodule BlueJet.Catalogue.ProductCollectionMembership do
   end
 
   defp validate_product_id(changeset), do: changeset
-
-  def validate(changeset) do
-    changeset
-    |> validate_required([:collection_id, :product_id])
-    |> unique_constraint(
-      :product_id,
-      name: :product_collection_memberships_product_id_collection_id_index
-    )
-    |> validate_collection_id()
-    |> validate_product_id()
-  end
-
-  #
-  # MARK: Changeset
-  #
-  defp castable_fields(:insert) do
-    writable_fields()
-  end
-
-  defp castable_fields(:update) do
-    writable_fields() -- [:collection_id, :product_id]
-  end
-
-  def changeset(membership, :insert, params) do
-    membership
-    |> cast(params, castable_fields(:insert))
-    |> Map.put(:action, :insert)
-    |> validate()
-  end
-
-  def changeset(membership, :update, params, _) do
-    membership
-    |> cast(params, castable_fields(:update))
-    |> Map.put(:action, :update)
-    |> validate()
-  end
-
-  def changeset(membership, :delete) do
-    change(membership)
-    |> Map.put(:action, :delete)
-  end
 end

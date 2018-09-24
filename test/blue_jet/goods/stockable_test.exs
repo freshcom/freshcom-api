@@ -71,9 +71,9 @@ defmodule BlueJet.Goods.StockableTest do
         "name" => Faker.Commerce.product_name(),
         "unit_of_measure" => Faker.String.base64(2)
       }
-      account = %Account{id: UUID.generate()}
+      account = %Account{id: UUID.generate(), default_locale: "zh-CN"}
       stockable = %Stockable{account: account}
-      changeset = Stockable.changeset(stockable, :update, fields, "en", "zh-CN")
+      changeset = Stockable.changeset(stockable, :update, fields, "en")
 
       assert changeset.valid?
       assert changeset.action == :update

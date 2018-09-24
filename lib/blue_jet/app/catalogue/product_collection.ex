@@ -1,11 +1,13 @@
 defmodule BlueJet.Catalogue.ProductCollection do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias __MODULE__.Proxy
   alias BlueJet.Catalogue.ProductCollectionMembership
 
   schema "product_collections" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "draft"
@@ -19,7 +21,7 @@ defmodule BlueJet.Catalogue.ProductCollection do
     field :custom_data, :map, default: %{}
     field :translations, :map, defualt: %{}
 
-    field :avatar_id, Ecto.UUID
+    field :avatar_id, UUID
     field :avatar, :map, virtual: true
 
     field :product_count, :integer, virtual: true
@@ -52,25 +54,31 @@ defmodule BlueJet.Catalogue.ProductCollection do
     ]
   end
 
-  def changeset(product_collection, :insert, params) do
-    product_collection
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(collection, action, fields)
+  def changeset(collection, :insert, params) do
+    collection
     |> cast(params, writable_fields())
     |> validate()
   end
 
-  def changeset(product_collection, :update, params, locale \\ nil, default_locale \\ nil) do
-    product_collection = Proxy.put_account(product_collection)
-    default_locale = default_locale || product_collection.account.default_locale
+  @spec changeset(__MODULE__.t(), :update, map, String.t() | nil) :: Changeset.t()
+  def changeset(collection, action, fields, locale \\ nil)
+  def changeset(collection, :update, params, locale) do
+    collection = Proxy.put_account(collection)
+    default_locale = collection.account.default_locale
     locale = locale || default_locale
 
-    product_collection
+    collection
     |> cast(params, writable_fields())
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  def changeset(product_collection, :delete) do
-    change(product_collection)
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(collection, action)
+  def changeset(collection, :delete) do
+    change(collection)
     |> Map.put(:action, :delete)
   end
 
@@ -88,13 +96,13 @@ defmodule BlueJet.Catalogue.ProductCollection do
 
   def put_product_count(nil), do: nil
 
-  def put_product_count(product_collections) when is_list(product_collections) do
-    Enum.map(product_collections, fn product_collection ->
-      put_product_count(product_collection)
+  def put_product_count(collections) when is_list(collections) do
+    Enum.map(collections, fn collection ->
+      put_product_count(collection)
     end)
   end
 
-  def put_product_count(product_collection) do
-    %{product_collection | product_count: product_count(product_collection)}
+  def put_product_count(collection) do
+    %{collection | product_count: product_count(collection)}
   end
 end

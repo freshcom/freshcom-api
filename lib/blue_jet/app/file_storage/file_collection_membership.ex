@@ -1,10 +1,12 @@
 defmodule BlueJet.FileStorage.FileCollectionMembership do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.FileStorage.{File, FileCollection}
 
   schema "file_collection_memberships" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :sort_index, :integer, default: 1000
@@ -28,25 +30,29 @@ defmodule BlueJet.FileStorage.FileCollectionMembership do
     __MODULE__.__schema__(:fields) -- @system_fields
   end
 
-  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
-  def changeset(membership, :delete) do
-    change(membership)
-    |> Map.put(:action, :delete)
-  end
-
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
-  def changeset(membership, :insert, params) do
+  def changeset(membership, action, fields)
+  def changeset(membership, :insert, fields) do
     membership
-    |> cast(params, castable_fields(:insert))
+    |> cast(fields, castable_fields(:insert))
     |> Map.put(:action, :insert)
     |> validate()
   end
 
-  def changeset(membership, :update, params, _) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t() | nil) :: Changeset.t()
+  def changeset(membership, action, fields, locale \\ nil)
+  def changeset(membership, :update, fields, _) do
     membership
-    |> cast(params, castable_fields(:update))
+    |> cast(fields, castable_fields(:update))
     |> Map.put(:action, :update)
     |> validate()
+  end
+
+  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  def changeset(membership, action)
+  def changeset(membership, :delete) do
+    change(membership)
+    |> Map.put(:action, :delete)
   end
 
   defp castable_fields(:insert) do

@@ -6,7 +6,7 @@ defmodule BlueJet.Identity.Account do
   schema "accounts" do
     field :mode, :string, default: "live"
     field :is_ready_for_live_transaction, :boolean
-    field :test_account_id, Ecto.UUID, virtual: true
+    field :test_account_id, UUID, virtual: true
 
     field :name, :string
     field :company_name, :string

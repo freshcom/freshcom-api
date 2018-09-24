@@ -29,12 +29,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :list_stockable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_stockable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
@@ -43,12 +43,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :get_stockable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_stockable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
@@ -64,12 +64,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :list_unlockable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_unlockable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
@@ -78,12 +78,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :get_unlockable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_unlockable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
@@ -99,12 +99,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :list_depositable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :create_depositable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
@@ -113,12 +113,12 @@ defmodule BlueJet.Goods.Policy do
   end
 
   def authorize(%{_role_: role} = req, :get_depositable) when not is_nil(role) do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 
   def authorize(%{_role_: role} = req, :update_depositable) when role in ["inventory_specialist", "developer", "administrator"] do
-    req = ContextRequest.put(req, :_preload_, :paths, req.preloads)
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
     {:ok, req}
   end
 

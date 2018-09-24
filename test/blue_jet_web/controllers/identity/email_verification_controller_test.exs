@@ -32,6 +32,7 @@ defmodule BlueJetWeb.EmailVerificationControllerTest do
       assert conn.status == 204
     end
 
+    @tag :focus
     test "with PAT", %{conn: conn} do
       standard_user = standard_user_fixture()
       managed_user = managed_user_fixture(standard_user.default_account)

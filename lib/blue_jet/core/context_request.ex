@@ -1,6 +1,8 @@
 defmodule BlueJet.ContextRequest do
   defstruct vas: %{},
 
+            include: "",
+
             # For list, create, get & update
             preloads: [],
 
@@ -17,7 +19,7 @@ defmodule BlueJet.ContextRequest do
             params: %{},
             search: "",
             filter: %{},
-            sort: %{},
+            sort: [],
             pagination: %{size: 25, number: 1},
 
             _vad_: %{
@@ -25,8 +27,8 @@ defmodule BlueJet.ContextRequest do
               user: nil
             },
             _role_: nil,
-            _preload_: %{
-              paths: [],
+            _include_: %{
+              paths: "",
               opts: %{}
             },
             _scope_: %{},
@@ -34,22 +36,23 @@ defmodule BlueJet.ContextRequest do
             _opts_: %{}
 
   @type t :: %__MODULE__{
-    vas: %{account_id: binary, user_id: binary},
+    vas: %{account_id: String.t() | nil, user_id: String.t() | nil},
+    include: String.t(),
     preloads: list,
-    locale: binary,
-    identifiers: %{required(binary) => binary},
-    fields: %{required(binary) => binary},
-    params: %{required(binary) => binary},
-    search: binary,
-    filter: %{required(binary) => binary},
+    locale: String.t(),
+    identifiers: %{required(String.t()) => String.t() | nil},
+    fields: %{required(String.t()) => String.t() | nil},
+    params: %{required(String.t()) => String.t()},
+    search: String.t(),
+    filter: %{required(String.t()) => String.t() | nil},
     sort: list,
     pagination: %{size: integer, number: integer},
 
-    _vad_: %{account: map, user: map},
-    _role_: binary,
-    _preload_: %{paths: list, opts: map},
-    _scope_: %{required(atom) => binary},
-    _default_locale_: binary,
+    _vad_: %{account: map | nil, user: map | nil},
+    _role_: String.t(),
+    _include_: %{paths: String.t(), opts: map},
+    _scope_: %{required(atom) => String.t() | nil},
+    _default_locale_: String.t(),
     _opts_: map
   }
 

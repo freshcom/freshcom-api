@@ -1,18 +1,12 @@
 defmodule BlueJet.Goods.Unlockable do
-  use BlueJet, :data
+  @behaviour BlueJet.Data
 
-  use Trans, translates: [
-    :name,
-    :print_name,
-    :caption,
-    :description,
-    :custom_data
-  ], container: :translations
+  use BlueJet, :data
 
   alias __MODULE__.Proxy
 
   schema "unlockables" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "draft"
@@ -27,10 +21,10 @@ defmodule BlueJet.Goods.Unlockable do
     field :custom_data, :map, default: %{}
     field :translations, :map, default: %{}
 
-    field :avatar_id, Ecto.UUID
+    field :avatar_id, UUID
     field :avatar, :map, virtual: true
 
-    field :file_id, Ecto.UUID
+    field :file_id, UUID
     field :file, :map, virtual: true
 
     field :file_collections, {:array, :map}, virtual: true, default: []
@@ -61,30 +55,33 @@ defmodule BlueJet.Goods.Unlockable do
     ]
   end
 
-  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
-  def changeset(unlockable, :insert, params) do
+  @spec changeset(__MODULE__.t(), :insert) :: Changeset.t()
+  def changeset(unlockable, action, fields)
+  def changeset(unlockable, :insert, fields) do
     unlockable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :insert)
     |> validate()
     |> put_print_name()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(unlockable, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), :update, map, String.t()) :: Changeset.t()
+  def changeset(unlockable, action, fields, locale \\ nil)
+  def changeset(unlockable, :update, fields, locale) do
     unlockable = Proxy.put_account(unlockable)
-    default_locale = default_locale || unlockable.account.default_locale
+    default_locale = unlockable.account.default_locale
     locale = locale || default_locale
 
     unlockable
-    |> cast(params, writable_fields())
+    |> cast(fields, writable_fields())
     |> Map.put(:action, :update)
     |> validate()
     |> put_print_name()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
-  @spec changeset(__MODULE__.t(), atom) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(unlockable, action)
   def changeset(unlockable, :delete) do
     change(unlockable)
     |> Map.put(:action, :delete)

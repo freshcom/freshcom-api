@@ -9,13 +9,13 @@ defmodule BlueJetWeb.AccountMembershipController do
 
   def index(conn, _) do
     conn
-    |> assign(:preloads, [:user, :account])
-    |> default(:index, &Identity.list_account_membership/1, normalize: [:role], params: ["target"])
+    |> assign(:include, "user,account")
+    |> default(:index, &Identity.list_account_membership/1, normalize: ["role"], params: ["target"])
   end
 
   def update(conn, %{"id" => _, "data" => %{"type" => "AccountMembership"}}) do
     conn
-    |> assign(:preloads, [:user, :account])
+    |> assign(:include, "user,account")
     |> default(:update, &Identity.update_account_membership/1, normalize: ["role"])
   end
 end

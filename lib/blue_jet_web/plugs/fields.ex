@@ -3,7 +3,7 @@ defmodule BlueJet.Plugs.Fields do
 
   def init(default), do: default
 
-  def call(conn = %Plug.Conn{ query_params: %{ "fields" => fields } }, _default) do
+  def call(%Plug.Conn{query_params: %{"fields" => fields}} = conn, _default) do
     fields = Enum.reduce(fields, %{}, fn({k, v}, acc) ->
       Map.put(acc, k, Inflex.underscore(v))
     end)

@@ -1,6 +1,8 @@
 defmodule BlueJet.Identity.User.Service do
   use BlueJet, :service
 
+  import BlueJet.Utils, only: [atomize_keys: 2]
+
   import BlueJet.Identity.Account.Service, only: [create_account: 2]
   import BlueJet.Identity.AccountMembership.Service, only: [create_account_membership!: 2]
   import BlueJet.Identity.RefreshToken.Service, only: [create_refresh_token!: 2]
@@ -115,41 +117,40 @@ defmodule BlueJet.Identity.User.Service do
   @spec get_user(map, map) :: User.t() | nil
   def get_user(identifiers, opts) do
     account = extract_account(opts)
-    filter = extract_nil_filter(identifiers)
-    clauses = extract_clauses(identifiers)
+    identifiers = atomize_keys(identifiers, User.Query.identifiable_fields())
 
-    do_get_user(filter, clauses, opts)
+    do_get_user(identifiers, opts)
     |> put_account(account)
   end
 
-  defp do_get_user(filter, clauses, %{type: :managed, account: account}) when not is_nil(account) do
+  defp do_get_user(identifiers, %{type: :managed, account: account}) when not is_nil(account) do
     User.Query.default()
     |> for_account(account.id)
-    |> User.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    |> User.Query.get_by(identifiers)
+    |> Repo.one()
     |> User.put_role(account.id)
   end
 
-  defp do_get_user(filter, clauses, %{account: account}) when not is_nil(account) do
+  defp do_get_user(identifiers, %{account: account}) when not is_nil(account) do
     user =
       User.Query.default()
       |> User.Query.member_of_account(account.id)
-      |> User.Query.filter_by(filter)
-      |> Repo.get_by(clauses)
+      |> User.Query.get_by(identifiers)
+      |> Repo.one()
       |> User.put_role(account.id)
 
     if !user && account.mode == "test" do
-      do_get_user(filter, clauses, %{account: %Account{id: account.live_account_id}})
+      do_get_user(identifiers, %{account: %Account{id: account.live_account_id}})
     else
       user
     end
   end
 
-  defp do_get_user(filter, clauses, _) do
+  defp do_get_user(identifiers, _) do
     User.Query.default()
     |> User.Query.standard()
-    |> User.Query.filter_by(filter)
-    |> Repo.get_by(clauses)
+    |> User.Query.get_by(identifiers)
+    |> Repo.one()
   end
 
   @spec update_user(map, map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
@@ -211,5 +212,5 @@ defmodule BlueJet.Identity.User.Service do
 
   @spec delete_user(map, map) :: {:ok, User.t()} | {:error, %{errors: Keyword.t()}}
   def delete_user(identifiers, opts),
-    do: default(:delete, identifiers, Map.put(opts, :type, :managed), &get_user/2)
+    do: default_delete(identifiers, Map.put(opts, :type, :managed), &get_user/2)
 end

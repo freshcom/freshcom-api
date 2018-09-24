@@ -1,6 +1,8 @@
 defmodule BlueJet.Identity.AccountMembership.Service do
   use BlueJet, :service
 
+  import BlueJet.Utils, only: [atomize_keys: 2]
+
   alias BlueJet.Identity.AccountMembership
 
   @spec list_account_membership(map, map) :: [AccountMembership.t()]
@@ -28,7 +30,7 @@ defmodule BlueJet.Identity.AccountMembership.Service do
   end
 
   defp extract_account_membership_filter(query, opts) do
-    filter = extract_filter(query)
+    filter = atomize_keys(query[:filter], AccountMembership.Query.filterable_fields())
 
     unless opts[:account] || filter[:user_id] do
       raise ArgumentError, message: "when account is not provided in opts :user_id must be provided as filter"
@@ -52,9 +54,9 @@ defmodule BlueJet.Identity.AccountMembership.Service do
 
   @spec get_account_membership(map, map) :: AccountMembership.t() | nil
   def get_account_membership(identifiers, opts),
-    do: default(:get, AccountMembership, identifiers, opts)
+    do: default_get(AccountMembership.Query, identifiers, opts)
 
   @spec update_account_membership(map, map, map) :: {:ok, AccountMembership.t()} | {:error, %{errors: Keyword.t()}}
   def update_account_membership(identifiers, fields, opts),
-    do: default(:update, identifiers, fields, opts, &get_account_membership/2)
+    do: default_update(identifiers, fields, opts, &get_account_membership/2)
 end

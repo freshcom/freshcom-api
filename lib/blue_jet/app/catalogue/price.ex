@@ -1,11 +1,13 @@
 defmodule BlueJet.Catalogue.Price do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.Catalogue.Product
   alias __MODULE__.{Proxy, Query}
 
   schema "prices" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "draft"
@@ -66,7 +68,8 @@ defmodule BlueJet.Catalogue.Price do
     ]
   end
 
-  @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
+  @spec changeset(__MODULE__.t(), :insert, map) :: Changeset.t()
+  def changeset(price, action, fields)
   def changeset(price, :insert, params) do
     price
     |> cast(params, castable_fields(:insert))
@@ -76,9 +79,11 @@ defmodule BlueJet.Catalogue.Price do
     |> validate()
   end
 
-  def changeset(price, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), :update, map, String.t()) :: Changeset.t()
+  def changeset(price, action, fields, locale \\ nil)
+  def changeset(price, :update, params, locale) do
     price = Proxy.put_account(price)
-    default_locale = default_locale || price.account.default_locale
+    default_locale = price.account.default_locale
     locale = locale || default_locale
 
     price
@@ -90,6 +95,8 @@ defmodule BlueJet.Catalogue.Price do
     |> Translation.put_change(translatable_fields(), locale, default_locale)
   end
 
+  @spec changeset(__MODULE__.t(), :delete) :: Changeset.t()
+  def changeset(price, action)
   def changeset(price, :delete) do
     change(price)
     |> Map.put(:action, :delete)

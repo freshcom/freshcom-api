@@ -1,15 +1,16 @@
 defmodule BlueJet.Context do
+  import BlueJet.ControlFlow
   alias BlueJet.{Translation, ContextResponse}
 
-  def default(request, cmd, type, policy, service) do
-    endpoint = join_atom(cmd, type, "_")
+  def default(request, action, type, policy, service) do
+    endpoint = join_atom(action, type, "_")
 
     request
-    |> policy.authorize(endpoint)
-    |> do_default(cmd, Atom.to_string(type), service)
+    |>  policy.authorize(endpoint)
+    ~>> do_default(action, Atom.to_string(type), service)
   end
 
-  defp do_default({:ok, req}, :list, type, service) do
+  defp do_default(req, :list, type, service) do
     count_fun = Function.capture(service, String.to_atom("count_" <> type), 2)
     list_fun = Function.capture(service, String.to_atom("list_" <> type), 2)
 
@@ -22,7 +23,7 @@ defmodule BlueJet.Context do
     |> to_tagged_tuple()
   end
 
-  defp do_default({:ok, req}, :create, type, service_or_fun) do
+  defp do_default(req, :create, type, service_or_fun) do
     create_fun = extract_fun(:create, type, service_or_fun)
 
     %ContextResponse{}
@@ -31,7 +32,7 @@ defmodule BlueJet.Context do
     |> to_tagged_tuple()
   end
 
-  defp do_default({:ok, req}, :get, type, service) do
+  defp do_default(req, :get, type, service) do
     get_fun = Function.capture(service, String.to_atom("get_" <> type), 2)
 
     %ContextResponse{}
@@ -41,7 +42,7 @@ defmodule BlueJet.Context do
     |> to_tagged_tuple()
   end
 
-  defp do_default({:ok, req}, :update, type, service) do
+  defp do_default(req, :update, type, service) do
     update_fun = Function.capture(service, String.to_atom("update_" <> type), 3)
 
     %ContextResponse{}
@@ -51,7 +52,7 @@ defmodule BlueJet.Context do
     |> to_tagged_tuple()
   end
 
-  defp do_default({:ok, req}, :delete, type, service) do
+  defp do_default(req, :delete, type, service) do
     delete_fun = Function.capture(service, String.to_atom("delete_" <> type), 2)
 
     %ContextResponse{}
@@ -107,7 +108,7 @@ defmodule BlueJet.Context do
       account: req._vad_.account,
       pagination: req.pagination,
       locale: req.locale,
-      preload: req._preload_
+      include: req._include_
     })
 
     %{response | data: data}
@@ -116,7 +117,7 @@ defmodule BlueJet.Context do
   defp process_create(response, req, fun) do
     fun.(req.fields, %{
       account: req._vad_.account,
-      preload: req._preload_
+      include: req._include_
     })
     |> to_response(:create, response)
   end
@@ -124,7 +125,7 @@ defmodule BlueJet.Context do
   defp process_get(response, req, fun) do
     opts = Map.merge(req._opts_, %{
       account: req._vad_.account,
-      preload: req._preload_
+      include: req._include_
     })
 
     fun.(req.identifiers, opts)
@@ -135,7 +136,7 @@ defmodule BlueJet.Context do
     opts = Map.merge(req._opts_, %{
       account: req._vad_.account,
       locale: req.locale,
-      preload: req._preload_
+      include: req._include_
     })
 
     fun.(req.identifiers, req.fields, opts)
@@ -151,8 +152,8 @@ defmodule BlueJet.Context do
     |> to_response(:delete, response)
   end
 
-  def to_response({:ok, data}, cmd, resp) when cmd in [:create, :update], do: %{resp | data: data}
-  def to_response({:error, %{errors: errors}}, cmd, resp) when cmd in [:create, :update, :delete], do: %{resp | errors: errors}
+  def to_response({:ok, data}, action, resp) when action in [:create, :update], do: %{resp | data: data}
+  def to_response({:error, %{errors: errors}}, action, resp) when action in [:create, :update, :delete], do: %{resp | errors: errors}
   def to_response(nil, :get, _), do: {:error, :not_found}
   def to_response(%{} = data, :get, resp), do: %{resp | data: data}
   def to_response({:ok, _}, :delete, resp), do: resp

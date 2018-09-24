@@ -7,10 +7,10 @@ defmodule BlueJet.Crm.Service do
   alias BlueJet.Crm.{Customer, PointAccount, PointTransaction}
 
   @spec list_customer(map, map) :: [Customer.t()]
-  def list_customer(query \\ %{}, opts), do: default(:list, Customer, query, opts)
+  def list_customer(query \\ %{}, opts), do: default_list(Customer, query, opts)
 
   @spec count_customer(map, map) :: integer
-  def count_customer(query \\ %{}, opts), do: default(:count, Customer, query, opts)
+  def count_customer(query \\ %{}, opts), do: default_count(Customer, query, opts)
 
   @doc """
   Creates a customer.
@@ -155,22 +155,22 @@ defmodule BlueJet.Crm.Service do
   # this function is only called when account reset happens and when that
   # happens all user will already be deleted
   @spec delete_all_customer(map) :: :ok
-  def delete_all_customer(opts), do: default(:delete_all, Customer, opts)
+  def delete_all_customer(opts), do: default_delete_all(Customer, opts)
 
   #
   # MARK: Point Account
   #
   @spec get_point_account(map, map) :: PointAccount.t() | nil
-  def get_point_account(identifiers, opts), do: default(:get, PointAccount, identifiers, opts)
+  def get_point_account(identifiers, opts), do: default_get(PointAccount, identifiers, opts)
 
   #
   # MARK: Point Transaction
   #
   @spec list_point_transaction(map, map) :: [PointTransaction.t()]
-  def list_point_transaction(query \\ %{}, opts), do: default(:list, PointTransaction, query, opts)
+  def list_point_transaction(query \\ %{}, opts), do: default_list(PointTransaction, query, opts)
 
   @spec count_point_transaction(map, map) :: integer
-  def count_point_transaction(query \\ %{}, opts), do: default(:count, PointTransaction, query, opts)
+  def count_point_transaction(query \\ %{}, opts), do: default_count(PointTransaction, query, opts)
 
   @spec create_point_transaction(map, map) :: {:ok, PointTransaction.t()} | {:error, %{errors: Keyword.t()}}
   def create_point_transaction(fields, opts) do
@@ -231,7 +231,7 @@ defmodule BlueJet.Crm.Service do
   defp sync_to_point_account(_, _), do: {:ok, nil}
 
   @spec get_point_transaction(map, map) :: PointTransaction.t() | nil
-  def get_point_transaction(identifiers, opts), do: default(:get, PointTransaction, identifiers, opts)
+  def get_point_transaction(identifiers, opts), do: default_get(PointTransaction, identifiers, opts)
 
   @spec update_point_transaction(map, map, map) ::
     {:ok, PointTransaction.t()} | {:error, %{errors: Keyword.t()}} | {:error, :not_found}
@@ -273,10 +273,10 @@ defmodule BlueJet.Crm.Service do
     {:ok, PointTransaction.t()} | {:error, %{errors: Keyword.t()}} | {:error, :not_found}
   def delete_point_transaction(identifiers_or_transaction, opts)
 
-  def delete_point_transaction(%PointTransaction{} = transaction, opts), do: default(:delete, transaction, opts)
+  def delete_point_transaction(%PointTransaction{} = transaction, opts), do: default_delete(transaction, opts)
 
   def delete_point_transaction(identifiers, opts) do
     identifiers = Map.put(identifiers, :status, "pending")
-    default(:delete, identifiers, opts, &get_point_transaction/2)
+    default_delete(identifiers, opts, &get_point_transaction/2)
   end
 end

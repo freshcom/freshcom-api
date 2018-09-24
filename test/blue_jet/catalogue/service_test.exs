@@ -33,7 +33,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       opts = %{
         account: account1,
         pagination: %{size: 2, number: 1},
-        preload: %{paths: [:prices]}
+        include: %{paths: "prices"}
       }
       products = Service.list_product(query, opts)
 
@@ -100,7 +100,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       target_product = product_fixture(account, %{status: "active"})
 
       identifiers = %{id: target_product.id}
-      opts = %{account: account, preload: %{paths: [:prices]}}
+      opts = %{account: account, include: %{paths: "prices"}}
 
       product = Service.get_product(identifiers, opts)
 
@@ -186,7 +186,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       opts = %{
         account: account1,
         pagination: %{size: 2, number: 1},
-        preload: %{paths: [:product]}
+        include: %{paths: "product"}
       }
       prices = Service.list_price(query, opts)
 
@@ -257,7 +257,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       target_price = price_fixture(account, product)
 
       identifiers = %{id: target_price.id}
-      opts = %{account: account, preload: %{paths: [:product]}}
+      opts = %{account: account, include: %{paths: "product"}}
 
       price = Service.get_price(identifiers, opts)
 
@@ -504,7 +504,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       opts = %{
         account: account,
         pagination: %{size: 2, number: 1},
-        preload: %{paths: [:product]}
+        include: %{paths: "product"}
       }
       memberships = Service.list_product_collection_membership(query, opts)
 
@@ -582,7 +582,7 @@ defmodule BlueJet.Catalogue.ServiceTest do
       target_membership = product_collection_membership_fixture(account, collection, product)
 
       identifiers = %{id: target_membership.id}
-      opts = %{account: account, preload: %{paths: [:product]}}
+      opts = %{account: account, include: %{paths: "product"}}
 
       membership = Service.get_product_collection_membership(identifiers, opts)
 

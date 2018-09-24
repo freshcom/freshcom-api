@@ -1,5 +1,5 @@
 defmodule BlueJet.Identity.Password.Query do
-  use BlueJet, :query
+  import Ecto.Query
 
   alias BlueJet.Identity.{Password}
 
