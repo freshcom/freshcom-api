@@ -5,7 +5,7 @@ defmodule BlueJet.Notification.SmsTemplate do
   alias __MODULE__.Proxy
 
   schema "sms_templates" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
     field :system_label, :string
 
@@ -51,10 +51,10 @@ defmodule BlueJet.Notification.SmsTemplate do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(sms_template, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t()) :: Changeset.t()
+  def changeset(sms_template, :update, params, locale \\ nil) do
     sms_template = Proxy.put_account(sms_template)
-    default_locale = default_locale || sms_template.account.default_locale
+    default_locale = sms_template.account.default_locale
     locale = locale || default_locale
 
     sms_template

@@ -1,11 +1,13 @@
 defmodule BlueJet.Notification.EmailTemplate do
+  @behaviour BlueJet.Data
+
   use BlueJet, :data
 
   alias BlueJet.Notification.Email
   alias __MODULE__.Proxy
 
   schema "email_templates" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
     field :system_label, :string
 
@@ -58,10 +60,10 @@ defmodule BlueJet.Notification.EmailTemplate do
     |> validate()
   end
 
-  @spec changeset(__MODULE__.t(), atom, map, String.t(), String.t()) :: Changeset.t()
-  def changeset(email_template, :update, params, locale \\ nil, default_locale \\ nil) do
+  @spec changeset(__MODULE__.t(), atom, map, String.t()) :: Changeset.t()
+  def changeset(email_template, :update, params, locale \\ nil) do
     email_template = Proxy.put_account(email_template)
-    default_locale = default_locale || email_template.account.default_locale
+    default_locale = email_template.account.default_locale
     locale = locale || default_locale
 
     email_template

@@ -5,7 +5,7 @@ defmodule BlueJet.Notification.Sms do
   alias BlueJet.Notification.{Trigger, SmsTemplate}
 
   schema "sms" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "sent"

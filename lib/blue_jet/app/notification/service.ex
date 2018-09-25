@@ -16,69 +16,6 @@ defmodule BlueJet.Notification.Service do
   def delete_trigger(identifiers, opts), do: default_delete(identifiers, opts, &get_trigger/2)
   def delete_all_trigger(opts), do: default_delete_all(Trigger.Query, opts)
 
-  # def create_system_default_trigger(%{account: account}) do
-  #   # Password Reset
-  #   email_template =
-  #     account
-  #     |> EmailTemplate.Factory.password_reset()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_password_reset_email(email_template)
-  #   |> Repo.insert!()
-
-  #   email_template =
-  #     account
-  #     |> EmailTemplate.Factory.password_reset_not_registered()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_password_reset_not_registered_email(email_template)
-  #   |> Repo.insert!()
-
-  #   # Email Verification
-  #   email_template =
-  #     account
-  #     |> EmailTemplate.Factory.email_verification()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_email_verification_email(email_template)
-  #   |> Repo.insert!()
-
-  #   # Order Confirmation
-  #   email_template =
-  #     account
-  #     |> EmailTemplate.Factory.order_confirmation()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_order_confirmation_email(email_template)
-  #   |> Repo.insert!()
-
-  #   # Phone Verification Code
-  #   sms_template =
-  #     account
-  #     |> SmsTemplate.AccountDefault.phone_verification_code()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_phone_verification_code_sms(sms_template)
-  #   |> Repo.insert!()
-
-  #   # TFA CODE
-  #   sms_template =
-  #     account
-  #     |> SmsTemplate.AccountDefault.tfa_code()
-  #     |> Repo.insert!()
-
-  #   account
-  #   |> Trigger.Factory.send_tfa_code_sms(sms_template)
-  #   |> Repo.insert!()
-
-  #   :ok
-  # end
-
   def create_default_triggers(%{account: account}) do
     statements =
       Multi.new()
@@ -206,128 +143,42 @@ defmodule BlueJet.Notification.Service do
   #
   # MARK: List Email
   #
-  def list_email(fields \\ %{}, opts) do
-    list(Email, fields, opts)
-  end
-
-  def count_email(fields \\ %{}, opts) do
-    count(Email, fields, opts)
-  end
-
-  def get_email(identifiers, opts) do
-    get(Email, identifiers, opts)
-  end
-
-  def delete_all_email(opts) do
-    delete_all(Email, opts)
-  end
+  def list_email(query \\ %{}, opts), do: default_list(Email.Query, query, opts)
+  def count_email(query \\ %{}, opts), do: default_count(Email.Query, query, opts)
+  def get_email(identifiers, opts), do: default_get(Email.Query, identifiers, opts)
+  def delete_all_email(opts), do: default_delete_all(Email.Query, opts)
 
   #
   # MARK: Email Template
   #
-  def list_email_template(fields \\ %{}, opts) do
-    list(EmailTemplate, fields, opts)
-  end
-
-  def count_email_template(fields \\ %{}, opts) do
-    count(EmailTemplate, fields, opts)
-  end
-
-  def create_email_template(fields, opts) do
-    create(EmailTemplate, fields, opts)
-  end
-
-  def get_email_template(identifiers, opts) do
-    get(EmailTemplate, identifiers, opts)
-  end
-
-  def update_email_template(nil, _, _), do: {:error, :not_found}
-
-  def update_email_template(email_template = %EmailTemplate{}, fields, opts) do
-    update(email_template, fields, opts)
-  end
-
-  def update_email_template(identifiers, fields, opts) do
-    get_email_template(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_email_template(fields, opts)
-  end
-
-  def delete_email_template(nil, _), do: {:error, :not_found}
-
-  def delete_email_template(email_template = %EmailTemplate{}, opts) do
-    delete(email_template, opts)
-  end
-
-  def delete_email_template(identifiers, opts) do
-    get_email_template(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_email_template(opts)
-  end
-
-  def delete_all_email_template(opts) do
-    delete_all(EmailTemplate, opts)
-  end
+  def list_email_template(query \\ %{}, opts), do: default_list(EmailTemplate.Query, query, opts)
+  def count_email_template(query \\ %{}, opts), do: default_count(EmailTemplate.Query, query, opts)
+  def create_email_template(fields, opts), do: default_create(EmailTemplate, fields, opts)
+  def get_email_template(identifiers, opts), do: default_get(EmailTemplate.Query, identifiers, opts)
+  def update_email_template(%EmailTemplate{} = email_template, fields, opts), do: default_update(email_template, fields, opts)
+  def update_email_template(identifiers, fields, opts), do: default_update(identifiers, fields, opts, &get_email_template/2)
+  def delete_email_template(%EmailTemplate{} = email_template, opts), do: default_delete(email_template, opts)
+  def delete_email_template(identifiers, opts), do: default_delete(identifiers, opts, &get_email_template/2)
+  def delete_all_email_template(opts), do: default_delete_all(EmailTemplate.Query, opts)
 
   #
-  # MARK: List SMS
+  # MARK: SMS
   #
-  def list_sms(fields \\ %{}, opts) do
-    list(Sms, fields, opts)
-  end
-
-  def count_sms(fields \\ %{}, opts) do
-    count(Sms, fields, opts)
-  end
-
-  def get_sms(identifiers, opts) do
-    get(Sms, identifiers, opts)
-  end
-
-  def delete_all_sms(opts) do
-    delete_all(Sms, opts)
-  end
+  def list_sms(query \\ %{}, opts), do: default_list(Sms.Query, query, opts)
+  def count_sms(query \\ %{}, opts), do: default_count(Sms.Query, query, opts)
+  def get_sms(identifiers, opts), do: default_get(Sms.Query, identifiers, opts)
+  def delete_all_sms(opts), do: default_delete_all(Sms.Query, opts)
 
   #
   # MARK: SMS Template
   #
-  def list_sms_template(fields \\ %{}, opts) do
-    list(SmsTemplate, fields, opts)
-  end
-
-  def count_sms_template(fields \\ %{}, opts) do
-    count(SmsTemplate, fields, opts)
-  end
-
-  def create_sms_template(fields, opts) do
-    create(SmsTemplate, fields, opts)
-  end
-
-  def get_sms_template(identifiers, opts) do
-    get(SmsTemplate, identifiers, opts)
-  end
-
-  def update_sms_template(nil, _, _), do: {:error, :not_found}
-
-  def update_sms_template(sms_template = %SmsTemplate{}, fields, opts) do
-    update(sms_template, fields, opts)
-  end
-
-  def update_sms_template(identifiers, fields, opts) do
-    get_sms_template(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_sms_template(fields, opts)
-  end
-
-  def delete_sms_template(nil, _), do: {:error, :not_found}
-
-  def delete_sms_template(sms_template = %SmsTemplate{}, opts) do
-    delete(sms_template, opts)
-  end
-
-  def delete_sms_template(identifiers, opts) do
-    get_sms_template(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_sms_template(opts)
-  end
-
-  def delete_all_sms_template(opts) do
-    delete_all(SmsTemplate, opts)
-  end
+  def list_sms_template(query \\ %{}, opts), do: default_list(SmsTemplate.Query, query, opts)
+  def count_sms_template(query \\ %{}, opts), do: default_count(SmsTemplate.Query, query, opts)
+  def create_sms_template(fields, opts), do: default_create(SmsTemplate, fields, opts)
+  def get_sms_template(identifiers, opts), do: default_get(SmsTemplate.Query, identifiers, opts)
+  def update_sms_template(%SmsTemplate{} = sms_template, fields, opts), do: default_update(sms_template, fields, opts)
+  def update_sms_template(identifiers, fields, opts), do: default_update(identifiers, fields, opts, &get_sms_template/2)
+  def delete_sms_template(%SmsTemplate{} = sms_template, opts), do: default_delete(sms_template, opts)
+  def delete_sms_template(identifiers, opts), do: default_delete(identifiers, opts, &get_sms_template/2)
+  def delete_all_sms_template(opts), do: default_delete_all(SmsTemplate.Query, opts)
 end

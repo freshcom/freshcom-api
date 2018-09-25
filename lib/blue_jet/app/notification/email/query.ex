@@ -1,25 +1,19 @@
 defmodule BlueJet.Notification.Email.Query do
+  @behaviour BlueJet.Query
+
   use BlueJet, :query
-
-  use BlueJet.Query.Search,
-    for: [
-      :to,
-      :from,
-      :subject,
-      :reply_to
-    ]
-
-  use BlueJet.Query.Filter,
-    for: [
-      :id,
-      :status
-    ]
 
   alias BlueJet.Notification.Email
 
-  def default() do
-    from(e in Email)
-  end
+  def identifiable_fields, do: [:id, :status]
+  def filterable_fields, do: [:id, :status]
+  def searchable_fields, do: [:to, :from, :subject, :reply_to]
+
+  def default(), do: from(e in Email)
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
+  def search(q, k, l, d),
+    do: search(q, k, l, d, searchable_fields(), [])
 
   def preloads(_, _) do
     []

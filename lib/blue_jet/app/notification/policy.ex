@@ -4,111 +4,111 @@ defmodule BlueJet.Notification.Policy do
   #
   # MARK: Trigger
   #
-  def authorize(request = %{role: role}, "list_trigger")
+  def authorize(%{_role_: role} = req, :list_trigger)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_trigger")
+  def authorize(%{_role_: role} = req, :create_trigger)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_trigger")
+  def authorize(%{_role_: role} = req, :get_trigger)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_trigger")
+  def authorize(%{_role_: role} = req, :update_trigger)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_trigger")
+  def authorize(%{_role_: role} = req, :delete_trigger)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    {:ok, req}
   end
 
   #
   # MARK: Email
   #
-  def authorize(request = %{role: role}, "list_email")
+  def authorize(%{_role_: role} = req, :list_email)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_email")
+  def authorize(%{_role_: role} = req, :get_email)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
   #
   # MARK: Email Template
   #
-  def authorize(request = %{role: role}, "list_email_template")
+  def authorize(%{_role_: role} = req, :list_email_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_email_template")
+  def authorize(%{_role_: role} = req, :create_email_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_email_template")
+  def authorize(%{_role_: role} = req, :get_email_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_email_template")
+  def authorize(%{_role_: role} = req, :update_email_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_email_template")
+  def authorize(%{_role_: role} = req, :delete_email_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    {:ok, req}
   end
 
   #
   # MARK: SMS
   #
-  def authorize(request = %{role: role}, "list_sms")
+  def authorize(%{_role_: role} = req, :list_sms)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_sms")
+  def authorize(%{_role_: role} = req, :get_sms)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
   #
   # MARK: SMS Template
   #
-  def authorize(request = %{role: role}, "list_sms_template")
+  def authorize(%{_role_: role} = req, :list_sms_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "create_sms_template")
+  def authorize(%{_role_: role} = req, :create_sms_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "get_sms_template")
+  def authorize(%{_role_: role} = req, :get_sms_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_sms_template")
+  def authorize(%{_role_: role} = req, :update_sms_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_sms_template")
+  def authorize(%{_role_: role} = req, :delete_sms_template)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    {:ok, req}
   end
 
   #

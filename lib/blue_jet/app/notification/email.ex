@@ -5,7 +5,7 @@ defmodule BlueJet.Notification.Email do
   alias BlueJet.Notification.{Trigger, EmailTemplate}
 
   schema "emails" do
-    field :account_id, Ecto.UUID
+    field :account_id, UUID
     field :account, :map, virtual: true
 
     field :status, :string, default: "pending"
