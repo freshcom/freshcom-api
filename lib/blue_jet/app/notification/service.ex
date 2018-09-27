@@ -1,7 +1,7 @@
 defmodule BlueJet.Notification.Service do
   use BlueJet, :service
 
-  alias BlueJet.Notification.{Trigger, Email, EmailTemplate, Sms, SmsTemplate}
+  alias BlueJet.Notification.{Trigger, Email, EmailTemplate, SMS, SMSTemplate}
 
   #
   # MARK: Trigger
@@ -101,7 +101,7 @@ defmodule BlueJet.Notification.Service do
   end
 
   defp create_phone_verification_trigger(account) do
-    template = SmsTemplate.Factory.phone_verification(account)
+    template = SMSTemplate.Factory.phone_verification(account)
 
     statements =
       Multi.new()
@@ -121,7 +121,7 @@ defmodule BlueJet.Notification.Service do
   end
 
   defp create_tfa_trigger(account) do
-    template = SmsTemplate.Factory.tfa(account)
+    template = SMSTemplate.Factory.tfa(account)
 
     statements =
       Multi.new()
@@ -164,21 +164,21 @@ defmodule BlueJet.Notification.Service do
   #
   # MARK: SMS
   #
-  def list_sms(query \\ %{}, opts), do: default_list(Sms.Query, query, opts)
-  def count_sms(query \\ %{}, opts), do: default_count(Sms.Query, query, opts)
-  def get_sms(identifiers, opts), do: default_get(Sms.Query, identifiers, opts)
-  def delete_all_sms(opts), do: default_delete_all(Sms.Query, opts)
+  def list_sms(query \\ %{}, opts), do: default_list(SMS.Query, query, opts)
+  def count_sms(query \\ %{}, opts), do: default_count(SMS.Query, query, opts)
+  def get_sms(identifiers, opts), do: default_get(SMS.Query, identifiers, opts)
+  def delete_all_sms(opts), do: default_delete_all(SMS.Query, opts)
 
   #
   # MARK: SMS Template
   #
-  def list_sms_template(query \\ %{}, opts), do: default_list(SmsTemplate.Query, query, opts)
-  def count_sms_template(query \\ %{}, opts), do: default_count(SmsTemplate.Query, query, opts)
-  def create_sms_template(fields, opts), do: default_create(SmsTemplate, fields, opts)
-  def get_sms_template(identifiers, opts), do: default_get(SmsTemplate.Query, identifiers, opts)
-  def update_sms_template(%SmsTemplate{} = sms_template, fields, opts), do: default_update(sms_template, fields, opts)
+  def list_sms_template(query \\ %{}, opts), do: default_list(SMSTemplate.Query, query, opts)
+  def count_sms_template(query \\ %{}, opts), do: default_count(SMSTemplate.Query, query, opts)
+  def create_sms_template(fields, opts), do: default_create(SMSTemplate, fields, opts)
+  def get_sms_template(identifiers, opts), do: default_get(SMSTemplate.Query, identifiers, opts)
+  def update_sms_template(%SMSTemplate{} = sms_template, fields, opts), do: default_update(sms_template, fields, opts)
   def update_sms_template(identifiers, fields, opts), do: default_update(identifiers, fields, opts, &get_sms_template/2)
-  def delete_sms_template(%SmsTemplate{} = sms_template, opts), do: default_delete(sms_template, opts)
+  def delete_sms_template(%SMSTemplate{} = sms_template, opts), do: default_delete(sms_template, opts)
   def delete_sms_template(identifiers, opts), do: default_delete(identifiers, opts, &get_sms_template/2)
-  def delete_all_sms_template(opts), do: default_delete_all(SmsTemplate.Query, opts)
+  def delete_all_sms_template(opts), do: default_delete_all(SMSTemplate.Query, opts)
 end

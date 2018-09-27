@@ -10,13 +10,13 @@ defmodule BlueJetWeb.NotificationTriggerController do
   def index(conn, _),
     do: default(conn, :index, &Notification.list_trigger/1)
 
-  def create(conn, %{"data" => %{"type" => "EmailTemplate"}}),
+  def create(conn, %{"data" => %{"type" => "NotificationTrigger"}}),
     do: default(conn, :create, &Notification.create_trigger/1)
 
   def show(conn, %{"id" => _}),
     do: default(conn, :show, &Notification.get_trigger/1)
 
-  def update(conn, %{"id" => _, "data" => %{"type" => "EmailTemplate"}}),
+  def update(conn, %{"id" => _, "data" => %{"type" => "NotificationTrigger"}}),
     do: default(conn, :update, &Notification.update_trigger/1)
 
   def delete(conn, %{"id" => _}),

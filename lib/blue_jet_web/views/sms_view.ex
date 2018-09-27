@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.SmsView do
+defmodule BlueJetWeb.SMSView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -14,10 +14,10 @@ defmodule BlueJetWeb.SmsView do
   ]
 
   has_one :trigger, serializer: BlueJetWeb.NotificationTriggerView, identifiers: :always
-  has_one :template, serializer: BlueJetWeb.SmsTemplateView, identifiers: :always
+  has_one :template, serializer: BlueJetWeb.SMSTemplateView, identifiers: :always
 
   def type do
-    "Sms"
+    "SMS"
   end
 
   def trigger(%{ trigger_id: nil }, _), do: nil
@@ -25,6 +25,6 @@ defmodule BlueJetWeb.SmsView do
   def trigger(%{ trigger: trigger }, _), do: trigger
 
   def template(%{ template_id: nil }, _), do: nil
-  def template(%{ template_id: template_id, template: %Ecto.Association.NotLoaded{} }, _), do: %{ id: template_id, type: "SmsTemplate" }
+  def template(%{ template_id: template_id, template: %Ecto.Association.NotLoaded{} }, _), do: %{ id: template_id, type: "SMSTemplate" }
   def template(%{ template: template }, _), do: template
 end

@@ -1,8 +1,8 @@
-defmodule BlueJet.Notification.SmsTemplate.Factory do
-  alias BlueJet.Notification.SmsTemplate
+defmodule BlueJet.Notification.SMSTemplate.Factory do
+  alias BlueJet.Notification.SMSTemplate
 
   def phone_verification(account) do
-    %SmsTemplate{
+    %SMSTemplate{
       account_id: account.id,
       system_label: "default",
       name: "Phone Verification Code",
@@ -12,7 +12,7 @@ defmodule BlueJet.Notification.SmsTemplate.Factory do
   end
 
   def tfa(account) do
-    %SmsTemplate{
+    %SMSTemplate{
       account_id: account.id,
       system_label: "default",
       name: "TFA Code",

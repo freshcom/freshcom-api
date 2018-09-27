@@ -1,7 +1,7 @@
-defmodule BlueJet.Notification.SmsTemplate do
+defmodule BlueJet.Notification.SMSTemplate do
   use BlueJet, :data
 
-  alias BlueJet.Notification.Sms
+  alias BlueJet.Notification.SMS
   alias __MODULE__.Proxy
 
   schema "sms_templates" do
@@ -18,7 +18,7 @@ defmodule BlueJet.Notification.SmsTemplate do
 
     timestamps()
 
-    has_many :smses, Sms, foreign_key: :template_id
+    has_many :smses, SMS, foreign_key: :template_id
   end
 
   @type t :: Ecto.Schema.t()

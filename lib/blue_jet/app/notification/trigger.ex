@@ -6,7 +6,7 @@ defmodule BlueJet.Notification.Trigger do
   alias Bamboo.Email, as: E
   alias BlueJet.AccountMailer
 
-  alias BlueJet.Notification.{Email, EmailTemplate, Sms, SmsTemplate}
+  alias BlueJet.Notification.{Email, EmailTemplate, SMS, SMSTemplate}
 
   schema "notification_triggers" do
     field :account_id, UUID
@@ -119,16 +119,16 @@ defmodule BlueJet.Notification.Trigger do
       ) do
     account = data[:account]
 
-    template = Repo.get_by(SmsTemplate, account_id: account.id, id: template_id)
-    template_variables = SmsTemplate.extract_variables(event, data)
+    template = Repo.get_by(SMSTemplate, account_id: account.id, id: template_id)
+    template_variables = SMSTemplate.extract_variables(event, data)
 
-    to = SmsTemplate.render_to(template, template_variables)
-    body = SmsTemplate.render_body(template, template_variables)
+    to = SMSTemplate.render_to(template, template_variables)
+    body = SMSTemplate.render_body(template, template_variables)
 
     ExAws.SNS.publish(body, phone_number: to)
     |> ExAws.request()
 
-    Repo.insert!(%Sms{
+    Repo.insert!(%SMS{
       account_id: account.id,
       trigger_id: trigger.id,
       template_id: template.id,

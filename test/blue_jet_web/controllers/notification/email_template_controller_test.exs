@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.NotificationTriggerControllerTest do
+defmodule BlueJetWeb.EmailTemplateControllerTest do
   use BlueJetWeb.ConnCase
 
   import BlueJet.Identity.TestHelper
@@ -13,38 +13,12 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
     %{conn: conn}
   end
 
-  # List notification trigger
-  describe "GET /v1/notification_triggers" do
+  # Create a email template
+  describe "POST /v1/email_templates" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/notification_triggers")
-
-      assert conn.status == 401
-    end
-
-    test "with UAT", %{conn: conn} do
-      user1 = standard_user_fixture()
-      user2 = standard_user_fixture()
-
-      trigger_fixture(user1.default_account)
-      trigger_fixture(user1.default_account)
-      trigger_fixture(user2.default_account)
-
-      uat = get_uat(user1.default_account, user1)
-
-      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = get(conn, "/v1/notification_triggers")
-
-      response = json_response(conn, 200)
-      assert length(response["data"]) == 2
-    end
-  end
-
-  # Create a notification trigger
-  describe "POST /v1/notification_triggers" do
-    test "without access token", %{conn: conn} do
-      conn = post(conn, "/v1/notification_triggers", %{
+      conn = post(conn, "/v1/email_templates", %{
         "data" => %{
-          "type" => "NotificationTrigger"
+          "type" => "EmailTemplate"
         }
       })
 
@@ -56,9 +30,9 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = post(conn, "/v1/notification_triggers", %{
+      conn = post(conn, "/v1/email_templates", %{
         "data" => %{
-          "type" => "NotificationTrigger"
+          "type" => "EmailTemplate"
         }
       })
 
@@ -70,9 +44,9 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = post(conn, "/v1/notification_triggers", %{
+      conn = post(conn, "/v1/email_templates", %{
         "data" => %{
-          "type" => "NotificationTrigger"
+          "type" => "EmailTemplate"
         }
       })
 
@@ -85,14 +59,15 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = post(conn, "/v1/notification_triggers", %{
+      conn = post(conn, "/v1/email_templates", %{
         "data" => %{
-          "type" => "NotificationTrigger",
+          "type" => "EmailTemplate",
           "attributes" => %{
             "name" => Faker.Lorem.sentence(5),
-            "event" => Faker.Lorem.sentence(5),
-            "action_type" => "send_email",
-            "action_target" => UUID.generate()
+            "to" => "{{user.email}}",
+            "subject" => Faker.Lorem.sentence(5),
+            "body_html" => Faker.Lorem.sentence(5),
+            "body_text" => Faker.Lorem.sentence(5)
           }
         }
       })
@@ -101,10 +76,10 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
     end
   end
 
-  # Retrieve a notification trigger
-  describe "GET /v1/notification_triggers/:id" do
+  # Retrieve a email template
+  describe "GET /v1/email_templates/:id" do
     test "without access token", %{conn: conn} do
-      conn = get(conn, "/v1/notification_triggers/#{UUID.generate()}")
+      conn = get(conn, "/v1/email_templates/#{UUID.generate()}")
 
       assert conn.status == 401
     end
@@ -114,41 +89,41 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = get(conn, "/v1/notification_triggers/#{UUID.generate()}")
+      conn = get(conn, "/v1/email_templates/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
-    test "with UAT requesting a notification_trigger of a different account", %{conn: conn} do
+    test "with UAT requesting a email_template of a different account", %{conn: conn} do
       user1 = standard_user_fixture()
       user2 = standard_user_fixture()
-      notification_trigger = trigger_fixture(user2.default_account)
+      email_template = email_template_fixture(user2.default_account)
       uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = get(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = get(conn, "/v1/email_templates/#{email_template.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
       user = standard_user_fixture()
-      notification_trigger = trigger_fixture(user.default_account)
+      email_template = email_template_fixture(user.default_account)
       uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = get(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = get(conn, "/v1/email_templates/#{email_template.id}")
 
       assert json_response(conn, 200)
     end
   end
 
-  # Update a notification trigger
-  describe "PATCH /v1/notification_triggers/:id" do
+  # Update a email template
+  describe "PATCH /v1/email_templates/:id" do
     test "without access token", %{conn: conn} do
-      conn = patch(conn, "/v1/notification_triggers/#{UUID.generate()}", %{
+      conn = patch(conn, "/v1/email_templates/#{UUID.generate()}", %{
         "data" => %{
-          "type" => "NotificationTrigger",
+          "type" => "EmailTemplate",
           "attributes" => %{
             "name" => Faker.Lorem.sentence(5)
           }
@@ -163,9 +138,9 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = patch(conn, "/v1/notification_triggers/#{UUID.generate()}", %{
+      conn = patch(conn, "/v1/email_templates/#{UUID.generate()}", %{
         "data" => %{
-          "type" => "NotificationTrigger",
+          "type" => "EmailTemplate",
           "attributes" => %{
             "name" => Faker.Lorem.sentence(5)
           }
@@ -175,16 +150,16 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       assert conn.status == 403
     end
 
-    test "with UAT requesting notification_trigger of a different account", %{conn: conn} do
+    test "with UAT requesting email_template of a different account", %{conn: conn} do
       user1 = standard_user_fixture()
       user2 = standard_user_fixture()
-      notification_trigger = trigger_fixture(user2.default_account)
+      email_template = email_template_fixture(user2.default_account)
       uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = patch(conn, "/v1/notification_triggers/#{notification_trigger.id}", %{
+      conn = patch(conn, "/v1/email_templates/#{email_template.id}", %{
         "data" => %{
-          "type" => "NotificationTrigger",
+          "type" => "EmailTemplate",
           "attributes" => %{
             "name" => Faker.Lorem.sentence(5)
           }
@@ -196,13 +171,13 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
 
     test "with UAT", %{conn: conn} do
       user = standard_user_fixture()
-      notification_trigger = trigger_fixture(user.default_account)
+      email_template = email_template_fixture(user.default_account)
       uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = patch(conn, "/v1/notification_triggers/#{notification_trigger.id}", %{
+      conn = patch(conn, "/v1/email_templates/#{email_template.id}", %{
         "data" => %{
-          "type" => "NotificationTrigger",
+          "type" => "EmailTemplate",
           "attributes" => %{
             "name" => Faker.Lorem.sentence(5)
           }
@@ -213,10 +188,10 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
     end
   end
 
-  # Delete a notification trigger
-  describe "DELETE /v1/notification_triggers/:id" do
+  # Delete a email template
+  describe "DELETE /v1/email_templates/:id" do
     test "without access token", %{conn: conn} do
-      conn = delete(conn, "/v1/notification_triggers/#{UUID.generate()}")
+      conn = delete(conn, "/v1/email_templates/#{UUID.generate()}")
 
       assert conn.status == 401
     end
@@ -226,32 +201,58 @@ defmodule BlueJetWeb.NotificationTriggerControllerTest do
       pat = get_pat(user.default_account)
 
       conn = put_req_header(conn, "authorization", "Bearer #{pat}")
-      conn = delete(conn, "/v1/notification_triggers/#{UUID.generate()}")
+      conn = delete(conn, "/v1/email_templates/#{UUID.generate()}")
 
       assert conn.status == 403
     end
 
-    test "with UAT and requesting notification_trigger of a different account", %{conn: conn} do
+    test "with UAT and requesting email_template of a different account", %{conn: conn} do
       user1 = standard_user_fixture()
       user2 = standard_user_fixture()
-      notification_trigger = trigger_fixture(user2.default_account)
+      email_template = email_template_fixture(user2.default_account)
       uat = get_uat(user1.default_account, user1)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = delete(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = delete(conn, "/v1/email_templates/#{email_template.id}")
 
       assert conn.status == 404
     end
 
     test "with UAT", %{conn: conn} do
       user = standard_user_fixture()
-      notification_trigger = trigger_fixture(user.default_account)
+      email_template = email_template_fixture(user.default_account)
       uat = get_uat(user.default_account, user)
 
       conn = put_req_header(conn, "authorization", "Bearer #{uat}")
-      conn = delete(conn, "/v1/notification_triggers/#{notification_trigger.id}")
+      conn = delete(conn, "/v1/email_templates/#{email_template.id}")
 
       assert conn.status == 204
+    end
+  end
+
+  # List email template
+  describe "GET /v1/email_templates" do
+    test "without access token", %{conn: conn} do
+      conn = get(conn, "/v1/email_templates")
+
+      assert conn.status == 401
+    end
+
+    test "with UAT", %{conn: conn} do
+      user1 = standard_user_fixture()
+      user2 = standard_user_fixture()
+
+      email_template_fixture(user1.default_account)
+      email_template_fixture(user1.default_account)
+      email_template_fixture(user2.default_account)
+
+      uat = get_uat(user1.default_account, user1)
+
+      conn = put_req_header(conn, "authorization", "Bearer #{uat}")
+      conn = get(conn, "/v1/email_templates")
+
+      response = json_response(conn, 200)
+      assert length(response["data"]) == 2
     end
   end
 end

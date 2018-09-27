@@ -1,8 +1,8 @@
-defmodule BlueJet.Notification.Sms do
+defmodule BlueJet.Notification.SMS do
   use BlueJet, :data
 
   alias BlueJet.Identity.User
-  alias BlueJet.Notification.{Trigger, SmsTemplate}
+  alias BlueJet.Notification.{Trigger, SMSTemplate}
 
   schema "sms" do
     field :account_id, UUID
@@ -18,7 +18,7 @@ defmodule BlueJet.Notification.Sms do
 
     belongs_to :recipient, User
     belongs_to :trigger, Trigger
-    belongs_to :template, SmsTemplate
+    belongs_to :template, SMSTemplate
   end
 
   @type t :: Ecto.Schema.t()

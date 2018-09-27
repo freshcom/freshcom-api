@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.SmsTemplateView do
+defmodule BlueJetWeb.SMSTemplateView do
   use BlueJetWeb, :view
   use JaSerializer.PhoenixView
 
@@ -14,9 +14,9 @@ defmodule BlueJetWeb.SmsTemplateView do
     :updated_at
   ]
 
-  has_many :smses, serializer: BlueJetWeb.SmsView, identifiers: :when_included
+  has_many :smses, serializer: BlueJetWeb.SMSView, identifiers: :when_included
 
   def type do
-    "SmsTemplate"
+    "SMSTemplate"
   end
 end

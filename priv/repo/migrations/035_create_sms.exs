@@ -1,4 +1,4 @@
-defmodule BlueJet.Repo.Migrations.CreateSms do
+defmodule BlueJet.Repo.Migrations.CreateSMS do
   use Ecto.Migration
 
   def change do

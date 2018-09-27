@@ -1,4 +1,4 @@
-defmodule BlueJetWeb.SmsController do
+defmodule BlueJetWeb.SMSController do
   use BlueJetWeb, :controller
 
   alias BlueJet.Notification
