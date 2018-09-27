@@ -34,10 +34,6 @@ defmodule BlueJet.Catalogue.Price.Query do
     []
   end
 
-  def except_id(query, id) do
-    from(p in query, where: p.id != ^id)
-  end
-
   def for_product(product_id) do
     from(
       p in Price,

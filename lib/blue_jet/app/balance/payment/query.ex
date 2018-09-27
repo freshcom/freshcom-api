@@ -1,37 +1,17 @@
 defmodule BlueJet.Balance.Payment.Query do
   use BlueJet, :query
 
-  use BlueJet.Query.Search,
-    for: [
-      :code
-    ]
-
-  use BlueJet.Query.Filter,
-    for: [
-      :id,
-      :target_type,
-      :target_id,
-      :owner_id,
-      :owner_type,
-      :status,
-      :gateway,
-      :method,
-      :label
-    ]
-
   alias BlueJet.Balance.{Payment, Refund}
 
-  def default() do
-    from(p in Payment)
-  end
+  def identifiable_fields, do: [:id, :status]
+  def filterable_fields, do: [:id, :status, :target_type, :target_id, :owner_id, :owner_type, :gateway, :method, :label]
+  def searchable_fields, do: [:code]
 
-  def for_target(query, target_type, target_id) do
-    from(
-      p in query,
-      where: p.target_type == ^target_type,
-      where: p.target_id == ^target_id
-    )
-  end
+  def default(), do: from p in Payment
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
+  def search(q, k, l, d),
+    do: search(q, k, l, d, searchable_fields(), Payment.translatable_fields())
 
   def preloads({:refunds, refund_preloads}, options) do
     [refunds: {Refund.Query.default(), Refund.Query.preloads(refund_preloads, options)}]

@@ -36,10 +36,6 @@ defmodule BlueJet.Catalogue.Product.Query do
     )
   end
 
-  def except_id(query, product_id) do
-    from(p in query, where: p.id != ^product_id)
-  end
-
   def preloads({:items, item_preloads}, options) do
     filter = get_preload_filter(options, :items)
 

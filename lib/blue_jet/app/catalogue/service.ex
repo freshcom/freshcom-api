@@ -76,7 +76,7 @@ defmodule BlueJet.Catalogue.Service do
   }}) when not is_nil(parent_id) do
     Product.Query.default()
     |> Product.Query.filter_by(%{parent_id: parent_id})
-    |> Product.Query.except_id(product_id)
+    |> except(id: product_id)
     |> Repo.update_all(set: [primary: false])
   end
 

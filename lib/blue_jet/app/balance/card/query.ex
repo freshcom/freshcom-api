@@ -1,30 +1,18 @@
 defmodule BlueJet.Balance.Card.Query do
-  use BlueJet, :query
-  use BlueJet.Query.Search, for: []
+  @behaviour BlueJet.Query
 
-  use BlueJet.Query.Filter,
-    for: [
-      :id,
-      :name,
-      :status,
-      :label,
-      :last_four_digit,
-      :owner_id,
-      :owner_type,
-      :primary
-    ]
+  use BlueJet, :query
 
   alias BlueJet.Balance.Card
 
-  def default() do
-    from(c in Card)
-  end
+  def identifiable_fields, do: [:id, :status]
+  def filterable_fields, do: [:id, :status, :name, :label, :last_four_digit, :owner_id, :owner_type, :primary]
+  def searchable_fields, do: []
 
-  def not_primary(query) do
-    from(c in query, where: c.primary != true)
-  end
+  def default(), do: from(c in Card)
+  def get_by(q, i), do: filter_by(q, i, identifiable_fields())
+  def filter_by(q, f), do: filter_by(q, f, filterable_fields())
 
-  def except_id(query, id) do
-    from(c in query, where: c.id != ^id)
-  end
+  def search(q, k, l, d),
+    do: search(q, k, l, d, searchable_fields(), Card.translatable_fields())
 end

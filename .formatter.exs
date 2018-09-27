@@ -11,6 +11,8 @@
     has_one: 3
   ],
 
+  line_length: 110,
+
   # files to format
   inputs: ["mix.exs", "{config,lib,test}/**/*.{ex,exs}"]
 ]

@@ -53,6 +53,13 @@ defmodule BlueJet.Query do
     from r in query, select: r.id
   end
 
+  @spec except(Query.t(), keyword) :: Query.t()
+  def except(query, conditions) do
+    Enum.reduce(conditions, query, fn({k, v}, acc_query) ->
+      from q in acc_query, where: field(q, ^k) != ^v
+    end)
+  end
+
   @spec lock_exclusively(Query.t()) :: Query.t()
   def lock_exclusively(query) do
     lock(query, "FOR UPDATE")

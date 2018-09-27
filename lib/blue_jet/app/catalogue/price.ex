@@ -231,7 +231,7 @@ defmodule BlueJet.Catalogue.Price do
         price_id && product_id ->
           Query.default()
           |> Query.filter_by(%{product_id: product_id, status: "active"})
-          |> Query.except_id(price_id)
+          |> except(id: price_id)
 
         !price_id && product_id ->
           Query.default()
@@ -263,7 +263,7 @@ defmodule BlueJet.Catalogue.Price do
     other_active_or_internal_prices =
       Query.default()
       |> Query.filter_by(%{product_id: product_id, status: ["active", "internal"]})
-      |> Query.except_id(price_id)
+      |> except(id: price_id)
 
     oaip_count = Repo.aggregate(other_active_or_internal_prices, :count, :id)
 

@@ -273,8 +273,8 @@ defmodule BlueJet.Balance.Card do
     last_inserted_card =
       Query.default()
       |> for_account(card.account_id)
+      |> except(id: card.id)
       |> Query.filter_by(filter)
-      |> Query.except_id(card.id)
       |> sort_by(desc: :inserted_at)
       |> Repo.one()
 
