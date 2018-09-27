@@ -10,6 +10,7 @@ developers that want to build their own web layer can have choice of not includi
 the default web layer.
 
 A sneak peak of what will soon be available is in this draft of [Getting Started Guide](https://github.com/freshcom/freshcom-api/wiki/Getting-Started-(Draft))
+Any feedback is highly encourage! (just open an issue).
 
 The new repo freshcom_web will contain only the web layer and depends on freshcom.
 
