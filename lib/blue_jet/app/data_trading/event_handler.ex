@@ -3,7 +3,7 @@ defmodule BlueJet.DataTrading.EventHandler do
 
   @behaviour BlueJet.EventHandler
 
-  def handle_event("identity:account.reset.success", %{account: account = %{mode: "test"}}) do
+  def handle_event("identity:account.reset.success", %{account: %{mode: "test"} = account}) do
     Task.start(fn ->
       Service.delete_all_data_import(%{account: account})
     end)

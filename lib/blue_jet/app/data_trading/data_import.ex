@@ -59,6 +59,30 @@ defmodule BlueJet.DataTrading.DataImport do
   #
   # MARK: Process
   #
+  # TODO: need to move the reset to either service or a different module
+  def process(data_import = %{data_url: data_url, data_type: data_type}, %{action: :insert}) do
+    RemoteCSV.stream(data_url)
+    |> CSV.decode(headers: true)
+    |> Stream.chunk_every(500)
+    |> Enum.each(fn chunk ->
+      start_time = :os.system_time(:milli_seconds)
+
+      {:ok, _} =
+        Repo.transaction(fn ->
+          Enum.each(chunk, fn {:ok, row} ->
+            row
+            |> cleanup_row_value()
+            |> import_resource(data_import.account, data_type)
+          end)
+        end)
+
+      end_time = :os.system_time(:milli_seconds)
+      spent_time = end_time - start_time
+
+      Logger.info("Imported #{length(chunk)} #{data_type} in #{spent_time} ms")
+    end)
+  end
+
   defp cleanup_row_value(row) do
     Enum.reduce(row, %{}, fn {k, v}, acc ->
       case v do
@@ -290,28 +314,5 @@ defmodule BlueJet.DataTrading.DataImport do
 
   defp merge_custom_data(row, json) do
     Map.merge(row, %{"custom_data" => Poison.decode!(json)})
-  end
-
-  def process(data_import = %{data_url: data_url, data_type: data_type}, %{action: :insert}) do
-    RemoteCSV.stream(data_url)
-    |> CSV.decode(headers: true)
-    |> Stream.chunk_every(500)
-    |> Enum.each(fn chunk ->
-      start_time = :os.system_time(:milli_seconds)
-
-      {:ok, _} =
-        Repo.transaction(fn ->
-          Enum.each(chunk, fn {:ok, row} ->
-            row
-            |> cleanup_row_value()
-            |> import_resource(data_import.account, data_type)
-          end)
-        end)
-
-      end_time = :os.system_time(:milli_seconds)
-      spent_time = end_time - start_time
-
-      Logger.info("Imported #{length(chunk)} #{data_type} in #{spent_time} ms")
-    end)
   end
 end

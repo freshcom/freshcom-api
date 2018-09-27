@@ -1,9 +1,26 @@
 defmodule BlueJet.DataTrading.Service do
-  @service Application.get_env(:blue_jet, :data_trading)[:service]
+  use BlueJet, :service
 
-  @callback create_data_import(map, map) :: {:ok, DataImport.t()} | {:error, any}
-  @callback delete_all_data_import(map) :: :ok
+  alias BlueJet.DataTrading.DataImport
 
-  defdelegate create_data_import(fields, opts), to: @service
-  defdelegate delete_all_data_import(opts), to: @service
+  def create_data_import(fields, opts) do
+    account_id = opts[:account_id] || opts[:account].id
+
+    changeset =
+      %DataImport{account_id: account_id, account: opts[:account]}
+      |> DataImport.changeset(:insert, fields)
+
+    case Repo.insert(changeset) do
+      {:ok, data_import} ->
+        Task.start(fn -> DataImport.process(data_import, changeset) end)
+        {:ok, data_import}
+
+      other ->
+        other
+    end
+  end
+
+  def delete_all_data_import(opts) do
+    delete_all(DataImport, opts)
+  end
 end

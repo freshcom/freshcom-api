@@ -1,5 +1,7 @@
 defmodule BlueJet.DataTrading do
   use BlueJet, :context
 
-  def create_data_import(req), do: create("data_import", req, __MODULE__)
+  alias BlueJet.DataTrading.{Policy, Service}
+
+  def create_data_import(req), do: default(req, :create, :data_import, Policy, Service)
 end

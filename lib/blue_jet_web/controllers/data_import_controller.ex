@@ -1,27 +1,12 @@
 defmodule BlueJetWeb.DataImportController do
   use BlueJetWeb, :controller
 
-  alias JaSerializer.Params
   alias BlueJet.DataTrading
+
+  action_fallback BlueJetWeb.FallbackController
 
   plug :scrub_params, "data" when action in [:create, :update]
 
-  def create(conn = %{ assigns: assigns }, %{ "data" => data = %{ "type" => "DataImport" } }) do
-    request = %ContextRequest{
-      vas: assigns[:vas],
-      fields: Params.to_attributes(data),
-      preloads: assigns[:preloads]
-    }
-
-    case DataTrading.create_data_import(request) do
-      {:ok, %ContextResponse{ data: data_import }} ->
-        conn
-        |> put_status(:created)
-        |> render("show.json-api", data: data_import, opts: [include: conn.query_params["include"]])
-      {:error, %ContextResponse{ errors: errors }} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:errors, data: extract_errors(errors))
-    end
-  end
+  def create(conn, %{"data" => %{"type" => "DataImport"}}),
+    do: default(conn, :create, &DataTrading.create_data_import/1)
 end
