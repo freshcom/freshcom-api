@@ -13,6 +13,6 @@ A sneak peak of what will soon be available is in this draft of [Getting Started
 
 The new repo freshcom_web will contain only the web layer and depends on freshcom.
 
-The Web API will not change and the docs in (https://docs.freshcom.io/)[https://docs.freshcom.io/] and (freshcom-api-reference)[https://github.com/freshcom/freshcom-api-reference]
+The Web API will not change and the docs in [https://docs.freshcom.io/](https://docs.freshcom.io/) and [freshcom-api-reference](https://github.com/freshcom/freshcom-api-reference)
 will stay as is and and serve as a reference to what will be available in the beta version. However development for the [Freshcom Dashboard](https://github.com/freshcom/freshcom-dashboard)
 will be slowed down for a bit.
