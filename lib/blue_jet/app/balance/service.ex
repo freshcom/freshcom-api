@@ -1,52 +1,294 @@
 defmodule BlueJet.Balance.Service do
+  use BlueJet, :service
+  use BlueJet.EventEmitter, namespace: :balance
+
+  alias Ecto.Multi
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
 
-  @service Application.get_env(:blue_jet, :balance)[:service]
+  @behaviour BlueJet.Balance.Service
 
-  @callback create_settings(map) :: {:ok, Settings.t()} | {:error, any}
-  @callback get_settings(map) :: Settings.t() | nil
-  @callback update_settings(Settings.t(), map, map) :: {:ok, Settings.t()} | {:error, any}
-  @callback update_settings(map, map) :: {:ok, Settings.t()} | {:error, any}
-  @callback delete_settings(map) :: {:ok, Settings.t()} | {:error, any}
-  @callback delete_settings(Settings.t(), map) :: {:ok, Settings.t()} | {:error, any}
+  #
+  # MARK: Settings
+  #
+  def create_settings(opts) do
+    account_id = extract_account_id(opts)
 
-  @callback list_card(map, map) :: [Card.t()]
-  @callback count_card(map, map) :: integer
-  @callback update_card(String.t() | Card.t(), map, map) :: {:ok, Card.t()} | {:error, any}
-  @callback delete_card(String.t() | Card.t(), map) :: {:ok, Card.t()} | {:error, any}
-  @callback delete_all_card(map) :: :ok
+    %Settings{account_id: account_id}
+    |> Repo.insert()
+  end
 
-  @callback list_payment(map, map) :: [Payment.t()]
-  @callback count_payment(map, map) :: integer
-  @callback create_payment(map, map) :: {:ok, Payment.t()} | {:error, any}
-  @callback get_payment(map, map) :: Payment.t() | nil
-  @callback update_payment(String.t() | Payment.t(), map, map) ::
-              {:ok, Payment.t()} | {:error, any}
-  @callback delete_payment(String.t() | Payment.t(), map) :: {:ok, Payment.t()} | {:error, any}
-  @callback delete_all_payment(map) :: :ok
+  def get_settings(opts) do
+    account_id = extract_account_id(opts)
 
-  @callback create_refund(map, map) :: {:ok, Refund.t()} | {:error, any}
+    Repo.get_by(Settings, account_id: account_id)
+  end
 
-  defdelegate create_settings(opts), to: @service
-  defdelegate get_settings(opts), to: @service
-  defdelegate update_settings(settings, fields, opts), to: @service
-  defdelegate update_settings(fields, opts), to: @service
-  defdelegate delete_settings(opts), to: @service
-  defdelegate delete_settings(settings, opts), to: @service
+  def update_settings(nil, _, _), do: {:error, :not_found}
 
-  defdelegate list_card(params, opts), to: @service
-  defdelegate count_card(params, opts), to: @service
-  defdelegate update_card(id_or_card, fields, opts), to: @service
-  defdelegate delete_card(id_or_card, opts), to: @service
-  defdelegate delete_all_card(opts), to: @service
+  def update_settings(settings, fields, opts) do
+    account = extract_account(opts)
 
-  defdelegate list_payment(params, opts), to: @service
-  defdelegate count_payment(params \\ %{}, opts), to: @service
-  defdelegate create_payment(fields, opts), to: @service
-  defdelegate get_payment(identifiers, opts), to: @service
-  defdelegate update_payment(id_or_payment, fields, opts), to: @service
-  defdelegate delete_payment(id_or_payment, opts), to: @service
-  defdelegate delete_all_payment(opts), to: @service
+    changeset =
+      %{settings | account: account}
+      |> Settings.changeset(:update, fields)
 
-  defdelegate create_refund(fields, opts), to: @service
+    statements =
+      Multi.new()
+      |> Multi.update(:settings, changeset)
+      |> Multi.run(:account, fn %{settings: settings} ->
+        Settings.Proxy.sync_to_account(settings)
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{settings: settings}} ->
+        {:ok, settings}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_settings(fields, opts) do
+    account = extract_account(opts)
+    opts = %{opts | account: account}
+
+    Settings
+    |> Repo.get_by(account_id: account.id)
+    |> update_settings(fields, opts)
+  end
+
+  def delete_settings(opts) do
+    account_id = extract_account_id(opts)
+
+    Settings
+    |> Repo.get_by(account_id: account_id)
+    |> delete_settings(opts)
+  end
+
+  def delete_settings(%Settings{} = settings, _) do
+    with {:ok, settings} <- Repo.delete(settings) do
+      {:ok, settings}
+    else
+      other -> other
+    end
+  end
+
+  #
+  # MARK: Card
+  #
+  def list_card(fields \\ %{}, opts) do
+    list(Card, fields, opts)
+  end
+
+  def count_card(fields \\ %{}, opts) do
+    count(Card, fields, opts)
+  end
+
+  def create_card(fields \\ %{}, opts), do: Card.Service.create_card(fields, opts)
+
+  def update_card(nil, _, _), do: {:error, :not_found}
+
+  def update_card(%Card{} = card, fields, opts) do
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
+
+    changeset =
+      %{card | account: account}
+      |> Card.changeset(:update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.update(:card, changeset)
+      |> Multi.run(:stripe_card, fn %{card: card} ->
+        Card.Proxy.sync_to_stripe_card(card)
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{card: card}} ->
+        card = preload(card, preloads[:path], preloads[:opts])
+        {:ok, card}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_card(identifiers, fields, opts) do
+    get(Card, identifiers, Map.merge(opts, %{preloads: %{}}))
+    |> update_card(fields, opts)
+  end
+
+  def delete_card(nil, _), do: {:error, :not_found}
+
+  def delete_card(%Card{} = card, opts) do
+    account = extract_account(opts)
+
+    changeset =
+      %{card | account: account}
+      |> Card.changeset(:delete)
+
+    statements =
+      Multi.new()
+      |> Multi.delete(:card, changeset)
+      |> Multi.run(:primary_card, fn %{card: card} ->
+        Card.set_new_primary(card)
+      end)
+      |> Multi.run(:stripe_card, fn %{card: card} ->
+        Card.Proxy.delete_stripe_card(card)
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{card: card}} ->
+        {:ok, card}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def delete_card(identifiers, opts) do
+    Card
+    |> get(identifiers, Map.merge(opts, %{preloads: %{}}))
+    |> delete_card(opts)
+  end
+
+  def delete_all_card(opts) do
+    delete_all(Card, opts)
+  end
+
+  #
+  # MARK: Payment
+  #
+  def list_payment(fields \\ %{}, opts) do
+    list(Payment, fields, opts)
+  end
+
+  def count_payment(fields, opts) do
+    count(Payment, fields, opts)
+  end
+
+  def create_payment(fields, opts) do
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
+
+    changeset =
+      %Payment{account_id: account.id, account: account}
+      |> Payment.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.run(:before_create, fn _ ->
+        emit_event("balance:payment.create.before", %{changeset: changeset})
+      end)
+      |> Multi.run(:changeset, fn _ ->
+        Payment.put_stripe_customer_id(changeset)
+      end)
+      |> Multi.run(:payment, fn %{changeset: changeset} ->
+        Repo.insert(changeset)
+      end)
+      |> Multi.run(:processed_payment, fn %{payment: payment, changeset: changeset} ->
+        Payment.process(payment, changeset)
+      end)
+      |> Multi.run(:after_create, fn %{processed_payment: payment} ->
+        emit_event("balance.payment.create.success", %{payment: payment, account: account})
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{processed_payment: payment}} ->
+        payment = preload(payment, preloads[:path], preloads[:opts])
+        {:ok, payment}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def get_payment(identifiers, opts) do
+    get(Payment, identifiers, opts)
+  end
+
+  def update_payment(nil, _, _), do: {:error, :not_found}
+
+  def update_payment(%Payment{} = payment, fields, opts) do
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
+
+    changeset =
+      %{payment | account: account}
+      |> Payment.changeset(:update, fields, opts[:locale])
+
+    statements =
+      Multi.new()
+      |> Multi.update(:payment, changeset)
+      |> Multi.run(:processed_payment, fn %{payment: payment} ->
+        Payment.process(payment, changeset)
+      end)
+      |> Multi.run(:after_update, fn %{processed_payment: payment} ->
+        emit_event("balance.payment.update.success", %{payment: payment, account: account})
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{processed_payment: payment}} ->
+        payment = preload(payment, preloads[:path], preloads[:opts])
+        {:ok, payment}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_payment(identifiers, fields, opts) do
+    get_payment(identifiers, Map.merge(opts, %{preloads: %{}}))
+    |> update_payment(fields, opts)
+  end
+
+  def delete_payment(nil, _), do: {:error, :not_found}
+
+  def delete_payment(%Payment{} = payment, opts) do
+    delete(payment, opts)
+  end
+
+  def delete_payment(identifiers, opts) do
+    get_payment(identifiers, Map.merge(opts, %{preloads: %{}}))
+    |> delete_payment(opts)
+  end
+
+  def delete_all_payment(opts) do
+    delete_all(Payment, opts)
+  end
+
+  #
+  # MARK: Refund
+  #
+  def create_refund(fields, opts) do
+    account = extract_account(opts)
+    preloads = extract_preloads(opts, account)
+
+    changeset =
+      %Refund{account_id: account.id, account: account}
+      |> Refund.changeset(:insert, fields)
+
+    statements =
+      Multi.new()
+      |> Multi.insert(:refund, changeset)
+      |> Multi.run(:processed_refund, fn %{refund: refund} ->
+        Refund.process(refund, changeset)
+      end)
+      |> Multi.run(:after_create, fn %{processed_refund: refund} ->
+        emit_event("balance.refund.create.success", %{refund: refund})
+        {:ok, refund}
+      end)
+
+    case Repo.transaction(statements) do
+      {:ok, %{processed_refund: refund}} ->
+        refund = preload(refund, preloads[:path], preloads[:opts])
+        {:ok, refund}
+
+      {:error, _, changeset, _} ->
+        {:error, changeset}
+
+      other ->
+        other
+    end
+  end
 end

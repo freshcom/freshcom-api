@@ -18,7 +18,7 @@ defmodule BlueJet.Storefront.EventHandler do
 
   # Before a payment is created for an order, we will mark the order as opened.
   # If the payment failed, this will be rolled back automatically.
-  def handle_event("balance.payment.create.before", %{ changeset: changeset = %{ changes: %{ target_type: "Order", target_id: order_id } } }) do
+  def handle_event("balance:payment.create.before", %{ changeset: changeset = %{ changes: %{ target_type: "Order", target_id: order_id } } }) do
     account = Changeset.get_field(changeset, :account)
     order = Service.get_order(%{ id: order_id }, %{ account: account })
 

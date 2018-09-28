@@ -4,13 +4,13 @@ defmodule BlueJet.Balance.Payment.Proxy do
   alias BlueJet.Balance.Payment
   alias BlueJet.Balance.{CRMService, StripeClient}
 
-  @spec get_owner(Payment.t()) :: map
-  def get_owner(payment = %{owner_type: "Customer"}) do
+  @spec get_owner(map) :: map | nil
+  def get_owner(%{owner_type: "Customer"} = payment) do
     account = get_account(payment)
+    identifiers = %{id: payment.owner_id}
+    opts = %{account: account}
 
-    owner =
-      Map.get(payment, :owner) ||
-        CRMService.get_customer(%{id: payment.owner_id}, %{account: account})
+    owner = Map.get(payment, :owner) || CRMService.get_customer(identifiers, opts)
 
     if owner, do: Map.put(owner, :account, account), else: owner
   end

@@ -102,10 +102,11 @@ defmodule BlueJet.Balance.Payment do
     |> put_net_amount_cents()
   end
 
-  def changeset(payment, :update, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(payment, :update, params, locale \\ nil) do
     payment = Proxy.put_account(payment)
-    default_locale = default_locale || payment.account.default_locale
+    default_locale = payment.account.default_locale
     locale = locale || default_locale
+    castable_fields = castable_fields(:update, payment)
 
     payment
     |> cast(params, writable_fields())
@@ -121,6 +122,14 @@ defmodule BlueJet.Balance.Payment do
     |> validate()
   end
 
+  defp castable_fields(:insert), do: writable_fields()
+
+  defp castable_fields(:update, %{gateway: "freshcom"}) do
+    [:captured_amount_cents, :status] ++ translatable_fields()
+  end
+
+  defp castable_fields(:update, _), do: writable_fields()
+
   defp put_gross_amount_cents(changeset = %{changes: %{amount_cents: amount_cents}}) do
     refunded_amount_cents = get_field(changeset, :refunded_amount_cents)
     put_change(changeset, :gross_amount_cents, amount_cents - refunded_amount_cents)
@@ -135,10 +144,7 @@ defmodule BlueJet.Balance.Payment do
     freshcom_fee_cents = get_field(changeset, :freshcom_fee_cents)
     refunded_freshcom_fee_cents = get_field(changeset, :refunded_freshcom_fee_cents)
 
-    net_amount_cents =
-      gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - freshcom_fee_cents +
-        refunded_freshcom_fee_cents
-
+    net_amount_cents = gross_amount_cents - processor_fee_cents + refunded_processor_fee_cents - freshcom_fee_cents + refunded_freshcom_fee_cents
     put_change(changeset, :net_amount_cents, net_amount_cents)
   end
 
@@ -441,12 +447,8 @@ defmodule BlueJet.Balance.Payment do
     end
   end
 
-  defp format_stripe_errors(stripe_errors = %{}) do
-    %{
-      errors: [
-        source: {stripe_errors["error"]["message"], code: stripe_errors["error"]["code"]}
-      ]
-    }
+  defp format_stripe_errors(%{} = stripe_errors) do
+    %{errors: [source: {stripe_errors["error"]["message"], code: stripe_errors["error"]["code"]}]}
   end
 
   defp format_stripe_errors(stripe_errors), do: stripe_errors

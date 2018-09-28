@@ -34,12 +34,10 @@ defmodule BlueJet.Balance.Card do
 
   @system_fields [
     :id,
-    :status,
     :account_id,
     :brand,
     :cardholder_name,
     :stripe_card_id,
-    :stripe_customer_id,
     :fingerprint,
     :last_four_digit,
     :country,
@@ -48,33 +46,30 @@ defmodule BlueJet.Balance.Card do
   ]
 
   def writable_fields do
-    __MODULE__.__schema__(:fields) -- @system_fields
+    (__MODULE__.__schema__(:fields) -- @system_fields) ++ [:source]
   end
 
   def translatable_fields do
     [:custom_data]
   end
 
-  def required_fields() do
-    writable_fields() -- [:cardholder_name, :label]
-  end
-
   @spec changeset(__MODULE__.t(), atom, map) :: Changeset.t()
   def changeset(card, :insert, params) do
     card
-    |> cast(params, writable_fields())
+    |> cast(params, castable_fields(:insert))
     |> Map.put(:action, :insert)
-    |> put_primary()
     |> validate()
+    |> put_primary()
+    |> put_stripe_card_fields()
   end
 
-  def changeset(card, :update, params, locale \\ nil, default_locale \\ nil) do
+  def changeset(card, :update, params, locale \\ nil) do
     card = Proxy.put_account(card)
-    default_locale = default_locale || card.account.default_locale
+    default_locale = card.account.default_locale
     locale = locale || default_locale
 
     card
-    |> cast(params, writable_fields())
+    |> cast(params, castable_fields(:update))
     |> Map.put(:action, :update)
     |> validate()
     |> Translation.put_change(translatable_fields(), locale, default_locale)
@@ -85,15 +80,18 @@ defmodule BlueJet.Balance.Card do
     |> Map.put(:action, :delete)
   end
 
-  def validate(changeset) do
-    changeset
-    |> validate_required(required_fields())
+  def castable_fields(:insert) do
+    writable_fields()
+  end
+
+  def castable_fields(:update) do
+    writable_fields() -- [:source, :stripe_customer_id]
   end
 
   defp put_primary(c = %{changes: %{primary: true}}), do: c
   defp put_primary(c = %{changes: %{primary: false}}), do: delete_change(c, :primary)
 
-  defp put_primary(changeset) do
+  defp put_primary(%{valid?: true} = changeset) do
     owner_id = get_field(changeset, :owner_id)
     owner_type = get_field(changeset, :owner_type)
 
@@ -111,6 +109,48 @@ defmodule BlueJet.Balance.Card do
     else
       changeset
     end
+  end
+
+  defp put_primary(changeset), do: changeset
+
+  defp put_stripe_card_fields(%{valid?: true, changes: %{source: "card" <> _ = scard_id}} = changeset) do
+    account = get_field(changeset, :account)
+    scustomer_id = get_field(changeset, :stripe_customer_id)
+    {:ok, stripe_card} = Proxy.retrieve_stripe_card(scard_id, scustomer_id, mode: account.mode)
+    put_change_from_stripe_card(changeset, stripe_card)
+  end
+
+  defp put_stripe_card_fields(%{valid?: true, changes: %{source: "tok" <> _ = token}} = changeset) do
+    account = get_field(changeset, :account)
+    {:ok, %{"card" => stripe_card}} = Proxy.retrieve_stripe_token(token, mode: account.mode)
+    put_change_from_stripe_card(changeset, stripe_card)
+  end
+
+  defp put_stripe_card_fields(changeset), do: changeset
+
+  defp put_change_from_stripe_card(changeset, stripe_card) do
+    changeset
+    |> put_change(:stripe_card_id, stripe_card["id"])
+    |> put_change(:last_four_digit, stripe_card["last4"])
+    |> put_change(:exp_month, stripe_card["exp_month"])
+    |> put_change(:exp_year, stripe_card["exp_year"])
+    |> put_change(:fingerprint, stripe_card["fingerprint"])
+    |> put_change(:cardholder_name, stripe_card["cardholder_name"])
+    |> put_change(:brand, stripe_card["brand"])
+    |> put_change(:country, stripe_card["country"])
+  end
+
+  def validate(changeset) do
+    required_fields = required_fields(changeset.action)
+    validate_required(changeset, required_fields)
+  end
+
+  defp required_fields(:insert) do
+    [:source, :owner_id, :owner_type]
+  end
+
+  defp required_fields(:update) do
+    []
   end
 
   @doc """
@@ -247,53 +287,4 @@ defmodule BlueJet.Balance.Card do
 
     {:ok, card}
   end
-
-  @doc """
-  Set a new primary card for the owner of the given card.
-
-  If the given card is not a primary card then this function does nothing and
-  immediately returns with `{:ok, given_card}`.
-
-  If the given card is a primary card then this function will pick the most
-  recent inserted card if any and mark it as the new primary card.
-
-  Returns `{:ok, card}` if successful. If a new primary card is marked then
-  `card` will be the new primary card, if nothing is changed then `card` will
-  be the given card.
-  """
-  @spec set_new_primary(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:error, map}
-  def set_new_primary(card = %{primary: true}) do
-    filter = %{
-      status: "saved_by_owner",
-      owner_type: card.owner_type,
-      owner_id: card.owner_id,
-      primary: false
-    }
-
-    last_inserted_card =
-      Query.default()
-      |> for_account(card.account_id)
-      |> except(id: card.id)
-      |> Query.filter_by(filter)
-      |> sort_by(desc: :inserted_at)
-      |> Repo.one()
-
-    if last_inserted_card do
-      Query.default()
-      |> for_account(card.account_id)
-      |> Query.filter_by(%{owner_type: card.owner_type, owner_id: card.owner_id})
-      |> Repo.update_all(set: [primary: false])
-
-      new_primary_card =
-        last_inserted_card
-        |> change(%{primary: true})
-        |> Repo.update!()
-
-      {:ok, new_primary_card}
-    else
-      {:ok, card}
-    end
-  end
-
-  def set_new_primary(card = %{primary: false}), do: {:ok, card}
 end

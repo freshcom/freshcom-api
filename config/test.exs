@@ -59,14 +59,13 @@ config :blue_jet, :event_bus, %{
 #   identity_service: BlueJet.Notification.IdentityServiceMock
 # }
 
-# config :blue_jet, :balance, %{
-#   service: BlueJet.Balance.ServiceMock,
-#   stripe_client: BlueJet.Balance.StripeClientMock,
-#   oauth_client: BlueJet.Balance.OauthClientMock,
-#   identity_service: BlueJet.Balance.IdentityServiceMock,
-#   crm_service: BlueJet.Balance.CRMServiceMock,
-#   listeners: [BlueJet.EventHandlerMock]
-# }
+config :blue_jet, :balance, %{
+  service: BlueJet.Balance.ServiceMock,
+  stripe_client: BlueJet.Balance.StripeClientMock,
+  oauth_client: BlueJet.Balance.OauthClientMock,
+  identity_service: BlueJet.Balance.Identity.Service,
+  crm_service: BlueJet.CRM.Service
+}
 
 # config :blue_jet, :catalogue, %{
 #   service: BlueJet.Catalogue.ServiceMock,

@@ -58,6 +58,11 @@ defmodule BlueJet.Balance.Card.Proxy do
     StripeClient.delete(path, mode: account.mode)
   end
 
+  @spec retrieve_stripe_card(String.t(), String.t(), Keyword.t()) :: {:ok, map} | {:error, map}
+  def retrieve_stripe_card(card_id, customer_id,  options) do
+    StripeClient.get("/customers/#{customer_id}/sources/#{card_id}", options)
+  end
+
   @spec retrieve_stripe_token(String.t(), Keyword.t()) :: {:ok, map} | {:error, map}
   def retrieve_stripe_token(token, options) do
     StripeClient.get("/tokens/#{token}", options)
