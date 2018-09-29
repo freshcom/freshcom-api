@@ -3,6 +3,7 @@ defmodule BlueJet.Balance.Payment.Proxy do
 
   alias BlueJet.Balance.Payment
   alias BlueJet.Balance.{CRMService, StripeClient}
+  alias BlueJet.CRM.Customer
 
   @spec get_owner(map) :: map | nil
   def get_owner(%{owner_type: "Customer"} = payment) do
@@ -17,8 +18,8 @@ defmodule BlueJet.Balance.Payment.Proxy do
 
   def get_owner(_), do: nil
 
-  @spec update_owner(String.t(), map, map) :: {:ok, map} | {:error, map}
-  def update_owner("Customer", customer, fields) do
+  @spec update_owner(struct, map) :: {:ok, map} | {:error, map}
+  def update_owner(%Customer{} = customer, fields) do
     account = get_account(customer)
     CRMService.update_customer(customer, fields, %{account: account})
   end
@@ -56,9 +57,14 @@ defmodule BlueJet.Balance.Payment.Proxy do
     StripeClient.post("/charges", stripe_request, mode: account.mode)
   end
 
-  @spec create_stripe_customer(map, String.t()) :: {:ok, map} | {:error, map}
-  def create_stripe_customer(owner, owner_type) do
+  @spec create_stripe_customer(map) :: {:ok, map} | {:error, map}
+  def create_stripe_customer(owner) do
     account = get_account(owner)
+    owner_type =
+      owner.__struct__
+      |> Atom.to_string()
+      |> String.split(".")
+      |> Enum.at(-1)
 
     StripeClient.post(
       "/customers",

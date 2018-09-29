@@ -29,7 +29,7 @@ defmodule BlueJet.Storefront.EventHandler do
     end
   end
 
-  def handle_event("balance.payment.create.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance:payment.create.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Map.put(:account, account)
@@ -37,7 +37,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, Order.refresh_payment_status(order)}
   end
 
-  def handle_event("balance.payment.update.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance:payment.update.success", %{ account: account, payment: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Map.put(:account, account)
@@ -46,7 +46,7 @@ defmodule BlueJet.Storefront.EventHandler do
     {:ok, order}
   end
 
-  def handle_event("balance.refund.create.success", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
+  def handle_event("balance:refund.create.success", %{ refund: %{ target_type: "Order", target_id: order_id } }) do
     order =
       Repo.get!(Order, order_id)
       |> Order.refresh_payment_status()

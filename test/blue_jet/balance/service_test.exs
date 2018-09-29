@@ -2,20 +2,19 @@ defmodule BlueJet.Balance.ServiceTest do
   use BlueJet.ContextCase
 
   import BlueJet.Balance.TestHelper
+  import BlueJet.CRM.TestHelper
 
   alias BlueJet.Identity.Account
-  alias BlueJet.Balance.{Settings, Card, Payment}
-  alias BlueJet.Balance.{StripeClientMock, OauthClientMock, IdentityServiceMock}
+  alias BlueJet.Balance.{Card, Payment}
+  alias BlueJet.Balance.{StripeClientMock, OauthClientMock}
   alias BlueJet.Balance.Service
 
   describe "get_settings/1" do
     test "when given id" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Settings{
-        account_id: account.id
-      })
+      account = account_fixture()
+      settings_fixture(account)
 
-      assert Service.get_settings(%{ account: account })
+      assert Service.get_settings(%{account: account})
     end
   end
 
@@ -26,10 +25,8 @@ defmodule BlueJet.Balance.ServiceTest do
     end
 
     test "when given settings and valid fields" do
-      account = Repo.insert!(%Account{})
-      settings = Repo.insert!(%Settings{
-        account_id: account.id
-      })
+      account = account_fixture()
+      settings = settings_fixture(account)
 
       stripe_response = %{
         "stripe_user_id" => Faker.Lorem.word(),
@@ -38,85 +35,55 @@ defmodule BlueJet.Balance.ServiceTest do
       OauthClientMock
       |> expect(:post, fn(_, _) -> {:ok, stripe_response} end)
 
-      IdentityServiceMock
-      |> expect(:update_account, fn(account, fields, _) ->
-          assert account == account
-          assert fields[:is_ready_for_live_transaction]
+      fields = %{"stripe_auth_code" => Faker.String.base64(5)}
 
-          {:ok, account}
-         end)
-
-      fields = %{
-        "stripe_auth_code" => Faker.String.base64(5)
-      }
-      {:ok, settings} = Service.update_settings(settings, fields, %{ account: account })
+      {:ok, settings} = Service.update_settings(settings, fields, %{account: account})
 
       assert settings.stripe_user_id == stripe_response["stripe_user_id"]
     end
   end
 
-  describe "list_card/2" do
-    test "file for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: other_account.id, status: "saved_by_owner" })
+  #
+  # MARK: Card
+  #
+  describe "list_card/2 and count_card/2" do
+    setup do
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      cards = Service.list_card(%{ account: account })
+      card_fixture(account1, %{label: "test_card"})
+      card_fixture(account1, %{label: "test_card"})
+      card_fixture(account1, %{label: "test_card"})
+      card_fixture(account1)
+      card_fixture(account1)
+      card_fixture(account1)
+
+      card_fixture(account2, %{label: "test_card"})
+
+      query = %{filter: %{label: "test_card"}}
+
+      %{account: account1, query: query}
+    end
+
+    test "pagination will change the return result", %{account: account, query: query} do
+      cards = Service.list_card(query, %{
+        account: account,
+        pagination: %{size: 2, number: 1}
+      })
+
       assert length(cards) == 2
+
+      cards = Service.list_card(query, %{
+        account: account,
+        pagination: %{size: 2, number: 2}
+      })
+
+      assert length(cards) == 1
     end
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-      Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-
-      files = Service.list_card(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(files) == 3
-
-      files = Service.list_card(%{ account: account, pagination: %{ size: 3, number: 2 } })
-      assert length(files) == 2
-    end
-  end
-
-  describe "count_card/2" do
-    test "card for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: other_account.id, status: "saved_by_owner" })
-
-      assert Service.count_card(%{ account: account }) == 2
-    end
-
-    test "only card matching filter is counted" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Account{})
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner" })
-      Repo.insert!(%Card{ account_id: account.id, status: "saved_by_owner", label: "test" })
-
-      assert Service.count_card(%{ filter: %{ label: "test" } }, %{ account: account }) == 1
+    test "count will change according to query", %{account: account, query: query} do
+      assert Service.count_card(query, %{account: account}) == 3
+      assert Service.count_card(%{account: account}) == 6
     end
   end
 
@@ -130,7 +97,6 @@ defmodule BlueJet.Balance.ServiceTest do
       assert match_keys(changeset.errors, [:source, :owner_id, :owner_type])
     end
 
-    @tag :focus
     test "when given source is a stripe card with the same fingerprint of an existing card by the same owner" do
       account = account_fixture()
       existing_card = card_fixture(account, %{fingerprint: Faker.String.base64(12)})
@@ -167,7 +133,6 @@ defmodule BlueJet.Balance.ServiceTest do
       assert card.country == stripe_card["country"]
     end
 
-    @tag :focus
     test "when given source is a stripe token with the same fingerprint of an existing card by a different owner" do
       account = account_fixture()
       existing_card = card_fixture(account, %{fingerprint: Faker.String.base64(12)})
@@ -208,7 +173,6 @@ defmodule BlueJet.Balance.ServiceTest do
       assert card.country == stripe_card["country"]
     end
 
-    @tag :focus
     test "when given source is a stripe token a new fingerprint" do
       account = account_fixture()
 
@@ -249,190 +213,111 @@ defmodule BlueJet.Balance.ServiceTest do
   end
 
   describe "update_card/2" do
-    test "when given nil for card" do
-      {:error, error} = Service.update_card(nil, %{}, %{})
-      assert error == :not_found
-    end
-
     test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
+      account = %{id: UUID.generate()}
 
-      {:error, error} = Service.update_card(%{ id: UUID.generate() }, %{}, %{ account: account })
-      assert error == :not_found
+      {:error, :not_found} = Service.update_card(%{id: UUID.generate()}, %{}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: other_account.id,
-        status: "saved_by_owner"
-      })
+      account1 = account_fixture()
+      account2 = Repo.insert!(%Account{})
+      card = card_fixture(account2)
 
-      {:error, error} = Service.update_card(%{ id: card.id }, %{}, %{ account: account })
-      assert error == :not_found
+      {:error, :not_found} = Service.update_card(%{id: card.id}, %{}, %{account: account1})
     end
 
     test "when given valid id and invalid fields" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
+      account = account_fixture()
+      card = card_fixture(account)
 
-      {:error, changeset} = Service.update_card(%{ id: card.id }, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
+      {:error, changeset} = Service.update_card(%{id: card.id}, %{"status" => nil}, %{account: account})
+
+      assert match_keys(changeset.errors, [:status])
     end
 
     test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner",
-        exp_year: 2022,
-        owner_id: UUID.generate(),
-        owner_type: "Customer"
-      })
+      account = account_fixture()
+      card = card_fixture(account)
 
       StripeClientMock
       |> expect(:post, fn(_, _, _) -> {:ok, nil} end)
 
-      fields = %{
-        "exp_month" => 11
-      }
+      fields = %{"exp_month" => 11}
 
-      {:ok, card} = Service.update_card(%{ id: card.id }, fields, %{ account: account })
+      {:ok, card} = Service.update_card(%{id: card.id}, fields, %{account: account})
 
-      assert card
-    end
-
-    test "when given card and invalid fields" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
-
-      {:error, changeset} = Service.update_card(card, %{ "status" => nil }, %{ account: account })
-      assert length(changeset.errors) > 0
-    end
-
-    test "when given card and valid fields" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner",
-        exp_year: 2022,
-        owner_id: UUID.generate(),
-        owner_type: "Customer"
-      })
-
-      StripeClientMock
-      |> expect(:post, fn(_, _, _) -> {:ok, nil} end)
-
-      fields = %{
-        "exp_month" => 11
-      }
-
-      {:ok, card} = Service.update_card(card, fields, %{ account: account })
       assert card
     end
   end
 
   describe "delete_card/2" do
-    test "when given valid card" do
-      account = Repo.insert!(%Account{})
-      card = Repo.insert!(%Card{
-        account_id: account.id,
-        status: "saved_by_owner"
-      })
+    test "when given id does not exist" do
+      account = %{id: UUID.generate()}
+
+      {:error, :not_found} = Service.delete_card(%{id: UUID.generate()}, %{account: account})
+    end
+
+    test "when given valid id" do
+      account = account_fixture()
+      card = card_fixture(account)
 
       StripeClientMock
       |> expect(:delete, fn(_, _) -> {:ok, nil} end)
 
-      {:ok, card} = Service.delete_card(card, %{ account: account })
+      {:ok, card} = Service.delete_card(card, %{account: account})
 
-      assert card
       refute Repo.get(Card, card.id)
     end
   end
 
-  describe "list_payment/2" do
-    test "payment for different account is not returned" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: other_account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
+  #
+  # MARK: Payment
+  #
+  describe "list_payment/2 and count_payment/2" do
+    setup do
+      account1 = account_fixture()
+      account2 = account_fixture()
 
-      payments = Service.list_payment(%{ account: account })
-      assert length(payments) == 2
+      payment_fixture(account1, %{label: "test_payment"})
+      payment_fixture(account1, %{label: "test_payment"})
+      payment_fixture(account1, %{label: "test_payment"})
+      payment_fixture(account1)
+      payment_fixture(account1)
+      payment_fixture(account1)
+
+      payment_fixture(account2, %{label: "test_payment"})
+
+      query = %{filter: %{label: "test_payment"}}
+
+      %{account: account1, query: query}
     end
 
-    test "pagination should change result size" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
-      Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "pending",
-        gateway: "freshcom",
-        amount_cents: 500
+    test "pagination will change the return result", %{account: account, query: query} do
+      payments = Service.list_payment(query, %{
+        account: account,
+        pagination: %{size: 2, number: 1}
       })
 
-      payments = Service.list_payment(%{ account: account, pagination: %{ size: 3, number: 1 } })
-      assert length(payments) == 3
-
-      payments = Service.list_payment(%{ account: account, pagination: %{ size: 3, number: 2 } })
       assert length(payments) == 2
+
+      payments = Service.list_payment(query, %{
+        account: account,
+        pagination: %{size: 2, number: 2}
+      })
+
+      assert length(payments) == 1
+    end
+
+    test "count will change according to query", %{account: account, query: query} do
+      assert Service.count_payment(query, %{account: account}) == 3
+      assert Service.count_payment(%{account: account}) == 6
     end
   end
 
   describe "create_payment/2" do
     test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{
-        "gateway" => "freshcom",
-        "processor" => "stripe",
-        "source" => UUID.generate()
-      }
+      account = account_fixture()
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
@@ -440,28 +325,24 @@ defmodule BlueJet.Balance.ServiceTest do
           {:ok, nil}
          end)
 
-      {:error, changeset} = Service.create_payment(fields, %{ account: account })
+      {:error, changeset} = Service.create_payment(%{}, %{account: account})
 
-      assert changeset.valid? == false
+      assert match_keys(changeset.errors, [:status, :gateway, :amount_cents])
     end
 
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
-      Repo.insert!(%Settings{
-        account_id: account.id
-      })
+    test "when given valid fields without owner" do
+      account = account_fixture()
+      settings_fixture(account)
 
-      stripe_charge_id = Faker.String.base64(12)
-      stripe_transfer_id = Faker.String.base64(12)
       stripe_charge = %{
         "captured" => true,
-        "id" => stripe_charge_id,
+        "id" => Faker.String.base64(12),
         "amount" => 500,
         "balance_transaction" => %{
           "fee" => 50
         },
         "transfer" => %{
-          "id" => stripe_transfer_id,
+          "id" => Faker.String.base64(12),
           "amount" => 400
         }
       }
@@ -474,7 +355,7 @@ defmodule BlueJet.Balance.ServiceTest do
           {:ok, nil}
          end)
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.create.success"
+          assert name == "balance:payment.create.success"
           {:ok, nil}
          end)
 
@@ -486,9 +367,77 @@ defmodule BlueJet.Balance.ServiceTest do
         "source" => "tok_" <> UUID.generate()
       }
 
-      {:ok, payment} = Service.create_payment(fields, %{ account: account })
+      {:ok, payment} = Service.create_payment(fields, %{account: account})
 
       assert payment
+      assert payment.amount_cents == fields["amount_cents"]
+      assert payment.status == "paid"
+    end
+
+    test "when given valid fields with owner" do
+      account = account_fixture()
+      customer = customer_fixture(account)
+      settings_fixture(account)
+
+      stripe_customer = %{
+        "id" => Faker.String.base64(12)
+      }
+      stripe_card = %{
+        "last4" => "1231",
+        "exp_month" => 10,
+        "exp_year" => 2025,
+        "fingerprint" => Faker.String.base64(12),
+        "name" => Faker.String.base64(5),
+        "brand" => "visa",
+        "country" => "Canada",
+        "id" => Faker.String.base64(12)
+      }
+      stripe_token = %{
+        "card" => stripe_card
+      }
+      stripe_charge = %{
+        "captured" => true,
+        "id" => Faker.String.base64(12),
+        "amount" => 500,
+        "balance_transaction" => %{
+          "fee" => 50
+        },
+        "transfer" => %{
+          "id" => Faker.String.base64(12),
+          "amount" => 400
+        }
+      }
+      StripeClientMock
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_customer} end)
+      |> expect(:get, fn(_, _) -> {:ok, stripe_token} end)
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_card} end)
+      |> expect(:post, fn(_, _, _) -> {:ok, stripe_charge} end)
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance:payment.create.before"
+          {:ok, nil}
+         end)
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance:payment.create.success"
+          {:ok, nil}
+         end)
+
+      fields = %{
+        "status" => "paid",
+        "gateway" => "freshcom",
+        "processor" => "stripe",
+        "amount_cents" => 500,
+        "source" => "tok_" <> UUID.generate(),
+        "owner_id" => customer.id,
+        "owner_type" => "Customer"
+      }
+
+      {:ok, payment} = Service.create_payment(fields, %{account: account})
+
+      assert payment
+      assert payment.amount_cents == fields["amount_cents"]
+      assert payment.status == "paid"
     end
   end
 
@@ -567,7 +516,7 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.payment.update.success"
+          assert name == "balance:payment.update.success"
           {:ok, nil}
          end)
 
@@ -599,6 +548,9 @@ defmodule BlueJet.Balance.ServiceTest do
     end
   end
 
+  #
+  # MARK: Payment
+  #
   describe "create_refund/2" do
     test "when given invalid fields" do
       account = Repo.insert!(%Account{})
@@ -637,7 +589,7 @@ defmodule BlueJet.Balance.ServiceTest do
 
       EventHandlerMock
       |> expect(:handle_event, fn(name, _) ->
-          assert name == "balance.refund.create.success"
+          assert name == "balance:refund.create.success"
           {:ok, nil}
          end)
 

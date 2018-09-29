@@ -1,26 +1,21 @@
 defmodule BlueJet.Balance.Service do
   use BlueJet, :service
-  use BlueJet.EventEmitter, namespace: :balance
 
-  alias Ecto.Multi
   alias BlueJet.Balance.{Settings, Card, Payment, Refund}
-
-  @behaviour BlueJet.Balance.Service
 
   #
   # MARK: Settings
   #
   def create_settings(opts) do
-    account_id = extract_account_id(opts)
+    account = extract_account(opts)
 
-    %Settings{account_id: account_id}
+    %Settings{account: account, account_id: account.id}
     |> Repo.insert()
   end
 
   def get_settings(opts) do
-    account_id = extract_account_id(opts)
-
-    Repo.get_by(Settings, account_id: account_id)
+    account = extract_account(opts)
+    Repo.get_by(Settings, account_id: account.id)
   end
 
   def update_settings(nil, _, _), do: {:error, :not_found}
@@ -35,9 +30,7 @@ defmodule BlueJet.Balance.Service do
     statements =
       Multi.new()
       |> Multi.update(:settings, changeset)
-      |> Multi.run(:account, fn %{settings: settings} ->
-        Settings.Proxy.sync_to_account(settings)
-      end)
+      |> Multi.run(:account, &Settings.Proxy.sync_to_account(&1[:settings]))
 
     case Repo.transaction(statements) do
       {:ok, %{settings: settings}} ->
@@ -49,19 +42,12 @@ defmodule BlueJet.Balance.Service do
   end
 
   def update_settings(fields, opts) do
-    account = extract_account(opts)
-    opts = %{opts | account: account}
-
-    Settings
-    |> Repo.get_by(account_id: account.id)
+    get_settings(opts)
     |> update_settings(fields, opts)
   end
 
   def delete_settings(opts) do
-    account_id = extract_account_id(opts)
-
-    Settings
-    |> Repo.get_by(account_id: account_id)
+    get_settings(opts)
     |> delete_settings(opts)
   end
 
@@ -76,193 +62,31 @@ defmodule BlueJet.Balance.Service do
   #
   # MARK: Card
   #
-  def list_card(fields \\ %{}, opts) do
-    list(Card, fields, opts)
-  end
-
-  def count_card(fields \\ %{}, opts) do
-    count(Card, fields, opts)
-  end
-
-  def create_card(fields \\ %{}, opts), do: Card.Service.create_card(fields, opts)
-
-  def update_card(nil, _, _), do: {:error, :not_found}
-
-  def update_card(%Card{} = card, fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
-
-    changeset =
-      %{card | account: account}
-      |> Card.changeset(:update, fields, opts[:locale])
-
-    statements =
-      Multi.new()
-      |> Multi.update(:card, changeset)
-      |> Multi.run(:stripe_card, fn %{card: card} ->
-        Card.Proxy.sync_to_stripe_card(card)
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{card: card}} ->
-        card = preload(card, preloads[:path], preloads[:opts])
-        {:ok, card}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def update_card(identifiers, fields, opts) do
-    get(Card, identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_card(fields, opts)
-  end
-
-  def delete_card(nil, _), do: {:error, :not_found}
-
-  def delete_card(%Card{} = card, opts) do
-    account = extract_account(opts)
-
-    changeset =
-      %{card | account: account}
-      |> Card.changeset(:delete)
-
-    statements =
-      Multi.new()
-      |> Multi.delete(:card, changeset)
-      |> Multi.run(:primary_card, fn %{card: card} ->
-        Card.set_new_primary(card)
-      end)
-      |> Multi.run(:stripe_card, fn %{card: card} ->
-        Card.Proxy.delete_stripe_card(card)
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{card: card}} ->
-        {:ok, card}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def delete_card(identifiers, opts) do
-    Card
-    |> get(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_card(opts)
-  end
-
-  def delete_all_card(opts) do
-    delete_all(Card, opts)
-  end
+  defdelegate list_card(query \\ %{}, opts), to: Card.Service
+  defdelegate count_card(query \\ %{}, opts), to: Card.Service
+  defdelegate create_card(fields, opts), to: Card.Service
+  defdelegate get_card(identifiers, opts), to: Card.Service
+  defdelegate update_card(identifiers_or_card, fields, opts), to: Card.Service
+  defdelegate delete_card(identifiers_or_card, opts), to: Card.Service
+  defdelegate delete_all_card(opts), to: Card.Service
 
   #
   # MARK: Payment
   #
-  def list_payment(fields \\ %{}, opts) do
-    list(Payment, fields, opts)
-  end
-
-  def count_payment(fields, opts) do
-    count(Payment, fields, opts)
-  end
-
-  def create_payment(fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
-
-    changeset =
-      %Payment{account_id: account.id, account: account}
-      |> Payment.changeset(:insert, fields)
-
-    statements =
-      Multi.new()
-      |> Multi.run(:before_create, fn _ ->
-        emit_event("balance:payment.create.before", %{changeset: changeset})
-      end)
-      |> Multi.run(:changeset, fn _ ->
-        Payment.put_stripe_customer_id(changeset)
-      end)
-      |> Multi.run(:payment, fn %{changeset: changeset} ->
-        Repo.insert(changeset)
-      end)
-      |> Multi.run(:processed_payment, fn %{payment: payment, changeset: changeset} ->
-        Payment.process(payment, changeset)
-      end)
-      |> Multi.run(:after_create, fn %{processed_payment: payment} ->
-        emit_event("balance.payment.create.success", %{payment: payment, account: account})
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{processed_payment: payment}} ->
-        payment = preload(payment, preloads[:path], preloads[:opts])
-        {:ok, payment}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def get_payment(identifiers, opts) do
-    get(Payment, identifiers, opts)
-  end
-
-  def update_payment(nil, _, _), do: {:error, :not_found}
-
-  def update_payment(%Payment{} = payment, fields, opts) do
-    account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
-
-    changeset =
-      %{payment | account: account}
-      |> Payment.changeset(:update, fields, opts[:locale])
-
-    statements =
-      Multi.new()
-      |> Multi.update(:payment, changeset)
-      |> Multi.run(:processed_payment, fn %{payment: payment} ->
-        Payment.process(payment, changeset)
-      end)
-      |> Multi.run(:after_update, fn %{processed_payment: payment} ->
-        emit_event("balance.payment.update.success", %{payment: payment, account: account})
-      end)
-
-    case Repo.transaction(statements) do
-      {:ok, %{processed_payment: payment}} ->
-        payment = preload(payment, preloads[:path], preloads[:opts])
-        {:ok, payment}
-
-      {:error, _, changeset, _} ->
-        {:error, changeset}
-    end
-  end
-
-  def update_payment(identifiers, fields, opts) do
-    get_payment(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> update_payment(fields, opts)
-  end
-
-  def delete_payment(nil, _), do: {:error, :not_found}
-
-  def delete_payment(%Payment{} = payment, opts) do
-    delete(payment, opts)
-  end
-
-  def delete_payment(identifiers, opts) do
-    get_payment(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_payment(opts)
-  end
-
-  def delete_all_payment(opts) do
-    delete_all(Payment, opts)
-  end
+  defdelegate list_payment(query \\ %{}, opts), to: Payment.Service
+  defdelegate count_payment(query \\ %{}, opts), to: Payment.Service
+  defdelegate create_payment(fields, opts), to: Payment.Service
+  defdelegate get_payment(identifiers, opts), to: Payment.Service
+  defdelegate update_payment(identifiers_or_payment, fields, opts), to: Payment.Service
+  defdelegate delete_payment(identifiers_or_payment, opts), to: Payment.Service
+  defdelegate delete_all_payment(opts), to: Payment.Service
 
   #
   # MARK: Refund
   #
   def create_refund(fields, opts) do
     account = extract_account(opts)
-    preloads = extract_preloads(opts, account)
+    preload = extract_preload(opts)
 
     changeset =
       %Refund{account_id: account.id, account: account}
@@ -270,19 +94,14 @@ defmodule BlueJet.Balance.Service do
 
     statements =
       Multi.new()
-      |> Multi.insert(:refund, changeset)
-      |> Multi.run(:processed_refund, fn %{refund: refund} ->
-        Refund.process(refund, changeset)
-      end)
-      |> Multi.run(:after_create, fn %{processed_refund: refund} ->
-        emit_event("balance.refund.create.success", %{refund: refund})
-        {:ok, refund}
-      end)
+      |> Multi.insert(:initial_refund, changeset)
+      |> Multi.run(:process_refund, &process_refund(&1[:initial_refund]))
+      |> Multi.run(:refund, &sync_to_payment(&1[:process_refund]))
+      |> Multi.run(:_dispatch, &dispatch("balance:refund.create.success", %{refund: &1[:refund]}, force_ok: true))
 
     case Repo.transaction(statements) do
-      {:ok, %{processed_refund: refund}} ->
-        refund = preload(refund, preloads[:path], preloads[:opts])
-        {:ok, refund}
+      {:ok, %{refund: refund}} ->
+        {:ok, preload(refund, preload[:paths], preload[:opts])}
 
       {:error, _, changeset, _} ->
         {:error, changeset}
@@ -291,4 +110,78 @@ defmodule BlueJet.Balance.Service do
         other
     end
   end
+
+  defp process_refund(%{gateway: "freshcom"} = refund) do
+    with {:ok, stripe_refund} <- Refund.Proxy.create_stripe_refund(refund),
+         {:ok, stripe_transfer_reversal} <- Refund.Proxy.create_stripe_transfer_reversal(refund, stripe_refund) do
+      sync_from_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal)
+    else
+      {:error, stripe_errors} ->
+        {:error, format_stripe_errors(stripe_errors)}
+
+      other ->
+        other
+    end
+  end
+
+  defp process_refund(refund), do: {:ok, refund}
+
+  defp sync_from_stripe_refund_and_transfer_reversal(refund, stripe_refund, stripe_transfer_reversal) do
+    processor_fee_cents = -stripe_refund["balance_transaction"]["fee"]
+    freshcom_fee_cents = refund.amount_cents - stripe_transfer_reversal["amount"] - processor_fee_cents
+
+    refund =
+      refund
+      |> change(
+        stripe_refund_id: stripe_refund["id"],
+        stripe_transfer_reversal_id: stripe_transfer_reversal["id"],
+        processor_fee_cents: processor_fee_cents,
+        freshcom_fee_cents: freshcom_fee_cents,
+        status: stripe_refund["status"]
+      )
+      |> Repo.update!()
+
+    {:ok, refund}
+  end
+
+  defp sync_to_payment(refund) do
+    payment = Repo.get(Payment, refund.payment_id)
+
+    refunded_amount_cents = payment.refunded_amount_cents + refund.amount_cents
+    refunded_processor_fee_cents =  payment.refunded_processor_fee_cents + refund.processor_fee_cents
+    refunded_freshcom_fee_cents = payment.refunded_freshcom_fee_cents + refund.freshcom_fee_cents
+
+    gross_amount_cents = payment.amount_cents - refunded_amount_cents
+
+    net_amount_cents =
+      gross_amount_cents - payment.processor_fee_cents + refunded_processor_fee_cents -
+      payment.freshcom_fee_cents + refunded_freshcom_fee_cents
+
+    payment_status =
+      cond do
+        refunded_amount_cents >= payment.amount_cents -> "refunded"
+        refunded_amount_cents > 0 -> "partially_refunded"
+        true -> payment.status
+      end
+
+    payment =
+      payment
+      |> change(
+        status: payment_status,
+        refunded_amount_cents: refunded_amount_cents,
+        refunded_processor_fee_cents: refunded_processor_fee_cents,
+        refunded_freshcom_fee_cents: refunded_freshcom_fee_cents,
+        gross_amount_cents: gross_amount_cents,
+        net_amount_cents: net_amount_cents
+      )
+      |> Repo.update!()
+
+    {:ok, %{refund | payment: payment}}
+  end
+
+  defp format_stripe_errors(%{} = stripe_errors) do
+    %{errors: [source: {stripe_errors["error"]["message"], code: stripe_errors["error"]["code"]}]}
+  end
+
+  defp format_stripe_errors(stripe_errors), do: stripe_errors
 end

@@ -3,7 +3,22 @@ defmodule BlueJet.Balance.TestHelper do
   alias Ecto.UUID
   alias BlueJet.Repo
   alias BlueJet.Balance.Service
-  alias BlueJet.Balance.Card
+  alias BlueJet.Balance.{Card, Payment}
+
+  def payment_fixture(account, fields \\ %{}) do
+    default_fields = %{
+      account_id: account.id,
+      status: "paid",
+      gateway: "freshcom",
+      amount_cents: System.unique_integer([:positive])
+    }
+
+    fields = Map.merge(default_fields, fields)
+
+    %Payment{}
+    |> change(fields)
+    |> Repo.insert!()
+  end
 
   def card_fixture(account, fields \\ %{}) do
     default_fields = %{
@@ -22,5 +37,11 @@ defmodule BlueJet.Balance.TestHelper do
     %Card{}
     |> change(fields)
     |> Repo.insert!()
+  end
+
+  def settings_fixture(account) do
+    {:ok, settings} = Service.create_settings(%{account: account})
+
+    settings
   end
 end

@@ -1,4 +1,6 @@
 defmodule BlueJet.Balance.Card.Service do
+  @moduledoc false
+
   use BlueJet, :service
 
   alias BlueJet.Balance.Card
@@ -10,6 +12,7 @@ defmodule BlueJet.Balance.Card.Service do
   @spec count_card(map, map) :: integer
   def count_card(query \\ %{}, opts), do: default_count(Query, query, opts)
 
+  @spec create_card(map, map) :: {:ok, Card.t()} | {:error, %{errors: keyword}}
   def create_card(fields, opts) do
     account = extract_account(opts)
     preload = extract_preload(opts)
@@ -22,8 +25,8 @@ defmodule BlueJet.Balance.Card.Service do
       {:ok, card} ->
         {:ok, preload(card, preload[:paths], preload[:opts])}
 
-      {:error, changeset} ->
-        {:error, changeset}
+      other ->
+        other
     end
   end
 
@@ -94,17 +97,12 @@ defmodule BlueJet.Balance.Card.Service do
       %{card | account: account}
       |> Card.changeset(:update, fields, opts[:locale])
 
-    statements =
-      Multi.new()
-      |> Multi.update(:card, changeset)
-      |> Multi.run(:stripe_card, &Proxy.sync_to_stripe_card(&1[:card]))
-
-    case Repo.transaction(statements) do
-      {:ok, %{card: card}} ->
+    case do_update_card(changeset) do
+      {:ok, card} ->
         {:ok, preload(card, preload[:paths], preload[:opts])}
 
-      {:error, _, changeset, _} ->
-        {:error, changeset}
+      other ->
+        other
     end
   end
 

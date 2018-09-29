@@ -16,7 +16,7 @@ defmodule BlueJet.Balance.Settings.Proxy do
     sync_to_account(settings, account)
   end
 
-  defp sync_to_account(_, account = %{mode: "test"}), do: {:ok, account}
+  defp sync_to_account(_, %{mode: "test"} = account), do: {:ok, account}
 
   defp sync_to_account(settings, account) do
     if settings.stripe_livemode do

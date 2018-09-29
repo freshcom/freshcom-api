@@ -5,6 +5,13 @@ defmodule BlueJet.EventBus do
 
   def dispatch(_, _, skip: true), do: {:ok, :skipped}
 
+  def dispatch(name, data, force_ok: true) do
+    case dispatch(name, data) do
+      {:error, _} -> {:ok, nil}
+      other -> other
+    end
+  end
+
   def dispatch(name, data, _) do
     subscribers = (@subscribers[name] || []) ++ (@subscribers["*"] || [])
 
