@@ -6,11 +6,13 @@ defmodule BlueJet.Balance.TestHelper do
   alias BlueJet.Balance.{Card, Payment}
 
   def payment_fixture(account, fields \\ %{}) do
+    amount_cents = System.unique_integer([:positive])
     default_fields = %{
       account_id: account.id,
       status: "paid",
       gateway: "freshcom",
-      amount_cents: System.unique_integer([:positive])
+      amount_cents: amount_cents,
+      gross_amount_cents: amount_cents
     }
 
     fields = Map.merge(default_fields, fields)

@@ -5,7 +5,7 @@ defmodule BlueJet.Balance.Card.Query do
 
   alias BlueJet.Balance.Card
 
-  def identifiable_fields, do: [:id, :status]
+  def identifiable_fields, do: [:id, :status, :owner_id, :owner_type]
   def filterable_fields, do: [:id, :status, :name, :label, :last_four_digit, :owner_id, :owner_type, :primary]
   def searchable_fields, do: []
 

@@ -1,6 +1,8 @@
 defmodule BlueJet.Identity do
   use BlueJet, :context
 
+  import BlueJet.ControlFlow
+
   alias BlueJet.Identity.{Policy, Service}
 
   #
@@ -21,10 +23,10 @@ defmodule BlueJet.Identity do
   #
   def get_account(req) do
     Policy.authorize(req, :get_account)
-    |> do_get_account()
+    ~>> do_get_account()
   end
 
-  defp do_get_account({:ok, req}) do
+  defp do_get_account(req) do
     account = Translation.translate(req._vad_.account, req.locale, req._default_locale_)
     response = %ContextResponse{data: account, meta: %{locale: req.locale}}
 
@@ -35,10 +37,10 @@ defmodule BlueJet.Identity do
 
   def update_account(req) do
     Policy.authorize(req, :update_account)
-    |> do_update_account()
+    ~>> do_update_account()
   end
 
-  defp do_update_account({:ok, req}) do
+  defp do_update_account(req) do
     resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
 
     Service.update_account(req._vad_.account, req.fields, %{locale: req.locale})
@@ -51,10 +53,10 @@ defmodule BlueJet.Identity do
 
   def reset_account(req) do
     Policy.authorize(req, :reset_account)
-    |> do_reset_account()
+    ~>> do_reset_account()
   end
 
-  defp do_reset_account({:ok, req}) do
+  defp do_reset_account(req) do
     resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
 
     Service.reset_account(req._vad_.account)
@@ -101,10 +103,10 @@ defmodule BlueJet.Identity do
   #
   def get_refresh_token(req) do
     Policy.authorize(req, :get_refresh_token)
-    |> do_get_refresh_token()
+    ~>> do_get_refresh_token()
   end
 
-  defp do_get_refresh_token({:ok, req}) do
+  defp do_get_refresh_token(req) do
     resp = ContextResponse.put_meta(%ContextResponse{}, :locale, req.locale)
 
     Service.get_refresh_token(%{account: req._vad_.account})

@@ -6,6 +6,9 @@ defmodule BlueJet.Balance.Service do
   #
   # MARK: Settings
   #
+
+  @doc false
+  @spec create_settings(map) :: {:ok, Settings.t()}
   def create_settings(opts) do
     account = extract_account(opts)
 
@@ -13,13 +16,16 @@ defmodule BlueJet.Balance.Service do
     |> Repo.insert()
   end
 
+  @spec get_settings(map) :: Settings.t() | nil
   def get_settings(opts) do
     account = extract_account(opts)
     Repo.get_by(Settings, account_id: account.id)
   end
 
+  @spec update_settings(nil, map, map) :: {:error, :not_found}
   def update_settings(nil, _, _), do: {:error, :not_found}
 
+  @spec update_settings(Settings.t(), map, map) :: {:ok, Settings.t()} | {:error, %{errors: keyword}}
   def update_settings(settings, fields, opts) do
     account = extract_account(opts)
 
@@ -41,22 +47,27 @@ defmodule BlueJet.Balance.Service do
     end
   end
 
+  @spec update_settings(map, map, map) :: {:ok, Settings.t()} | {:error, %{errors: keyword}} | {:error, :not_found}
   def update_settings(fields, opts) do
     get_settings(opts)
     |> update_settings(fields, opts)
   end
 
-  def delete_settings(opts) do
-    get_settings(opts)
-    |> delete_settings(opts)
-  end
-
-  def delete_settings(%Settings{} = settings, _) do
+  @doc false
+  @spec delete_settings(Settings.t()) :: {:ok, Settings.t()} | {:error, %{errors: keyword}}
+  def delete_settings(%Settings{} = settings) do
     with {:ok, settings} <- Repo.delete(settings) do
       {:ok, settings}
     else
       other -> other
     end
+  end
+
+  @doc false
+  @spec delete_settings(map) :: {:ok, Settings.t()} | {:error, %{errors: keyword}} | {:error, :not_found}
+  def delete_settings(opts) do
+    get_settings(opts)
+    |> delete_settings()
   end
 
   #

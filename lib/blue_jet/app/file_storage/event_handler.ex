@@ -1,4 +1,6 @@
 defmodule BlueJet.FileStorage.EventHandler do
+  @moduledoc false
+
   alias BlueJet.FileStorage.Service
 
   @behaviour BlueJet.EventHandler

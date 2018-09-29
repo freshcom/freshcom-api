@@ -68,6 +68,8 @@ defmodule BlueJet.Balance.Card.Service do
   end
 
   defp do_create_card(changeset) do
+    changeset = put_stripe_customer_id(changeset)
+
     statements =
       Multi.new()
       |> Multi.insert(:card, changeset)
@@ -81,6 +83,35 @@ defmodule BlueJet.Balance.Card.Service do
         {:error, changeset}
     end
   end
+
+  defp put_stripe_customer_id(%{valid?: true} = changeset) do
+    identifiers = %{
+      account: get_field(changeset, :account),
+      owner_id: get_field(changeset, :owner_id),
+      owner_type: get_field(changeset, :owner_type)
+    }
+    owner = Proxy.get_owner(identifiers)
+
+    if owner do
+      {:ok, owner} = ensure_stripe_customer_id(owner)
+      put_change(changeset, :stripe_customer_id, owner.stripe_customer_id)
+    else
+      changeset
+    end
+  end
+
+  defp put_stripe_customer_id(changeset), do: changeset
+
+  defp ensure_stripe_customer_id(%{stripe_customer_id: nil} = owner) do
+    with {:ok, scustomer} <- Proxy.create_stripe_customer(owner),
+         {:ok, owner} <- Proxy.update_owner(owner, %{stripe_customer_id: scustomer["id"]}) do
+      {:ok, owner}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp ensure_stripe_customer_id(owner), do: owner
 
   @spec get_card(map, map) :: Card.t() | nil
   def get_card(identifiers, opts), do: default_get(Query, identifiers, opts)

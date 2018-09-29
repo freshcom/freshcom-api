@@ -8,14 +8,20 @@ defmodule BlueJet.Balance.Payment.Service do
   alias BlueJet.Balance.{Payment, Settings}
   alias BlueJet.Balance.Payment.{Query, Proxy}
 
+  @doc """
+  List all payments satisfying the given `query`.
+  """
   @spec list_payment(map, map) :: [Payment.t()]
   def list_payment(query \\ %{}, opts), do: default_list(Query, query, opts)
 
+  @doc """
+  Return the number of payments satisfying the given `query`.
+  """
   @spec count_payment(map, map) :: integer
   def count_payment(query \\ %{}, opts), do: default_count(Query, query, opts)
 
   @doc """
-  Creates a payment.
+  Create a payment.
 
   Depending on the fields that are passed in a corresponding card may also be created.
   """
@@ -33,8 +39,7 @@ defmodule BlueJet.Balance.Payment.Service do
       |> Multi.run(:before_create, fn(_) ->
         dispatch("balance:payment.create.before", %{changeset: changeset})
       end)
-      |> Multi.run(:changeset, fn(_) -> put_stripe_customer_id(changeset) end)
-      |> Multi.run(:initial_payment, &Repo.insert(&1[:changeset]))
+      |> Multi.insert(:initial_payment, changeset)
       |> Multi.run(:payment, &charge_payment(&1[:initial_payment]))
       |> Multi.run(:_dispatch, fn %{payment: payment} ->
         dispatch("balance:payment.create.success", %{payment: payment, account: account})
@@ -50,45 +55,17 @@ defmodule BlueJet.Balance.Payment.Service do
     end
   end
 
-  defp put_stripe_customer_id(%{valid?: true} = changeset) do
-    identifiers = %{
-      account: get_field(changeset, :account),
-      owner_id: get_field(changeset, :owner_id),
-      owner_type: get_field(changeset, :owner_type)
-    }
-    owner = Proxy.get_owner(identifiers)
-
-    changeset = if owner do
-      {:ok, owner} = ensure_stripe_customer_id(owner)
-      put_change(changeset, :stripe_customer_id, owner.id)
-    else
-      changeset
-    end
-
-    {:ok, changeset}
-  end
-
-  defp put_stripe_customer_id(changeset), do: {:error, changeset}
-
-  defp ensure_stripe_customer_id(%{stripe_customer_id: nil} = owner) do
-    with {:ok, scustomer} <- Proxy.create_stripe_customer(owner),
-         {:ok, owner} <- Proxy.update_owner(owner, %{stripe_customer_id: scustomer["id"]}) do
-      {:ok, owner}
-    else
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp ensure_stripe_customer_id(owner), do: owner
-
   @doc """
   Charge the payment through Stripe.
 
   If the payment has `:owner_id` and `:owner_type` set then this function will
   also create a card using the `:source` of the payment.
 
-  Note that this function will create a card regardless of the `:save_source`
-  fields. The `:save_source` will however effect the status of the resulting card,
+  This function will create a card regardless of the `:save_source` fields.
+  This is becuase in order to associate a stripe charge to a stripe customer,
+  the source of that charge must be a card of that stripe customer.
+
+  The `:save_source` will however effect the status of the resulting card,
   if `:save_source` is `true` then the status of the created card will be
   `"saved_by_owner"` otherwise it will be `"kept_by_system"`.
   """
@@ -122,6 +99,7 @@ defmodule BlueJet.Balance.Payment.Service do
     payment = Payment.put_destination_amount_cents(payment, settings)
 
     with {:ok, card} <- create_card(card_fields, %{account: payment.account}),
+         payment <- %{payment | stripe_customer_id: card.stripe_customer_id },
          {:ok, stripe_charge} <- Proxy.create_stripe_charge(payment, card.stripe_card_id, stripe_user_id) do
       sync_from_stripe_charge(payment, stripe_charge)
     else
@@ -184,9 +162,15 @@ defmodule BlueJet.Balance.Payment.Service do
 
   defp format_stripe_errors(stripe_errors), do: stripe_errors
 
+  @doc """
+  Retrieve a payment.
+  """
   @spec get_payment(map, map) :: Payment.t() | nil
   def get_payment(identifiers, opts), do: default_get(Query, identifiers, opts)
 
+  @doc """
+  Update a payment.
+  """
   @spec update_payment(nil, map, map) :: {:error, :not_found}
   def update_payment(nil, _, _), do: {:error, :not_found}
 
@@ -203,7 +187,7 @@ defmodule BlueJet.Balance.Payment.Service do
       Multi.new()
       |> Multi.update(:initial_payment, changeset)
       |> Multi.run(:payment, fn(%{initial_payment: payment}) ->
-        if Payment.is_capturable?(payment) do
+        if Payment.capturable?(payment) do
           capture_payment(payment)
         else
           {:ok, payment}
@@ -231,7 +215,7 @@ defmodule BlueJet.Balance.Payment.Service do
   @doc """
   Capture a payment.
 
-  If the given payment is not a capturable payment this function will immediately return `{:ok, payment}`.
+  Only payment with `:status` set to  `"authorized"` can be captured.
   """
   @spec capture_payment(Payment.t()) :: {:ok, Payment.t()} | {:error, %{errors: keyword}}
   def capture_payment(%{gateway: "freshcom", status: "authorized"} = payment) do
@@ -252,18 +236,22 @@ defmodule BlueJet.Balance.Payment.Service do
     end
   end
 
-  def delete_payment(nil, _), do: {:error, :not_found}
+  @doc """
+  Delete a payment.
 
-  def delete_payment(%Payment{} = payment, opts) do
-    delete(payment, opts)
-  end
+  Payment that have gateway set to `"freshcom"` cannot be deleted.
+  """
+  @spec delete_payment(Payment.t(), map) :: {:ok, Payment.t()} | {:error, %{errors: keyword}}
+  def delete_payment(%Payment{} = payment, opts), do: default_delete(payment, opts)
 
-  def delete_payment(identifiers, opts) do
-    get_payment(identifiers, Map.merge(opts, %{preloads: %{}}))
-    |> delete_payment(opts)
-  end
+  @spec delete_payment(map, map) :: {:ok, Payment.t()} | {:error, %{errors: keyword}} | {:error, :not_found}
+  def delete_payment(identifiers, opts), do: default_delete(identifiers, opts, &get_payment/2)
 
-  def delete_all_payment(opts) do
-    delete_all(Payment, opts)
-  end
+  @doc """
+  Delete all payments.
+
+  The provided account in `opts` must be in test mode.
+  """
+  @spec delete_all_payment(map) :: :ok
+  def delete_all_payment(opts), do: default_delete_all(Query, opts)
 end

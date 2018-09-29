@@ -2,27 +2,7 @@ defmodule BlueJet.Balance.Payment.Proxy do
   use BlueJet, :proxy
 
   alias BlueJet.Balance.Payment
-  alias BlueJet.Balance.{CRMService, StripeClient}
-  alias BlueJet.CRM.Customer
-
-  @spec get_owner(map) :: map | nil
-  def get_owner(%{owner_type: "Customer"} = payment) do
-    account = get_account(payment)
-    identifiers = %{id: payment.owner_id}
-    opts = %{account: account}
-
-    owner = Map.get(payment, :owner) || CRMService.get_customer(identifiers, opts)
-
-    if owner, do: Map.put(owner, :account, account), else: owner
-  end
-
-  def get_owner(_), do: nil
-
-  @spec update_owner(struct, map) :: {:ok, map} | {:error, map}
-  def update_owner(%Customer{} = customer, fields) do
-    account = get_account(customer)
-    CRMService.update_customer(customer, fields, %{account: account})
-  end
+  alias BlueJet.Balance.StripeClient
 
   @spec create_stripe_charge(Payment.t(), String.t(), Settings.t()) :: {:ok, map} | {:error, map}
   def create_stripe_charge(
@@ -55,25 +35,6 @@ defmodule BlueJet.Balance.Payment.Proxy do
 
     account = get_account(payment)
     StripeClient.post("/charges", stripe_request, mode: account.mode)
-  end
-
-  @spec create_stripe_customer(map) :: {:ok, map} | {:error, map}
-  def create_stripe_customer(owner) do
-    account = get_account(owner)
-    owner_type =
-      owner.__struct__
-      |> Atom.to_string()
-      |> String.split(".")
-      |> Enum.at(-1)
-
-    StripeClient.post(
-      "/customers",
-      %{
-        owner_email: owner.email,
-        metadata: %{owner_id: owner.id, owner_type: owner_type, owner_name: owner.name}
-      },
-      mode: account.mode
-    )
   end
 
   @spec capture_stripe_charge(Payment.t()) :: {:ok, map} | {:error, map}

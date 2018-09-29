@@ -9,6 +9,5 @@ defmodule BlueJet.Goods.IdentityService do
 
   defdelegate get_vad(vas), to: @identity_service
   defdelegate get_role(vad), to: @identity_service
-
   defdelegate get_account(id_or_struct), to: @identity_service
 end

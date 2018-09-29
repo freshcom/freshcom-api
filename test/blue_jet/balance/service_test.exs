@@ -94,7 +94,7 @@ defmodule BlueJet.Balance.ServiceTest do
       {:error, changeset} = Service.create_card(%{}, %{account: account})
 
       assert changeset.valid? == false
-      assert match_keys(changeset.errors, [:source, :owner_id, :owner_type])
+      assert match_keys(changeset.errors, [:source, :owner_id, :owner_type, :status])
     end
 
     test "when given source is a stripe card with the same fingerprint of an existing card by the same owner" do
@@ -212,7 +212,7 @@ defmodule BlueJet.Balance.ServiceTest do
     end
   end
 
-  describe "update_card/2" do
+  describe "update_card/3" do
     test "when given id does not exist" do
       account = %{id: UUID.generate()}
 
@@ -442,74 +442,43 @@ defmodule BlueJet.Balance.ServiceTest do
   end
 
   describe "get_payment/2" do
-    test "when given id" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
+    test "when given valid id" do
+      account = account_fixture()
+      payment = payment_fixture(account)
 
-      assert Service.get_payment(%{ id: payment.id }, %{ account: account })
+      assert Service.get_payment(%{id: payment.id}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: other_account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      payment = payment_fixture(account2)
 
-      refute Service.get_payment(%{ id: payment.id }, %{ account: account })
-    end
-
-    test "when give id does not exist" do
-      account = Repo.insert!(%Account{})
-
-      refute Service.get_payment(%{ id: UUID.generate() }, %{ account: account })
+      refute Service.get_payment(%{id: payment.id}, %{account: account1})
     end
   end
 
-  describe "update_payment/2" do
+  describe "update_payment/3" do
     test "when given nil for payment" do
-      {:error, error} = Service.update_payment(nil, %{}, %{})
-      assert error == :not_found
+      {:error, :not_found} = Service.update_payment(nil, %{}, %{})
     end
 
     test "when given id does not exist" do
-      account = Repo.insert!(%Account{})
-
-      {:error, error} = Service.update_payment(%{ id: UUID.generate() }, %{}, %{ account: account })
-      assert error == :not_found
+      account = %{id: UUID.generate()}
+      {:error, :not_found} = Service.update_payment(%{id: UUID.generate()}, %{}, %{account: account})
     end
 
     test "when given id belongs to a different account" do
-      account = Repo.insert!(%Account{})
-      other_account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: other_account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 500
-      })
+      account1 = account_fixture()
+      account2 = account_fixture()
+      payment = payment_fixture(account2)
 
-      {:error, error} = Service.update_payment(%{ id: payment.id }, %{}, %{ account: account })
-      assert error == :not_found
+      {:error, :not_found} = Service.update_payment(%{id: payment.id}, %{}, %{account: account1})
     end
 
-    test "when given valid id and valid fields" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "authorized",
-        gateway: "freshcom",
-        processor: "stripe",
-        amount_cents: 500
-      })
+    test "when given valid id and capturing authorized payment" do
+      account = account_fixture()
+      payment = payment_fixture(account, %{status: "authorized"})
 
       StripeClientMock
       |> expect(:post, fn(_, _, _) -> {:ok, nil} end)
@@ -522,26 +491,38 @@ defmodule BlueJet.Balance.ServiceTest do
 
       fields = %{
         "capture" => true,
-        "capture_amount_cents" => 300
+        "capture_amount_cents" => payment.amount_cents
       }
 
-      {:ok, payment} = Service.update_payment(%{ id: payment.id }, fields, %{ account: account })
+      {:ok, payment} = Service.update_payment(%{id: payment.id}, fields, %{account: account})
+
+      assert payment
+    end
+
+    test "when given valid id and fields" do
+      account = account_fixture()
+      payment = payment_fixture(account, %{status: "authorized"})
+
+      EventHandlerMock
+      |> expect(:handle_event, fn(name, _) ->
+          assert name == "balance:payment.update.success"
+          {:ok, nil}
+         end)
+
+      fields = %{"label" => "test"}
+
+      {:ok, payment} = Service.update_payment(%{id: payment.id}, fields, %{account: account})
 
       assert payment
     end
   end
 
   describe "delete_payment/2" do
-    test "when given valid payment" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "custom",
-        amount_cents: 500
-      })
+    test "when given valid id" do
+      account = account_fixture()
+      payment = payment_fixture(account, %{gateway: "custom"})
 
-      {:ok, payment} = Service.delete_payment(payment, %{ account: account })
+      {:ok, payment} = Service.delete_payment(%{id: payment.id}, %{account: account})
 
       assert payment
       refute Repo.get(Payment, payment.id)
@@ -549,38 +530,29 @@ defmodule BlueJet.Balance.ServiceTest do
   end
 
   #
-  # MARK: Payment
+  # MARK: Refund
   #
   describe "create_refund/2" do
-    test "when given invalid fields" do
-      account = Repo.insert!(%Account{})
-      fields = %{}
+    test "when given invalid fields should return invalid changeset" do
+      account = account_fixture()
 
-      {:error, changeset} = Service.create_refund(fields, %{ account: account })
+      {:error, changeset} = Service.create_refund(%{}, %{account: account})
 
       assert changeset.valid? == false
     end
 
-    test "when given valid fields" do
-      account = Repo.insert!(%Account{})
-      payment = Repo.insert!(%Payment{
-        account_id: account.id,
-        status: "paid",
-        gateway: "freshcom",
-        amount_cents: 5000,
-        gross_amount_cents: 5000
-      })
+    test "when given valid fields should return the created refund" do
+      account = account_fixture()
+      payment = payment_fixture(account)
 
-      stripe_refund_id = Faker.String.base64(12)
       stripe_refund = %{
-        "id" => stripe_refund_id,
+        "id" => Faker.String.base64(12),
         "balance_transaction" => %{
           "fee" => -500
         }
       }
-      stripe_transfer_reversal_id = Faker.String.base64(12)
       stripe_transfer_reversal = %{
-        "id" => stripe_transfer_reversal_id,
+        "id" => Faker.String.base64(12),
         "amount" => 4200
       }
       StripeClientMock
@@ -600,7 +572,7 @@ defmodule BlueJet.Balance.ServiceTest do
         "amount_cents" => 500
       }
 
-      {:ok, refund} = Service.create_refund(fields, %{ account: account })
+      {:ok, refund} = Service.create_refund(fields, %{account: account})
 
       assert refund
     end

@@ -125,7 +125,7 @@ defmodule BlueJet.Balance.Payment do
   defp castable_fields(:insert), do: writable_fields()
 
   defp castable_fields(:update, %{gateway: "freshcom"}) do
-    [:captured_amount_cents, :status] ++ translatable_fields()
+    [:capture_amount_cents, :status] ++ translatable_fields()
   end
 
   defp castable_fields(:update, _), do: writable_fields()
@@ -243,8 +243,8 @@ defmodule BlueJet.Balance.Payment do
   A payment is capturable if and only if its status is `"authorized"` and
   has `:capture_amount_cents` set to be a positive integer.
   """
-  def is_capturable?(%{capture_amount_cents: nil}), do: false
-  def is_capturable?(%{status: "authorized", capture_amount_cents: _}), do: true
+  def capturable?(%{capture_amount_cents: nil}), do: false
+  def capturable?(%{status: "authorized", capture_amount_cents: _}), do: true
 
   defp get_destination_amount_cents(payment, settings) do
     payment.amount_cents - get_processor_fee_cents(payment, settings) -

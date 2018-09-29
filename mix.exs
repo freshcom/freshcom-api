@@ -101,16 +101,77 @@ defmodule BlueJet.Mixfile do
     [
       "Identity": [
         BlueJet.Identity,
+        BlueJet.Identity.Policy,
         BlueJet.Identity.Service,
+
         BlueJet.Identity.Account,
         BlueJet.Identity.Account.Query,
+
         BlueJet.Identity.User,
         BlueJet.Identity.User.Query,
         BlueJet.Identity.User.Proxy
       ],
       "Goods": [
         BlueJet.Goods,
-        BlueJet.Goods.Service
+        BlueJet.Goods.Policy,
+        BlueJet.Goods.Service,
+
+        BlueJet.Goods.Stockable,
+        BlueJet.Goods.Stockable.Query,
+        BlueJet.Goods.Stockable.Proxy,
+
+        BlueJet.Goods.Unlockable,
+        BlueJet.Goods.Unlockable.Query,
+        BlueJet.Goods.Unlockable.Proxy,
+
+        BlueJet.Goods.Depositable,
+        BlueJet.Goods.Depositable.Query,
+        BlueJet.Goods.Depositable.Proxy,
+      ],
+      "File Storage": [
+        BlueJet.FileStorage,
+        BlueJet.FileStorage.Policy,
+        BlueJet.FileStorage.Service,
+
+        BlueJet.FileStorage.File,
+        BlueJet.FileStorage.File.Query,
+        BlueJet.FileStorage.File.Proxy,
+
+        BlueJet.FileStorage.FileCollection,
+        BlueJet.FileStorage.FileCollection.Query,
+        BlueJet.FileStorage.FileCollection.Proxy,
+
+        BlueJet.FileStorage.FileCollectionMembership,
+        BlueJet.FileStorage.FileCollectionMembership.Query,
+        BlueJet.FileStorage.FileCollectionMembership.Proxy
+      ],
+      "Notificaton": [
+        BlueJet.Notification,
+        BlueJet.Notification.Policy,
+        BlueJet.Notification.Service,
+
+        BlueJet.Notification.Trigger,
+        BlueJet.Notification.Trigger.Query,
+        BlueJet.Notification.Trigger.Proxy,
+        BlueJet.Notification.Trigger.Factory,
+
+        BlueJet.Notification.EmailTemplate,
+        BlueJet.Notification.EmailTemplate.Query,
+        BlueJet.Notification.EmailTemplate.Proxy,
+        BlueJet.Notification.EmailTemplate.Factory,
+
+        BlueJet.Notification.Email,
+        BlueJet.Notification.Email.Query,
+        BlueJet.Notification.Email.Proxy,
+
+        BlueJet.Notification.SMSTemplate,
+        BlueJet.Notification.SMSTemplate.Query,
+        BlueJet.Notification.SMSTemplate.Proxy,
+        BlueJet.Notification.SMSTemplate.Factory,
+
+        BlueJet.Notification.SMS,
+        BlueJet.Notification.SMS.Query,
+        BlueJet.Notification.SMS.Proxy,
       ],
       "CRM": [
         BlueJet.CRM,
@@ -128,6 +189,44 @@ defmodule BlueJet.Mixfile do
         BlueJet.CRM.PointTransaction,
         BlueJet.CRM.PointTransaction.Query,
         BlueJet.CRM.PointTransaction.Proxy
+      ],
+      "Balance": [
+        BlueJet.Balance,
+        BlueJet.Balance.Policy,
+        BlueJet.Balance.Service,
+
+        BlueJet.Balance.Card,
+        BlueJet.Balance.Card.Query,
+        BlueJet.Balance.Card.Proxy,
+
+        BlueJet.Balance.Payment,
+        BlueJet.Balance.Payment.Query,
+        BlueJet.Balance.Payment.Proxy,
+
+        BlueJet.Balance.Refund,
+        BlueJet.Balance.Refund.Query,
+        BlueJet.Balance.Refund.Proxy
+      ],
+      "Catalogue": [
+        BlueJet.Catalogue,
+        BlueJet.Catalogue.Policy,
+        BlueJet.Catalogue.Service,
+
+        BlueJet.Catalogue.Product,
+        BlueJet.Catalogue.Product.Query,
+        BlueJet.Catalogue.Product.Proxy,
+
+        BlueJet.Catalogue.Price,
+        BlueJet.Catalogue.Price.Query,
+        BlueJet.Catalogue.Price.Proxy,
+
+        BlueJet.Catalogue.ProductCollection,
+        BlueJet.Catalogue.ProductCollection.Query,
+        BlueJet.Catalogue.ProductCollection.Proxy,
+
+        BlueJet.Catalogue.ProductCollectionMembership,
+        BlueJet.Catalogue.ProductCollectionMembership.Query,
+        BlueJet.Catalogue.ProductCollectionMembership.Proxy
       ]
     ]
   end

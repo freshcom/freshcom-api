@@ -3,129 +3,212 @@ defmodule BlueJet.Balance.Policy do
 
   alias BlueJet.Balance.CRMService
 
+  # TODO: Fix this
+  def authorize(%{vas: vas, _role_: nil} = req, endpoint) do
+    identity_service =
+      Atom.to_string(__MODULE__)
+      |> String.split(".")
+      |> Enum.drop(-1)
+      |> Enum.join(".")
+      |> Module.concat(IdentityService)
+
+    vad = identity_service.get_vad(vas)
+    role = identity_service.get_role(vad)
+    default_locale = if vad[:account], do: vad[:account].default_locale, else: nil
+
+    req
+    |> Map.put(:_vad_, vad)
+    |> Map.put(:_role_, role)
+    |> Map.put(:_default_locale_, default_locale)
+    |> authorize(endpoint)
+  end
+
   #
   # MARK: Settings
   #
-  def authorize(request = %{role: role}, "get_settings")
+  def authorize(%{_role_: role} = req, :get_settings)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :get)}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_settings")
+  def authorize(%{_role_: role} = req, :update_settings)
       when role in ["developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    {:ok, req}
   end
 
   #
   # MARK: Card
   #
-  def authorize(request = %{role: role, account: account, user: user}, "list_card")
-      when role in ["customer"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role} = req, :list_card) when role in ["customer"] do
+    identifiers = %{user_id: req._vad_.user}
+    opts = %{account: req._vad_.account}
+    customer = CRMService.get_customer(identifiers, opts)
 
-    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
+    req =
+      req
+      |> ContextRequest.put(:filter, :owner_id, customer.id)
+      |> ContextRequest.put(:filter, :owner_type, "Customer")
+      |> ContextRequest.put(:filter, :status, "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
-    filter =
-      Map.merge(authorized_args[:filter], %{
-        owner_id: customer.id,
-        owner_type: "Customer",
-        status: "saved_by_owner"
-      })
+    scope = Map.take(req.filter, [:owner_id, :owner_type, :status])
+    req = ContextRequest.put(req, :_scope_, scope)
 
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: filter}
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "list_card") when role in ["support_specialist"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role} = req, :list_card) when role in ["support_specialist"] do
+    if req.filter[:owner_id] && req.filter[:owner_type] do
+      req =
+        req
+        |> ContextRequest.put(:filter, :status, "saved_by_owner")
+        |> ContextRequest.put(:_include_, :paths, req.include)
 
-    if authorized_args[:filter][:owner_id] do
-      filter = Map.merge(authorized_args[:filter], %{status: "saved_by_owner"})
-      authorized_args = %{authorized_args | filter: filter, all_count_filter: filter}
+      scope = Map.take(req.filter, [:owner_id, :owner_type, :status])
+      req = ContextRequest.put(req, :_scope_, scope)
 
-      {:ok, authorized_args}
+      {:ok, req}
     else
       {:error, :access_denied}
     end
   end
 
-  def authorize(request = %{role: role}, "list_card")
-      when role in ["developer", "administrator"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role} = req, :list_card) when role in ["developer", "administrator"] do
+    req =
+      req
+      |> ContextRequest.put(:filter, :status, "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
-    filter = Map.merge(authorized_args[:filter], %{status: "saved_by_owner"})
+    scope = Map.take(req.filter, [:owner_id, :owner_type, :status])
+    req = ContextRequest.put(req, :_scope_, scope)
 
-    authorized_args = %{
-      authorized_args
-      | filter: filter,
-        all_count_filter: %{status: "saved_by_owner"}
-    }
-
-    {:ok, authorized_args}
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_card")
-      when role in ["customer", "support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+  def authorize(%{_role_: role} = req, :create_card) when role in ["customer"] do
+    identifiers = %{user_id: req._vad_.user}
+    opts = %{account: req._vad_.account}
+    customer = CRMService.get_customer(identifiers, opts)
+
+    req =
+      req
+      |> ContextRequest.put(:fields, "owner_id", customer.id)
+      |> ContextRequest.put(:filter, "owner_type", "Customer")
+      |> ContextRequest.put(:filter, "status", "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_card")
+  def authorize(%{_role_: role} = req, :create_card)
+      when role in ["support_specialist", "developer", "administrator"] do
+    req =
+      req
+      |> ContextRequest.put(:fields, "status", "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :get_card) when role in ["customer"] do
+    identifiers = %{user_id: req._vad_.user}
+    opts = %{account: req._vad_.account}
+    customer = CRMService.get_customer(identifiers, opts)
+
+    req =
+      req
+      |> ContextRequest.put(:identifiers, :owner_id, customer.id)
+      |> ContextRequest.put(:identifiers, :owner_type, "Customer")
+      |> ContextRequest.put(:identifiers, :status, "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :get_card)
+      when role in ["support_specialist", "developer", "administrator"] do
+    req =
+      req
+      |> ContextRequest.put(:identifiers, :status, "saved_by_owner")
+      |> ContextRequest.put(:_include_, :paths, req.include)
+
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :update_card)
       when role in ["customer", "support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
+  end
+
+  def authorize(%{_role_: role} = req, :delete_card)
+      when role in ["customer", "support_specialist", "developer", "administrator"] do
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
   #
   # MARK: Payment
   #
-  def authorize(request = %{role: role, account: account, user: user}, "list_payment")
-      when role in ["customer"] do
-    authorized_args = from_access_request(request, :list)
+  def authorize(%{_role_: role} = req, :list_payment) when role in ["customer"] do
+    identifiers = %{user_id: req._vad_.user}
+    opts = %{account: req._vad_.account}
+    customer = CRMService.get_customer(identifiers, opts)
 
-    customer = CRMService.get_customer(%{user_id: user.id}, %{account: account})
-    filter = Map.merge(authorized_args[:filter], %{owner_id: customer.id, owner_type: "Customer"})
-    all_count_filter = Map.take(filter, [:owner_id, :owner_type])
+    req =
+      req
+      |> ContextRequest.put(:filter, :owner_id, customer.id)
+      |> ContextRequest.put(:filter, :owner_type, "Customer")
+      |> ContextRequest.put(:_include_, :paths, req.include)
 
-    authorized_args = %{authorized_args | filter: filter, all_count_filter: all_count_filter}
-    {:ok, authorized_args}
+    scope = Map.take(req.filter, [:owner_id, :owner_type])
+    req = ContextRequest.put(req, :_scope_, scope)
+
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "list_payment")
+  def authorize(%{_role_: role} = req, :list_payment)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :list)}
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
-  def authorize(%{role: "anonymous"}, "create_payment") do
+  def authorize(%{_role_: "anonymous"}, :create_payment) do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role}, "create_payment") when not is_nil(role) do
-    {:ok, from_access_request(request, :create)}
+  def authorize(%{_role_: role} = req, :create_payment) when not is_nil(role) do
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
-  def authorize(%{role: role}, "get_payment") when role in ["anonymous", "guest"] do
+  def authorize(%{_role_: role}, :get_payment) when role in ["anonymous", "guest"] do
     {:error, :access_denied}
   end
 
-  def authorize(request = %{role: role}, "get_payment") when not is_nil(role) do
-    {:ok, from_access_request(request, :get)}
+  def authorize(%{_role_: role} = req, :get_payment) when not is_nil(role) do
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "update_payment")
+  def authorize(%{_role_: role} = req, :update_payment)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :update)}
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
-  def authorize(request = %{role: role}, "delete_payment")
+  def authorize(%{_role_: role} = req, :delete_payment)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :delete)}
+    {:ok, req}
   end
 
   #
   # MARK: Refund
   #
-  def authorize(request = %{role: role}, "create_refund")
+  def authorize(%{_role_: role} = req, :create_refund)
       when role in ["support_specialist", "developer", "administrator"] do
-    {:ok, from_access_request(request, :create)}
+    req = ContextRequest.put(req, :_include_, :paths, req.include)
+    {:ok, req}
   end
 
   #

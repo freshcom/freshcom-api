@@ -101,7 +101,7 @@ defmodule BlueJetWeb.Router do
     #
     # MARK: Balance
     #
-    resources "/cards", CardController, only: [:index, :create, :update, :delete]
+    resources "/cards", CardController, except: [:new, :edit]
     resources "/payments", PaymentController do
       resources "/refunds", RefundController, only: [:create]
     end
